@@ -145,4 +145,3 @@ public:
   
 } // end namespace
 
-#undef TASKPARTS_CACHE_LINE_SZB

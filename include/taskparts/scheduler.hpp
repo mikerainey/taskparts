@@ -140,7 +140,7 @@ public:
   template <typename Body>
   static
   auto launch_worker_thread(size_t id, const Body& b) {
-    minimal_launch_worker_thread([id, &b] {
+    minimal_launch_worker_thread(id, [id, &b] {
       perworker::id::initialize_worker(id);
       pin_calling_worker();
       b(id);

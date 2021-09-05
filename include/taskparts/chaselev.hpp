@@ -145,9 +145,6 @@ template <typename Scheduler,
 class chase_lev_work_stealing_scheduler {
 public:
 
-  // Type aliases
-  // ------------
-
   using fiber_type = Fiber<Scheduler>;
 
   using deque_type = chase_lev_deque<fiber_type>;
@@ -156,18 +153,12 @@ public:
 
   using elastic_type = Elastic<Stats, Logging>;
 
-  // Worker-local memory
-  // -------------------
-  
   static
   perworker::array<buffer_type> buffers;
 
   static
   perworker::array<deque_type> deques;
 
-  // Helper functions
-  // ----------------
-  
   static
   auto flush() -> fiber_type* {
     auto& my_buffer = buffers.mine();
