@@ -21,7 +21,7 @@ private:
   alignas(TASKPARTS_CACHE_LINE_SZB)
   fiber* outedge;
 
-  void schedule() {
+  auto schedule() {
     Scheduler::schedule(this);
   }
 
@@ -30,6 +30,7 @@ public:
   fiber()
     : incounter(1), outedge(nullptr) { }
 
+  virtual
   ~fiber() {
     assert(outedge == nullptr);
   }

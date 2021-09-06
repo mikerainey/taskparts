@@ -15,7 +15,7 @@ auto fib_seq(int64_t n) -> int64_t {
 int64_t fib_T = 15;
 
 template <typename Scheduler>
-class fib_fiber : public taskparts::fiber<Scheduler> {
+class fib_par : public taskparts::fiber<Scheduler> {
 public:
 
   using trampoline_type = enum { entry, exit };
@@ -25,7 +25,7 @@ public:
   int64_t n; int64_t* dst;
   int64_t d1, d2;
 
-  fib_fiber(int64_t n, int64_t* dst)
+  fib_par(int64_t n, int64_t* dst)
     : taskparts::fiber<Scheduler>(), n(n), dst(dst) { }
 
   auto run() -> taskparts::fiber_status_type {
@@ -35,8 +35,8 @@ public:
         *dst = fib_seq(n);
         break;
       }
-      auto f1 = new fib_fiber(n-1, &d1);
-      auto f2 = new fib_fiber(n-2, &d2);
+      auto f1 = new fib_par(n-1, &d1);
+      auto f2 = new fib_par(n-2, &d2);
       taskparts::fiber<Scheduler>::add_edge(f1, this);
       taskparts::fiber<Scheduler>::add_edge(f2, this);
       f1->release();
