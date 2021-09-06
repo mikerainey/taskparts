@@ -66,7 +66,7 @@ auto test_fib2() -> bool {
   int n = fib_T * 2;
   int64_t dst;
   using my_scheduler = taskparts::minimal_scheduler<>;
-  auto nb_workers = 2;
+  auto nb_workers = 15;
   taskparts::perworker::id::initialize(nb_workers);
   auto body = [&] {
     dst = fib_par_nativefj(n);

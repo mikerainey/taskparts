@@ -188,16 +188,16 @@ public:
     bool should_terminate = false;
     typename Worker::termination_detection_type termination_barrier;
     typename Worker::worker_exit_barrier worker_exit_barrier(nb_workers);
-    perworker::array<hash_value_type> rngs;
+    perworker::array<size_t> nb_steal_attempts_so_far(0);
 
     auto random_other_worker = [&] (size_t nb_workers, size_t my_id) -> std::size_t {
       assert(nb_workers != 1);
-      auto& rn = rngs.mine();
-      auto id = (std::size_t)(rn % (nb_workers - 1));
+      auto& nb_sa = nb_steal_attempts_so_far[my_id];
+      auto id = (std::size_t)((hash(my_id) + hash(nb_sa)) % (nb_workers - 1));
       if (id >= my_id) {
         id++;
       }
-      rn = hash(rn);
+      nb_sa++;
       assert(id != my_id);
       assert(id >= 0 && id < nb_workers);
       return id;
@@ -288,9 +288,6 @@ public:
       worker_exit_barrier.wait(my_id);
     };
     
-    for (std::size_t i = 0; i < rngs.size(); ++i) {
-      rngs[i] = hash(i + 31);
-    }
     Worker::initialize(nb_workers);
     elastic_type::initialize();
     Interrupt::initialize_signal_handler();

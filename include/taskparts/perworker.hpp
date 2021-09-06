@@ -28,7 +28,13 @@ public:
 
   array() {
     for (size_t i = 0; i < items.size(); ++i) {
-      new (&items[i]) value_type;
+      new (&items[i]) value_type();
+    }
+  }
+
+  array(const value_type& v0) {
+    for (size_t i = 0; i < items.size(); ++i) {
+      new (&items[i]) value_type(v0);
     }
   }
 

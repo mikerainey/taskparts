@@ -272,7 +272,7 @@ template <typename Scheduler>
 char nativefj_fiber<Scheduler>::marker2;
 
 template <typename Scheduler>
-perworker::array<nativefj_fiber<Scheduler>*> nativefj_fiber<Scheduler>::current_fiber;
+perworker::array<nativefj_fiber<Scheduler>*> nativefj_fiber<Scheduler>::current_fiber(nullptr);
 
 template <typename F, typename Scheduler>
 class nativefj_from_lambda : public nativefj_fiber<Scheduler> {
