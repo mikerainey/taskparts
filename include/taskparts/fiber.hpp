@@ -53,12 +53,6 @@ public:
     }
   }
 
-  auto capture_continuation() -> fiber* {
-    auto oe = outedge;
-    outedge = nullptr;
-    return oe;
-  }
-
   static
   auto add_edge(fiber* src, fiber* dst) {
     assert(src->outedge == nullptr);
@@ -80,6 +74,12 @@ public:
   void finish() {
     notify();
     delete this;
+  }
+
+  auto capture_continuation() -> fiber* {
+    auto oe = outedge;
+    outedge = nullptr;
+    return oe;
   }
 
 };
