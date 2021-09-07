@@ -2,11 +2,12 @@
 
 #include <utility>
 #include <algorithm>
+#include <vector>
 
 #if defined(TASKPARTS_POSIX)
-#include "posix/rollforward.hpp"
+using register_type = greg_t;
 #elif defined (TASKPARTS_NAUTILUS)
-#include "nautilus/rollforward.hpp"
+using register_type = ulong_t*;
 #else
 #error need to declare platform (e.g., TASKPARTS_POSIX)
 #endif
@@ -97,3 +98,11 @@ auto destroy_rollfoward_table() {
 }
     
 } // end namespace
+
+#if defined(TASKPARTS_POSIX)
+#include "posix/rollforward.hpp"
+#elif defined (TASKPARTS_NAUTILUS)
+#include "nautilus/rollforward.hpp"
+#else
+#error need to declare platform (e.g., TASKPARTS_POSIX)
+#endif

@@ -2,11 +2,11 @@
 
 #include <thread>
 #include <condition_variable>
-#include <papi.h>
 #include <sys/timerfd.h>
 #include <unistd.h>
 #include <sys/signal.h>
 #include <sys/syscall.h>
+#include <cstring>
 
 #include "../scheduler.hpp"
 #include "../perworker.hpp"
@@ -268,7 +268,7 @@ public:
     struct sigaction act;
     memset(&act, 0, sizeof(struct sigaction));
     sigemptyset(&act.sa_mask);
-    act.sa_sigaction = tpalrts::heartbeat_interrupt_handler;
+    act.sa_sigaction = taskparts::heartbeat_interrupt_handler;
     act.sa_flags = SA_SIGINFO | SA_RESTART;
     sigaction(SIGUSR1, &act, NULL);
   }
@@ -288,6 +288,9 @@ struct sigaction pthread_direct_interrupt::prev_sa;
 
 /*---------------------------------------------------------------------*/
 /* PAPI interrupt configuration */
+
+#ifdef TASKPARTS_USE_PAPI
+#include <papi.h>
 
 static
 void papi_interrupt_handler(int, void*, long long, void *context) {
@@ -366,5 +369,7 @@ public:
 };
 
 perworker::array<int> papi_worker::event_set;
+
+#endif
   
 } // end namespace
