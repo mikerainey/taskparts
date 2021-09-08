@@ -93,7 +93,7 @@ auto initialize_rollfoward_table() {
   std::sort(rollforward_table.begin(), rollforward_table.end(), rollforward_edge_less);
 }
 
-auto destroy_rollforward_table() {
+auto clear_rollforward_table() {
   rollforward_table.clear();
 }
     

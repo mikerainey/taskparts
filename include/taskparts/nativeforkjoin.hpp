@@ -96,8 +96,8 @@ public:
 
   auto _fork2(nativefj_fiber* f1, nativefj_fiber* f2) {
     status = fiber_status_pause;
-    add_edge(f2, this);
-    add_edge(f1, this);
+    fiber<Scheduler>::add_edge(f2, this);
+    fiber<Scheduler>::add_edge(f1, this);
     f2->release();
     f1->release();
     if (context::capture<nativefj_fiber*>(context::addr(ctx))) {

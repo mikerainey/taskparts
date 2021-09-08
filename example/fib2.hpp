@@ -2,7 +2,7 @@
 
 #include "taskparts/nativeforkjoin.hpp"
 
-int64_t fib_par_nativefj(int64_t n) {
+auto fib_par_nativefj(int64_t n) -> int64_t {
   if (n <= 1) {
     return n;
   } else {

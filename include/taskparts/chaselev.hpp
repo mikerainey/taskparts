@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <memory>
 #include <assert.h>
 
@@ -179,12 +180,13 @@ public:
   }
 
   static
-  auto launch(std::size_t nb_workers, std::size_t nb_steal_attempts=1) {
+  auto launch(std::size_t nb_steal_attempts=1) {
     using scheduler_status_type = enum scheduler_status_enum {
       scheduler_status_active,
       scheduler_status_finish
     };
 
+    auto nb_workers = perworker::id::get_nb_workers();
     bool should_terminate = false;
     typename Worker::termination_detection_type termination_barrier;
     typename Worker::worker_exit_barrier worker_exit_barrier(nb_workers);

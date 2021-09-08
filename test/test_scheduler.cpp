@@ -1,6 +1,8 @@
 #include "taskparts/scheduler.hpp"
 #include "taskparts/stats.hpp"
 #include "taskparts/chaselev.hpp"
+#include "taskparts/machine.hpp"
+#include "taskparts/logging.hpp"
 #include "../example/fib1.hpp"
 #include "../example/fib2.hpp"
 
@@ -35,6 +37,8 @@ public:
 };
 
 using test_stats = stats_base<my_stats_configuration>;
+
+using my_logging = logging_base<true>;
   
 perworker::array<int> pwints;
 
@@ -48,17 +52,17 @@ auto test1() -> bool {
 }
 
 auto test_fib1() -> bool {
-  int n = fib_T * 2;
+  int n = 41;
   int64_t dst;
-  using my_scheduler = taskparts::minimal_scheduler<>;
-  auto nb_workers = 2;
-  taskparts::perworker::id::initialize(nb_workers);
+  my_logging::initialize(false, true, false, true);  
+  using my_scheduler = taskparts::minimal_scheduler<minimal_stats, my_logging>;
   auto f_body = new fib_par<my_scheduler>(n, &dst);
   auto f_term = new taskparts::terminal_fiber<my_scheduler>;
   taskparts::fiber<my_scheduler>::add_edge(f_body, f_term);
   f_body->release();
   f_term->release();
-  taskparts::chase_lev_work_stealing_scheduler<my_scheduler, taskparts::fiber>::launch(nb_workers);
+  taskparts::chase_lev_work_stealing_scheduler<my_scheduler, taskparts::fiber, minimal_stats, my_logging>::launch();
+  my_logging::output();
   return (dst == fib_seq(n));
 }
 
@@ -66,8 +70,6 @@ auto test_fib2() -> bool {
   int n = fib_T * 2;
   int64_t dst;
   using my_scheduler = taskparts::minimal_scheduler<>;
-  auto nb_workers = 15;
-  taskparts::perworker::id::initialize(nb_workers);
   auto body = [&] {
     dst = fib_par_nativefj(n);
   };
@@ -76,7 +78,7 @@ auto test_fib2() -> bool {
   taskparts::fiber<my_scheduler>::add_edge(&f_body, f_term);
   f_body.release();
   f_term->release();
-  taskparts::chase_lev_work_stealing_scheduler<my_scheduler, taskparts::fiber>::launch(nb_workers);
+  taskparts::chase_lev_work_stealing_scheduler<my_scheduler, taskparts::fiber>::launch();
   return (dst == fib_seq(n));
 }
 

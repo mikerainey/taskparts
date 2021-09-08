@@ -1,8 +1,12 @@
 #pragma once
 
-#include <atomic>
 #include <cstddef>
+#include <cstdlib>
+#include <string>
+#include <thread>
 #include <assert.h>
+
+#include "diagnostics.hpp"
 
 #ifndef TASKPARTS_MAX_NB_WORKERS_LG
 #define TASKPARTS_MAX_NB_WORKERS_LG 7
@@ -35,8 +39,13 @@ public:
   
   static
   auto initialize(size_t _nb_workers) -> void {
-    assert(_nb_workers > 0);
-    assert(_nb_workers <= default_max_nb_workers);
+    if (_nb_workers == 0) {
+      taskparts_die("Requested zero worker threads: %lld\n", _nb_workers);
+    }    
+    if (_nb_workers > default_max_nb_workers) {
+      taskparts_die("Requested too many worker threads: %lld, should be maximum %lld\n",
+		    _nb_workers, default_max_nb_workers);
+    }
     initialize_worker(0);
     nb_workers = _nb_workers;
   }
@@ -49,13 +58,13 @@ public:
     my_id = id;
   }
 
-  static
+  static inline
   auto get_my_id() -> size_t {
     assert(my_id != uninitialized_id);
     return (size_t)my_id;
   }
 
-  static
+  static inline
   auto get_nb_workers() -> size_t {
     assert(nb_workers != -1);
     return nb_workers;
@@ -67,6 +76,19 @@ int id::nb_workers = -1;
   
 thread_local
 int id::my_id = uninitialized_id;
+
+auto nb_workers_requested() -> size_t {
+  if (const auto env_p = std::getenv("TASKPARTS_NUM_WORKERS")) {
+    return std::stoi(env_p);
+  } else {
+    return std::thread::hardware_concurrency();
+  }
+}
+  
+__attribute__((constructor))
+void init() {
+  id::initialize(nb_workers_requested());
+}
 
 } // end namespace
 } // end namespace

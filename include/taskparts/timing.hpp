@@ -1,6 +1,9 @@
 #pragma once
 
 #include <cstdint>
+#include <cstdlib>
+
+#include "diagnostics.hpp"
 
 namespace taskparts {
 
@@ -15,14 +18,14 @@ namespace cycles {
 namespace {
   
 static inline
-uint64_t rdtsc() {
+auto rdtsc() -> uint64_t {
   unsigned int hi, lo;
   __asm__ __volatile__("rdtsc" : "=a"(lo), "=d"(hi));
   return  ((uint64_t) lo) | (((uint64_t) hi) << 32);
 }
 
 static inline
-void rdtsc_wait(uint64_t n) {
+auto rdtsc_wait(uint64_t n) {
   const uint64_t start = rdtsc();
   while (rdtsc() < (start + n)) {
     __asm__("PAUSE");
@@ -32,23 +35,50 @@ void rdtsc_wait(uint64_t n) {
 } // end namespace
   
 static inline
-uint64_t diff(uint64_t start, uint64_t finish) {
+auto diff(uint64_t start, uint64_t finish) -> uint64_t {
   return finish - start;
 }
 
 static inline
-uint64_t now() {
+auto now() -> uint64_t {
   return rdtsc();
 }
 
 static inline
-uint64_t since(uint64_t start) {
+auto since(uint64_t start) -> uint64_t {
   return diff(start, now());
 }
 
 static inline
-void spin_for(uint64_t nb_cycles) {
+auto spin_for(uint64_t nb_cycles) {
   rdtsc_wait(nb_cycles);
+}
+
+using seconds_type = struct seconds_struct {
+  uint64_t seconds;
+  uint64_t milliseconds;
+};
+
+static inline
+auto seconds_of(uint64_t cpu_frequency_khz, uint64_t cycles) -> seconds_type {
+  if (cpu_frequency_khz == 0) {
+    taskparts_die("cannot convert from cycles to seconds because cpu frequency is not known\n");
+    return {.seconds = 0, .milliseconds = 0 };
+  }
+  uint64_t milliseconds = cycles / cpu_frequency_khz;
+  seconds_type t;
+  t.seconds = milliseconds / 1000l;
+  t.milliseconds = milliseconds - (1000l * t.seconds);
+  return t;
+}
+
+static inline
+auto nanoseconds_of(uint64_t cpu_frequency_khz, uint64_t cycles) -> uint64_t {
+  if (cpu_frequency_khz == 0) {
+    taskparts_die("cannot convert from cycles to nanoseconds because cpu frequency is not known\n");
+    return 0;
+  }
+  return 10000 * cycles / cpu_frequency_khz;
 }
   
 } // end namespace

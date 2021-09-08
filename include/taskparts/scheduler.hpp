@@ -72,13 +72,11 @@ using event_kind_type = enum event_kind_enum {
 };
 
 using event_tag_type = enum event_tag_type_enum {
-  // important: the following events are reserved for pview
   enter_launch = 0,   exit_launch,
   enter_algo,         exit_algo,
   enter_wait,         exit_wait,
   worker_communicate, interrupt,
   algo_phase,
-  // all the remaining events are free to be changed
   enter_sleep,        exit_sleep,     failed_to_sleep,
   wake_child,         worker_exit,    initiate_teardown,
   program_point,
