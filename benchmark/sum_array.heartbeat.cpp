@@ -13,8 +13,6 @@ using my_scheduler = chase_lev_work_stealing_scheduler<tpalrts, fiber,
 						       ping_thread_worker, ping_thread_interrupt>;
 }
 
-double sum_array_serial(double* a, uint64_t lo, uint64_t hi);
-
 void sum_array_heartbeat(double* a, uint64_t lo, uint64_t hi, double r, double* dst);
 
 int sum_array_heartbeat_handler(double* a, uint64_t lo, uint64_t hi, double r, double* dst) {
@@ -63,10 +61,6 @@ int sum_array_heartbeat_handler(double* a, uint64_t lo, uint64_t hi, double r, d
   return 1;
 }
 
-uint64_t nb_items = 100 * 1000 * 1000;
-double* a;
-double result = 0.0;
-
 namespace taskparts {
 
 void init() {
@@ -79,6 +73,8 @@ void init() {
 } // end namespace
 
 int main() {
+  uint64_t nb_items = 100 * 1000 * 1000;
+  double result = 0.0;
   double* a = new double[nb_items];
   for (size_t i = 0; i < nb_items; i++) {
     a[i] = 1.0;

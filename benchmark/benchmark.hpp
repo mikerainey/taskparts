@@ -2,14 +2,14 @@
 
 #include <stdio.h>
 
-#include "../include/taskparts/timing.hpp"
+#include "../include/taskparts/machine.hpp"
 
 namespace taskparts {
   
 template <typename Benchmark>
 auto run_benchmark(const Benchmark& benchmark, size_t repeat=1, size_t warmup_secs=3) {
   auto seconds_of_cycles = [] (uint64_t cs) {
-    return cycles::seconds_of(get_cpu_frequency_khz(), cs);
+    return cycles::seconds_of(cs);
   };
   auto timed_run = [&] {
     auto st = cycles::now();

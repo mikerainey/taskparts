@@ -1,7 +1,8 @@
 #pragma once
 
-#include "timing.hpp"
+#include <string>
 
+#include "timing.hpp"
 #if defined(TASKPARTS_POSIX)
 #include "posix/machine.hpp"
 #elif defined (TASKPARTS_NAUTILUS)
