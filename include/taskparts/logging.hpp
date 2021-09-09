@@ -8,6 +8,7 @@
 #include <memory>
 
 #include "scheduler.hpp"
+#include "machine.hpp"
 #include "diagnostics.hpp"
 
 // Important: all timestamps are raw cycle counts. We can do so because x64
@@ -78,8 +79,6 @@ program_point_type dflt_ppt = { .line_nb = -1, .source_fname = nullptr, .ptr = n
 
 uint64_t basetime;
 
-uint64_t cpu_frequency_khz;  
-
 class event_type {
 public:
   
@@ -111,7 +110,7 @@ public:
   } extra;
             
   void print_text(FILE* f) {
-    auto s = cycles::seconds_of(cpu_frequency_khz, cycles::diff(basetime, cyclecount));
+    auto s = cycles::seconds_of(cycles::diff(basetime, cyclecount));
     fprintf(f, "%lu.%lu\t%ld\t%s\t", s.seconds, s.milliseconds, worker_id, name_of(tag).c_str());
     switch (tag) {
       case program_point: {
@@ -160,7 +159,7 @@ public:
     auto print_ftr = [&] {
       fprintf(f, "}%s", (last ? "\n" : ",\n"));
     };
-    auto ns = cycles::nanoseconds_of(cpu_frequency_khz, cycles::diff(basetime, cyclecount));
+    auto ns = cycles::nanoseconds_of(cycles::diff(basetime, cyclecount));
     switch (tag) {
       case enter_wait:
       case exit_wait: {
@@ -234,7 +233,6 @@ public:
       tracking_kind[phases] = true;
     }
     basetime = cycles::now();
-    cpu_frequency_khz = detect_cpu_frequency_khz();
     push(event_type(enter_launch));
   }
   

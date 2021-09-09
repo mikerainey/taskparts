@@ -1,7 +1,6 @@
 #include "taskparts/chaselev.hpp"
 #include "taskparts/tpalrts.hpp"
 #include "taskparts/nativeforkjoin.hpp"
-#include "taskparts/machine.hpp"
 #include "benchmark.hpp"
 
 #include "sum_array_rollforward_decls.hpp"
@@ -71,7 +70,6 @@ double result = 0.0;
 namespace taskparts {
 
 void init() {
-  assign_kappa(detect_cpu_frequency_khz());
   rollforward_table = {
     #include "sum_array_rollforward_map.hpp"
   };

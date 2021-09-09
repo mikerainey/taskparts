@@ -114,6 +114,7 @@ public:
   
   static
   void launch_ping_thread(std::size_t nb_workers) {
+    auto kappa_usec = get_kappa_usec();
     auto pthreadsp = &pthreads;
     auto statusp = &ping_thread_status;
     auto ping_thread_lockp = &ping_thread_lock;
@@ -191,6 +192,7 @@ public:
 
   static
   void initialize_worker() {
+    auto kappa_usec = get_kappa_usec();
     std::lock_guard<std::mutex> guard(pthread_init_mutex);
     unsigned int ns;
     unsigned int sec;
@@ -318,6 +320,7 @@ public:
   static
   void initialize_worker() {
     int retval;
+    auto kappa_cycles = get_kappa_cycles();
     std::lock_guard<std::mutex> guard(papi_init_mutex);
     if ( (retval = PAPI_create_eventset(&(event_set.mine()))) != PAPI_OK) {
       taskparts_die("papi worker initialization failed");
