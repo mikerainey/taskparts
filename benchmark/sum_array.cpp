@@ -2,6 +2,7 @@
 #include "taskparts/tpalrts.hpp"
 #include "taskparts/nativeforkjoin.hpp"
 #include "taskparts/machine.hpp"
+#include "benchmark.hpp"
 
 #include "sum_array_rollforward_decls.hpp"
 
@@ -87,7 +88,9 @@ int main() {
 
   taskparts::init();
   auto f0 = [&] {
-    sum_array_heartbeat(a, 0, nb_items, 0.0, &result);
+    taskparts::run_benchmark([&] {
+      sum_array_heartbeat(a, 0, nb_items, 0.0, &result);
+    });
   };
   taskparts::nativefj_from_lambda<decltype(f0), taskparts::tpalrts> f_body(f0);
   auto f_term = new taskparts::terminal_fiber<taskparts::tpalrts>;
