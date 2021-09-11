@@ -38,7 +38,7 @@ private:
 public:
   
   static
-  auto initialize(size_t _nb_workers) -> void {
+  auto initialize(size_t _nb_workers) {
     if (_nb_workers == 0) {
       taskparts_die("Requested zero worker threads: %lld\n", _nb_workers);
     }    
