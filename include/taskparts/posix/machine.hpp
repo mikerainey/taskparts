@@ -136,7 +136,7 @@ auto pin_calling_worker() {
 #endif
 }
 
-auto initialize_pinning_policy() {
+auto initialize_machine() {
   auto nb_workers = perworker::id::get_nb_workers();
   pthread_setconcurrency((int)nb_workers);
   bool requested_pinning_policy = false;
@@ -179,7 +179,7 @@ auto initialize_pinning_policy() {
 #endif
 }
 
-auto destroy_machine() {
+auto teardown_machine() {
 #ifdef TASKPARTS_HAVE_HWLOC
   auto nb_workers = perworker::id::get_nb_workers();
   hwloc_bitmap_free(all_cpus);

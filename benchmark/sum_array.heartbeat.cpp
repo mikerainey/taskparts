@@ -63,11 +63,16 @@ int sum_array_heartbeat_handler(double* a, uint64_t lo, uint64_t hi, double r, d
 
 namespace taskparts {
 
-void init() {
+void initialize() {
   rollforward_table = {
     #include "sum_array_rollforward_map.hpp"
   };
   initialize_rollfoward_table();
+  initialize_machine();
+}
+
+void destroy() {
+  teardown_machine();
 }
 
 } // end namespace
@@ -80,7 +85,7 @@ int main() {
     a[i] = 1.0;
   }
 
-  taskparts::init();
+  taskparts::initialize();
   auto f0 = [&] {
     taskparts::run_benchmark([&] {
       sum_array_heartbeat(a, 0, nb_items, 0.0, &result);
@@ -92,6 +97,7 @@ int main() {
   f_body.release();
   f_term->release();
   taskparts::my_scheduler::launch();
+  taskparts::destroy();
   
   printf("result=%f\n",result);
   delete [] a;

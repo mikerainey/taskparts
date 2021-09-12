@@ -4,6 +4,18 @@
 .type  _Z10sum_serialP4node, @function
 .globl  _Z10sum_serialP4node_rf
 .type  _Z10sum_serialP4node_rf, @function
+.globl  _Z13sum_heartbeatP4nodeRSt6vectorI7vhbkontSaIS2_EEii
+.type  _Z13sum_heartbeatP4nodeRSt6vectorI7vhbkontSaIS2_EEii, @function
+.globl  _Z13sum_heartbeatP4nodeRSt6vectorI7vhbkontSaIS2_EEii_rf
+.type  _Z13sum_heartbeatP4nodeRSt6vectorI7vhbkontSaIS2_EEii_rf, @function
+.globl  _Z16prmlist_pop_backRSt6vectorI7vhbkontSaIS0_EEii
+.type  _Z16prmlist_pop_backRSt6vectorI7vhbkontSaIS0_EEii, @function
+.globl  _Z16prmlist_pop_backRSt6vectorI7vhbkontSaIS0_EEii_rf
+.type  _Z16prmlist_pop_backRSt6vectorI7vhbkontSaIS0_EEii_rf, @function
+.globl  _Z17prmlist_push_backRSt6vectorI7vhbkontSaIS0_EEiii
+.type  _Z17prmlist_push_backRSt6vectorI7vhbkontSaIS0_EEiii, @function
+.globl  _Z17prmlist_push_backRSt6vectorI7vhbkontSaIS0_EEiii_rf
+.type  _Z17prmlist_push_backRSt6vectorI7vhbkontSaIS0_EEiii_rf, @function
 .globl  _Z3sumP4nodeRSt6vectorI5vkontSaIS2_EE
 .type  _Z3sumP4nodeRSt6vectorI5vkontSaIS2_EE, @function
 .globl  _Z3sumP4nodeRSt6vectorI5vkontSaIS2_EE_rf
@@ -616,6 +628,1018 @@
 .type  st151, @function
 .globl  st151_rf
 .type  st151_rf, @function
+.globl  st152
+.type  st152, @function
+.globl  st152_rf
+.type  st152_rf, @function
+.globl  st153
+.type  st153, @function
+.globl  st153_rf
+.type  st153_rf, @function
+.globl  st154
+.type  st154, @function
+.globl  st154_rf
+.type  st154_rf, @function
+.globl  st155
+.type  st155, @function
+.globl  st155_rf
+.type  st155_rf, @function
+.globl  st156
+.type  st156, @function
+.globl  st156_rf
+.type  st156_rf, @function
+.globl  st157
+.type  st157, @function
+.globl  st157_rf
+.type  st157_rf, @function
+.globl  st158
+.type  st158, @function
+.globl  st158_rf
+.type  st158_rf, @function
+.globl  st159
+.type  st159, @function
+.globl  st159_rf
+.type  st159_rf, @function
+.globl  st160
+.type  st160, @function
+.globl  st160_rf
+.type  st160_rf, @function
+.globl  st161
+.type  st161, @function
+.globl  st161_rf
+.type  st161_rf, @function
+.globl  st162
+.type  st162, @function
+.globl  st162_rf
+.type  st162_rf, @function
+.globl  st163
+.type  st163, @function
+.globl  st163_rf
+.type  st163_rf, @function
+.globl  st164
+.type  st164, @function
+.globl  st164_rf
+.type  st164_rf, @function
+.globl  st165
+.type  st165, @function
+.globl  st165_rf
+.type  st165_rf, @function
+.globl  st166
+.type  st166, @function
+.globl  st166_rf
+.type  st166_rf, @function
+.globl  st167
+.type  st167, @function
+.globl  st167_rf
+.type  st167_rf, @function
+.globl  st168
+.type  st168, @function
+.globl  st168_rf
+.type  st168_rf, @function
+.globl  st169
+.type  st169, @function
+.globl  st169_rf
+.type  st169_rf, @function
+.globl  st170
+.type  st170, @function
+.globl  st170_rf
+.type  st170_rf, @function
+.globl  st171
+.type  st171, @function
+.globl  st171_rf
+.type  st171_rf, @function
+.globl  st172
+.type  st172, @function
+.globl  st172_rf
+.type  st172_rf, @function
+.globl  st173
+.type  st173, @function
+.globl  st173_rf
+.type  st173_rf, @function
+.globl  st174
+.type  st174, @function
+.globl  st174_rf
+.type  st174_rf, @function
+.globl  st175
+.type  st175, @function
+.globl  st175_rf
+.type  st175_rf, @function
+.globl  st176
+.type  st176, @function
+.globl  st176_rf
+.type  st176_rf, @function
+.globl  st177
+.type  st177, @function
+.globl  st177_rf
+.type  st177_rf, @function
+.globl  st178
+.type  st178, @function
+.globl  st178_rf
+.type  st178_rf, @function
+.globl  st179
+.type  st179, @function
+.globl  st179_rf
+.type  st179_rf, @function
+.globl  st180
+.type  st180, @function
+.globl  st180_rf
+.type  st180_rf, @function
+.globl  st181
+.type  st181, @function
+.globl  st181_rf
+.type  st181_rf, @function
+.globl  st182
+.type  st182, @function
+.globl  st182_rf
+.type  st182_rf, @function
+.globl  st183
+.type  st183, @function
+.globl  st183_rf
+.type  st183_rf, @function
+.globl  st184
+.type  st184, @function
+.globl  st184_rf
+.type  st184_rf, @function
+.globl  st185
+.type  st185, @function
+.globl  st185_rf
+.type  st185_rf, @function
+.globl  st186
+.type  st186, @function
+.globl  st186_rf
+.type  st186_rf, @function
+.globl  st187
+.type  st187, @function
+.globl  st187_rf
+.type  st187_rf, @function
+.globl  st188
+.type  st188, @function
+.globl  st188_rf
+.type  st188_rf, @function
+.globl  st189
+.type  st189, @function
+.globl  st189_rf
+.type  st189_rf, @function
+.globl  st190
+.type  st190, @function
+.globl  st190_rf
+.type  st190_rf, @function
+.globl  st191
+.type  st191, @function
+.globl  st191_rf
+.type  st191_rf, @function
+.globl  st192
+.type  st192, @function
+.globl  st192_rf
+.type  st192_rf, @function
+.globl  st193
+.type  st193, @function
+.globl  st193_rf
+.type  st193_rf, @function
+.globl  st194
+.type  st194, @function
+.globl  st194_rf
+.type  st194_rf, @function
+.globl  st195
+.type  st195, @function
+.globl  st195_rf
+.type  st195_rf, @function
+.globl  st196
+.type  st196, @function
+.globl  st196_rf
+.type  st196_rf, @function
+.globl  st197
+.type  st197, @function
+.globl  st197_rf
+.type  st197_rf, @function
+.globl  st198
+.type  st198, @function
+.globl  st198_rf
+.type  st198_rf, @function
+.globl  st199
+.type  st199, @function
+.globl  st199_rf
+.type  st199_rf, @function
+.globl  st200
+.type  st200, @function
+.globl  st200_rf
+.type  st200_rf, @function
+.globl  st201
+.type  st201, @function
+.globl  st201_rf
+.type  st201_rf, @function
+.globl  st202
+.type  st202, @function
+.globl  st202_rf
+.type  st202_rf, @function
+.globl  st203
+.type  st203, @function
+.globl  st203_rf
+.type  st203_rf, @function
+.globl  st204
+.type  st204, @function
+.globl  st204_rf
+.type  st204_rf, @function
+.globl  st205
+.type  st205, @function
+.globl  st205_rf
+.type  st205_rf, @function
+.globl  st206
+.type  st206, @function
+.globl  st206_rf
+.type  st206_rf, @function
+.globl  st207
+.type  st207, @function
+.globl  st207_rf
+.type  st207_rf, @function
+.globl  st208
+.type  st208, @function
+.globl  st208_rf
+.type  st208_rf, @function
+.globl  st209
+.type  st209, @function
+.globl  st209_rf
+.type  st209_rf, @function
+.globl  st210
+.type  st210, @function
+.globl  st210_rf
+.type  st210_rf, @function
+.globl  st211
+.type  st211, @function
+.globl  st211_rf
+.type  st211_rf, @function
+.globl  st212
+.type  st212, @function
+.globl  st212_rf
+.type  st212_rf, @function
+.globl  st213
+.type  st213, @function
+.globl  st213_rf
+.type  st213_rf, @function
+.globl  st214
+.type  st214, @function
+.globl  st214_rf
+.type  st214_rf, @function
+.globl  st215
+.type  st215, @function
+.globl  st215_rf
+.type  st215_rf, @function
+.globl  st216
+.type  st216, @function
+.globl  st216_rf
+.type  st216_rf, @function
+.globl  st217
+.type  st217, @function
+.globl  st217_rf
+.type  st217_rf, @function
+.globl  st218
+.type  st218, @function
+.globl  st218_rf
+.type  st218_rf, @function
+.globl  st219
+.type  st219, @function
+.globl  st219_rf
+.type  st219_rf, @function
+.globl  st220
+.type  st220, @function
+.globl  st220_rf
+.type  st220_rf, @function
+.globl  st221
+.type  st221, @function
+.globl  st221_rf
+.type  st221_rf, @function
+.globl  st222
+.type  st222, @function
+.globl  st222_rf
+.type  st222_rf, @function
+.globl  st223
+.type  st223, @function
+.globl  st223_rf
+.type  st223_rf, @function
+.globl  st224
+.type  st224, @function
+.globl  st224_rf
+.type  st224_rf, @function
+.globl  st225
+.type  st225, @function
+.globl  st225_rf
+.type  st225_rf, @function
+.globl  st226
+.type  st226, @function
+.globl  st226_rf
+.type  st226_rf, @function
+.globl  st227
+.type  st227, @function
+.globl  st227_rf
+.type  st227_rf, @function
+.globl  st228
+.type  st228, @function
+.globl  st228_rf
+.type  st228_rf, @function
+.globl  st229
+.type  st229, @function
+.globl  st229_rf
+.type  st229_rf, @function
+.globl  st230
+.type  st230, @function
+.globl  st230_rf
+.type  st230_rf, @function
+.globl  st231
+.type  st231, @function
+.globl  st231_rf
+.type  st231_rf, @function
+.globl  st232
+.type  st232, @function
+.globl  st232_rf
+.type  st232_rf, @function
+.globl  st233
+.type  st233, @function
+.globl  st233_rf
+.type  st233_rf, @function
+.globl  st234
+.type  st234, @function
+.globl  st234_rf
+.type  st234_rf, @function
+.globl  st235
+.type  st235, @function
+.globl  st235_rf
+.type  st235_rf, @function
+.globl  st236
+.type  st236, @function
+.globl  st236_rf
+.type  st236_rf, @function
+.globl  st237
+.type  st237, @function
+.globl  st237_rf
+.type  st237_rf, @function
+.globl  st238
+.type  st238, @function
+.globl  st238_rf
+.type  st238_rf, @function
+.globl  st239
+.type  st239, @function
+.globl  st239_rf
+.type  st239_rf, @function
+.globl  st240
+.type  st240, @function
+.globl  st240_rf
+.type  st240_rf, @function
+.globl  st241
+.type  st241, @function
+.globl  st241_rf
+.type  st241_rf, @function
+.globl  st242
+.type  st242, @function
+.globl  st242_rf
+.type  st242_rf, @function
+.globl  st243
+.type  st243, @function
+.globl  st243_rf
+.type  st243_rf, @function
+.globl  st244
+.type  st244, @function
+.globl  st244_rf
+.type  st244_rf, @function
+.globl  st245
+.type  st245, @function
+.globl  st245_rf
+.type  st245_rf, @function
+.globl  st246
+.type  st246, @function
+.globl  st246_rf
+.type  st246_rf, @function
+.globl  st247
+.type  st247, @function
+.globl  st247_rf
+.type  st247_rf, @function
+.globl  st248
+.type  st248, @function
+.globl  st248_rf
+.type  st248_rf, @function
+.globl  st249
+.type  st249, @function
+.globl  st249_rf
+.type  st249_rf, @function
+.globl  st250
+.type  st250, @function
+.globl  st250_rf
+.type  st250_rf, @function
+.globl  st251
+.type  st251, @function
+.globl  st251_rf
+.type  st251_rf, @function
+.globl  st252
+.type  st252, @function
+.globl  st252_rf
+.type  st252_rf, @function
+.globl  st253
+.type  st253, @function
+.globl  st253_rf
+.type  st253_rf, @function
+.globl  st254
+.type  st254, @function
+.globl  st254_rf
+.type  st254_rf, @function
+.globl  st255
+.type  st255, @function
+.globl  st255_rf
+.type  st255_rf, @function
+.globl  st256
+.type  st256, @function
+.globl  st256_rf
+.type  st256_rf, @function
+.globl  st257
+.type  st257, @function
+.globl  st257_rf
+.type  st257_rf, @function
+.globl  st258
+.type  st258, @function
+.globl  st258_rf
+.type  st258_rf, @function
+.globl  st259
+.type  st259, @function
+.globl  st259_rf
+.type  st259_rf, @function
+.globl  st260
+.type  st260, @function
+.globl  st260_rf
+.type  st260_rf, @function
+.globl  st261
+.type  st261, @function
+.globl  st261_rf
+.type  st261_rf, @function
+.globl  st262
+.type  st262, @function
+.globl  st262_rf
+.type  st262_rf, @function
+.globl  st263
+.type  st263, @function
+.globl  st263_rf
+.type  st263_rf, @function
+.globl  st264
+.type  st264, @function
+.globl  st264_rf
+.type  st264_rf, @function
+.globl  st265
+.type  st265, @function
+.globl  st265_rf
+.type  st265_rf, @function
+.globl  st266
+.type  st266, @function
+.globl  st266_rf
+.type  st266_rf, @function
+.globl  st267
+.type  st267, @function
+.globl  st267_rf
+.type  st267_rf, @function
+.globl  st268
+.type  st268, @function
+.globl  st268_rf
+.type  st268_rf, @function
+.globl  st269
+.type  st269, @function
+.globl  st269_rf
+.type  st269_rf, @function
+.globl  st270
+.type  st270, @function
+.globl  st270_rf
+.type  st270_rf, @function
+.globl  st271
+.type  st271, @function
+.globl  st271_rf
+.type  st271_rf, @function
+.globl  st272
+.type  st272, @function
+.globl  st272_rf
+.type  st272_rf, @function
+.globl  st273
+.type  st273, @function
+.globl  st273_rf
+.type  st273_rf, @function
+.globl  st274
+.type  st274, @function
+.globl  st274_rf
+.type  st274_rf, @function
+.globl  st275
+.type  st275, @function
+.globl  st275_rf
+.type  st275_rf, @function
+.globl  st276
+.type  st276, @function
+.globl  st276_rf
+.type  st276_rf, @function
+.globl  st277
+.type  st277, @function
+.globl  st277_rf
+.type  st277_rf, @function
+.globl  st278
+.type  st278, @function
+.globl  st278_rf
+.type  st278_rf, @function
+.globl  st279
+.type  st279, @function
+.globl  st279_rf
+.type  st279_rf, @function
+.globl  st280
+.type  st280, @function
+.globl  st280_rf
+.type  st280_rf, @function
+.globl  st281
+.type  st281, @function
+.globl  st281_rf
+.type  st281_rf, @function
+.globl  st282
+.type  st282, @function
+.globl  st282_rf
+.type  st282_rf, @function
+.globl  st283
+.type  st283, @function
+.globl  st283_rf
+.type  st283_rf, @function
+.globl  st284
+.type  st284, @function
+.globl  st284_rf
+.type  st284_rf, @function
+.globl  st285
+.type  st285, @function
+.globl  st285_rf
+.type  st285_rf, @function
+.globl  st286
+.type  st286, @function
+.globl  st286_rf
+.type  st286_rf, @function
+.globl  st287
+.type  st287, @function
+.globl  st287_rf
+.type  st287_rf, @function
+.globl  st288
+.type  st288, @function
+.globl  st288_rf
+.type  st288_rf, @function
+.globl  st289
+.type  st289, @function
+.globl  st289_rf
+.type  st289_rf, @function
+.globl  st290
+.type  st290, @function
+.globl  st290_rf
+.type  st290_rf, @function
+.globl  st291
+.type  st291, @function
+.globl  st291_rf
+.type  st291_rf, @function
+.globl  st292
+.type  st292, @function
+.globl  st292_rf
+.type  st292_rf, @function
+.globl  st293
+.type  st293, @function
+.globl  st293_rf
+.type  st293_rf, @function
+.globl  st294
+.type  st294, @function
+.globl  st294_rf
+.type  st294_rf, @function
+.globl  st295
+.type  st295, @function
+.globl  st295_rf
+.type  st295_rf, @function
+.globl  st296
+.type  st296, @function
+.globl  st296_rf
+.type  st296_rf, @function
+.globl  st297
+.type  st297, @function
+.globl  st297_rf
+.type  st297_rf, @function
+.globl  st298
+.type  st298, @function
+.globl  st298_rf
+.type  st298_rf, @function
+.globl  st299
+.type  st299, @function
+.globl  st299_rf
+.type  st299_rf, @function
+.globl  st300
+.type  st300, @function
+.globl  st300_rf
+.type  st300_rf, @function
+.globl  st301
+.type  st301, @function
+.globl  st301_rf
+.type  st301_rf, @function
+.globl  st302
+.type  st302, @function
+.globl  st302_rf
+.type  st302_rf, @function
+.globl  st303
+.type  st303, @function
+.globl  st303_rf
+.type  st303_rf, @function
+.globl  st304
+.type  st304, @function
+.globl  st304_rf
+.type  st304_rf, @function
+.globl  st305
+.type  st305, @function
+.globl  st305_rf
+.type  st305_rf, @function
+.globl  st306
+.type  st306, @function
+.globl  st306_rf
+.type  st306_rf, @function
+.globl  st307
+.type  st307, @function
+.globl  st307_rf
+.type  st307_rf, @function
+.globl  st308
+.type  st308, @function
+.globl  st308_rf
+.type  st308_rf, @function
+.globl  st309
+.type  st309, @function
+.globl  st309_rf
+.type  st309_rf, @function
+.globl  st310
+.type  st310, @function
+.globl  st310_rf
+.type  st310_rf, @function
+.globl  st311
+.type  st311, @function
+.globl  st311_rf
+.type  st311_rf, @function
+.globl  st312
+.type  st312, @function
+.globl  st312_rf
+.type  st312_rf, @function
+.globl  st313
+.type  st313, @function
+.globl  st313_rf
+.type  st313_rf, @function
+.globl  st314
+.type  st314, @function
+.globl  st314_rf
+.type  st314_rf, @function
+.globl  st315
+.type  st315, @function
+.globl  st315_rf
+.type  st315_rf, @function
+.globl  st316
+.type  st316, @function
+.globl  st316_rf
+.type  st316_rf, @function
+.globl  st317
+.type  st317, @function
+.globl  st317_rf
+.type  st317_rf, @function
+.globl  st318
+.type  st318, @function
+.globl  st318_rf
+.type  st318_rf, @function
+.globl  st319
+.type  st319, @function
+.globl  st319_rf
+.type  st319_rf, @function
+.globl  st320
+.type  st320, @function
+.globl  st320_rf
+.type  st320_rf, @function
+.globl  st321
+.type  st321, @function
+.globl  st321_rf
+.type  st321_rf, @function
+.globl  st322
+.type  st322, @function
+.globl  st322_rf
+.type  st322_rf, @function
+.globl  st323
+.type  st323, @function
+.globl  st323_rf
+.type  st323_rf, @function
+.globl  st324
+.type  st324, @function
+.globl  st324_rf
+.type  st324_rf, @function
+.globl  st325
+.type  st325, @function
+.globl  st325_rf
+.type  st325_rf, @function
+.globl  st326
+.type  st326, @function
+.globl  st326_rf
+.type  st326_rf, @function
+.globl  st327
+.type  st327, @function
+.globl  st327_rf
+.type  st327_rf, @function
+.globl  st328
+.type  st328, @function
+.globl  st328_rf
+.type  st328_rf, @function
+.globl  st329
+.type  st329, @function
+.globl  st329_rf
+.type  st329_rf, @function
+.globl  st330
+.type  st330, @function
+.globl  st330_rf
+.type  st330_rf, @function
+.globl  st331
+.type  st331, @function
+.globl  st331_rf
+.type  st331_rf, @function
+.globl  st332
+.type  st332, @function
+.globl  st332_rf
+.type  st332_rf, @function
+.globl  st333
+.type  st333, @function
+.globl  st333_rf
+.type  st333_rf, @function
+.globl  st334
+.type  st334, @function
+.globl  st334_rf
+.type  st334_rf, @function
+.globl  st335
+.type  st335, @function
+.globl  st335_rf
+.type  st335_rf, @function
+.globl  st336
+.type  st336, @function
+.globl  st336_rf
+.type  st336_rf, @function
+.globl  st337
+.type  st337, @function
+.globl  st337_rf
+.type  st337_rf, @function
+.globl  st338
+.type  st338, @function
+.globl  st338_rf
+.type  st338_rf, @function
+.globl  st339
+.type  st339, @function
+.globl  st339_rf
+.type  st339_rf, @function
+.globl  st340
+.type  st340, @function
+.globl  st340_rf
+.type  st340_rf, @function
+.globl  st341
+.type  st341, @function
+.globl  st341_rf
+.type  st341_rf, @function
+.globl  st342
+.type  st342, @function
+.globl  st342_rf
+.type  st342_rf, @function
+.globl  st343
+.type  st343, @function
+.globl  st343_rf
+.type  st343_rf, @function
+.globl  st344
+.type  st344, @function
+.globl  st344_rf
+.type  st344_rf, @function
+.globl  st345
+.type  st345, @function
+.globl  st345_rf
+.type  st345_rf, @function
+.globl  st346
+.type  st346, @function
+.globl  st346_rf
+.type  st346_rf, @function
+.globl  st347
+.type  st347, @function
+.globl  st347_rf
+.type  st347_rf, @function
+.globl  st348
+.type  st348, @function
+.globl  st348_rf
+.type  st348_rf, @function
+.globl  st349
+.type  st349, @function
+.globl  st349_rf
+.type  st349_rf, @function
+.globl  st350
+.type  st350, @function
+.globl  st350_rf
+.type  st350_rf, @function
+.globl  st351
+.type  st351, @function
+.globl  st351_rf
+.type  st351_rf, @function
+.globl  st352
+.type  st352, @function
+.globl  st352_rf
+.type  st352_rf, @function
+.globl  st353
+.type  st353, @function
+.globl  st353_rf
+.type  st353_rf, @function
+.globl  st354
+.type  st354, @function
+.globl  st354_rf
+.type  st354_rf, @function
+.globl  st355
+.type  st355, @function
+.globl  st355_rf
+.type  st355_rf, @function
+.globl  st356
+.type  st356, @function
+.globl  st356_rf
+.type  st356_rf, @function
+.globl  st357
+.type  st357, @function
+.globl  st357_rf
+.type  st357_rf, @function
+.globl  st358
+.type  st358, @function
+.globl  st358_rf
+.type  st358_rf, @function
+.globl  st359
+.type  st359, @function
+.globl  st359_rf
+.type  st359_rf, @function
+.globl  st360
+.type  st360, @function
+.globl  st360_rf
+.type  st360_rf, @function
+.globl  st361
+.type  st361, @function
+.globl  st361_rf
+.type  st361_rf, @function
+.globl  st362
+.type  st362, @function
+.globl  st362_rf
+.type  st362_rf, @function
+.globl  st363
+.type  st363, @function
+.globl  st363_rf
+.type  st363_rf, @function
+.globl  st364
+.type  st364, @function
+.globl  st364_rf
+.type  st364_rf, @function
+.globl  st365
+.type  st365, @function
+.globl  st365_rf
+.type  st365_rf, @function
+.globl  st366
+.type  st366, @function
+.globl  st366_rf
+.type  st366_rf, @function
+.globl  st367
+.type  st367, @function
+.globl  st367_rf
+.type  st367_rf, @function
+.globl  st368
+.type  st368, @function
+.globl  st368_rf
+.type  st368_rf, @function
+.globl  st369
+.type  st369, @function
+.globl  st369_rf
+.type  st369_rf, @function
+.globl  st370
+.type  st370, @function
+.globl  st370_rf
+.type  st370_rf, @function
+.globl  st371
+.type  st371, @function
+.globl  st371_rf
+.type  st371_rf, @function
+.globl  st372
+.type  st372, @function
+.globl  st372_rf
+.type  st372_rf, @function
+.globl  st373
+.type  st373, @function
+.globl  st373_rf
+.type  st373_rf, @function
+.globl  st374
+.type  st374, @function
+.globl  st374_rf
+.type  st374_rf, @function
+.globl  st375
+.type  st375, @function
+.globl  st375_rf
+.type  st375_rf, @function
+.globl  st376
+.type  st376, @function
+.globl  st376_rf
+.type  st376_rf, @function
+.globl  st377
+.type  st377, @function
+.globl  st377_rf
+.type  st377_rf, @function
+.globl  st378
+.type  st378, @function
+.globl  st378_rf
+.type  st378_rf, @function
+.globl  st379
+.type  st379, @function
+.globl  st379_rf
+.type  st379_rf, @function
+.globl  st380
+.type  st380, @function
+.globl  st380_rf
+.type  st380_rf, @function
+.globl  st381
+.type  st381, @function
+.globl  st381_rf
+.type  st381_rf, @function
+.globl  st382
+.type  st382, @function
+.globl  st382_rf
+.type  st382_rf, @function
+.globl  st383
+.type  st383, @function
+.globl  st383_rf
+.type  st383_rf, @function
+.globl  st384
+.type  st384, @function
+.globl  st384_rf
+.type  st384_rf, @function
+.globl  st385
+.type  st385, @function
+.globl  st385_rf
+.type  st385_rf, @function
+.globl  st386
+.type  st386, @function
+.globl  st386_rf
+.type  st386_rf, @function
+.globl  st387
+.type  st387, @function
+.globl  st387_rf
+.type  st387_rf, @function
+.globl  st388
+.type  st388, @function
+.globl  st388_rf
+.type  st388_rf, @function
+.globl  st389
+.type  st389, @function
+.globl  st389_rf
+.type  st389_rf, @function
+.globl  st390
+.type  st390, @function
+.globl  st390_rf
+.type  st390_rf, @function
+.globl  st391
+.type  st391, @function
+.globl  st391_rf
+.type  st391_rf, @function
+.globl  st392
+.type  st392, @function
+.globl  st392_rf
+.type  st392_rf, @function
+.globl  st393
+.type  st393, @function
+.globl  st393_rf
+.type  st393_rf, @function
+.globl  st394
+.type  st394, @function
+.globl  st394_rf
+.type  st394_rf, @function
+.globl  st395
+.type  st395, @function
+.globl  st395_rf
+.type  st395_rf, @function
+.globl  st396
+.type  st396, @function
+.globl  st396_rf
+.type  st396_rf, @function
+.globl  st397
+.type  st397, @function
+.globl  st397_rf
+.type  st397_rf, @function
+.globl  st398
+.type  st398, @function
+.globl  st398_rf
+.type  st398_rf, @function
+.globl  st399
+.type  st399, @function
+.globl  st399_rf
+.type  st399_rf, @function
+.globl  st400
+.type  st400, @function
+.globl  st400_rf
+.type  st400_rf, @function
+.globl  st401
+.type  st401, @function
+.globl  st401_rf
+.type  st401_rf, @function
+.globl  st402
+.type  st402, @function
+.globl  st402_rf
+.type  st402_rf, @function
+.globl  st403
+.type  st403, @function
+.globl  st403_rf
+.type  st403_rf, @function
+.globl  st404
+.type  st404, @function
+.globl  st404_rf
+.type  st404_rf, @function
 _Z3sumP4nodeRSt6vectorI5vkontSaIS2_EE:
 st0:        pushq   %rbp
 st1:        pushq   %r15
@@ -637,9 +1661,9 @@ st16:        jmp     .LBB0_2
 .LBB0_10:
 st17:        movl    $0, (%r13)
 st18:        movq    %r15, 8(%r13)
-st19:        movq    %rdi, %rcx
-st20:        movq    (%rdi), %rax
-st21:        addq    $24, %rax
+st19:        movq    (%rdi), %rax
+st20:        addq    $24, %rax
+st21:        movq    %rdi, %rcx
 .LBB0_18:
 st22:        movq    %rax, (%rcx)
 st23:        movq    8(%r15), %r15
@@ -651,20 +1675,20 @@ st27:        cmpq    (%rbp), %r13
 st28:        jne     .LBB0_10
 st29:        movq    (%rsi), %rbx
 st30:        movq    %r13, %rax
-st31:        movabsq $9223372036854775800, %rcx
-st32:        subq    %rbx, %rax
+st31:        subq    %rbx, %rax
+st32:        movabsq $9223372036854775800, %rcx
 st33:        cmpq    %rcx, %rax
 st34:        je      .LBB0_20
 st35:        movq    %rax, %rbp
-st36:        movabsq $-6148914691236517205, %rcx
-st37:        sarq    $3, %rbp
+st36:        sarq    $3, %rbp
+st37:        movabsq $-6148914691236517205, %rcx
 st38:        imulq   %rcx, %rbp
 st39:        testq   %rax, %rax
-st40:        movl    $1, %ecx
-st41:        movq    %rbp, %rax
+st40:        movq    %rbp, %rax
+st41:        movl    $1, %ecx
 st42:        cmoveq  %rcx, %rax
-st43:        movabsq $384307168202282325, %rcx
-st44:        leaq    (%rax,%rbp), %r14
+st43:        leaq    (%rax,%rbp), %r14
+st44:        movabsq $384307168202282325, %rcx
 st45:        cmpq    %rcx, %r14
 st46:        cmovaq  %rcx, %r14
 st47:        addq    %rbp, %rax
@@ -672,119 +1696,406 @@ st48:        cmovbq  %rcx, %r14
 st49:        leaq    (,%r14,8), %rax
 st50:        leaq    (%rax,%rax,2), %rdi
 st51:        callq   _Znwm
-st52:        leaq    (%rbp,%rbp,2), %rcx
-st53:        movq    %rax, %rbp
-st54:        movq    %rbx, %rdi
-st55:        movq    %rax, %r12
-st56:        movl    $0, (%rax,%rcx,8)
-st57:        movq    %r15, 8(%rax,%rcx,8)
-st58:        cmpq    %r13, %rbx
-st59:        je      .LBB0_15
-st60:        movq    %rdi, %rax
+st52:        leaq    (,%rbp,2), %rcx
+st53:        addq    %rbp, %rcx
+st54:        movq    %rax, %rbp
+st55:        movl    $0, (%rax,%rcx,8)
+st56:        movq    %r15, 8(%rax,%rcx,8)
+st57:        cmpq    %r13, %rbx
+st58:        movq    %rbx, %rdi
+st59:        movq    %rax, %r12
+st60:        je      .LBB0_15
+st61:        movq    %rdi, %rax
 .LBB0_14:
-st61:        movq    16(%rax), %rcx
-st62:        movq    %rcx, 16(%r12)
-st63:        vmovups (%rax), %xmm0
-st64:        addq    $24, %rax
-st65:        vmovups %xmm0, (%r12)
-st66:        addq    $24, %r12
-st67:        cmpq    %rax, %r13
-st68:        jne     .LBB0_14
+st62:        movq    16(%rax), %rcx
+st63:        movq    %rcx, 16(%r12)
+st64:        movups  (%rax), %xmm0
+st65:        movups  %xmm0, (%r12)
+st66:        addq    $24, %rax
+st67:        addq    $24, %r12
+st68:        cmpq    %rax, %r13
+st69:        jne     .LBB0_14
 .LBB0_15:
-st69:        addq    $24, %r12
-st70:        testq   %rdi, %rdi
-st71:        je      .LBB0_17
-st72:        callq   _ZdlPv
+st70:        addq    $24, %r12
+st71:        testq   %rdi, %rdi
+st72:        je      .LBB0_17
+st73:        callq   _ZdlPv
 .LBB0_17:
-st73:        movq    16(%rsp), %rsi
-st74:        leaq    (%r14,%r14,2), %rax
-st75:        movq    8(%rsp), %rdi
-st76:        leaq    (%rbp,%rax,8), %rax
-st77:        movq    %rbp, (%rsi)
-st78:        movq    (%rsp), %rbp
-st79:        movq    %r12, 8(%rsi)
-st80:        movq    %rbp, %rcx
-st81:        jmp     .LBB0_18
+st74:        movq    16(%rsp), %rsi
+st75:        movq    %rbp, (%rsi)
+st76:        movq    %r12, 8(%rsi)
+st77:        leaq    (%r14,%r14,2), %rax
+st78:        leaq    (,%rax,8), %rax
+st79:        addq    %rbp, %rax
+st80:        movq    (%rsp), %rbp
+st81:        movq    %rbp, %rcx
+st82:        movq    8(%rsp), %rdi
+st83:        jmp     .LBB0_18
 .LBB0_2:
-st82:        xorl    %eax, %eax
+st84:        xorl    %eax, %eax
 .LBB0_3:
-st83:        movl    -24(%r13), %edx
-st84:        leaq    -24(%r13), %rcx
+st85:        leaq    -24(%r13), %rcx
+st86:        movl    -24(%r13), %edx
 .LBB0_4:
-st85:        testl   %edx, %edx
-st86:        je      .LBB0_8
-st87:        cmpl    $2, %edx
-st88:        je      .LBB0_19
-st89:        cmpl    $1, %edx
-st90:        jne     .LBB0_4
-st91:        movq    -8(%r13), %rdx
-st92:        addl    -16(%r13), %eax
-st93:        movq    %rcx, %r13
-st94:        addl    (%rdx), %eax
-st95:        movq    %rcx, (%rdi)
-st96:        jmp     .LBB0_3
+st87:        testl   %edx, %edx
+st88:        je      .LBB0_8
+st89:        cmpl    $2, %edx
+st90:        je      .LBB0_19
+st91:        cmpl    $1, %edx
+st92:        jne     .LBB0_4
+st93:        addl    -16(%r13), %eax
+st94:        movq    -8(%r13), %rdx
+st95:        addl    (%rdx), %eax
+st96:        movq    %rcx, (%rdi)
+st97:        movq    %rcx, %r13
+st98:        jmp     .LBB0_3
 .LBB0_8:
-st97:        movq    -16(%r13), %rcx
-st98:        movq    16(%rcx), %r15
-st99:        movl    $1, -24(%r13)
-st100:        movl    %eax, -16(%r13)
-st101:        movq    %rcx, -8(%r13)
-st102:        movq    (%rdi), %r13
-st103:        testq   %r15, %r15
-st104:        jne     .LBB0_9
-st105:        jmp     .LBB0_2
+st99:        movq    -16(%r13), %rcx
+st100:        movq    16(%rcx), %r15
+st101:        movl    $1, -24(%r13)
+st102:        movl    %eax, -16(%r13)
+st103:        movq    %rcx, -8(%r13)
+st104:        movq    (%rdi), %r13
+st105:        testq   %r15, %r15
+st106:        jne     .LBB0_9
+st107:        jmp     .LBB0_2
 .LBB0_19:
-st106:        movl    %eax, answer(%rip)
-st107:        addq    $24, %rsp
-st108:        popq    %rbx
-st109:        popq    %r12
-st110:        popq    %r13
-st111:        popq    %r14
-st112:        popq    %r15
-st113:        popq    %rbp
-st114:        retq
+st108:        movl    %eax, answer(%rip)
+st109:        addq    $24, %rsp
+st110:        popq    %rbx
+st111:        popq    %r12
+st112:        popq    %r13
+st113:        popq    %r14
+st114:        popq    %r15
+st115:        popq    %rbp
+st116:        retq
 .LBB0_20:
-st115:        movl    $.L.str, %edi
-st116:        callq   _ZSt20__throw_length_errorPKc
-st117:
+st117:        movl    $.L.str, %edi
+st118:        callq   _ZSt20__throw_length_errorPKc
+st119:
 _Z10sum_serialP4node:
-st118:        pushq   %rbx
-st119:        subq    $48, %rsp
-st120:        movq    %rdi, %rbx
-st121:        movl    $24, %edi
-st122:        movl    $3, answer(%rip)
-st123:        callq   _Znwm
-st124:        movl    44(%rsp), %edx
-st125:        vmovups 28(%rsp), %xmm0
+st120:        pushq   %rbx
+st121:        subq    $48, %rsp
+st122:        movq    %rdi, %rbx
+st123:        movl    $24, %edi
+st124:        callq   _Znwm
+st125:        movq    %rax, (%rsp)
 st126:        leaq    24(%rax), %rcx
-st127:        movl    $2, (%rax)
-st128:        movq    %rax, (%rsp)
-st129:        movq    %rcx, 16(%rsp)
-st130:        movq    %rcx, 8(%rsp)
-st131:        movl    %edx, 20(%rax)
-st132:        vmovups %xmm0, 4(%rax)
-st133:        movq    %rsp, %rsi
-st134:        movq    %rbx, %rdi
-st135:        callq   _Z3sumP4nodeRSt6vectorI5vkontSaIS2_EE
-st136:        movq    (%rsp), %rdi
-st137:        testq   %rdi, %rdi
-st138:        je      .LBB1_3
-st139:        callq   _ZdlPv
+st127:        movq    %rcx, 16(%rsp)
+st128:        movl    $2, (%rax)
+st129:        movl    44(%rsp), %edx
+st130:        movl    %edx, 20(%rax)
+st131:        movups  28(%rsp), %xmm0
+st132:        movups  %xmm0, 4(%rax)
+st133:        movq    %rcx, 8(%rsp)
+st134:        movq    %rsp, %rsi
+st135:        movq    %rbx, %rdi
+st136:        callq   _Z3sumP4nodeRSt6vectorI5vkontSaIS2_EE
+st137:        movq    (%rsp), %rdi
+st138:        testq   %rdi, %rdi
+st139:        je      .LBB1_3
+st140:        callq   _ZdlPv
 .LBB1_3:
-st140:        addq    $48, %rsp
-st141:        popq    %rbx
-st142:        retq
-st143:        movq    (%rsp), %rdi
+st141:        addq    $48, %rsp
+st142:        popq    %rbx
+st143:        retq
 st144:        movq    %rax, %rbx
-st145:        testq   %rdi, %rdi
-st146:        je      .LBB1_6
-st147:        callq   _ZdlPv
+st145:        movq    (%rsp), %rdi
+st146:        testq   %rdi, %rdi
+st147:        je      .LBB1_6
+st148:        callq   _ZdlPv
 .LBB1_6:
-st148:        movq    %rbx, %rdi
-st149:        callq   _Unwind_Resume@PLT
-st150:
+st149:        movq    %rbx, %rdi
+st150:        callq   _Unwind_Resume@PLT
+st151:
+_Z17prmlist_push_backRSt6vectorI7vhbkontSaIS0_EEiii:
+st152:        movl    %esi, %eax
+st153:        cmpl    $-1, %edx
+st154:        je      .LBB2_2
+st155:        movslq  %edx, %rdx
+st156:        movq    (%rdi), %rsi
+st157:        shlq    $5, %rdx
+st158:        movl    %ecx, 20(%rsi,%rdx)
+.LBB2_2:
+st159:        cmpl    $-1, %eax
+st160:        cmovel  %ecx, %eax
+st161:        shlq    $32, %rcx
+st162:        orq     %rcx, %rax
+st163:        retq
+st164:
+_Z16prmlist_pop_backRSt6vectorI7vhbkontSaIS0_EEii:
+st165:        movslq  %edx, %rcx
+st166:        movq    (%rdi), %r8
+st167:        shlq    $5, %rcx
+st168:        movslq  16(%r8,%rcx), %rax
+st169:        cmpq    $-1, %rax
+st170:        je      .LBB3_1
+st171:        movq    %rax, %rdx
+st172:        shlq    $5, %rdx
+st173:        movl    $-1, 20(%r8,%rdx)
+st174:        movq    (%rdi), %rdx
+st175:        movl    $-1, 16(%rdx,%rcx)
+st176:        movl    %esi, %ecx
+st177:        shlq    $32, %rax
+st178:        orq     %rcx, %rax
+st179:        retq
+.LBB3_1:
+st180:        movl    $4294967295, %ecx
+st181:        shlq    $32, %rax
+st182:        orq     %rcx, %rax
+st183:        retq
+st184:
+_Z13sum_heartbeatP4nodeRSt6vectorI7vhbkontSaIS2_EEii:
+st185:        pushq   %rbp
+st186:        pushq   %r15
+st187:        pushq   %r14
+st188:        pushq   %r13
+st189:        pushq   %r12
+st190:        pushq   %rbx
+st191:        subq    $24, %rsp
+st192:        movl    %ecx, %ebx
+st193:        movl    %edx, %r14d
+st194:        movq    %rsi, %r15
+.LBB4_1:
+st195:        nop
+st196:        jmp     .LBB4_2
+st197:        movq    %rdi, %rbp
+st198:        movq    %r15, %rdi
+st199:        movl    %r14d, %esi
+st200:        movl    %ebx, %edx
+st201:        callq   _Z26sum_tree_heartbeat_handlerRSt6vectorI7vhbkontSaIS0_EEii
+st202:        movq    %rbp, %rdi
+st203:        movq    %rax, %r14
+st204:        movq    %rax, %r13
+st205:        shrq    $32, %r13
+st206:        testq   %rdi, %rdi
+st207:        je      .LBB4_5
+.LBB4_26:
+st208:        movq    8(%r15), %r12
+st209:        cmpq    16(%r15), %r12
+st210:        je      .LBB4_28
+st211:        movl    $0, (%r12)
+st212:        movq    %rdi, 8(%r12)
+st213:        movl    %r13d, 16(%r12)
+st214:        movl    $-1, 20(%r12)
+st215:        movq    (%r15), %rbp
+st216:        movq    8(%r15), %rbx
+st217:        addq    $32, %rbx
+st218:        movq    %rbx, 8(%r15)
+st219:        jmp     .LBB4_38
+.LBB4_2:
+st220:        movl    %ebx, %r13d
+st221:        testq   %rdi, %rdi
+st222:        jne     .LBB4_26
+.LBB4_5:
+st223:        nop
+st224:        jmp      .LBB4_11
+st225:        xorl    %ebp, %ebp
+st226:        movb    $1, %al
+st227:        jmp     .LBB4_7
+.LBB4_22:
+st228:        leaq    -32(%rax), %rcx
+st229:        addl    -24(%rax), %ebp
+st230:        movq    -16(%rax), %rax
+st231:        addl    (%rax), %ebp
+st232:        movq    %rcx, 8(%r15)
+.LBB4_23:
+st233:        nop
+.LBB4_7:
+st234:        testb   %al, %al
+st235:        jmp      .LBB4_9
+st236:        movq    %r15, %rdi
+st237:        movl    %r14d, %esi
+st238:        movl    %r13d, %edx
+st239:        callq   _Z26sum_tree_heartbeat_handlerRSt6vectorI7vhbkontSaIS0_EEii
+st240:        movq    %rax, %r14
+st241:        movq    %rax, %r13
+st242:        shrq    $32, %r13
+.LBB4_9:
+st243:        movq    8(%r15), %rax
+st244:        movl    -32(%rax), %ecx
+st245:        cmpq    $4, %rcx
+st246:        ja      .LBB4_23
+st247:        jmpq    *.LJTI4_0(,%rcx,8)
+.LBB4_16:
+st248:        movslq  %r13d, %rcx
+st249:        movq    (%r15), %rdx
+st250:        shlq    $5, %rcx
+st251:        movslq  16(%rdx,%rcx), %rbx
+st252:        cmpq    $-1, %rbx
+st253:        je      .LBB4_17
+st254:        movq    %rbx, %rsi
+st255:        shlq    $5, %rsi
+st256:        movl    $-1, 20(%rdx,%rsi)
+st257:        movq    (%r15), %rdx
+st258:        movl    $-1, 16(%rdx,%rcx)
+st259:        jmp     .LBB4_25
+.LBB4_28:
+st260:        movq    (%r15), %rdx
+st261:        movq    %r12, %rax
+st262:        subq    %rdx, %rax
+st263:        movabsq $9223372036854775776, %rcx
+st264:        cmpq    %rcx, %rax
+st265:        je      .LBB4_41
+st266:        movq    %rax, %rbx
+st267:        sarq    $5, %rbx
+st268:        testq   %rax, %rax
+st269:        movq    %rbx, %rax
+st270:        movl    $1, %ecx
+st271:        cmoveq  %rcx, %rax
+st272:        leaq    (%rax,%rbx), %rsi
+st273:        movq    %rsi, %rcx
+st274:        shrq    $58, %rcx
+st275:        movabsq $288230376151711743, %rcx
+st276:        cmovneq %rcx, %rsi
+st277:        addq    %rbx, %rax
+st278:        cmovbq  %rcx, %rsi
+st279:        testq   %rsi, %rsi
+st280:        movq    %rsi, 16(%rsp)
+st281:        je      .LBB4_30
+st282:        movq    %rdi, 8(%rsp)
+st283:        movq    %rsi, %rdi
+st284:        shlq    $5, %rdi
+st285:        movq    %rdx, %rbp
+st286:        callq   _Znwm
+st287:        movq    %rbp, %rdx
+st288:        movq    8(%rsp), %rdi
+st289:        movq    %rax, %rbp
+st290:        jmp     .LBB4_32
+.LBB4_11:
+st291:        movq    8(%r15), %rax
+st292:        xorl    %ebp, %ebp
+.LBB4_12:
+st293:        leaq    -32(%rax), %rdx
+st294:        movl    -32(%rax), %ecx
+.LBB4_13:
+st295:        cmpl    $4, %ecx
+st296:        ja      .LBB4_13
+st297:        movl    %ecx, %esi
+st298:        jmpq    *.LJTI4_1(,%rsi,8)
+.LBB4_15:
+st299:        addl    -24(%rax), %ebp
+st300:        movq    -16(%rax), %rax
+st301:        addl    (%rax), %ebp
+st302:        movq    %rdx, 8(%r15)
+st303:        movq    %rdx, %rax
+st304:        jmp     .LBB4_12
+.LBB4_30:
+st305:        xorl    %ebp, %ebp
+.LBB4_32:
+st306:        shlq    $5, %rbx
+st307:        movl    $0, (%rbp,%rbx)
+st308:        movq    %rdi, 8(%rbp,%rbx)
+st309:        movl    %r13d, 16(%rbp,%rbx)
+st310:        movl    $-1, 20(%rbp,%rbx)
+st311:        movq    %rbp, %rbx
+st312:        cmpq    %r12, %rdx
+st313:        je      .LBB4_35
+st314:        movq    %rbp, %rbx
+st315:        movq    %rdx, %rax
+.LBB4_34:
+st316:        movups  (%rax), %xmm0
+st317:        movups  16(%rax), %xmm1
+st318:        movups  %xmm1, 16(%rbx)
+st319:        movups  %xmm0, (%rbx)
+st320:        addq    $32, %rax
+st321:        addq    $32, %rbx
+st322:        cmpq    %rax, %r12
+st323:        jne     .LBB4_34
+.LBB4_35:
+st324:        addq    $32, %rbx
+st325:        testq   %rdx, %rdx
+st326:        je      .LBB4_37
+st327:        movq    %rdi, %r12
+st328:        movq    %rdx, %rdi
+st329:        callq   _ZdlPv
+st330:        movq    %r12, %rdi
+.LBB4_37:
+st331:        movq    %rbp, (%r15)
+st332:        movq    %rbx, 8(%r15)
+st333:        movq    16(%rsp), %rax
+st334:        shlq    $5, %rax
+st335:        addq    %rbp, %rax
+st336:        movq    %rax, 16(%r15)
+.LBB4_38:
+st337:        subq    %rbp, %rbx
+st338:        shrq    $5, %rbx
+st339:        addl    $-1, %ebx
+st340:        cmpl    $-1, %r13d
+st341:        je      .LBB4_40
+st342:        movslq  %r13d, %rax
+st343:        shlq    $5, %rax
+st344:        movl    %ebx, 20(%rbp,%rax)
+.LBB4_40:
+st345:        cmpl    $-1, %r14d
+st346:        cmovel  %ebx, %r14d
+st347:        movq    8(%rdi), %rdi
+st348:        jmp     .LBB4_1
+.LBB4_17:
+st349:        movl    $-1, %r14d
+.LBB4_25:
+st350:        movq    -24(%rax), %rcx
+st351:        movq    16(%rcx), %rdi
+st352:        movl    $1, -32(%rax)
+st353:        movl    %ebp, -24(%rax)
+st354:        movq    %rcx, -16(%rax)
+st355:        jmp     .LBB4_1
+.LBB4_19:
+st356:        xorl    %edx, %edx
+st357:        cmpl    $3, %ecx
+st358:        setne   %dl
+st359:        movq    -24(%rax), %rcx
+st360:        movl    %ebp, (%rcx,%rdx,4)
+st361:        movq    -16(%rax), %rdi
+st362:        jne     .LBB4_21
+st363:        movq    -8(%rax), %rcx
+st364:        movups  (%rcx), %xmm0
+st365:        movq    16(%rcx), %rdx
+st366:        movq    (%r15), %rsi
+st367:        movq    %rsi, (%rcx)
+st368:        movq    %rax, 8(%rcx)
+st369:        movq    16(%r15), %rax
+st370:        movq    %rax, 16(%rcx)
+st371:        movups  %xmm0, (%r15)
+st372:        movq    %rdx, 16(%r15)
+.LBB4_21:
+st373:        addq    $24, %rsp
+st374:        popq    %rbx
+st375:        popq    %r12
+st376:        popq    %r13
+st377:        popq    %r14
+st378:        popq    %r15
+st379:        popq    %rbp
+st380:        jmp     _Z4joinPv
+.LBB4_18:
+st381:        movl    %ebp, answer(%rip)
+st382:        addq    $24, %rsp
+st383:        popq    %rbx
+st384:        popq    %r12
+st385:        popq    %r13
+st386:        popq    %r14
+st387:        popq    %r15
+st388:        popq    %rbp
+st389:        retq
+.LBB4_41:
+st390:        movl    $.L.str, %edi
+st391:        callq   _ZSt20__throw_length_errorPKc
+.LJTI4_0:
+st392:        .quad   .LBB4_16
+st393:        .quad   .LBB4_22
+st394:        .quad   .LBB4_18
+st395:        .quad   .LBB4_19
+st396:        .quad   .LBB4_19
+.LJTI4_1:
+st397:        .quad   .LBB4_16
+st398:        .quad   .LBB4_15
+st399:        .quad   .LBB4_18
+st400:        .quad   .LBB4_19
+st401:        .quad   .LBB4_19
+st402:
 .L.str:
-st151:        .asciz  "vector::_M_realloc_insert"
+st403:        .asciz  "vector::_M_realloc_insert"
+st404:	
 
 _Z3sumP4nodeRSt6vectorI5vkontSaIS2_EE_rf:
 st0_rf:        pushq   %rbp
@@ -807,9 +2118,9 @@ st16_rf:        jmp     .LBB0_2_rf
 .LBB0_10_rf:
 st17_rf:        movl    $0, (%r13)
 st18_rf:        movq    %r15, 8(%r13)
-st19_rf:        movq    %rdi, %rcx
-st20_rf:        movq    (%rdi), %rax
-st21_rf:        addq    $24, %rax
+st19_rf:        movq    (%rdi), %rax
+st20_rf:        addq    $24, %rax
+st21_rf:        movq    %rdi, %rcx
 .LBB0_18_rf:
 st22_rf:        movq    %rax, (%rcx)
 st23_rf:        movq    8(%r15), %r15
@@ -821,20 +2132,20 @@ st27_rf:        cmpq    (%rbp), %r13
 st28_rf:        jne     .LBB0_10_rf
 st29_rf:        movq    (%rsi), %rbx
 st30_rf:        movq    %r13, %rax
-st31_rf:        movabsq $9223372036854775800, %rcx
-st32_rf:        subq    %rbx, %rax
+st31_rf:        subq    %rbx, %rax
+st32_rf:        movabsq $9223372036854775800, %rcx
 st33_rf:        cmpq    %rcx, %rax
 st34_rf:        je      .LBB0_20_rf
 st35_rf:        movq    %rax, %rbp
-st36_rf:        movabsq $-6148914691236517205, %rcx
-st37_rf:        sarq    $3, %rbp
+st36_rf:        sarq    $3, %rbp
+st37_rf:        movabsq $-6148914691236517205, %rcx
 st38_rf:        imulq   %rcx, %rbp
 st39_rf:        testq   %rax, %rax
-st40_rf:        movl    $1, %ecx
-st41_rf:        movq    %rbp, %rax
+st40_rf:        movq    %rbp, %rax
+st41_rf:        movl    $1, %ecx
 st42_rf:        cmoveq  %rcx, %rax
-st43_rf:        movabsq $384307168202282325, %rcx
-st44_rf:        leaq    (%rax,%rbp), %r14
+st43_rf:        leaq    (%rax,%rbp), %r14
+st44_rf:        movabsq $384307168202282325, %rcx
 st45_rf:        cmpq    %rcx, %r14
 st46_rf:        cmovaq  %rcx, %r14
 st47_rf:        addq    %rbp, %rax
@@ -842,117 +2153,404 @@ st48_rf:        cmovbq  %rcx, %r14
 st49_rf:        leaq    (,%r14,8), %rax
 st50_rf:        leaq    (%rax,%rax,2), %rdi
 st51_rf:        callq   _Znwm
-st52_rf:        leaq    (%rbp,%rbp,2), %rcx
-st53_rf:        movq    %rax, %rbp
-st54_rf:        movq    %rbx, %rdi
-st55_rf:        movq    %rax, %r12
-st56_rf:        movl    $0, (%rax,%rcx,8)
-st57_rf:        movq    %r15, 8(%rax,%rcx,8)
-st58_rf:        cmpq    %r13, %rbx
-st59_rf:        je      .LBB0_15_rf
-st60_rf:        movq    %rdi, %rax
+st52_rf:        leaq    (,%rbp,2), %rcx
+st53_rf:        addq    %rbp, %rcx
+st54_rf:        movq    %rax, %rbp
+st55_rf:        movl    $0, (%rax,%rcx,8)
+st56_rf:        movq    %r15, 8(%rax,%rcx,8)
+st57_rf:        cmpq    %r13, %rbx
+st58_rf:        movq    %rbx, %rdi
+st59_rf:        movq    %rax, %r12
+st60_rf:        je      .LBB0_15_rf
+st61_rf:        movq    %rdi, %rax
 .LBB0_14_rf:
-st61_rf:        movq    16(%rax), %rcx
-st62_rf:        movq    %rcx, 16(%r12)
-st63_rf:        vmovups (%rax), %xmm0
-st64_rf:        addq    $24, %rax
-st65_rf:        vmovups %xmm0, (%r12)
-st66_rf:        addq    $24, %r12
-st67_rf:        cmpq    %rax, %r13
-st68_rf:        jne     .LBB0_14_rf
+st62_rf:        movq    16(%rax), %rcx
+st63_rf:        movq    %rcx, 16(%r12)
+st64_rf:        movups  (%rax), %xmm0
+st65_rf:        movups  %xmm0, (%r12)
+st66_rf:        addq    $24, %rax
+st67_rf:        addq    $24, %r12
+st68_rf:        cmpq    %rax, %r13
+st69_rf:        jne     .LBB0_14_rf
 .LBB0_15_rf:
-st69_rf:        addq    $24, %r12
-st70_rf:        testq   %rdi, %rdi
-st71_rf:        je      .LBB0_17_rf
-st72_rf:        callq   _ZdlPv
+st70_rf:        addq    $24, %r12
+st71_rf:        testq   %rdi, %rdi
+st72_rf:        je      .LBB0_17_rf
+st73_rf:        callq   _ZdlPv
 .LBB0_17_rf:
-st73_rf:        movq    16(%rsp), %rsi
-st74_rf:        leaq    (%r14,%r14,2), %rax
-st75_rf:        movq    8(%rsp), %rdi
-st76_rf:        leaq    (%rbp,%rax,8), %rax
-st77_rf:        movq    %rbp, (%rsi)
-st78_rf:        movq    (%rsp), %rbp
-st79_rf:        movq    %r12, 8(%rsi)
-st80_rf:        movq    %rbp, %rcx
-st81_rf:        jmp     .LBB0_18_rf
+st74_rf:        movq    16(%rsp), %rsi
+st75_rf:        movq    %rbp, (%rsi)
+st76_rf:        movq    %r12, 8(%rsi)
+st77_rf:        leaq    (%r14,%r14,2), %rax
+st78_rf:        leaq    (,%rax,8), %rax
+st79_rf:        addq    %rbp, %rax
+st80_rf:        movq    (%rsp), %rbp
+st81_rf:        movq    %rbp, %rcx
+st82_rf:        movq    8(%rsp), %rdi
+st83_rf:        jmp     .LBB0_18_rf
 .LBB0_2_rf:
-st82_rf:        xorl    %eax, %eax
+st84_rf:        xorl    %eax, %eax
 .LBB0_3_rf:
-st83_rf:        movl    -24(%r13), %edx
-st84_rf:        leaq    -24(%r13), %rcx
+st85_rf:        leaq    -24(%r13), %rcx
+st86_rf:        movl    -24(%r13), %edx
 .LBB0_4_rf:
-st85_rf:        testl   %edx, %edx
-st86_rf:        je      .LBB0_8_rf
-st87_rf:        cmpl    $2, %edx
-st88_rf:        je      .LBB0_19_rf
-st89_rf:        cmpl    $1, %edx
-st90_rf:        jne     .LBB0_4_rf
-st91_rf:        movq    -8(%r13), %rdx
-st92_rf:        addl    -16(%r13), %eax
-st93_rf:        movq    %rcx, %r13
-st94_rf:        addl    (%rdx), %eax
-st95_rf:        movq    %rcx, (%rdi)
-st96_rf:        jmp     .LBB0_3_rf
+st87_rf:        testl   %edx, %edx
+st88_rf:        je      .LBB0_8_rf
+st89_rf:        cmpl    $2, %edx
+st90_rf:        je      .LBB0_19_rf
+st91_rf:        cmpl    $1, %edx
+st92_rf:        jne     .LBB0_4_rf
+st93_rf:        addl    -16(%r13), %eax
+st94_rf:        movq    -8(%r13), %rdx
+st95_rf:        addl    (%rdx), %eax
+st96_rf:        movq    %rcx, (%rdi)
+st97_rf:        movq    %rcx, %r13
+st98_rf:        jmp     .LBB0_3_rf
 .LBB0_8_rf:
-st97_rf:        movq    -16(%r13), %rcx
-st98_rf:        movq    16(%rcx), %r15
-st99_rf:        movl    $1, -24(%r13)
-st100_rf:        movl    %eax, -16(%r13)
-st101_rf:        movq    %rcx, -8(%r13)
-st102_rf:        movq    (%rdi), %r13
-st103_rf:        testq   %r15, %r15
-st104_rf:        jne     .LBB0_9_rf
-st105_rf:        jmp     .LBB0_2_rf
+st99_rf:        movq    -16(%r13), %rcx
+st100_rf:        movq    16(%rcx), %r15
+st101_rf:        movl    $1, -24(%r13)
+st102_rf:        movl    %eax, -16(%r13)
+st103_rf:        movq    %rcx, -8(%r13)
+st104_rf:        movq    (%rdi), %r13
+st105_rf:        testq   %r15, %r15
+st106_rf:        jne     .LBB0_9_rf
+st107_rf:        jmp     .LBB0_2_rf
 .LBB0_19_rf:
-st106_rf:        movl    %eax, answer(%rip)
-st107_rf:        addq    $24, %rsp
-st108_rf:        popq    %rbx
-st109_rf:        popq    %r12
-st110_rf:        popq    %r13
-st111_rf:        popq    %r14
-st112_rf:        popq    %r15
-st113_rf:        popq    %rbp
-st114_rf:        retq
+st108_rf:        movl    %eax, answer(%rip)
+st109_rf:        addq    $24, %rsp
+st110_rf:        popq    %rbx
+st111_rf:        popq    %r12
+st112_rf:        popq    %r13
+st113_rf:        popq    %r14
+st114_rf:        popq    %r15
+st115_rf:        popq    %rbp
+st116_rf:        retq
 .LBB0_20_rf:
-st115_rf:        movl    $.L.str_rf, %edi
-st116_rf:        callq   _ZSt20__throw_length_errorPKc
-st117_rf:
+st117_rf:        movl    $.L.str_rf, %edi
+st118_rf:        callq   _ZSt20__throw_length_errorPKc
+st119_rf:
 _Z10sum_serialP4node_rf:
-st118_rf:        pushq   %rbx
-st119_rf:        subq    $48, %rsp
-st120_rf:        movq    %rdi, %rbx
-st121_rf:        movl    $24, %edi
-st122_rf:        movl    $3, answer(%rip)
-st123_rf:        callq   _Znwm
-st124_rf:        movl    44(%rsp), %edx
-st125_rf:        vmovups 28(%rsp), %xmm0
+st120_rf:        pushq   %rbx
+st121_rf:        subq    $48, %rsp
+st122_rf:        movq    %rdi, %rbx
+st123_rf:        movl    $24, %edi
+st124_rf:        callq   _Znwm
+st125_rf:        movq    %rax, (%rsp)
 st126_rf:        leaq    24(%rax), %rcx
-st127_rf:        movl    $2, (%rax)
-st128_rf:        movq    %rax, (%rsp)
-st129_rf:        movq    %rcx, 16(%rsp)
-st130_rf:        movq    %rcx, 8(%rsp)
-st131_rf:        movl    %edx, 20(%rax)
-st132_rf:        vmovups %xmm0, 4(%rax)
-st133_rf:        movq    %rsp, %rsi
-st134_rf:        movq    %rbx, %rdi
-st135_rf:        callq   _Z3sumP4nodeRSt6vectorI5vkontSaIS2_EE_rf
-st136_rf:        movq    (%rsp), %rdi
-st137_rf:        testq   %rdi, %rdi
-st138_rf:        je      .LBB1_3_rf
-st139_rf:        callq   _ZdlPv
+st127_rf:        movq    %rcx, 16(%rsp)
+st128_rf:        movl    $2, (%rax)
+st129_rf:        movl    44(%rsp), %edx
+st130_rf:        movl    %edx, 20(%rax)
+st131_rf:        movups  28(%rsp), %xmm0
+st132_rf:        movups  %xmm0, 4(%rax)
+st133_rf:        movq    %rcx, 8(%rsp)
+st134_rf:        movq    %rsp, %rsi
+st135_rf:        movq    %rbx, %rdi
+st136_rf:        callq   _Z3sumP4nodeRSt6vectorI5vkontSaIS2_EE_rf
+st137_rf:        movq    (%rsp), %rdi
+st138_rf:        testq   %rdi, %rdi
+st139_rf:        je      .LBB1_3_rf
+st140_rf:        callq   _ZdlPv
 .LBB1_3_rf:
-st140_rf:        addq    $48, %rsp
-st141_rf:        popq    %rbx
-st142_rf:        retq
-st143_rf:        movq    (%rsp), %rdi
+st141_rf:        addq    $48, %rsp
+st142_rf:        popq    %rbx
+st143_rf:        retq
 st144_rf:        movq    %rax, %rbx
-st145_rf:        testq   %rdi, %rdi
-st146_rf:        je      .LBB1_6_rf
-st147_rf:        callq   _ZdlPv
+st145_rf:        movq    (%rsp), %rdi
+st146_rf:        testq   %rdi, %rdi
+st147_rf:        je      .LBB1_6_rf
+st148_rf:        callq   _ZdlPv
 .LBB1_6_rf:
-st148_rf:        movq    %rbx, %rdi
-st149_rf:        callq   _Unwind_Resume@PLT
-st150_rf:
+st149_rf:        movq    %rbx, %rdi
+st150_rf:        callq   _Unwind_Resume@PLT
+st151_rf:
+_Z17prmlist_push_backRSt6vectorI7vhbkontSaIS0_EEiii_rf:
+st152_rf:        movl    %esi, %eax
+st153_rf:        cmpl    $-1, %edx
+st154_rf:        je      .LBB2_2_rf
+st155_rf:        movslq  %edx, %rdx
+st156_rf:        movq    (%rdi), %rsi
+st157_rf:        shlq    $5, %rdx
+st158_rf:        movl    %ecx, 20(%rsi,%rdx)
+.LBB2_2_rf:
+st159_rf:        cmpl    $-1, %eax
+st160_rf:        cmovel  %ecx, %eax
+st161_rf:        shlq    $32, %rcx
+st162_rf:        orq     %rcx, %rax
+st163_rf:        retq
+st164_rf:
+_Z16prmlist_pop_backRSt6vectorI7vhbkontSaIS0_EEii_rf:
+st165_rf:        movslq  %edx, %rcx
+st166_rf:        movq    (%rdi), %r8
+st167_rf:        shlq    $5, %rcx
+st168_rf:        movslq  16(%r8,%rcx), %rax
+st169_rf:        cmpq    $-1, %rax
+st170_rf:        je      .LBB3_1_rf
+st171_rf:        movq    %rax, %rdx
+st172_rf:        shlq    $5, %rdx
+st173_rf:        movl    $-1, 20(%r8,%rdx)
+st174_rf:        movq    (%rdi), %rdx
+st175_rf:        movl    $-1, 16(%rdx,%rcx)
+st176_rf:        movl    %esi, %ecx
+st177_rf:        shlq    $32, %rax
+st178_rf:        orq     %rcx, %rax
+st179_rf:        retq
+.LBB3_1_rf:
+st180_rf:        movl    $4294967295, %ecx
+st181_rf:        shlq    $32, %rax
+st182_rf:        orq     %rcx, %rax
+st183_rf:        retq
+st184_rf:
+_Z13sum_heartbeatP4nodeRSt6vectorI7vhbkontSaIS2_EEii_rf:
+st185_rf:        pushq   %rbp
+st186_rf:        pushq   %r15
+st187_rf:        pushq   %r14
+st188_rf:        pushq   %r13
+st189_rf:        pushq   %r12
+st190_rf:        pushq   %rbx
+st191_rf:        subq    $24, %rsp
+st192_rf:        movl    %ecx, %ebx
+st193_rf:        movl    %edx, %r14d
+st194_rf:        movq    %rsi, %r15
+.LBB4_1_rf:
+st195_rf:        nop
+st196_rf:        nop
+st197_rf:        movq    %rdi, %rbp
+st198_rf:        movq    %r15, %rdi
+st199_rf:        movl    %r14d, %esi
+st200_rf:        movl    %ebx, %edx
+st201_rf:        callq   _Z26sum_tree_heartbeat_handlerRSt6vectorI7vhbkontSaIS0_EEii
+st202_rf:        movq    %rbp, %rdi
+st203_rf:        movq    %rax, %r14
+st204_rf:        movq    %rax, %r13
+st205_rf:        shrq    $32, %r13
+st206_rf:        testq   %rdi, %rdi
+st207_rf:        je      .LBB4_5_rf
+.LBB4_26_rf:
+st208_rf:        movq    8(%r15), %r12
+st209_rf:        cmpq    16(%r15), %r12
+st210_rf:        je      .LBB4_28_rf
+st211_rf:        movl    $0, (%r12)
+st212_rf:        movq    %rdi, 8(%r12)
+st213_rf:        movl    %r13d, 16(%r12)
+st214_rf:        movl    $-1, 20(%r12)
+st215_rf:        movq    (%r15), %rbp
+st216_rf:        movq    8(%r15), %rbx
+st217_rf:        addq    $32, %rbx
+st218_rf:        movq    %rbx, 8(%r15)
+st219_rf:        jmp     .LBB4_38_rf
+.LBB4_2_rf:
+st220_rf:        movl    %ebx, %r13d
+st221_rf:        testq   %rdi, %rdi
+st222_rf:        jne     .LBB4_26_rf
+.LBB4_5_rf:
+st223_rf:        nop
+st224_rf:        nop
+st225_rf:        xorl    %ebp, %ebp
+st226_rf:        movb    $1, %al
+st227_rf:        jmp     .LBB4_7_rf
+.LBB4_22_rf:
+st228_rf:        leaq    -32(%rax), %rcx
+st229_rf:        addl    -24(%rax), %ebp
+st230_rf:        movq    -16(%rax), %rax
+st231_rf:        addl    (%rax), %ebp
+st232_rf:        movq    %rcx, 8(%r15)
+.LBB4_23_rf:
+st233_rf:        nop
+.LBB4_7_rf:
+st234_rf:        testb   %al, %al
+st235_rf:        nop
+st236_rf:        movq    %r15, %rdi
+st237_rf:        movl    %r14d, %esi
+st238_rf:        movl    %r13d, %edx
+st239_rf:        callq   _Z26sum_tree_heartbeat_handlerRSt6vectorI7vhbkontSaIS0_EEii
+st240_rf:        movq    %rax, %r14
+st241_rf:        movq    %rax, %r13
+st242_rf:        shrq    $32, %r13
+.LBB4_9_rf:
+st243_rf:        movq    8(%r15), %rax
+st244_rf:        movl    -32(%rax), %ecx
+st245_rf:        cmpq    $4, %rcx
+st246_rf:        ja      .LBB4_23_rf
+st247_rf:        jmpq    *.LJTI4_0(,%rcx,8)
+.LBB4_16_rf:
+st248_rf:        movslq  %r13d, %rcx
+st249_rf:        movq    (%r15), %rdx
+st250_rf:        shlq    $5, %rcx
+st251_rf:        movslq  16(%rdx,%rcx), %rbx
+st252_rf:        cmpq    $-1, %rbx
+st253_rf:        je      .LBB4_17_rf
+st254_rf:        movq    %rbx, %rsi
+st255_rf:        shlq    $5, %rsi
+st256_rf:        movl    $-1, 20(%rdx,%rsi)
+st257_rf:        movq    (%r15), %rdx
+st258_rf:        movl    $-1, 16(%rdx,%rcx)
+st259_rf:        jmp     .LBB4_25_rf
+.LBB4_28_rf:
+st260_rf:        movq    (%r15), %rdx
+st261_rf:        movq    %r12, %rax
+st262_rf:        subq    %rdx, %rax
+st263_rf:        movabsq $9223372036854775776, %rcx
+st264_rf:        cmpq    %rcx, %rax
+st265_rf:        je      .LBB4_41_rf
+st266_rf:        movq    %rax, %rbx
+st267_rf:        sarq    $5, %rbx
+st268_rf:        testq   %rax, %rax
+st269_rf:        movq    %rbx, %rax
+st270_rf:        movl    $1, %ecx
+st271_rf:        cmoveq  %rcx, %rax
+st272_rf:        leaq    (%rax,%rbx), %rsi
+st273_rf:        movq    %rsi, %rcx
+st274_rf:        shrq    $58, %rcx
+st275_rf:        movabsq $288230376151711743, %rcx
+st276_rf:        cmovneq %rcx, %rsi
+st277_rf:        addq    %rbx, %rax
+st278_rf:        cmovbq  %rcx, %rsi
+st279_rf:        testq   %rsi, %rsi
+st280_rf:        movq    %rsi, 16(%rsp)
+st281_rf:        je      .LBB4_30_rf
+st282_rf:        movq    %rdi, 8(%rsp)
+st283_rf:        movq    %rsi, %rdi
+st284_rf:        shlq    $5, %rdi
+st285_rf:        movq    %rdx, %rbp
+st286_rf:        callq   _Znwm
+st287_rf:        movq    %rbp, %rdx
+st288_rf:        movq    8(%rsp), %rdi
+st289_rf:        movq    %rax, %rbp
+st290_rf:        jmp     .LBB4_32_rf
+.LBB4_11_rf:
+st291_rf:        movq    8(%r15), %rax
+st292_rf:        xorl    %ebp, %ebp
+.LBB4_12_rf:
+st293_rf:        leaq    -32(%rax), %rdx
+st294_rf:        movl    -32(%rax), %ecx
+.LBB4_13_rf:
+st295_rf:        cmpl    $4, %ecx
+st296_rf:        ja      .LBB4_13_rf
+st297_rf:        movl    %ecx, %esi
+st298_rf:        jmpq    *.LJTI4_1(,%rsi,8)
+.LBB4_15_rf:
+st299_rf:        addl    -24(%rax), %ebp
+st300_rf:        movq    -16(%rax), %rax
+st301_rf:        addl    (%rax), %ebp
+st302_rf:        movq    %rdx, 8(%r15)
+st303_rf:        movq    %rdx, %rax
+st304_rf:        jmp     .LBB4_12_rf
+.LBB4_30_rf:
+st305_rf:        xorl    %ebp, %ebp
+.LBB4_32_rf:
+st306_rf:        shlq    $5, %rbx
+st307_rf:        movl    $0, (%rbp,%rbx)
+st308_rf:        movq    %rdi, 8(%rbp,%rbx)
+st309_rf:        movl    %r13d, 16(%rbp,%rbx)
+st310_rf:        movl    $-1, 20(%rbp,%rbx)
+st311_rf:        movq    %rbp, %rbx
+st312_rf:        cmpq    %r12, %rdx
+st313_rf:        je      .LBB4_35_rf
+st314_rf:        movq    %rbp, %rbx
+st315_rf:        movq    %rdx, %rax
+.LBB4_34_rf:
+st316_rf:        movups  (%rax), %xmm0
+st317_rf:        movups  16(%rax), %xmm1
+st318_rf:        movups  %xmm1, 16(%rbx)
+st319_rf:        movups  %xmm0, (%rbx)
+st320_rf:        addq    $32, %rax
+st321_rf:        addq    $32, %rbx
+st322_rf:        cmpq    %rax, %r12
+st323_rf:        jne     .LBB4_34_rf
+.LBB4_35_rf:
+st324_rf:        addq    $32, %rbx
+st325_rf:        testq   %rdx, %rdx
+st326_rf:        je      .LBB4_37_rf
+st327_rf:        movq    %rdi, %r12
+st328_rf:        movq    %rdx, %rdi
+st329_rf:        callq   _ZdlPv
+st330_rf:        movq    %r12, %rdi
+.LBB4_37_rf:
+st331_rf:        movq    %rbp, (%r15)
+st332_rf:        movq    %rbx, 8(%r15)
+st333_rf:        movq    16(%rsp), %rax
+st334_rf:        shlq    $5, %rax
+st335_rf:        addq    %rbp, %rax
+st336_rf:        movq    %rax, 16(%r15)
+.LBB4_38_rf:
+st337_rf:        subq    %rbp, %rbx
+st338_rf:        shrq    $5, %rbx
+st339_rf:        addl    $-1, %ebx
+st340_rf:        cmpl    $-1, %r13d
+st341_rf:        je      .LBB4_40_rf
+st342_rf:        movslq  %r13d, %rax
+st343_rf:        shlq    $5, %rax
+st344_rf:        movl    %ebx, 20(%rbp,%rax)
+.LBB4_40_rf:
+st345_rf:        cmpl    $-1, %r14d
+st346_rf:        cmovel  %ebx, %r14d
+st347_rf:        movq    8(%rdi), %rdi
+st348_rf:        jmp     .LBB4_1_rf
+.LBB4_17_rf:
+st349_rf:        movl    $-1, %r14d
+.LBB4_25_rf:
+st350_rf:        movq    -24(%rax), %rcx
+st351_rf:        movq    16(%rcx), %rdi
+st352_rf:        movl    $1, -32(%rax)
+st353_rf:        movl    %ebp, -24(%rax)
+st354_rf:        movq    %rcx, -16(%rax)
+st355_rf:        jmp     .LBB4_1_rf
+.LBB4_19_rf:
+st356_rf:        xorl    %edx, %edx
+st357_rf:        cmpl    $3, %ecx
+st358_rf:        setne   %dl
+st359_rf:        movq    -24(%rax), %rcx
+st360_rf:        movl    %ebp, (%rcx,%rdx,4)
+st361_rf:        movq    -16(%rax), %rdi
+st362_rf:        jne     .LBB4_21_rf
+st363_rf:        movq    -8(%rax), %rcx
+st364_rf:        movups  (%rcx), %xmm0
+st365_rf:        movq    16(%rcx), %rdx
+st366_rf:        movq    (%r15), %rsi
+st367_rf:        movq    %rsi, (%rcx)
+st368_rf:        movq    %rax, 8(%rcx)
+st369_rf:        movq    16(%r15), %rax
+st370_rf:        movq    %rax, 16(%rcx)
+st371_rf:        movups  %xmm0, (%r15)
+st372_rf:        movq    %rdx, 16(%r15)
+.LBB4_21_rf:
+st373_rf:        addq    $24, %rsp
+st374_rf:        popq    %rbx
+st375_rf:        popq    %r12
+st376_rf:        popq    %r13
+st377_rf:        popq    %r14
+st378_rf:        popq    %r15
+st379_rf:        popq    %rbp
+st380_rf:        jmp     _Z4joinPv
+.LBB4_18_rf:
+st381_rf:        movl    %ebp, answer(%rip)
+st382_rf:        addq    $24, %rsp
+st383_rf:        popq    %rbx
+st384_rf:        popq    %r12
+st385_rf:        popq    %r13
+st386_rf:        popq    %r14
+st387_rf:        popq    %r15
+st388_rf:        popq    %rbp
+st389_rf:        retq
+.LBB4_41_rf:
+st390_rf:        movl    $.L.str_rf, %edi
+st391_rf:        callq   _ZSt20__throw_length_errorPKc
+.LJTI4_0_rf:
+st392_rf:        .quad   .LBB4_16_rf
+st393_rf:        .quad   .LBB4_22_rf
+st394_rf:        .quad   .LBB4_18_rf
+st395_rf:        .quad   .LBB4_19_rf
+st396_rf:        .quad   .LBB4_19_rf
+.LJTI4_1_rf:
+st397_rf:        .quad   .LBB4_16_rf
+st398_rf:        .quad   .LBB4_15_rf
+st399_rf:        .quad   .LBB4_18_rf
+st400_rf:        .quad   .LBB4_19_rf
+st401_rf:        .quad   .LBB4_19_rf
+st402_rf:
 .L.str_rf:
-st151_rf:        .asciz  "vector::_M_realloc_insert"
+st403_rf:        .asciz  "vector::_M_realloc_insert"
+st404_rf:	
 

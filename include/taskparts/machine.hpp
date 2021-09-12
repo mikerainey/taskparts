@@ -130,7 +130,7 @@ auto assign_workers_to_resources(resource_packing_type packing,
 
 // all to be defined in one of the headers included below
 auto pin_calling_worker();
-auto initialize_pinning_policy();
+auto initialize_machine();
 auto teardown_machine();
   
 } // end namespace
