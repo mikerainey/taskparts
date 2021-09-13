@@ -137,6 +137,7 @@ public:
   static
   auto fork2(nativefj_fiber* f1, nativefj_fiber* f2) {
     auto f = current_fiber.mine();
+    assert(f != nullptr);
     f->_fork2(f1, f2);
   }
 

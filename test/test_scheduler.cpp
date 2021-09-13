@@ -53,7 +53,7 @@ auto test1() -> bool {
 }
 
 auto test_fib1() -> bool {
-  int n = 41;
+  int n = 40;
   int64_t dst;
   my_logging::initialize(false, true, false, true);  
   using my_scheduler = taskparts::minimal_scheduler<minimal_stats, my_logging>;
@@ -68,11 +68,12 @@ auto test_fib1() -> bool {
 }
 
 auto test_fib2() -> bool {
-  int n = fib_T * 2;
+  int64_t n = 40;
   int64_t dst;
   using my_scheduler = taskparts::minimal_scheduler<>;
   auto body = [&] {
     dst = fib_nativefj(n);
+    printf("dst=%lu\n",dst);
   };
   nativefj_from_lambda<decltype(body), my_scheduler> f_body(body);
   auto f_term = new taskparts::terminal_fiber<my_scheduler>;
@@ -84,7 +85,7 @@ auto test_fib2() -> bool {
 }
 
 auto test_fib3() -> bool {
-  int n = fib_T * 2;
+  int n = 40;
   int64_t dst;
   using my_scheduler = taskparts::minimal_scheduler<>;
   auto body = [&] {
@@ -102,9 +103,9 @@ auto test_fib3() -> bool {
 } // end namespace
 
 int main() {
-  assert(taskparts::test1());
-  assert(taskparts::test_fib1());
-  assert(taskparts::test_fib2());
-  assert(taskparts::test_fib3());
+  taskparts::test1();
+  taskparts::test_fib1();
+  taskparts::test_fib2();
+  taskparts::test_fib3();
   return 0;
 }

@@ -1,17 +1,7 @@
-#include "taskparts/chaselev.hpp"
-#include "taskparts/tpalrts.hpp"
-#include "taskparts/nativeforkjoin.hpp"
 #include "benchmark.hpp"
+#include "tpalrts.hpp"
 
 #include "sum_array_rollforward_decls.hpp"
-
-namespace taskparts {
-using tpalrts = minimal_scheduler<minimal_stats, minimal_logging, minimal_elastic,
-				  ping_thread_worker, ping_thread_interrupt>;
-using my_scheduler = chase_lev_work_stealing_scheduler<tpalrts, fiber,
-						       minimal_stats, minimal_logging, minimal_elastic,
-						       ping_thread_worker, ping_thread_interrupt>;
-}
 
 void sum_array_heartbeat(double* a, uint64_t lo, uint64_t hi, double r, double* dst);
 
@@ -62,22 +52,16 @@ int sum_array_heartbeat_handler(double* a, uint64_t lo, uint64_t hi, double r, d
 }
 
 namespace taskparts {
-
-void initialize() {
+auto initialize_rollforward() {
   rollforward_table = {
     #include "sum_array_rollforward_map.hpp"
   };
   initialize_rollfoward_table();
-  initialize_machine();
 }
-
-void destroy() {
-  teardown_machine();
-}
-
 } // end namespace
 
 int main() {
+  taskparts::initialize_rollforward();
   uint64_t nb_items = 100 * 1000 * 1000;
   double result = 0.0;
   double* a = new double[nb_items];
@@ -85,19 +69,11 @@ int main() {
     a[i] = 1.0;
   }
 
-  taskparts::initialize();
-  auto f0 = [&] {
+  taskparts::launchtpalrts([&] {
     taskparts::run_benchmark([&] {
       sum_array_heartbeat(a, 0, nb_items, 0.0, &result);
     });
-  };
-  taskparts::nativefj_from_lambda<decltype(f0), taskparts::tpalrts> f_body(f0);
-  auto f_term = new taskparts::terminal_fiber<taskparts::tpalrts>;
-  taskparts::fiber<taskparts::tpalrts>::add_edge(&f_body, f_term);
-  f_body.release();
-  f_term->release();
-  taskparts::my_scheduler::launch();
-  taskparts::destroy();
+  });
   
   printf("result=%f\n",result);
   delete [] a;
