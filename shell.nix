@@ -3,17 +3,16 @@
 
 { pkgs   ? import <nixpkgs> {},
   stdenv ? pkgs.stdenv,
-  gcc ? pkgs.gcc7,
   clang ? pkgs.clang,
   hwloc ? pkgs.hwloc,
-  jemalloc ? pkgs.jemalloc
+  jemalloc ? pkgs.jemalloc450
 }:
 
-stdenv.mkDerivation rec {
+pkgs.clangStdenv.mkDerivation rec {
   name = "taskparts-dev";
 
   buildInputs =
-    [ gcc clang hwloc jemalloc ];
+    [ clang hwloc jemalloc ];
 
   shellHook =
     ''
@@ -24,6 +23,5 @@ stdenv.mkDerivation rec {
     # per-core pinning
     export TASKPARTS_NUM_WORKERS=$( ${hwloc}/bin/hwloc-ls|grep Core|wc -l )
     export LD_PRELOAD="${jemalloc}/lib/libjemalloc.so"
-    export PATH=${gcc}/bin/:${clang}/bin/:$PATH
     '';
 }
