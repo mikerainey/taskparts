@@ -1,6 +1,8 @@
 # Creates an environment prepared for taskparts.
 #
-# The environment uses clang/llvm instead of GCC.
+# By default, the environment uses clang/llvm instead of GCC. To
+# use GCC instead, use the following:
+#   nix-shell --arg stdenv '(import <nixpkgs> {}).stdenv'
 #
 # For defaults:
 #   $ nix-shell
@@ -8,20 +10,19 @@
 #   $ nix-shell -a jemalloc null
 # If you don't want to use hwloc:
 #   $ nix-shell -a hwloc null
-# Note: if you use hwloc, then the taskparts scheduler will *not* use SMT. 
+# Note: if you use hwloc, then the taskparts scheduler will *not* use SMT.
 
 { pkgs   ? import <nixpkgs> {},
-  stdenv ? pkgs.stdenv,
-  clang ? pkgs.clang,
+  stdenv ? pkgs.clangStdenv,
   hwloc ? pkgs.hwloc,
   jemalloc ? pkgs.jemalloc450
 }:
 
-pkgs.clangStdenv.mkDerivation rec {
+stdenv.mkDerivation rec {
   name = "taskparts-dev";
 
   buildInputs =
-    [ clang ]
+    [ ]
     ++ (if hwloc == null then [] else [ hwloc ])
     ++ (if jemalloc == null then [] else [ jemalloc ]);
 
