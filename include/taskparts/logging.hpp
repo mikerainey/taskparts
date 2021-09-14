@@ -111,7 +111,7 @@ public:
             
   void print_text(FILE* f) {
     auto s = cycles::seconds_of(cycles::diff(basetime, cyclecount));
-    fprintf(f, "%lu.%lu\t%ld\t%s\t", s.seconds, s.milliseconds, worker_id, name_of(tag).c_str());
+    fprintf(f, "%lu.%lu\t%ld\t%s\t", s.whole_part, s.fractional_part, worker_id, name_of(tag).c_str());
     switch (tag) {
       case program_point: {
         fprintf(f, "%s \t %d \t %p",

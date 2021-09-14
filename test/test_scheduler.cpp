@@ -56,13 +56,13 @@ auto test_fib1() -> bool {
   int n = 40;
   int64_t dst;
   my_logging::initialize(false, true, false, true);  
-  using my_scheduler = taskparts::minimal_scheduler<minimal_stats, my_logging>;
+  using my_scheduler = minimal_scheduler<minimal_stats, my_logging>;
   auto f_body = new fib_par<my_scheduler>(n, &dst);
-  auto f_term = new taskparts::terminal_fiber<my_scheduler>;
-  taskparts::fiber<my_scheduler>::add_edge(f_body, f_term);
+  auto f_term = new terminal_fiber<my_scheduler>;
+  fiber<my_scheduler>::add_edge(f_body, f_term);
   f_body->release();
   f_term->release();
-  taskparts::chase_lev_work_stealing_scheduler<my_scheduler, taskparts::fiber, minimal_stats, my_logging>::launch();
+  chase_lev_work_stealing_scheduler<my_scheduler, fiber, minimal_stats, my_logging>::launch();
   my_logging::output();
   return (dst == fib_seq(n));
 }
@@ -70,42 +70,42 @@ auto test_fib1() -> bool {
 auto test_fib2() -> bool {
   int64_t n = 40;
   int64_t dst;
-  using my_scheduler = taskparts::minimal_scheduler<>;
-  auto body = [&] {
-    dst = fib_nativefj(n);
+  my_logging::initialize(false, true, false, true);  
+  using my_scheduler = minimal_scheduler<minimal_stats, my_logging>;
+  nativefj_from_lambda f_body([&] {
+    dst = fib_nativefj(n, my_scheduler());
     printf("dst=%lu\n",dst);
-  };
-  nativefj_from_lambda<decltype(body), my_scheduler> f_body(body);
-  auto f_term = new taskparts::terminal_fiber<my_scheduler>;
-  taskparts::fiber<my_scheduler>::add_edge(&f_body, f_term);
+  }, my_scheduler());
+  auto f_term = new terminal_fiber<my_scheduler>;
+  fiber<my_scheduler>::add_edge(&f_body, f_term);
   f_body.release();
   f_term->release();
-  taskparts::chase_lev_work_stealing_scheduler<my_scheduler, taskparts::fiber>::launch();
+  chase_lev_work_stealing_scheduler<my_scheduler, fiber, minimal_stats, my_logging>::launch();
   return (dst == fib_seq(n));
 }
 
 auto test_fib3() -> bool {
   int n = 40;
   int64_t dst;
-  using my_scheduler = taskparts::minimal_scheduler<>;
+  using my_scheduler = minimal_scheduler<>;
   auto body = [&] {
     dst = fib_oracleguided(n);
   };
   nativefj_from_lambda<decltype(body), my_scheduler> f_body(body);
-  auto f_term = new taskparts::terminal_fiber<my_scheduler>;
-  taskparts::fiber<my_scheduler>::add_edge(&f_body, f_term);
+  auto f_term = new terminal_fiber<my_scheduler>;
+  fiber<my_scheduler>::add_edge(&f_body, f_term);
   f_body.release();
   f_term->release();
-  taskparts::chase_lev_work_stealing_scheduler<my_scheduler, taskparts::fiber>::launch();
+  chase_lev_work_stealing_scheduler<my_scheduler, fiber>::launch();
   return (dst == fib_seq(n));
 }
 
 } // end namespace
 
 int main() {
-  taskparts::test1();
-  taskparts::test_fib1();
-  taskparts::test_fib2();
-  taskparts::test_fib3();
+  //taskparts::test1();
+  //printf("fib1 %d\n", taskparts::test_fib1());
+  printf("fib2 %d\n", taskparts::test_fib2());
+  //  taskparts::test_fib3();
   return 0;
 }

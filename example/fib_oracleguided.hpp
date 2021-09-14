@@ -7,7 +7,8 @@
 
 #include "fib_seq.hpp"
 
-auto fib_oracleguided(int64_t n) -> int64_t {
+template <typename Scheduler=taskparts::minimal_scheduler<>>
+auto fib_oracleguided(int64_t n, Scheduler sched=Scheduler()) -> int64_t {
   double phi = (1 + sqrt(5)) / 2;
   int64_t r;
   taskparts::spguard([&] { return pow(phi, n); }, [&] {
@@ -16,10 +17,10 @@ auto fib_oracleguided(int64_t n) -> int64_t {
     } else {
       int64_t r1, r2;
       taskparts::ogfork2([&] {
-	r1 = fib_oracleguided(n-1);
+	r1 = fib_oracleguided(n-1, sched);
       }, [&] {
-	r2 = fib_oracleguided(n-2);
-      });
+	r2 = fib_oracleguided(n-2, sched);
+      }, sched);
       r = r1 + r2;
     }
   }, [&] {

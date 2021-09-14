@@ -55,20 +55,20 @@ auto spin_for(uint64_t nb_cycles) {
 }
 
 using seconds_type = struct seconds_struct {
-  uint64_t seconds;
-  uint64_t milliseconds;
+  uint64_t whole_part;
+  uint64_t fractional_part;
 };
 
 static inline
 auto seconds_of(uint64_t cpu_frequency_khz, uint64_t cycles) -> seconds_type {
   if (cpu_frequency_khz == 0) {
     taskparts_die("cannot convert from cycles to seconds because cpu frequency is not known\n");
-    return {.seconds = 0, .milliseconds = 0 };
+    return {.whole_part = 0, .fractional_part = 0 };
   }
-  uint64_t milliseconds = cycles / cpu_frequency_khz;
+  uint64_t cpms = cycles / cpu_frequency_khz;
   seconds_type t;
-  t.seconds = milliseconds / 1000l;
-  t.milliseconds = milliseconds - (1000l * t.seconds);
+  t.whole_part = cpms / 1000l;
+  t.fractional_part = cpms - (1000l * t.whole_part);
   return t;
 }
 
@@ -78,7 +78,7 @@ auto nanoseconds_of(uint64_t cpu_frequency_khz, uint64_t cycles) -> uint64_t {
     taskparts_die("cannot convert from cycles to nanoseconds because cpu frequency is not known\n");
     return 0;
   }
-  return 10000 * cycles / cpu_frequency_khz;
+  return 10000l * cycles / cpu_frequency_khz;
 }
   
 } // end namespace

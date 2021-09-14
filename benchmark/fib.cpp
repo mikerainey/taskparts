@@ -13,26 +13,58 @@
 
 namespace taskparts {
 
+#ifdef TASKPARTS_STATS
+class stats_configuration {
+public:
+
+  static constexpr
+  bool enabled = true;
+
+  using counter_id_type = enum counter_id_enum {
+    nb_fibers,
+    nb_steals,
+    nb_sleeps,
+    nb_counters
+  };
+
+  static
+  auto name_of_counter(counter_id_type id) -> const char* {
+    std::map<counter_id_type, const char*> names;
+    names[nb_fibers] = "nb_fibers";
+    names[nb_steals] = "nb_steals";
+    names[nb_sleeps] = "nb_sleeps";
+    return names[id];
+  }
+  
+};
+using bench_stats = stats_base<stats_configuration>;
+#else
+using bench_stats = minimal_stats;
+#endif
+
 #ifdef TASKPARTS_LOG
 using bench_logging = logging_base<true>;
 #else
 using bench_logging = logging_base<false>;
-#endif  
-  
+#endif
+
 auto bench_fib() {
-  int64_t n = 30;
+  int64_t n = 45;
   int64_t dst;
   bench_logging::initialize(false, true, false, true);  
-  using my_scheduler = taskparts::minimal_scheduler<minimal_stats, bench_logging>;
-  auto body = [&] {
-    dst = fib_nativefj(n);
-  };
-  nativefj_from_lambda<decltype(body), my_scheduler> f_body(body);
-  auto f_term = new taskparts::terminal_fiber<my_scheduler>;
-  taskparts::fiber<my_scheduler>::add_edge(&f_body, f_term);
+  using scheduler = minimal_scheduler<bench_stats, bench_logging>;
+  nativefj_from_lambda f_body([&] {
+    //dst = fib_nativefj(n, scheduler());
+    dst = fib_oracleguided(n, scheduler());
+    printf("dst=%lu\n", dst);
+  }, scheduler());
+  auto f_term = new terminal_fiber<scheduler>;
+  fiber<scheduler>::add_edge(&f_body, f_term);
   f_body.release();
   f_term->release();
-  taskparts::chase_lev_work_stealing_scheduler<my_scheduler, taskparts::fiber, minimal_stats, bench_logging>::launch();
+  bench_stats::start_collecting();
+  chase_lev_work_stealing_scheduler<scheduler, fiber, bench_stats, bench_logging>::launch();
+  bench_stats::output_summary();
   bench_logging::output();
 }
 

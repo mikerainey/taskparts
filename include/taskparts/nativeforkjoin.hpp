@@ -82,11 +82,11 @@ public:
 
   // point of entry to this thread to be called by the `context::spawn` routine
   static
-  auto enter(nativefj_fiber* t) {
-    assert(t != nullptr);
-    assert(t != (nativefj_fiber*)notaptr);
-    t->run();
-    // terminate thread by exiting to scheduler
+  auto enter(nativefj_fiber* f) {
+    assert(f != nullptr);
+    assert(f != (nativefj_fiber*)notaptr);
+    f->run();
+    // terminate this fiber by exiting to scheduler
     exit_to_scheduler();
   }
 
@@ -152,11 +152,12 @@ char nativefj_fiber<Scheduler>::marker2;
 template <typename Scheduler>
 perworker::array<nativefj_fiber<Scheduler>*> nativefj_fiber<Scheduler>::current_fiber(nullptr);
 
-template <typename F, typename Scheduler>
+template <typename F, typename Scheduler=minimal_scheduler<>>
 class nativefj_from_lambda : public nativefj_fiber<Scheduler> {
 public:
 
-  nativefj_from_lambda(const F& f) : nativefj_fiber<Scheduler>(), f(f) { }
+  nativefj_from_lambda(const F& f, Scheduler sched=Scheduler())
+    : nativefj_fiber<Scheduler>(), f(f) { }
 
   F f;
 
@@ -167,9 +168,9 @@ public:
 };
 
 template <typename F1, typename F2, typename Scheduler=minimal_scheduler<>>
-auto fork2(const F1& f1, const F2& f2) {
-  nativefj_from_lambda<F1, Scheduler> fb1(f1);
-  nativefj_from_lambda<F2, Scheduler> fb2(f2);
+auto fork2join(const F1& f1, const F2& f2, Scheduler sched=Scheduler()) {
+  nativefj_from_lambda fb1(f1, sched);
+  nativefj_from_lambda fb2(f2, sched);
   nativefj_fiber<Scheduler>::fork2(&fb1, &fb2);
 }
   

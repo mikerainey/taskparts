@@ -21,13 +21,13 @@ auto run_benchmark(const Benchmark& benchmark, size_t repeat=1, size_t warmup_se
     auto warmup_start = cycles::now();
     while (seconds_of_cycles(cycles::since(warmup_start)).seconds < warmup_secs) {
       auto el = timed_run();
-      printf("warmup_run %lu.%lu\n", el.seconds, el.milliseconds);
+      printf("warmup_run %lu.%lu\n", el.whole_part, el.fractional_part);
     }
     printf ("======== END WARMUP ========\n");
   }
   for (size_t i = 0; i < repeat; i++) {
     auto el = timed_run();
-    printf("exectime %lu.%lu\n", el.seconds, el.milliseconds);
+    printf("exectime %lu.%lu\n", el.whole_part, el.fractional_part);
   }
 }
 

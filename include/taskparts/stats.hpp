@@ -1,7 +1,10 @@
 #pragma once
 
+#include <cstdio>
+
 #include "timing.hpp"
 #include "perworker.hpp"
+#include "machine.hpp"
 
 namespace taskparts {
 
@@ -27,12 +30,12 @@ public:
 private:
 
   static inline
-  auto now() -> timestamp_type{
+  auto now() -> timestamp_type {
     return cycles::now();
   }
 
   static inline
-  timestamp_type since(timestamp_type start) {
+  auto since(timestamp_type start) -> timestamp_type {
     return cycles::since(start);
   }
 
@@ -121,7 +124,8 @@ public:
   }
 
   static
-  auto report(size_t nb_workers) -> summary_type {
+  auto report() -> summary_type {
+    auto nb_workers = perworker::id::get_nb_workers();
     summary_type summary;
     if (! Configuration::enabled) {
       return summary;
@@ -157,6 +161,32 @@ public:
     summary.total_time = cumulated_time;
     summary.utilization = utilization;
     return summary;
+  }
+
+  static
+  auto output_summary(std::string fname="", summary_type summary=report()) {
+    FILE* f = (fname == "") ? stdout : fopen(fname.c_str(), "w");
+    for (int i = 0; i < Configuration::nb_counters; i++) {
+      auto n = Configuration::name_of_counter((counter_id_type)i);
+      fprintf(f, "%s %lu\n", n, summary.counters[i]);
+    }
+    {
+      auto s = cycles::seconds_of(summary.launch_duration);
+      fprintf(f, "launch_duration %lu.%lu\n", s.whole_part, s.fractional_part);
+    }
+    {
+      auto s = cycles::seconds_of(summary.total_work_time);
+      fprintf(f, "total_work_time %lu.%lu\n", s.whole_part, s.fractional_part);
+    }
+    {
+      auto s = cycles::seconds_of(summary.total_idle_time);
+      fprintf(f, "total_idle_time %lu.%lu\n", s.whole_part, s.fractional_part);
+    }
+    {
+      auto s = cycles::seconds_of(summary.total_time);
+      fprintf(f, "total_time %lu.%lu\n", s.whole_part, s.fractional_part);
+    }
+    fclose(f);
   }
 
 };

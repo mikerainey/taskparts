@@ -206,20 +206,20 @@ auto spguard(const Complexity& complexity,
 /*---------------------------------------------------------------------*/
 /* Fork join */
 
-template <class Body_left, class Body_right>
-auto ogfork2(const Body_left& bl, const Body_right& br) {
+template <typename F1, typename F2, typename Scheduler=minimal_scheduler<>>
+auto ogfork2(const F1& f1, const F2& f2, Scheduler sched=Scheduler()) {
   if (is_small.mine()) {
-    bl();
-    br();
+    f1();
+    f2();
     return;
   }
   auto t_before = total_now(timer.mine());
   uint64_t t_left, t_right;
-  fork2([&] {
-    t_left = measured_run(bl);
+  fork2join([&] {
+    t_left = measured_run(f1);
   }, [&] {
-    t_right = measured_run(br);
-  });
+    t_right = measured_run(f2);
+  }, sched);
   total.mine() = t_before + t_left + t_right;
   timer.mine() = cycles::now();
 }
