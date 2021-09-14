@@ -24,46 +24,6 @@ namespace taskparts {
 
 // logging events defined in mcsl_scheduler.hpp
 
-static inline
-std::string name_of(event_tag_type e) {
-  switch (e) {
-    case enter_launch:      return "enter_launch ";
-    case exit_launch:       return "exit_launch ";
-    case enter_algo:        return "enter_algo ";
-    case exit_algo:         return "exit_algo ";
-    case enter_wait:        return "enter_wait ";
-    case exit_wait:         return "exit_wait ";
-    case enter_sleep:       return "enter_sleep ";
-    case failed_to_sleep:   return "failed_to_sleep ";
-    case exit_sleep:        return "exit_sleep ";
-    case wake_child:        return "wake_child ";
-    case worker_exit:       return "worker_exit ";
-    case initiate_teardown: return "initiate_teardown";
-    case algo_phase:        return "algo_phase ";
-    default:                return "unknown_event ";
-  }
-}
-
-event_kind_type kind_of(event_tag_type e) {
-  switch (e) {
-    case enter_launch:
-    case exit_launch:
-    case enter_algo:
-    case exit_algo:
-    case enter_wait:
-    case exit_wait:                return phases;
-    case enter_sleep:
-    case failed_to_sleep:
-    case exit_sleep:
-    case wake_child:
-    case algo_phase:                
-    case worker_exit:
-    case initiate_teardown:
-    case program_point:             return program;
-    default:                        return nb_kinds;
-  }
-}
-
 using program_point_type = struct program_point_struct {
   
   int line_nb;
@@ -222,16 +182,13 @@ public:
   int nb_ppts;
   
   static
-  void initialize(bool _real_time=false, bool log_phases=false, bool log_fibers=false, bool pview=false) {
+  void initialize(bool _real_time=false, bool log_phases=true, bool log_fibers=false) {
     if (! enabled) {
       return;
     }
     real_time = _real_time;
     tracking_kind[phases] = log_phases;
     tracking_kind[fibers] = log_fibers;
-    if (pview) {
-      tracking_kind[phases] = true;
-    }
     basetime = cycles::now();
     push(event_type(enter_launch));
   }

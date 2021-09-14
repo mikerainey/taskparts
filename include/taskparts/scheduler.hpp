@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string>
+
 #include "timing.hpp"
 #include "perworker.hpp"
 
@@ -25,7 +27,6 @@ public:
     using counter_id_type = enum counter_id_enum {
       nb_fibers,
       nb_steals,
-      nb_sleeps,
       nb_counters
     };
     
@@ -86,6 +87,47 @@ using event_tag_type = enum event_tag_type_enum {
   nb_events
 };
 
+static inline
+auto name_of(event_tag_type e) -> std::string {
+  switch (e) {
+    case enter_launch:      return "enter_launch ";
+    case exit_launch:       return "exit_launch ";
+    case enter_algo:        return "enter_algo ";
+    case exit_algo:         return "exit_algo ";
+    case enter_wait:        return "enter_wait ";
+    case exit_wait:         return "exit_wait ";
+    case enter_sleep:       return "enter_sleep ";
+    case failed_to_sleep:   return "failed_to_sleep ";
+    case exit_sleep:        return "exit_sleep ";
+    case wake_child:        return "wake_child ";
+    case worker_exit:       return "worker_exit ";
+    case initiate_teardown: return "initiate_teardown";
+    case algo_phase:        return "algo_phase ";
+    default:                return "unknown_event ";
+  }
+}
+
+static inline
+auto kind_of(event_tag_type e) -> event_kind_type {
+  switch (e) {
+    case enter_launch:
+    case exit_launch:
+    case enter_algo:
+    case exit_algo:
+    case enter_wait:
+    case exit_wait:                return phases;
+    case enter_sleep:
+    case failed_to_sleep:
+    case exit_sleep:
+    case wake_child:
+    case algo_phase:                
+    case worker_exit:
+    case initiate_teardown:
+    case program_point:             return program;
+    default:                        return nb_kinds;
+  }
+}
+  
 class minimal_logging {
 public:
 

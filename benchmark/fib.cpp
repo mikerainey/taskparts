@@ -1,3 +1,7 @@
+#include <map>
+#include <stdio.h>
+#include <assert.h>
+
 #include "taskparts/scheduler.hpp"
 #include "taskparts/stats.hpp"
 #include "taskparts/chaselev.hpp"
@@ -6,10 +10,6 @@
 #include "../example/fib_par.hpp"
 #include "../example/fib_nativefj.hpp"
 #include "../example/fib_oracleguided.hpp"
-
-#include <map>
-#include <stdio.h>
-#include <assert.h>
 
 namespace taskparts {
 
@@ -49,7 +49,7 @@ using bench_logging = logging_base<false>;
 auto bench_fib() {
   int64_t n = 40;
   int64_t dst;
-  bench_logging::initialize(false, true, false, true);  
+  bench_logging::initialize(false, true, true);  
   using scheduler = minimal_scheduler<bench_stats, bench_logging>;
   nativefj_from_lambda f_body([&] {
     //dst = fib_nativefj(n, scheduler());

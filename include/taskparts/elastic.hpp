@@ -22,19 +22,22 @@
  * - Every WATI is paired with exactly one POST and vice versa.
  */
 class spinning_binary_semaphore {
+  
    // 0  -> No processor is waiting on the semaphore
    // 1  -> A post has been issued to the semaphore
    // -1 -> A processor is waiting on the semaphore 
    std::atomic<int> flag;
+  
 public:
+  
   spinning_binary_semaphore() : flag(0) {}
 
-  void post() {
+  auto post() {
     int old_value = flag++;
     assert(old_value <= 0);
   }
 
-  void wait() {
+  auto wait() {
     int old_value = flag--;
     assert(old_value >= 0);
     while (flag.load() < 0); // Spinning
@@ -85,7 +88,7 @@ public:
   // 1) Unsets the busy bit
   // 2) Hashes and obtain a new priority
   // 3) Resets the head value
-  void clear(uint64_t prio, uint8_t nullary_head, bool is_busy=false) {
+  auto clear(uint64_t prio, uint8_t nullary_head, bool is_busy=false) {
     status_word_union word = {UINT64_C(0)};
     word.bits.busybit  = is_busy;   // Not busy
     word.bits.priority = prio; 
@@ -94,7 +97,7 @@ public:
   }
 
   // Sets busy bit and returns the old status word
-   status_word_union set_busy_bit() {
+  auto set_busy_bit() -> status_word_union{
     status_word_union word = {UINT64_C(0)};
     word.bits.busybit = 1u; // I'm going to be busy
     word = {status_word.fetch_or(word.as_uint64)};
@@ -102,14 +105,14 @@ public:
   }
 
   // Update the head field while preserving all other fields
-  bool cas_head(status_word_union word, uint8_t newHead) {
+  auto cas_head(status_word_union word, uint8_t newHead) -> bool {
     uint64_t expected = word.as_uint64;
     auto word2 = word;
     word2.bits.head = newHead; // Update only the head field
     return status_word.compare_exchange_weak(expected, word2.as_uint64);
   }
 
-  status_word_union load() {
+  auto load() -> status_word_union {
     return status_word_union{status_word.load()};
   }
 };
@@ -135,7 +138,7 @@ public:
 
   // Busybit is set separately, this function only traverses and wakes people up
   static
-  void wake_children() {
+  auto wake_children() {
     auto my_id = perworker::my_id();
     fields[my_id].status.set_busy_bit();
     auto status = fields[my_id].status.load();
@@ -154,7 +157,7 @@ public:
   }
 
   static
-  void try_to_sleep(std::size_t target) {
+  auto try_to_sleep(size_t target) {
     // For whatever reason we failed to steal from our victim
     // It is possible that we are in this branch because the steal failed
     // due to contention instead of empty queue. However we are still safe 
@@ -185,7 +188,7 @@ public:
   }
 
   static
-  void accept_lifelines() {
+  auto accept_lifelines() {
     // 1) Clear the children list 
     // 2) Start to accept lifelines by unsetting busy bit
     // 3) Randomly choose a new priority
@@ -196,8 +199,8 @@ public:
   }
 
   static
-  void initialize() {
-    for (std::size_t i = 0; i < fields.size(); ++i) {
+  auto initialize() {
+    for (size_t i = 0; i < fields.size(); ++i) {
       // We need to start off by setting everyone as busy
       // Using the first processor's rng to initialize everyone's prio seems fine
       auto rn = hash(i + 31);
