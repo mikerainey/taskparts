@@ -49,13 +49,13 @@ using bench_logging = logging_base<false>;
 #endif
 
 auto bench_fib() {
-  int64_t n = 45;
+  int64_t n = 30;
   int64_t dst;
   bench_logging::initialize(false, true, false, true);  
   using scheduler = minimal_scheduler<bench_stats, bench_logging>;
   nativefj_from_lambda f_body([&] {
-    //dst = fib_nativefj(n, scheduler());
-    dst = fib_oracleguided(n, scheduler());
+    dst = fib_nativefj(n, scheduler());
+    //dst = fib_oracleguided(n, scheduler());
     printf("dst=%lu\n", dst);
   }, scheduler());
   auto f_term = new terminal_fiber<scheduler>;
