@@ -186,6 +186,7 @@ public:
       auto s = cycles::seconds_of(summary.total_time);
       fprintf(f, "total_time %lu.%lu\n", s.whole_part, s.fractional_part);
     }
+    fprintf(f, "utilization %.3f\n", summary.utilization);
     fclose(f);
   }
 
