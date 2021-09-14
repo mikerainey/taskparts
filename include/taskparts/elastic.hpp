@@ -136,7 +136,7 @@ public:
   // Busybit is set separately, this function only traverses and wakes people up
   static
   void wake_children() {
-    auto my_id = perworker::id::get_my_id();
+    auto my_id = perworker::my_id();
     fields[my_id].status.set_busy_bit();
     auto status = fields[my_id].status.load();
     auto idx = status.bits.head;
@@ -159,7 +159,7 @@ public:
     // It is possible that we are in this branch because the steal failed
     // due to contention instead of empty queue. However we are still safe 
     // because of the busy bit.
-    auto my_id = perworker::id::get_my_id();
+    auto my_id = perworker::my_id();
     assert(target != my_id);
     auto target_status = fields[target].status.load();
     auto my_status = fields[my_id].status.load();
@@ -189,7 +189,7 @@ public:
     // 1) Clear the children list 
     // 2) Start to accept lifelines by unsetting busy bit
     // 3) Randomly choose a new priority
-    auto my_id = perworker::id::get_my_id();
+    auto my_id = perworker::my_id();
     auto& rn = fields[my_id].rng;
     rn = hash(uint64_t(rn)); 
     fields[my_id].status.clear(rn, my_id, false);

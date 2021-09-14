@@ -125,7 +125,7 @@ public:
 
   static
   auto report() -> summary_type {
-    auto nb_workers = perworker::id::get_nb_workers();
+    auto nb_workers = perworker::nb_workers();
     summary_type summary;
     if (! Configuration::enabled) {
       return summary;
@@ -142,7 +142,7 @@ public:
     timestamp_type cumulated_time = launch_duration * nb_workers;
     timestamp_type total_work_time = 0;
     timestamp_type total_idle_time = 0;
-    auto my_id = perworker::id::get_my_id();
+    auto my_id = perworker::my_id();
     for (size_t i = 0; i < nb_workers; ++i) {
       auto& t = all_timers[i];
       if (i == my_id) {

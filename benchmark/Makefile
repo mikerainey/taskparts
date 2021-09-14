@@ -26,14 +26,14 @@ INCLUDE_PREFIX=\
 
 LINKER_PREFIX=\
 	-pthread \
-	-lrt \
-	-ldl \
 	$(HWLOC_LIBRARY_PREFIX)
 
+# WARNING: flag -fno-stack-protector needed for native fork join
 COMMON_COMPILE_PREFIX=\
 	$(INCLUDE_PREFIX) \
 	-std=c++17 \
 	-m64 \
+	-fno-stack-protector \
 	-DTASKPARTS_POSIX \
 	-DTASKPARTS_X64
 

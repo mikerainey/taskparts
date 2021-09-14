@@ -101,7 +101,7 @@ public:
     f2->release();
     f1->release();
     if (context::capture<nativefj_fiber*>(context::addr(ctx))) {
-      //      util::atomic::aprintf("steal happened: executing join continuation\n");
+      //aprintf("steal happened: executing join continuation\n");
       return;
     }
     // know f1 stays on my stack
@@ -111,10 +111,10 @@ public:
     // run begin of sched->exec(f1) until f1->exec()
     f1->run();
     // if f2 was not stolen, then it can run in the same stack as parent
-    auto f =  Scheduler::template take<fiber>();
+    auto f = Scheduler::template take<fiber>();
     if (f == nullptr) {
       status = fiber_status_finish;
-      //      util::atomic::aprintf("%d %d detected steal of %p\n",id,util::worker::get_my_id(),f2);
+      //aprintf("%d detected steal of %p\n",perworker::my_id(),f2);
       exit_to_scheduler();
       return; // unreachable
     }
@@ -124,8 +124,7 @@ public:
     assert(f2->stack == nullptr);
     f2->stack = notownstackptr;
     f2->swap_with_scheduler();
-    //    util::atomic::aprintf("%d %d this=%p f1=%p f2=%p\n",id,util::worker::get_my_id(),this, f1, f2);
-    //    printf("ran %p and %p locally\n",f1,f2);
+    //aprintf("ran %p and %p locally from %p\n",f1,f2,this);
     // run end of sched->exec() starting after f1->exec()
     // run begin of sched->exec(f2) until f2->exec()
     f2->run();
@@ -134,7 +133,7 @@ public:
     // run end of sched->exec() starting after f2->exec()
   }
 
-  static
+  static inline
   auto fork2(nativefj_fiber* f1, nativefj_fiber* f2) {
     auto f = current_fiber.mine();
     assert(f != nullptr);
@@ -156,10 +155,10 @@ template <typename F, typename Scheduler=minimal_scheduler<>>
 class nativefj_from_lambda : public nativefj_fiber<Scheduler> {
 public:
 
+  F f;
+
   nativefj_from_lambda(const F& f, Scheduler sched=Scheduler())
     : nativefj_fiber<Scheduler>(), f(f) { }
-
-  F f;
 
   void run2() {
     f();

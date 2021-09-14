@@ -210,7 +210,7 @@ public:
 
   inline
   auto mine() -> node_type& {
-    return at(perworker::id::get_my_id());
+    return at(perworker::my_id());
   }
 
   auto get_root() -> node_type& {

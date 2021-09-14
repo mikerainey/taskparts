@@ -19,7 +19,7 @@ auto run_benchmark(const Benchmark& benchmark, size_t repeat=1, size_t warmup_se
   if (warmup_secs >= 1) {
     printf("======== WARMUP ========\n");
     auto warmup_start = cycles::now();
-    while (seconds_of_cycles(cycles::since(warmup_start)).seconds < warmup_secs) {
+    while (seconds_of_cycles(cycles::since(warmup_start)).whole_part < warmup_secs) {
       auto el = timed_run();
       printf("warmup_run %lu.%lu\n", el.whole_part, el.fractional_part);
     }

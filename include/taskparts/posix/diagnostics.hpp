@@ -6,6 +6,10 @@
 #include <assert.h>
 
 namespace taskparts {
+
+namespace perworker {
+auto my_id() -> size_t;
+} // end namespace
   
 pthread_mutex_t print_lock;
 
@@ -56,14 +60,15 @@ void afprintf(FILE* stream, const char *fmt, ...) {
 }
 
 void aprintf(const char *fmt, ...) {
-  va_list ap;
-  va_start(ap, fmt);
   acquire_print_lock(); {
+    fprintf(stdout, "[%lu] ", perworker::my_id());
+    va_list ap;
+    va_start(ap, fmt);
     vfprintf(stdout, fmt, ap);
     fflush(stdout);
+    va_end(ap);
   }
   release_print_lock();
-  va_end(ap);
 }
   
 } // end namespace

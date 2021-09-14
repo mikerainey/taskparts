@@ -247,7 +247,7 @@ public:
       return;
     }
     e.cyclecount = cycles::now();
-    e.worker_id = perworker::id::get_my_id();
+    e.worker_id = perworker::my_id();
     if (real_time) {
       acquire_print_lock();
       e.print_text(stdout);
@@ -315,7 +315,7 @@ public:
       push(e);
     }
     buffer_type b;
-    auto nb_workers = perworker::id::get_nb_workers();
+    auto nb_workers = perworker::nb_workers();
     for (auto id = 0; id != nb_workers; id++) {
       buffer_type& b_id = buffers[id];
       for (auto e : b_id) {

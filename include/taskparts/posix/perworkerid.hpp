@@ -90,6 +90,14 @@ void init() {
   id::initialize(nb_workers_requested());
 }
 
+auto my_id() -> size_t {
+  return id::get_my_id();
+}
+
+auto nb_workers() -> size_t {
+  return id::get_nb_workers();
+}
+  
 } // end namespace
 } // end namespace
 

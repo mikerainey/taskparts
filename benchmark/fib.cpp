@@ -23,7 +23,6 @@ public:
   using counter_id_type = enum counter_id_enum {
     nb_fibers,
     nb_steals,
-    nb_sleeps,
     nb_counters
   };
 
@@ -32,7 +31,6 @@ public:
     std::map<counter_id_type, const char*> names;
     names[nb_fibers] = "nb_fibers";
     names[nb_steals] = "nb_steals";
-    names[nb_sleeps] = "nb_sleeps";
     return names[id];
   }
   
@@ -49,14 +47,13 @@ using bench_logging = logging_base<false>;
 #endif
 
 auto bench_fib() {
-  int64_t n = 30;
+  int64_t n = 40;
   int64_t dst;
   bench_logging::initialize(false, true, false, true);  
   using scheduler = minimal_scheduler<bench_stats, bench_logging>;
   nativefj_from_lambda f_body([&] {
-    dst = fib_nativefj(n, scheduler());
-    //dst = fib_oracleguided(n, scheduler());
-    printf("dst=%lu\n", dst);
+    //dst = fib_nativefj(n, scheduler());
+    dst = fib_oracleguided(n, scheduler());
   }, scheduler());
   auto f_term = new terminal_fiber<scheduler>;
   fiber<scheduler>::add_edge(&f_body, f_term);

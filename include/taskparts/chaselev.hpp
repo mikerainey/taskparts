@@ -186,7 +186,7 @@ public:
       scheduler_status_finish
     };
 
-    auto nb_workers = perworker::id::get_nb_workers();
+    auto nb_workers = perworker::nb_workers();
     bool should_terminate = false;
     typename Worker::termination_detection_type termination_barrier;
     typename Worker::worker_exit_barrier worker_exit_barrier(nb_workers);
@@ -210,7 +210,7 @@ public:
         termination_barrier.set_active(false);
         return scheduler_status_finish;
       }
-      auto my_id = perworker::id::get_my_id();
+      auto my_id = perworker::my_id();
       Logging::log_event(enter_wait);
       Stats::on_enter_acquire();
       termination_barrier.set_active(false);

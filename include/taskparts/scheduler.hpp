@@ -43,6 +43,9 @@ public:
   static
   auto report(size_t) { }
 
+  static
+  auto output_summary() { }
+
   static inline
   auto on_enter_work() { }
 

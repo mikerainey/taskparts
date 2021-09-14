@@ -13,7 +13,8 @@
 { pkgs   ? import <nixpkgs> {},
   stdenv ? pkgs.clangStdenv,
   hwloc ? pkgs.hwloc,
-  jemalloc ? pkgs.jemalloc450
+  jemalloc ? pkgs.jemalloc450,
+  valgrind ? pkgs.valgrind
 }:
 
 stdenv.mkDerivation rec {
@@ -22,7 +23,8 @@ stdenv.mkDerivation rec {
   buildInputs =
     [ ]
     ++ (if hwloc == null then [] else [ hwloc ])
-    ++ (if jemalloc == null then [] else [ jemalloc ]);
+    ++ (if jemalloc == null then [] else [ jemalloc ])
+    ++ (if valgrind == null then [] else [ valgrind ]);
 
   shellHook =
     let

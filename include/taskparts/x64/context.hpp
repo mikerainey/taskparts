@@ -122,10 +122,8 @@ public:
   context::context_type ctx;
 };
 
-static
 perworker::array<context_wrapper_type> ctxs;
 
-static
 context::context_pointer my_ctx() {
   return context::addr(ctxs.mine().ctx);
 }

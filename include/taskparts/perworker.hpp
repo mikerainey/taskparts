@@ -44,7 +44,7 @@ public:
     }
   }
 
-  size_t size() const {
+  auto size() const -> size_t {
     return capacity;
   }
 

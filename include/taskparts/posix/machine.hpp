@@ -137,7 +137,7 @@ auto pin_calling_worker() {
 }
 
 auto initialize_machine() {
-  auto nb_workers = perworker::id::get_nb_workers();
+  auto nb_workers = perworker::nb_workers();
   pthread_setconcurrency((int)nb_workers);
   bool requested_pinning_policy = false;
   bool numa_alloc_interleaved = false;
@@ -181,7 +181,7 @@ auto initialize_machine() {
 
 auto teardown_machine() {
 #ifdef TASKPARTS_HAVE_HWLOC
-  auto nb_workers = perworker::id::get_nb_workers();
+  auto nb_workers = perworker::nb_workers();
   hwloc_bitmap_free(all_cpus);
   for (std::size_t worker_id = 0; worker_id != nb_workers; ++worker_id) {
     hwloc_bitmap_free(hwloc_cpusets[worker_id]);
