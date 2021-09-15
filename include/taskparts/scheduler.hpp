@@ -61,6 +61,11 @@ public:
 
   static inline
   auto increment(configuration_type::counter_id_type id) { }
+
+  static inline
+  auto on_new_fiber() {
+    increment(configuration_type::nb_fibers);
+  }
   
 };
 
@@ -132,10 +137,13 @@ class minimal_logging {
 public:
 
   static
-  auto initialize() { }
+  auto initialize(bool, bool, bool) { }
 
   static
-  auto output(size_t) { }
+  auto reset() { }
+
+  static
+  auto output(std::string) { }
 
   static inline
   auto log_event(event_tag_type tag) { }

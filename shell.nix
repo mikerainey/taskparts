@@ -9,6 +9,8 @@
 # If you don't want to use hwloc:
 #   $ nix-shell --arg hwloc null
 # Note: if you use hwloc, then the taskparts scheduler will *not* use SMT.
+# For full debugging:
+#   $ nix-shell --arg stdenv '(import <nixpkgs> {}).stdenv' --arg jemalloc null --arg hwloc null
 
 { pkgs   ? import <nixpkgs> {},
   stdenv ? pkgs.clangStdenv,

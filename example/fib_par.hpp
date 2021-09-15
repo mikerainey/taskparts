@@ -10,7 +10,7 @@ template <typename Scheduler>
 class fib_par : public taskparts::fiber<Scheduler> {
 public:
 
-  using trampoline_type = enum { entry, exit };
+  using trampoline_type = enum trampoline_enum { entry, exit };
 
   trampoline_type trampoline = entry;
 

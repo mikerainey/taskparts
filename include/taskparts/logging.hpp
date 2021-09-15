@@ -180,19 +180,7 @@ public:
 
   static
   int nb_ppts;
-  
-  static
-  void initialize(bool _real_time=false, bool log_phases=true, bool log_fibers=false) {
-    if (! enabled) {
-      return;
-    }
-    real_time = _real_time;
-    tracking_kind[phases] = log_phases;
-    tracking_kind[fibers] = log_fibers;
-    basetime = cycles::now();
-    push(event_type(enter_launch));
-  }
-  
+    
   static inline
   void push(event_type e) {
     if (! enabled) {
@@ -245,7 +233,27 @@ public:
   }
 
   static
-  void output_json(buffer_type& b, std::string fname="") {
+  void initialize(bool _real_time=false, bool log_phases=true, bool log_fibers=false) {
+    if (! enabled) {
+      return;
+    }
+    real_time = _real_time;
+    tracking_kind[phases] = log_phases;
+    tracking_kind[fibers] = log_fibers;
+    reset();
+  }
+
+  static
+  auto reset() {
+    for (auto id = 0; id != perworker::nb_workers(); id++) {
+      buffers[id].clear();
+    }
+    basetime = cycles::now();
+    push(event_type(enter_launch));
+  }
+
+  static
+  void output_json(buffer_type& b, std::string fname) {
     if (fname == "") {
       return;
     }
@@ -261,7 +269,7 @@ public:
   }
   
   static
-  void output() {
+  void output(std::string fname) {
     if (! enabled) {
       return;
     }
@@ -272,8 +280,7 @@ public:
       push(e);
     }
     buffer_type b;
-    auto nb_workers = perworker::nb_workers();
-    for (auto id = 0; id != nb_workers; id++) {
+    for (auto id = 0; id != perworker::nb_workers(); id++) {
       buffer_type& b_id = buffers[id];
       for (auto e : b_id) {
         b.push_back(e);
@@ -282,7 +289,7 @@ public:
     std::stable_sort(b.begin(), b.end(), [] (const event_type& e1, const event_type& e2) {
       return e1.cyclecount < e2.cyclecount;
     });
-    output_json(b, "log.json");
+    output_json(b, fname);
   }
   
 };
@@ -302,4 +309,20 @@ int logging_base<enabled>::nb_ppts = 0;
 template <bool enabled>
 program_point_type logging_base<enabled>::ppts[max_nb_ppts];
 
+  /*
+static inline
+void log_program_point(int line_nb,
+                        const char* source_fname,
+                        void* ptr) {
+  if ((line_nb == -1) || (log_buffer::nb_ppts >= max_nb_ppts)) {
+    return;
+  }
+  program_point_type ppt;
+  ppt.line_nb = line_nb;
+  ppt.source_fname = source_fname;
+  ppt.ptr = ptr;
+  log_buffer::ppts[log_buffer::nb_ppts++] = ppt;
+}
+  */
+  
 } // end namespace

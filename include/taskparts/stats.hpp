@@ -72,6 +72,11 @@ public:
     all_counters.mine().counters[id]++;
   }
 
+  static inline
+  auto on_new_fiber() {
+    increment(Configuration::nb_fibers);
+  }
+
   static
   auto on_enter_acquire() {
     if (! Configuration::enabled) {
@@ -145,13 +150,7 @@ public:
     auto my_id = perworker::my_id();
     for (size_t i = 0; i < nb_workers; ++i) {
       auto& t = all_timers[i];
-      if (i == my_id) {
-        t.total_work_time += since(t.start_work);
-      }
       total_work_time += t.total_work_time;
-      if (i != my_id) {
-        t.total_idle_time += since(t.start_idle);
-      }
       total_idle_time += t.total_idle_time;
     }
     double relative_idle = (double)total_idle_time / (double)cumulated_time;
@@ -187,7 +186,9 @@ public:
       fprintf(f, "total_time %lu.%lu\n", s.whole_part, s.fractional_part);
     }
     fprintf(f, "utilization %.3f\n", summary.utilization);
-    fclose(f);
+    if (fname != "") { // f!=stdout
+      fclose(f);
+    }
   }
 
 };

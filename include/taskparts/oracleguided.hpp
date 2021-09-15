@@ -206,7 +206,7 @@ auto spguard(const Complexity& complexity,
 /*---------------------------------------------------------------------*/
 /* Fork join */
 
-template <typename F1, typename F2, typename Scheduler=minimal_scheduler<>>
+template <typename F1, typename F2, typename Scheduler>
 auto ogfork2join(const F1& f1, const F2& f2, Scheduler sched=Scheduler()) {
   if (is_small.mine()) {
     f1();

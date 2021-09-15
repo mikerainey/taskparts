@@ -180,7 +180,7 @@ public:
   }
 
   static
-  auto launch(std::size_t nb_steal_attempts=1) {
+  auto launch(size_t nb_steal_attempts=1) {
     using scheduler_status_type = enum scheduler_status_enum {
       scheduler_status_active,
       scheduler_status_finish
@@ -192,10 +192,10 @@ public:
     typename Worker::worker_exit_barrier worker_exit_barrier(nb_workers);
     perworker::array<size_t> nb_steal_attempts_so_far(0);
 
-    auto random_other_worker = [&] (size_t nb_workers, size_t my_id) -> std::size_t {
+    auto random_other_worker = [&] (size_t nb_workers, size_t my_id) -> size_t {
       assert(nb_workers != 1);
       auto& nb_sa = nb_steal_attempts_so_far[my_id];
-      auto id = (std::size_t)((hash(my_id) + hash(nb_sa)) % (nb_workers - 1));
+      auto id = (size_t)((hash(my_id) + hash(nb_sa)) % (nb_workers - 1));
       if (id >= my_id) {
         id++;
       }
@@ -253,7 +253,7 @@ public:
       return scheduler_status_active;
     };
 
-    auto worker_loop = [&] (std::size_t my_id) {
+    auto worker_loop = [&] (size_t my_id) {
       auto &my_deque = deques.mine();
       scheduler_status_type status = scheduler_status_active;
       fiber_type *current = nullptr;
@@ -294,22 +294,22 @@ public:
     elastic_type::initialize();
     Interrupt::initialize_signal_handler();
     termination_barrier.set_active(true);
-    for (std::size_t i = 1; i < nb_workers; i++) {
-      Worker::launch_worker_thread(i, [&] (std::size_t i) {
+    for (size_t i = 1; i < nb_workers; i++) {
+      Worker::launch_worker_thread(i, [&] (size_t i) {
         termination_barrier.set_active(true);
         worker_loop(i);
       });
     }
     Interrupt::launch_ping_thread(nb_workers);
-    Worker::launch_worker_thread(0, [&] (std::size_t i) {
+    Worker::launch_worker_thread(0, [&] (size_t i) {
       worker_loop(i);
     });
     Worker::destroy();
 #ifndef NDEBUG
-    for (std::size_t i = 0; i < buffers.size(); i++) {
+    for (size_t i = 0; i < buffers.size(); i++) {
       assert(buffers[i].empty());
     }
-    for (std::size_t i = 0; i < deques.size(); i++) {
+    for (size_t i = 0; i < deques.size(); i++) {
       assert(deques[i].empty());
     }
 #endif
@@ -415,6 +415,11 @@ public:
   static
   void commit(Fiber<minimal_scheduler>*) {
     taskparts::commit<minimal_scheduler, Fiber, Stats, Logging, Elastic, Worker, Interrupt>();
+  }
+
+  static
+  auto on_new_fiber() {
+    Stats::on_new_fiber();
   }
 
 };

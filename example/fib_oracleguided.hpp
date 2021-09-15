@@ -6,7 +6,7 @@
 
 #include "fib_seq.hpp"
 
-template <typename Scheduler=taskparts::minimal_scheduler<>>
+template <typename Scheduler>
 auto fib_oracleguided(int64_t n, Scheduler sched=Scheduler()) -> int64_t {
   double phi = (1 + sqrt(5)) / 2;
   int64_t r;
