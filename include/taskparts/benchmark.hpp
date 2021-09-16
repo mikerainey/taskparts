@@ -56,11 +56,11 @@ template <typename Benchmark,
 	  typename Bench_logging=bench_logging,
 	  template <typename, typename> typename Elastic=bench_elastic,
 	  typename Scheduler=minimal_scheduler<Bench_stats, Bench_logging, Elastic>>
-auto benchmark_nativefj(const Benchmark& benchmark,
-			Bench_stats stats=Bench_stats(),
-			Bench_logging logging=Bench_logging(),
-			Elastic<Bench_stats, Bench_logging> elastic=Elastic<Bench_stats, Bench_logging>(),
-			Scheduler sched=Scheduler()) {
+auto benchmark_nativeforkjoin(const Benchmark& benchmark,
+			      Bench_stats stats=Bench_stats(),
+			      Bench_logging logging=Bench_logging(),
+			      Elastic<Bench_stats, Bench_logging> elastic=Elastic<Bench_stats, Bench_logging>(),
+			      Scheduler sched=Scheduler()) {
   size_t repeat = 1;
   if (const auto env_p = std::getenv("TASKPARTS_BENCHMARK_NUM_REPEAT")) {
     repeat = std::stoi(env_p);
