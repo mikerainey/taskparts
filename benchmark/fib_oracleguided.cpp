@@ -11,6 +11,6 @@ int main() {
     dst = fib_oracleguided(n, sched);
     printf("result %lu\n",dst);
   });
-  assert(dst == fib_seq(n));
+  assert(dst == fib_sequential(n));
   return 0;
 }

@@ -25,9 +25,7 @@ public:
 
   static
   auto name_of_counter(counter_id_type id) -> const char* {
-    std::map<counter_id_type, const char*> names;
-    names[nb_fibers] = "nb_fibers";
-    names[nb_steals] = "nb_steals";
+    const char* names [] = { "nb_fibers", "nb_steals" };
     return names[id];
   }
   
@@ -75,7 +73,7 @@ auto benchmark_nativeforkjoin(const Benchmark& benchmark,
     return cycles::seconds_since(st);
   };
   initialize_machine();
-  Bench_logging::initialize(false, true, true);
+  Bench_logging::initialize();
   Bench_stats::start_collecting();
   nativefj_from_lambda f_body([&] {
     if (warmup_secs >= 1) {

@@ -245,13 +245,22 @@ public:
   }
 
   static
-  void initialize(bool _real_time=false, bool log_phases=true, bool log_fibers=false) {
+  void initialize() {
     if (! enabled) {
       return;
     }
-    real_time = _real_time;
-    tracking_kind[phases] = log_phases;
-    tracking_kind[fibers] = log_fibers;
+    real_time = false;
+    if (const auto env_p = std::getenv("TASKPARTS_LOGGING_REALTIME")) {
+      real_time = std::stoi(env_p);
+    }
+    tracking_kind[phases] = true;
+    if (const auto env_p = std::getenv("TASKPARTS_LOGGING_REALTIME")) {
+      tracking_kind[phases] = std::stoi(env_p);
+    }
+    tracking_kind[fibers] = false;
+    if (const auto env_p = std::getenv("TASKPARTS_LOGGING_REALTIME")) {
+      tracking_kind[fibers] = std::stoi(env_p);
+    }
     reset();
   }
 

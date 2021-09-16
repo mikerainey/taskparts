@@ -8,6 +8,6 @@ int main() {
   int64_t n = 45;
   int64_t dst;
   taskparts_die("todo");
-  assert(dst == fib_seq(n));
+  assert(dst == fib_sequential(n));
   return 0;
 }

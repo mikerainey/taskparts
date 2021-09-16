@@ -4,7 +4,7 @@
 
 #include "taskparts/oracleguided.hpp"
 
-#include "fib_seq.hpp"
+#include "fib_sequential.hpp"
 
 template <typename Scheduler>
 auto fib_oracleguided(int64_t n, Scheduler sched=Scheduler()) -> int64_t {
@@ -23,7 +23,7 @@ auto fib_oracleguided(int64_t n, Scheduler sched=Scheduler()) -> int64_t {
       r = r1 + r2;
     }
   }, [&] {
-    r = fib_seq(n);
+    r = fib_sequential(n);
   });
   return r;
 }
