@@ -1,7 +1,5 @@
 INSTALL_FOLDER=bin
 TASKPARTS_PATH=../
-HWLOC_INCLUDE_PREFIX=
-HWLOC_LIBRARY_PREFIX=
 
 .PHONY: install_folder
 install_folder:
