@@ -16,6 +16,7 @@ auto bench_fib() {
     dst = fib_oracleguided(n, sched);
     printf("result %lu\n",dst);
   });
+  assert(dst == fib_seq(n));
 }
 
 } // end namespace
