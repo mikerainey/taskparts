@@ -5,7 +5,7 @@
 #include "../example/fib_par.hpp"
 #include "../example/fib_nativefj.hpp"
 #include "../example/fib_oracleguided.hpp"
-#include "benchmark.hpp"
+#include "taskparts/benchmark.hpp"
 
 namespace taskparts {
 
