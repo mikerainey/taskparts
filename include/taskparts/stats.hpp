@@ -186,7 +186,7 @@ public:
       fprintf(f, "total_time %lu.%lu\n", s.whole_part, s.fractional_part);
     }
     fprintf(f, "utilization %.3f\n", summary.utilization);
-    if (fname != "") { // f!=stdout
+    if (fname != "") { // f != stdout
       fclose(f);
     }
   }
