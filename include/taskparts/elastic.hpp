@@ -1,7 +1,9 @@
 #pragma once
 
-#include <atomic>
+#include <assert.h>
 
+#include "perworker.hpp"
+#include "atomic.hpp"
 #include "hash.hpp"
 #if defined(TASKPARTS_POSIX)
 #include "posix/semaphore.hpp"
@@ -10,6 +12,8 @@
 #else
 #error need to declare platform (e.g., TASKPARTS_POSIX)
 #endif
+
+namespace taskparts {
 
 /*---------------------------------------------------------------------*/
 /* Spinning binary semaphore (for performance debugging) */
@@ -88,7 +92,7 @@ public:
   // 1) Unsets the busy bit
   // 2) Hashes and obtain a new priority
   // 3) Resets the head value
-  auto clear(uint64_t prio, uint8_t nullary_head, bool is_busy=false) {
+  auto clear(uint64_t prio, uint8_t nullary_head, bool is_busy=false) -> void {
     status_word_union word = {UINT64_C(0)};
     word.bits.busybit  = is_busy;   // Not busy
     word.bits.priority = prio; 
@@ -97,7 +101,7 @@ public:
   }
 
   // Sets busy bit and returns the old status word
-  auto set_busy_bit() -> status_word_union{
+  auto set_busy_bit() -> status_word_union {
     status_word_union word = {UINT64_C(0)};
     word.bits.busybit = 1u; // I'm going to be busy
     word = {status_word.fetch_or(word.as_uint64)};
@@ -173,13 +177,12 @@ public:
       // CAS fails because it will never be referenced in case of failure.
       if (fields[target].status.cas_head(target_status, my_id)) {
         // Wait on my own semaphore
-        Stats::increment(Stats::configuration_type::nb_sleeps);
+	Stats::on_exit_acquire();
         Logging::log_enter_sleep(target, target_status.bits.priority, my_status.bits.priority);
-        Stats::on_exit_acquire();
         fields[my_id].sem.wait();
-        Stats::on_enter_acquire();
         // Must not set busybit here, because it will go back to stealing
         Logging::log_event(exit_sleep);
+	Stats::on_enter_acquire();
         // TODO: Add support for CRS
       } // Otherwise we just give up
     } else {
@@ -214,3 +217,5 @@ public:
 
 template <typename Stats, typename Logging, typename Semaphore>
 perworker::array<typename elastic<Stats,Logging,Semaphore>::elastic_fields_type> elastic<Stats,Logging,Semaphore>::fields;
+
+} // end namespace

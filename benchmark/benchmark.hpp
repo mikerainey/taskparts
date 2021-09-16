@@ -3,11 +3,10 @@
 #include <stdio.h>
 
 #include "taskparts/machine.hpp"
-#include "taskparts/scheduler.hpp"
-#include "taskparts/stats.hpp"
 #include "taskparts/chaselev.hpp"
-#include "taskparts/machine.hpp"
+#include "taskparts/stats.hpp"
 #include "taskparts/logging.hpp"
+#include "taskparts/elastic.hpp"
 
 namespace taskparts {
 
@@ -43,15 +42,25 @@ using bench_logging = logging_base<true>;
 #else
 using bench_logging = logging_base<false>;
 #endif
+
+#ifdef TASKPARTS_ELASTIC
+template <typename Stats, typename Logging>
+using bench_elastic = elastic<Stats, Logging>;
+#else
+template <typename Stats, typename Logging>
+using bench_elastic = minimal_elastic<Stats, Logging>;
+#endif
   
 template <typename Benchmark,
 	  typename Bench_stats=bench_stats,
 	  typename Bench_logging=bench_logging,
-	  typename Scheduler=minimal_scheduler<Bench_stats, Bench_logging>>
-auto run_benchmark(const Benchmark& benchmark,
-		   Bench_stats stats=Bench_stats(),
-		   Bench_logging logging=Bench_logging(),
-		   Scheduler sched=Scheduler()) {
+	  template <typename, typename> typename Elastic=bench_elastic,
+	  typename Scheduler=minimal_scheduler<Bench_stats, Bench_logging, Elastic>>
+auto benchmark_nativefj(const Benchmark& benchmark,
+			Bench_stats stats=Bench_stats(),
+			Bench_logging logging=Bench_logging(),
+			Elastic<Bench_stats, Bench_logging> elastic=Elastic<Bench_stats, Bench_logging>(),
+			Scheduler sched=Scheduler()) {
   size_t repeat = 1;
   if (const auto env_p = std::getenv("TASKPARTS_BENCHMARK_NUM_REPEAT")) {
     repeat = std::stoi(env_p);
@@ -63,7 +72,7 @@ auto run_benchmark(const Benchmark& benchmark,
   auto timed_run = [&] {
     auto st = cycles::now();
     benchmark(sched);
-    return cycles::seconds_of(cycles::since(st));
+    return cycles::seconds_since(st);
   };
   initialize_machine();
   Bench_logging::initialize(false, true, true);
@@ -72,7 +81,7 @@ auto run_benchmark(const Benchmark& benchmark,
     if (warmup_secs >= 1) {
       printf("======== WARMUP ========\n");
       auto warmup_start = cycles::now();
-      while (cycles::seconds_of(cycles::since(warmup_start)).whole_part < warmup_secs) {
+      while (cycles::seconds_since(warmup_start).whole_part < warmup_secs) {
 	auto el = timed_run();
 	printf("warmup_run %lu.%lu\n", el.whole_part, el.fractional_part);
       }
@@ -103,7 +112,8 @@ auto run_benchmark(const Benchmark& benchmark,
   fiber<Scheduler>::add_edge(&f_body, f_term);
   f_body.release();
   f_term->release();
-  chase_lev_work_stealing_scheduler<Scheduler, fiber, Bench_stats, Bench_logging>::launch();
+  using cl = chase_lev_work_stealing_scheduler<Scheduler, fiber, Bench_stats, Bench_logging, Elastic>;
+  cl::launch();
   teardown_machine();
 }
 

@@ -16,14 +16,5 @@ auto compare_exchange_with_backoff(std::atomic<T>& cell, T& expected, T desired)
   cycles::spin_for(backoff_nb_cycles);
   return false;
 }
-
-static inline
-auto busywait_pause() {
-#if defined(TASKPARTS_X64)
-  __builtin_ia32_pause();
-#else
-#error need to declare platform (e.g., TASKPARTS_X64)
-#endif
-}
   
 } // end namespace

@@ -7,6 +7,15 @@
 
 namespace taskparts {
 
+static inline
+auto busywait_pause() {
+#if defined(TASKPARTS_X64)
+  __builtin_ia32_pause();
+#else
+#error need to declare platform (e.g., TASKPARTS_X64)
+#endif
+}
+
 /*---------------------------------------------------------------------*/
 /* Cycle counter */
 
@@ -28,7 +37,7 @@ static inline
 auto rdtsc_wait(uint64_t n) {
   const uint64_t start = rdtsc();
   while (rdtsc() < (start + n)) {
-    __asm__("PAUSE");
+    busywait_pause();
   }
 }
   

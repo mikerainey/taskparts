@@ -31,11 +31,10 @@ stdenv.mkDerivation rec {
   shellHook =
     let
       jemallocCfg = 
-        if jemalloc == null then ""
-        else ''export LD_PRELOAD="${jemalloc}/lib/libjemalloc.so"'';
+        if jemalloc == null then "" else
+          ''export LD_PRELOAD="${jemalloc}/lib/libjemalloc.so"'';
       hwlocCfg =
-        if hwloc == null then ""
-        else ''
+        if hwloc == null then "" else ''
             export HWLOC_INCLUDE_PREFIX="-DTASKPARTS_HAVE_HWLOC -I${hwloc.dev}/include/"
             export HWLOC_LIBRARY_PREFIX="-L${hwloc.lib}/lib/ -lhwloc"
             # the line below is needed because otherwise taskparts may request more

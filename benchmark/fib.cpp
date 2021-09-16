@@ -12,7 +12,7 @@ namespace taskparts {
 auto bench_fib() {
   int64_t n = 45;
   int64_t dst;
-  run_benchmark([&] (auto sched){
+  benchmark_nativefj([&] (auto sched){
     dst = fib_oracleguided(n, sched);
     printf("result %lu\n",dst);
   });

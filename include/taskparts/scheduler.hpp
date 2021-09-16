@@ -120,12 +120,12 @@ auto kind_of(event_tag_type e) -> event_kind_type {
     case enter_algo:
     case exit_algo:
     case enter_wait:
-    case exit_wait:                return phases;
+    case exit_wait:
     case enter_sleep:
     case failed_to_sleep:
     case exit_sleep:
     case wake_child:
-    case algo_phase:                
+    case algo_phase:                return phases;
     case worker_exit:
     case initiate_teardown:
     case program_point:             return program;

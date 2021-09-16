@@ -146,6 +146,18 @@ public:
 	print_ftr();
         break;
       }
+      case enter_sleep:
+      case exit_sleep: {
+	print_hdr();
+	print_json_string("name", "sleep");
+	print_json_string("cat", "SCHED");
+	print_json_string("ph", (tag == enter_sleep) ? "B" : "E");
+	print_json_number("pid", 0);
+	print_json_number("tid", worker_id);
+	print_json_number("ts", ns, true);
+	print_ftr();
+        break;
+      }
       default: {
         break;
       }

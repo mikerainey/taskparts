@@ -1,9 +1,15 @@
-INSTALL_FOLDER=bin
+# binaries go here:
+INSTALL_PATH=bin
+# root folder of taskparts repository:
 TASKPARTS_PATH=../
+# Other parameters:
+#   HWLOC_INCLUDE_PREFIX           include directives for hwloc (optionally empty)
+#   HWLOC_LIBRARY_PREFIX           linker directives for hwloc (optionally empty)
+#   TASKPARTS_ELASTIC_PREFIX       build configuration for elastic work stealing
 
 .PHONY: install_folder
 install_folder:
-	mkdir -p $(INSTALL_FOLDER)
+	mkdir -p $(INSTALL_PATH)
 
 TASKPARTS_INCLUDE_PATH=$(TASKPARTS_PATH)/include/
 TASKPARTS_POSIX_INCLUDE_PATH=$(TASKPARTS_INCLUDE_PATH)/taskparts/posix
@@ -12,7 +18,7 @@ TASKPARTS_BENCHMARK_PATH=.
 TASKPARTS_EXAMPLE_PATH=../example
 
 INCLUDE_FILES=\
-	$(wildcard $(TASKPARTS_INCLUDE_PATH)/*.hpp) \
+	$(wildcard $(TASKPARTS_INCLUDE_PATH)/taskparts/*.hpp) \
 	$(wildcard $(TASKPARTS_POSIX_INCLUDE_PATH)/*.hpp) \
 	$(wildcard $(TASKPARTS_X64_INCLUDE_PATH)/*.hpp) \
 	$(wildcard $(TASKPARTS_BENCHMARK_PATH)/*.hpp) \
@@ -33,7 +39,8 @@ COMMON_COMPILE_PREFIX=\
 	-m64 \
 	-fno-stack-protector \
 	-DTASKPARTS_POSIX \
-	-DTASKPARTS_X64
+	-DTASKPARTS_X64 \
+	$(TASKPARTS_ELASTIC_PREFIX)
 
 OPT_COMPILE_PREFIX=\
 	$(COMMON_COMPILE_PREFIX) \
@@ -58,23 +65,29 @@ DBG_PREFIX=\
 	-DTASKPARTS_STATS \
 	-DTASKPARTS_LOG
 
+# Binaries for native fork join
+# -----------------------------
+
 %.opt: %.cpp $(INCLUDE_FILES) install_folder
-	$(CXX) $(OPT_PREFIX) -o $(INSTALL_FOLDER)/$@ $< $(LINKER_PREFIX)
+	$(CXX) $(OPT_PREFIX) -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
 %.sta: %.cpp $(INCLUDE_FILES) install_folder
-	$(CXX) $(STA_PREFIX) -o $(INSTALL_FOLDER)/$@ $< $(LINKER_PREFIX)
+	$(CXX) $(STA_PREFIX) -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
 %.log: %.cpp $(INCLUDE_FILES) install_folder
-	$(CXX) $(LOG_PREFIX) -o $(INSTALL_FOLDER)/$@ $< $(LINKER_PREFIX)
+	$(CXX) $(LOG_PREFIX) -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
 %.dbg: %.cpp $(INCLUDE_FILES) install_folder
-	$(CXX) $(DBG_PREFIX) -o $(INSTALL_FOLDER)/$@ $< $(LINKER_PREFIX)
+	$(CXX) $(DBG_PREFIX) -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+
+# Binaries for tpal, task parallel assembly language
+# --------------------------------------------------
 
 %.tpalopt: %.cpp $(INCLUDE_FILES) install_folder
-	$(CXX) $(OPT_PREFIX) $(basename $<)_manual.s -o $(INSTALL_FOLDER)/$@ $< $(LINKER_PREFIX)
+	$(CXX) $(OPT_PREFIX) $(basename $<)_manual.s -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
 %.tpalsta: %.cpp $(INCLUDE_FILES) install_folder
-	$(CXX) $(STA_PREFIX) $(basename $<)_manual.s -o $(INSTALL_FOLDER)/$@ $< $(LINKER_PREFIX)
+	$(CXX) $(STA_PREFIX) $(basename $<)_manual.s -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
 %.tpallog: %.cpp $(INCLUDE_FILES) install_folder
-	$(CXX) $(LOG_PREFIX) $(basename $<)_manual.s -o $(INSTALL_FOLDER)/$@ $< $(LINKER_PREFIX)
+	$(CXX) $(LOG_PREFIX) $(basename $<)_manual.s -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
 %.tpaldbg: %.cpp $(INCLUDE_FILES) install_folder
-	$(CXX) $(DBG_PREFIX) $(basename $<)_manual.s -o $(INSTALL_FOLDER)/$@ $< $(LINKER_PREFIX)
+	$(CXX) $(DBG_PREFIX) $(basename $<)_manual.s -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
 
 clean:
 	rm -rf bin
