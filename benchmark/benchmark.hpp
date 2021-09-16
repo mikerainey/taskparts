@@ -65,6 +65,7 @@ auto run_benchmark(const Benchmark& benchmark,
     benchmark(sched);
     return cycles::seconds_of(cycles::since(st));
   };
+  initialize_machine();
   Bench_logging::initialize(false, true, true);
   Bench_stats::start_collecting();
   nativefj_from_lambda f_body([&] {
@@ -103,6 +104,7 @@ auto run_benchmark(const Benchmark& benchmark,
   f_body.release();
   f_term->release();
   chase_lev_work_stealing_scheduler<Scheduler, fiber, Bench_stats, Bench_logging>::launch();
+  teardown_machine();
 }
 
 } // end namespace
