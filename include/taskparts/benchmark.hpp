@@ -49,16 +49,28 @@ using bench_elastic = elastic<Stats, Logging>;
 template <typename Stats, typename Logging>
 using bench_elastic = minimal_elastic<Stats, Logging>;
 #endif
+
+#ifdef TASKPARTS_TPALRTS
+using bench_worker = minimal_worker;
+using bench_interrupt = minimal_interrupt;
+#else
+using bench_worker = ping_thread_worker;
+using bench_interrupt = ping_thread_interrupt;
+#endif
   
 template <typename Benchmark,
 	  typename Bench_stats=bench_stats,
 	  typename Bench_logging=bench_logging,
 	  template <typename, typename> typename Bench_elastic=bench_elastic,
-	  typename Scheduler=minimal_scheduler<Bench_stats, Bench_logging, Bench_elastic>>
+	  typename Bench_worker=bench_worker,
+	  typename Bench_interrupt=bench_interrupt,
+	  typename Scheduler=minimal_scheduler<Bench_stats, Bench_logging, Bench_elastic, Bench_worker, Bench_interrupt>>
 auto benchmark_nativeforkjoin(const Benchmark& benchmark,
 			      Bench_stats stats=Bench_stats(),
 			      Bench_logging logging=Bench_logging(),
 			      Bench_elastic<Bench_stats, Bench_logging> elastic=Bench_elastic<Bench_stats, Bench_logging>(),
+			      Bench_worker worker=Bench_worker(),
+			      Bench_interrupt interrupt=Bench_interrupt(),
 			      Scheduler sched=Scheduler()) {
   size_t repeat = 1;
   if (const auto env_p = std::getenv("TASKPARTS_BENCHMARK_NUM_REPEAT")) {
@@ -111,7 +123,7 @@ auto benchmark_nativeforkjoin(const Benchmark& benchmark,
   fiber<Scheduler>::add_edge(&f_body, f_term);
   f_body.release();
   f_term->release();
-  using cl = chase_lev_work_stealing_scheduler<Scheduler, fiber, Bench_stats, Bench_logging, Bench_elastic>;
+  using cl = chase_lev_work_stealing_scheduler<Scheduler, fiber, Bench_stats, Bench_logging, Bench_elastic, Bench_worker, Bench_interrupt>;
   cl::launch();
   teardown_machine();
 }
