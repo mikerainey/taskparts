@@ -22,7 +22,7 @@ static
 perworker::array<pthread_t> pthreads;
 
 template <typename Body, typename Initialize_worker, typename Destroy_worker>
-void launch_interrupt_worker_thread(std::size_t id, const Body& b,
+void launch_interrupt_worker_thread(size_t id, const Body& b,
 				    const Initialize_worker& initialize_worker,
 				    const Destroy_worker& destroy_worker) {
   auto b2 = [id, &b, &initialize_worker, &destroy_worker] {
@@ -48,7 +48,7 @@ class ping_thread_worker {
 public:
 
   static
-  void initialize(std::size_t nb_workers) { }
+  void initialize(size_t nb_workers) { }
 
   static
   void destroy() { }
@@ -73,7 +73,7 @@ public:
 
   template <typename Body>
   static
-  void launch_worker_thread(std::size_t id, const Body& b) {
+  void launch_worker_thread(size_t id, const Body& b) {
     launch_interrupt_worker_thread(id, b, [] { initialize_worker(); }, [] { });
   }
   
@@ -113,7 +113,7 @@ public:
   }
   
   static
-  void launch_ping_thread(std::size_t nb_workers) {
+  void launch_ping_thread(size_t nb_workers) {
     auto kappa_usec = get_kappa_usec();
     auto pthreadsp = &pthreads;
     auto statusp = &ping_thread_status;
@@ -148,7 +148,7 @@ public:
           taskparts_die("read timer");
           return;
         }
-        for (std::size_t i = 0; i < nb_workers; ++i) {
+        for (size_t i = 0; i < nb_workers; ++i) {
           pthread_kill(pthreads[i], SIGUSR1);
         }
       }
@@ -178,7 +178,7 @@ class pthread_direct_worker {
 public:
 
   static
-  void initialize(std::size_t nb_workers) { }
+  void initialize(size_t nb_workers) { }
 
   static
   void destroy() { }
@@ -219,7 +219,7 @@ public:
   
   template <typename Body>
   static
-  void launch_worker_thread(std::size_t id, const Body& b) {
+  void launch_worker_thread(size_t id, const Body& b) {
     launch_interrupt_worker_thread(id, b,
 				   [] { initialize_worker(); },
 				   [] { timer_delete(timerid.mine()); });
@@ -279,7 +279,7 @@ public:
   void wait_to_terminate_ping_thread() { }
   
   static
-  void launch_ping_thread(std::size_t nb_workers) { }
+  void launch_ping_thread(size_t nb_workers) { }
   
 };
 
@@ -312,7 +312,7 @@ public:
   perworker::array<int> event_set;
 
   static
-  void initialize(std::size_t nb_workers) { }
+  void initialize(size_t nb_workers) { }
 
   static
   void destroy() { }
@@ -359,7 +359,7 @@ public:
 
   template <typename Body>
   static
-  void launch_worker_thread(std::size_t id, const Body& b) {
+  void launch_worker_thread(size_t id, const Body& b) {
     launch_interrupt_worker_thread(id, b,
 				   [] { initialize_worker(); },
 				   [] { destroy_worker(); });

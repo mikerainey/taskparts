@@ -273,5 +273,64 @@ public:
   auto launch_ping_thread(size_t) { }
 
 };
-  
+
+/*---------------------------------------------------------------------*/
+/* Scheduler interface */
+
+template <typename Scheduler,
+          template <typename> typename Fiber,
+          typename Stats, typename Logging,
+          template <typename, typename> typename Elastic,
+          typename Worker,
+          typename Interrupt>
+void schedule(Fiber<Scheduler>* f);
+
+template <typename Scheduler,
+	  template <typename> typename Fiber,
+	  typename Stats, typename Logging,
+	  template <typename, typename> typename Elastic,
+	  typename Worker,
+	  typename Interrupt>
+Fiber<Scheduler>* take();
+
+  template <typename Scheduler,
+	    template <typename> typename Fiber,
+	    typename Stats, typename Logging,
+	    template <typename, typename> typename Elastic,
+	    typename Worker,
+	    typename Interrupt>
+void commit();
+
+template <typename Stats=minimal_stats, typename Logging=minimal_logging,
+	  template <typename, typename> typename Elastic=minimal_elastic,
+	  typename Worker=minimal_worker,
+	  typename Interrupt=minimal_interrupt>
+class minimal_scheduler {
+public:
+
+  template <template <typename> typename Fiber>
+  static
+  void schedule(Fiber<minimal_scheduler>* f) {
+    taskparts::schedule<minimal_scheduler, Fiber, Stats, Logging, Elastic, Worker, Interrupt>(f);
+  }
+
+  template <template <typename> typename Fiber>
+  static
+  Fiber<minimal_scheduler>* take() {
+    return taskparts::take<minimal_scheduler, Fiber, Stats, Logging, Elastic, Worker, Interrupt>();
+  }
+
+  template <template <typename> typename Fiber>
+  static
+  void commit(Fiber<minimal_scheduler>*) {
+    taskparts::commit<minimal_scheduler, Fiber, Stats, Logging, Elastic, Worker, Interrupt>();
+  }
+
+  static
+  auto on_new_fiber() {
+    Stats::on_new_fiber();
+  }
+
+};
+
 } // end namespace
