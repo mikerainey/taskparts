@@ -51,11 +51,11 @@ using bench_elastic = minimal_elastic<Stats, Logging>;
 #endif
 
 #ifdef TASKPARTS_TPALRTS
-using bench_worker = minimal_worker;
-using bench_interrupt = minimal_interrupt;
-#else
 using bench_worker = ping_thread_worker;
 using bench_interrupt = ping_thread_interrupt;
+#else
+using bench_worker = minimal_worker;
+using bench_interrupt = minimal_interrupt;
 #endif
   
 template <typename Benchmark,
