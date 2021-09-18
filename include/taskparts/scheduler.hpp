@@ -275,7 +275,7 @@ public:
 };
 
 /*---------------------------------------------------------------------*/
-/* Scheduler interface */
+/* Schedulers */
 
 template <typename Scheduler,
           template <typename> typename Fiber,
