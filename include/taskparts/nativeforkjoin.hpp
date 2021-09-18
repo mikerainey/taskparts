@@ -13,7 +13,7 @@ namespace taskparts {
 /*---------------------------------------------------------------------*/
 /* Fork join using conventional C/C++ calling conventions */
 
-template <typename Scheduler>
+template <typename Scheduler=minimal_scheduler<>>
 class nativefj_fiber : public fiber<Scheduler> {
 public:
 
@@ -183,7 +183,7 @@ char nativefj_fiber<Scheduler>::marker3;
 template <typename Scheduler>
 perworker::array<nativefj_fiber<Scheduler>*> nativefj_fiber<Scheduler>::current_fiber(nullptr);
 
-template <typename F, typename Scheduler>
+template <typename F, typename Scheduler=minimal_scheduler<>>
 class nativefj_from_lambda : public nativefj_fiber<Scheduler> {
 public:
 
@@ -198,14 +198,14 @@ public:
   
 };
 
-template <typename F1, typename F2, typename Scheduler>
+template <typename F1, typename F2, typename Scheduler=minimal_scheduler<>>
 auto fork2join(const F1& f1, const F2& f2, Scheduler sched=Scheduler()) {
   nativefj_from_lambda fb1(f1, sched);
   nativefj_from_lambda fb2(f2, sched);
   nativefj_fiber<Scheduler>::fork2(&fb1, &fb2);
 }
 
-template <typename Worker_reset, typename Global_reset, typename Scheduler>
+template <typename Worker_reset, typename Global_reset, typename Scheduler=minimal_scheduler<>>
 auto reset(Worker_reset worker_reset, Global_reset global_reset, Scheduler sched=Scheduler()) {
   nativefj_fiber<Scheduler>::reset(worker_reset, global_reset);  
 }
