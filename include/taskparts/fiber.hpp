@@ -11,8 +11,8 @@ namespace taskparts {
 /*---------------------------------------------------------------------*/
 /* Fibers */
 
-template <typename Scheduler>
-class fiber {
+template <typename Scheduler=minimal_scheduler<>>
+class fiber : public minimal_fiber<Scheduler> {
 private:
 
   alignas(TASKPARTS_CACHE_LINE_SZB)
@@ -28,7 +28,7 @@ private:
 public:
 
   fiber(Scheduler _sched=Scheduler())
-    : incounter(1), outedge(nullptr) {
+    : minimal_fiber<Scheduler>(), incounter(1), outedge(nullptr) {
     Scheduler::on_new_fiber();
   }
 
@@ -94,7 +94,7 @@ public:
  * would be affecting worker-local and global scheduler memory.
  */
 
-template <typename Worker_reset, typename Global_reset, typename Scheduler>
+template <typename Worker_reset, typename Global_reset, typename Scheduler=minimal_scheduler<>>
 class reset_fiber : public fiber<Scheduler> {
 public:
 
@@ -212,7 +212,7 @@ public:
  * scheduler. 
  */
   
-template <typename Scheduler>
+template <typename Scheduler=minimal_scheduler<>>
 class terminal_fiber : public fiber<Scheduler> {
 public:
   

@@ -205,39 +205,9 @@ public:
 };
 
 /*---------------------------------------------------------------------*/
-/* Fibers */
-
-using fiber_status_type = enum fiber_status_enum {
-  fiber_status_continue,
-  fiber_status_pause,
-  fiber_status_finish,
-  fiber_status_exit_launch
-};
-
-template <typename Scheduler>
-class minimal_fiber {
-public:
-
-  virtual
-  fiber_status_type exec() {
-    return fiber_status_exit_launch;
-  }
-
-  virtual
-  void finish() {
-    delete this;
-  }
-
-  auto is_ready() -> bool {
-    return true;
-  }
-  
-};
-
-/*---------------------------------------------------------------------*/
 /* Elastic work stealing */
 
-template <typename Stats, typename Logging>
+template <typename Stats=minimal_stats, typename Logging=minimal_logging>
 class minimal_elastic {
 public:
 
@@ -331,6 +301,36 @@ public:
     Stats::on_new_fiber();
   }
 
+};
+
+/*---------------------------------------------------------------------*/
+/* Fibers */
+
+using fiber_status_type = enum fiber_status_enum {
+  fiber_status_continue,
+  fiber_status_pause,
+  fiber_status_finish,
+  fiber_status_exit_launch
+};
+
+template <typename Scheduler=minimal_scheduler<>>
+class minimal_fiber {
+public:
+
+  virtual
+  fiber_status_type exec() {
+    return fiber_status_exit_launch;
+  }
+
+  virtual
+  void finish() {
+    delete this;
+  }
+
+  auto is_ready() -> bool {
+    return true;
+  }
+  
 };
 
 } // end namespace
