@@ -1,7 +1,11 @@
-#include "benchmark.hpp"
-#include "tpalrts.hpp"
+#include "taskparts/benchmark.hpp"
+#include "taskparts/tpalrts.hpp"
 
 #include "sum_array_rollforward_decls.hpp"
+
+namespace taskparts {
+using scheduler = minimal_scheduler<bench_stats, bench_logging, bench_elastic, bench_worker, bench_interrupt>;
+} // end name
 
 void sum_array_heartbeat(double* a, uint64_t lo, uint64_t hi, double r, double* dst);
 
@@ -20,30 +24,30 @@ int sum_array_heartbeat_handler(double* a, uint64_t lo, uint64_t hi, double r, d
   auto fj = [&] {
     *dst = r + dst1 + dst2;
   };
-  taskparts::nativefj_from_lambda<decltype(f1), taskparts::tpalrts> fb1(f1);
-  taskparts::nativefj_from_lambda<decltype(f2), taskparts::tpalrts> fb2(f2);
-  taskparts::nativefj_from_lambda<decltype(fj), taskparts::tpalrts> fbj(fj);
-  auto cfb = taskparts::nativefj_fiber<taskparts::tpalrts>::current_fiber.mine();
+  taskparts::nativefj_from_lambda<decltype(f1), taskparts::scheduler> fb1(f1);
+  taskparts::nativefj_from_lambda<decltype(f2), taskparts::scheduler> fb2(f2);
+  taskparts::nativefj_from_lambda<decltype(fj), taskparts::scheduler> fbj(fj);
+  auto cfb = taskparts::nativefj_fiber<taskparts::scheduler>::current_fiber.mine();
   cfb->status = taskparts::fiber_status_pause;
-  taskparts::fiber<taskparts::tpalrts>::add_edge(&fb1, &fbj);
-  taskparts::fiber<taskparts::tpalrts>::add_edge(&fb2, &fbj);
-  taskparts::fiber<taskparts::tpalrts>::add_edge(&fbj, cfb);
+  taskparts::fiber<taskparts::scheduler>::add_edge(&fb1, &fbj);
+  taskparts::fiber<taskparts::scheduler>::add_edge(&fb2, &fbj);
+  taskparts::fiber<taskparts::scheduler>::add_edge(&fbj, cfb);
   fb1.release();
   fb2.release();
   fbj.release();
-  if (taskparts::context::capture<taskparts::nativefj_fiber<taskparts::tpalrts>*>(taskparts::context::addr(cfb->ctx))) {
+  if (taskparts::context::capture<taskparts::nativefj_fiber<taskparts::scheduler>*>(taskparts::context::addr(cfb->ctx))) {
     return 1;
   }
-  fb1.stack = taskparts::nativefj_fiber<taskparts::tpalrts>::notownstackptr;
+  fb1.stack = taskparts::nativefj_fiber<taskparts::scheduler>::notownstackptr;
   fb1.swap_with_scheduler();
   fb1.run();
-  auto f = taskparts::tpalrts::take<taskparts::nativefj_fiber>();
+  auto f = taskparts::scheduler::take<taskparts::nativefj_fiber>();
   if (f == nullptr) {
     cfb->status = taskparts::fiber_status_finish;
     cfb->exit_to_scheduler();
     return 1; // unreachable
   }
-  fb2.stack = taskparts::nativefj_fiber<taskparts::tpalrts>::notownstackptr;
+  fb2.stack = taskparts::nativefj_fiber<taskparts::scheduler>::notownstackptr;
   fb2.swap_with_scheduler();
   fb2.run();
   cfb->status = taskparts::fiber_status_finish;
@@ -69,10 +73,8 @@ int main() {
     a[i] = 1.0;
   }
 
-  taskparts::launchtpalrts([&] {
-    taskparts::run_benchmark([&] {
-      sum_array_heartbeat(a, 0, nb_items, 0.0, &result);
-    });
+  taskparts::benchmark_nativeforkjoin([&] (auto sched){
+    sum_array_heartbeat(a, 0, nb_items, 0.0, &result);
   });
   
   printf("result=%f\n",result);

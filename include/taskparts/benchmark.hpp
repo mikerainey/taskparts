@@ -8,6 +8,9 @@
 #include "taskparts/logging.hpp"
 #include "taskparts/elastic.hpp"
 #include "taskparts/nativeforkjoin.hpp"
+#ifdef TASKPARTS_TPALRTS
+#include "taskparts/tpalrts.hpp"
+#endif
 
 namespace taskparts {
 
