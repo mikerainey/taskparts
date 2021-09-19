@@ -28,9 +28,7 @@ private:
 public:
 
   fiber(Scheduler _sched=Scheduler())
-    : minimal_fiber<Scheduler>(), incounter(1), outedge(nullptr) {
-    Scheduler::on_new_fiber();
-  }
+    : minimal_fiber<Scheduler>(), incounter(1), outedge(nullptr) { }
 
   virtual
   ~fiber() {

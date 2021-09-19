@@ -296,7 +296,7 @@ public:
     taskparts::commit<minimal_scheduler, Fiber, Stats, Logging, Elastic, Worker, Interrupt>();
   }
 
-  static
+  static inline
   auto on_new_fiber() {
     Stats::on_new_fiber();
   }
@@ -316,6 +316,10 @@ using fiber_status_type = enum fiber_status_enum {
 template <typename Scheduler=minimal_scheduler<>>
 class minimal_fiber {
 public:
+
+  minimal_fiber() {
+    Scheduler::on_new_fiber();
+  }
 
   virtual
   fiber_status_type exec() {
