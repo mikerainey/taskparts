@@ -13,7 +13,7 @@ namespace taskparts {
 
 template <typename Scheduler=minimal_scheduler<>>
 class fiber : public minimal_fiber<Scheduler> {
-private:
+protected:
 
   alignas(TASKPARTS_CACHE_LINE_SZB)
   std::atomic<std::size_t> incounter;
@@ -33,7 +33,7 @@ public:
   virtual
   ~fiber() {
     assert(outedge == nullptr);
-  }
+  } 
 
   virtual
   fiber_status_type run() = 0;

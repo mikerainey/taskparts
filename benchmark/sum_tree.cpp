@@ -3,89 +3,55 @@
 #include <functional>
 #include <stdio.h>
 
-#include "taskparts/chaselev.hpp"
-#include "taskparts/tpalrts.hpp"
-
+#include "taskparts/benchmark.hpp"
 #include "sum_tree_rollforward_decls.hpp"
 
 namespace taskparts {
-template <typename Scheduler>
-class fiber {
-public:
+using scheduler = minimal_scheduler<bench_stats, bench_logging, bench_elastic, bench_worker, bench_interrupt>;
 
-  alignas(TASKPARTS_CACHE_LINE_SZB)
-  std::atomic<std::size_t> incounter;
-
-  fiber() : incounter(1) { }
-
-  virtual
-  fiber_status_type exec() {
-    return fiber_status_exit_launch;
-  }
-
-  virtual
-  void finish() {
-    delete this;
-  }
-
-  auto is_ready() -> bool {
-    return true;
-  }
-
-  auto schedule() {
-    Scheduler::schedule(this);
-  }
-
-};
-
-using tpalrts = minimal_scheduler<minimal_stats, minimal_logging, minimal_elastic,
-				  ping_thread_worker, ping_thread_interrupt>;
-using my_scheduler = chase_lev_work_stealing_scheduler<tpalrts, fiber,
-						       minimal_stats, minimal_logging, minimal_elastic,
-						       ping_thread_worker, ping_thread_interrupt>;
-
-void initialize() {
+auto initialize_rollforward() {
   rollforward_table = {
     #include "sum_tree_rollforward_map.hpp"
   };
   initialize_rollfoward_table();
-  initialize_machine();
 }
-
-void destroy() {
-  teardown_machine();
-}
-
 } // end namespace
 
-class task : public taskparts::fiber<taskparts::tpalrts> {
+class task : public taskparts::fiber<taskparts::scheduler> {
 public:
 
   std::function<void()> f;
 
   task(std::function<void()> f) : fiber(), f(f) { }
 
-  taskparts::fiber_status_type exec() {
+  taskparts::fiber_status_type run() {
     f();
-    return taskparts::fiber_status_exit_launch;
+    return taskparts::fiber_status_finish;
+  }
+
+  void finish() {
+    if (outedge != nullptr) {
+      notify();
+    }
+    delete this;
+  }
+
+  void incr_incounter() {
+    fiber::incounter++;
   }
   
 };
 
-void join(void* _t) {
-  task* t = (task*)_t;
-  auto in = --t->incounter;
-  if (in == 0) {
-    t->schedule();
-  }
+void release(task* t) {
+  t->release();
 }
 
-void release(task* t) {
-  join(t);
+void join(void* t) {
+  release((task*)t);
 }
 
 void fork(task* t, task* k) {
-  k->incounter++;
+  k->incr_incounter();
   release(t);
 }
 
@@ -143,8 +109,6 @@ public:
 extern
 void sum_heartbeat(node* n, std::vector<vhbkont>& k, int prmlfr, int prmlbk);
 
-void sum_serial(node* n);
-
 auto prmlist_pop_front(std::vector<vhbkont>& k, int prmlfr, int prmlbk) -> std::pair<int, int> {
   int prev = prmlfr;
   int next = k[prev].u.k1.next;
@@ -159,6 +123,7 @@ auto prmlist_pop_front(std::vector<vhbkont>& k, int prmlfr, int prmlbk) -> std::
 }
 
 std::pair<int, int> sum_tree_heartbeat_handler(std::vector<vhbkont>& k, int prmlfr, int prmlbk) {
+      return std::make_pair(prmlfr, prmlbk);
   if (prmlfr == nullprml) {
     return std::make_pair(prmlfr, prmlbk);
   }
@@ -185,7 +150,7 @@ std::pair<int, int> sum_tree_heartbeat_handler(std::vector<vhbkont>& k, int prml
 }
 
 int main() {
-  taskparts::initialize();
+  taskparts::initialize_rollforward();
   
   auto ns = std::vector<node*>(
     { 
@@ -193,23 +158,21 @@ int main() {
       new node(123),
       new node(1, new node(2), nullptr),
       new node(1, nullptr, new node(2)),  
-      new node(1, new node(200), new node(3)), 
+      new node(1, new node(200), new node(3)),
       new node(1, new node(2), new node(3, new node(4), new node(5))),
       new node(1, new node(3, new node(4), new node(5)), new node(2)),
     });
   for (auto n : ns) {
     answer = -1;
-    
-    auto f_body = new task([&] {
-      std::vector<vhbkont> k({vhbkont(K3)});
-      sum_heartbeat(n, k, nullprml, nullprml);
-    });
-    join(f_body);
-    taskparts::my_scheduler::launch();
-    taskparts::destroy();
 
-    //sum_serial(n);
-    printf("answer=%d\n",answer);
+    taskparts::benchmark_nativeforkjoin([&] (auto sched) {
+      taskparts::nativefj_fiber<decltype(sched)>::fork1join(new task([&] {
+	std::vector<vhbkont> k({vhbkont(K3)});
+	sum_heartbeat(n, k, nullprml, nullprml);
+      }));
+    });
+
+    printf("answer=%d\n", answer);
   }
   return 0;
 }

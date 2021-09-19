@@ -1,5 +1,4 @@
 #include "taskparts/benchmark.hpp"
-
 #include "sum_array_rollforward_decls.hpp"
 
 namespace taskparts {
@@ -72,7 +71,7 @@ int main() {
     a[i] = 1.0;
   }
 
-  taskparts::benchmark_nativeforkjoin([&] (auto sched){
+  taskparts::benchmark_nativeforkjoin([&] (auto sched) {
     sum_array_heartbeat(a, 0, nb_items, 0.0, &result);
   });
   
