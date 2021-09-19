@@ -293,12 +293,12 @@ template <typename Scheduler,
 	  typename Interrupt>
 Fiber<Scheduler>* take();
 
-  template <typename Scheduler,
-	    template <typename> typename Fiber,
-	    typename Stats, typename Logging,
-	    template <typename, typename> typename Elastic,
-	    typename Worker,
-	    typename Interrupt>
+template <typename Scheduler,
+	  template <typename> typename Fiber,
+	  typename Stats, typename Logging,
+	  template <typename, typename> typename Elastic,
+	  typename Worker,
+	  typename Interrupt>
 void commit();
 
 template <typename Stats=minimal_stats, typename Logging=minimal_logging,
