@@ -31,8 +31,6 @@ public:
   static constexpr
   char* after_reset = &marker3;
 
-  char* tmp_stack = nullptr;
-
   static
   perworker::array<nativefj_fiber*> current_fiber;
 
@@ -40,6 +38,8 @@ public:
 
   // pointer to the call stack of this thread
   char* stack = nullptr;
+
+  char* tmp_stack = nullptr;
   
   // CPU context of this thread
   context::context_type ctx;
