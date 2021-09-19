@@ -146,7 +146,7 @@ public:
 };
 
 static constexpr
-int dflt_buffer_capacity = 16;
+int dflt_buffer_capacity = (1 << 10);
 
 template <class Item, int capacity=dflt_buffer_capacity>
 using ringbuffer = ringbuffer_idx<inline_allocator<Item, capacity>>;

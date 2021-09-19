@@ -150,7 +150,8 @@ public:
 
   using deque_type = chase_lev_deque<fiber_type>;
 
-  using buffer_type = ringbuffer<fiber_type*>;
+  // warning: can overflow currently if size gets above 1k
+  using buffer_type = ringbuffer<fiber_type*>; // later: make it resizeable?
 
   using elastic_type = Elastic<Stats, Logging>;
 

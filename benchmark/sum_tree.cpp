@@ -63,6 +63,8 @@ public:
   node* left;
   node* right;
 
+  node()
+    : value(1), left(nullptr), right(nullptr) { }
   node(int value)
     : value(value), left(nullptr), right(nullptr) { }
   node(int value, node* left, node* right)
@@ -148,11 +150,53 @@ std::pair<int, int> sum_tree_heartbeat_handler(std::vector<vhbkont>& k, int prml
   return std::make_pair(prmlfr, prmlbk);
 }
 
+auto nb_nodes_of_height(size_t h) {
+  return (1 << (h + 1)) - 1;
+};
+
+auto fill(node* tree, size_t h, size_t i) -> void {
+  if (h <= 0) {
+    return;
+  }
+  node* n = &tree[i];
+  size_t i_l = i + 1;
+  size_t i_r = i_l + nb_nodes_of_height(h - 1);
+  n->left = &tree[i_l];
+  n->right = &tree[i_r];
+  fill(tree, h - 1, i_l);
+  fill(tree, h - 1, i_r);
+};
+
+auto gen_perfect_tree(size_t height) -> node* {
+  size_t nb_nodes = nb_nodes_of_height(height);
+  node* tree = new node[nb_nodes];
+  fill(tree, height, 0);
+  return tree;
+}
+
+void sum_serial(node* n);
+
 int main() {
   taskparts::initialize_rollforward();
+
+  auto n0 = gen_perfect_tree(28);
+
+  taskparts::benchmark_nativeforkjoin([&] (auto sched) {
+    // todo: figure out why it's reporting elapsed time of zero 
+    taskparts::nativefj_fiber<decltype(sched)>::fork1join(new task([&] {
+      std::vector<vhbkont> k({vhbkont(K3)});
+      sum_heartbeat(n0, k, nullprml, nullprml);
+      //sum_serial(n0);
+    }));
+  });
   
+  printf("answer=%d\n", answer);
+  
+  delete [] n0;
+    
+    /*
   auto ns = std::vector<node*>(
-    { 
+    {
       nullptr,
       new node(123),
       new node(1, new node(2), nullptr),
@@ -167,11 +211,14 @@ int main() {
     taskparts::benchmark_nativeforkjoin([&] (auto sched) {
       taskparts::nativefj_fiber<decltype(sched)>::fork1join(new task([&] {
 	std::vector<vhbkont> k({vhbkont(K3)});
-	sum_heartbeat(n, k, nullprml, nullprml);
+	//sum_heartbeat(n, k, nullprml, nullprml);
+	sum_serial(n);
       }));
     });
 
     printf("answer=%d\n", answer);
   }
+    */
+  
   return 0;
 }
