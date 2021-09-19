@@ -123,7 +123,6 @@ auto prmlist_pop_front(std::vector<vhbkont>& k, int prmlfr, int prmlbk) -> std::
 }
 
 std::pair<int, int> sum_tree_heartbeat_handler(std::vector<vhbkont>& k, int prmlfr, int prmlbk) {
-      return std::make_pair(prmlfr, prmlbk);
   if (prmlfr == nullprml) {
     return std::make_pair(prmlfr, prmlbk);
   }
