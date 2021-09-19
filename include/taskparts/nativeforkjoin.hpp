@@ -29,7 +29,7 @@ public:
   char* notownstackptr = &marker2;
 
   static constexpr
-  char* after_reset = &marker3;
+  char* after_yield = &marker3;
 
   static
   perworker::array<nativefj_fiber*> current_fiber;
@@ -50,7 +50,7 @@ public:
     if ((stack == nullptr) || (stack == notownstackptr)) {
       return;
     }
-    assert(stack != after_reset);
+    assert(stack != after_yield);
     auto s = stack;
     stack = nullptr;
     free(s);
@@ -80,7 +80,7 @@ public:
       // initial entry by the scheduler into the body of this thread
       stack = context::spawn(context::addr(ctx), this);
     }
-    if (stack == after_reset) {
+    if (stack == after_yield) {
       status = fiber_status_finish;
       stack = tmp_stack;      
     }
@@ -102,9 +102,25 @@ public:
 
   void finish() {
     fiber<Scheduler>::notify();
-  } 
+  }
 
-  auto _fork2(nativefj_fiber* f1, nativefj_fiber* f2) {
+  auto _fork1join(fiber<Scheduler>* f) {
+    tmp_stack = stack;
+    stack = after_yield;
+    fiber<Scheduler>::add_edge(f, this);
+    status = fiber_status_pause;
+    f->release();
+    swap_with_scheduler();
+  }
+
+  static
+  auto fork1join(fiber<Scheduler>* f) {
+    auto _f = current_fiber.mine();
+    assert(_f != nullptr);
+    _f->_fork1join(f);
+  }
+
+  auto _fork2join(nativefj_fiber* f1, nativefj_fiber* f2) {
     status = fiber_status_pause;
     fiber<Scheduler>::add_edge(f2, this);
     fiber<Scheduler>::add_edge(f1, this);
@@ -144,21 +160,15 @@ public:
   }
 
   static inline
-  auto fork2(nativefj_fiber* f1, nativefj_fiber* f2) {
+  auto fork2join(nativefj_fiber* f1, nativefj_fiber* f2) {
     auto f = current_fiber.mine();
     assert(f != nullptr);
-    f->_fork2(f1, f2);
+    f->_fork2join(f1, f2);
   }
-
+  
   template <typename Worker_reset, typename Global_reset>
   auto _reset(Worker_reset worker_reset, Global_reset global_reset) {
-    tmp_stack = stack;
-    stack = after_reset;
-    auto f = new reset_fiber(worker_reset, global_reset, Scheduler());
-    fiber<Scheduler>::add_edge(f, this);
-    status = fiber_status_pause;
-    f->release();
-    swap_with_scheduler();
+    fork1join(new reset_fiber(worker_reset, global_reset, Scheduler()));
   }
 
   template <typename Worker_reset, typename Global_reset>
@@ -182,6 +192,16 @@ char nativefj_fiber<Scheduler>::marker3;
 
 template <typename Scheduler>
 perworker::array<nativefj_fiber<Scheduler>*> nativefj_fiber<Scheduler>::current_fiber(nullptr);
+  
+template <template <typename> typename Fiber, typename Scheduler=minimal_scheduler<>>
+auto fork1fiberjoin(Fiber<Scheduler>* f, Scheduler sched=Scheduler()) {
+  nativefj_fiber<Scheduler>::fork1join(f);
+}
+
+template <typename Worker_reset, typename Global_reset, typename Scheduler=minimal_scheduler<>>
+auto reset(Worker_reset worker_reset, Global_reset global_reset, Scheduler sched=Scheduler()) {
+  nativefj_fiber<Scheduler>::reset(worker_reset, global_reset);  
+}
 
 template <typename F, typename Scheduler=minimal_scheduler<>>
 class nativefj_from_lambda : public nativefj_fiber<Scheduler> {
@@ -202,12 +222,7 @@ template <typename F1, typename F2, typename Scheduler=minimal_scheduler<>>
 auto fork2join(const F1& f1, const F2& f2, Scheduler sched=Scheduler()) {
   nativefj_from_lambda fb1(f1, sched);
   nativefj_from_lambda fb2(f2, sched);
-  nativefj_fiber<Scheduler>::fork2(&fb1, &fb2);
+  nativefj_fiber<Scheduler>::fork2join(&fb1, &fb2);
 }
 
-template <typename Worker_reset, typename Global_reset, typename Scheduler=minimal_scheduler<>>
-auto reset(Worker_reset worker_reset, Global_reset global_reset, Scheduler sched=Scheduler()) {
-  nativefj_fiber<Scheduler>::reset(worker_reset, global_reset);  
-}
-  
 } // end namespace

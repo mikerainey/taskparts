@@ -9,8 +9,8 @@ int main() {
   int64_t dst;
   taskparts::benchmark_nativeforkjoin([&] (auto sched) {
     dst = fib_oracleguided(n, sched);
-    printf("result %lu\n",dst);
   });
+  printf("result %lu\n",dst);
   assert(dst == fib_sequential(n));
   return 0;
 }
