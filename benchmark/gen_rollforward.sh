@@ -2,7 +2,7 @@
 
 # arg1: benchmark name, arg2 : label prefix
 
-g++ gen_rollforward.cpp -o gen_rollforward
+$CXX gen_rollforward.cpp -o gen_rollforward
 
 file=$1
 file_orig="$1_orig.s"
