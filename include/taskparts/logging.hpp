@@ -254,11 +254,11 @@ public:
       real_time = std::stoi(env_p);
     }
     tracking_kind[phases] = true;
-    if (const auto env_p = std::getenv("TASKPARTS_LOGGING_REALTIME")) {
+    if (const auto env_p = std::getenv("TASKPARTS_LOGGING_PHASES")) {
       tracking_kind[phases] = std::stoi(env_p);
     }
     tracking_kind[fibers] = false;
-    if (const auto env_p = std::getenv("TASKPARTS_LOGGING_REALTIME")) {
+    if (const auto env_p = std::getenv("TASKPARTS_LOGGING_FIBERS")) {
       tracking_kind[fibers] = std::stoi(env_p);
     }
     reset();
