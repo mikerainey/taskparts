@@ -4,24 +4,24 @@
 # use GCC instead, use the following:
 #   $ nix-shell --arg stdenv '(import <nixpkgs> {}).stdenv'
 #
-# If you don't want to use jemalloc:
-#   $ nix-shell --arg jemalloc null
-# For full debugging:
-#   $ nix-shell --arg stdenv '(import <nixpkgs> {}).stdenv' --arg jemalloc null
+# If you don'want to use jemalloc:
+#   $ nix-shell --arg jemalloc '(import <nixpkgs> {}).jemalloc450'
 
 { pkgs   ? import <nixpkgs> {},
   stdenv ? pkgs.clangStdenv,
   hwloc ? pkgs.hwloc,
-  jemalloc ? pkgs.jemalloc450
+  jemalloc ? null, # pkgs.jemalloc450
+  valgrind ? pkgs.valgrind
 }:
 
 stdenv.mkDerivation rec {
-  name = "taskparts-benchmark";
+  name = "taskparts-debug";
 
   buildInputs =
     [ hwloc ]
-    ++ (if jemalloc == null then [] else [ jemalloc ]);
-  
+    ++ (if jemalloc == null then [] else [ jemalloc ])
+    ++ (if valgrind == null then [] else [ valgrind ]);
+
   # jemalloc configuration
   LD_PRELOAD=if jemalloc == null then "" else "${jemalloc}/lib/libjemalloc.so";
   
@@ -34,5 +34,6 @@ stdenv.mkDerivation rec {
     # with the per-core pinning.
     export TASKPARTS_NUM_WORKERS=$( ${hwloc}/bin/hwloc-ls|grep Core|wc -l );
   '';
+  
   
 }
