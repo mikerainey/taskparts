@@ -7,7 +7,7 @@
 #include <algorithm>
 #include <memory>
 
-#include "scheduler.hpp"
+#include "scheduler.hpp" // logging events are defined here
 #include "machine.hpp"
 #include "diagnostics.hpp"
 
@@ -22,8 +22,6 @@
 
 namespace taskparts {
 
-// logging events defined in mcsl_scheduler.hpp
-
 using program_point_type = struct program_point_struct {
   
   int line_nb;
@@ -34,15 +32,13 @@ using program_point_type = struct program_point_struct {
       
 };
 
-static constexpr
-program_point_type dflt_ppt = { .line_nb = -1, .source_fname = nullptr, .ptr = nullptr };
-
-uint64_t basetime;
-
 class event_type {
 public:
+
+  static
+  uint64_t base_time;
   
-  uint64_t cyclecount;
+  uint64_t cycle_count;
   
   event_tag_type tag;
   
@@ -70,7 +66,7 @@ public:
   } extra;
             
   void print_text(FILE* f) {
-    auto s = cycles::seconds_of(cycles::diff(basetime, cyclecount));
+    auto s = cycles::seconds_of(cycles::diff(base_time, cycle_count));
     fprintf(f, "%lu.%lu\t%ld\t%s\t", s.whole_part, s.fractional_part, worker_id, name_of(tag).c_str());
     switch (tag) {
       case program_point: {
@@ -119,7 +115,13 @@ public:
     auto print_ftr = [&] {
       fprintf(f, "}%s", (last ? "\n" : ",\n"));
     };
-    auto ns = cycles::nanoseconds_of(cycles::diff(basetime, cyclecount));
+    auto ns = cycles::nanoseconds_of(cycles::diff(base_time, cycle_count));
+    auto print_end = [&] {
+      print_json_number("pid", 0);
+      print_json_number("tid", worker_id);
+      print_json_number("ts", ns, true);
+      print_ftr();
+    };
     switch (tag) {
       case enter_wait:
       case exit_wait: {
@@ -127,10 +129,7 @@ public:
 	print_json_string("name", "idle");
 	print_json_string("cat", "SCHED");
 	print_json_string("ph", (tag == enter_wait) ? "B" : "E");
-	print_json_number("pid", 0);
-	print_json_number("tid", worker_id);
-	print_json_number("ts", ns, true);
-	print_ftr();
+	print_end();
         break;
       }
       case enter_launch:
@@ -139,11 +138,8 @@ public:
 	print_json_string("name", (tag == enter_launch) ? "launch_begin" : "launch_end");
 	print_json_string("cat", "SCHED");
 	print_json_string("ph", "i");
-	print_json_number("pid", 0);
-	print_json_number("tid", worker_id);
-	print_json_number("ts", ns);
-	print_json_string("s", "g", true);
-	print_ftr();
+	print_json_string("s", "g");
+	print_end();
         break;
       }
       case enter_sleep:
@@ -152,10 +148,18 @@ public:
 	print_json_string("name", "sleep");
 	print_json_string("cat", "SCHED");
 	print_json_string("ph", (tag == enter_sleep) ? "B" : "E");
-	print_json_number("pid", 0);
-	print_json_number("tid", worker_id);
-	print_json_number("ts", ns, true);
-	print_ftr();
+	print_end();
+        break;
+      }
+      case program_point: {
+	print_hdr();
+	std::string const cstr = extra.ppt.source_fname;
+	auto n = cstr + ":" + std::to_string(extra.ppt.line_nb) + " " + std::to_string((size_t)extra.ppt.ptr);
+	print_json_string("cat", "PPT");
+	print_json_string("name", n.c_str());
+	print_json_string("ph", "i");
+	print_json_string("s", "t");
+	print_end();
         break;
       }
       default: {
@@ -166,14 +170,13 @@ public:
 
 };
 
+uint64_t event_type::base_time;
+
 /*---------------------------------------------------------------------*/
 /* Log buffer */
   
 using buffer_type = std::deque<event_type>;
   
-static constexpr
-int max_nb_ppts = 50000;
-
 template <bool enabled>
 class logging_base {
 public:
@@ -186,13 +189,7 @@ public:
   
   static
   bool tracking_kind[nb_kinds];
-  
-  static
-  program_point_type ppts[max_nb_ppts];
-
-  static
-  int nb_ppts;
-    
+      
   static inline
   void push(event_type e) {
     if (! enabled) {
@@ -203,7 +200,7 @@ public:
     if (! tracking_kind[k]) {
       return;
     }
-    e.cyclecount = cycles::now();
+    e.cycle_count = cycles::now();
     e.worker_id = perworker::my_id();
     if (real_time) {
       acquire_print_lock();
@@ -244,6 +241,14 @@ public:
     push(e);
   }
 
+  static inline
+  auto log_program_point(int line_nb, const char* source_fname, void* ptr) -> void {
+    program_point_type ppt = { .line_nb = line_nb, .source_fname = source_fname, .ptr = ptr };
+    event_type e(program_point);
+    e.extra.ppt = ppt;
+    push(e);
+  }
+
   static
   void initialize() {
     if (! enabled) {
@@ -261,6 +266,14 @@ public:
     if (const auto env_p = std::getenv("TASKPARTS_LOGGING_FIBERS")) {
       tracking_kind[fibers] = std::stoi(env_p);
     }
+    tracking_kind[migration] = false;    
+    if (const auto env_p = std::getenv("TASKPARTS_LOGGING_MIGRATION")) {
+      tracking_kind[migration] = std::stoi(env_p);
+    }
+    tracking_kind[program] = false;
+    if (const auto env_p = std::getenv("TASKPARTS_LOGGING_PROGRAM")) {
+      tracking_kind[program] = std::stoi(env_p);
+    }
     reset();
   }
 
@@ -269,7 +282,7 @@ public:
     for (auto id = 0; id != perworker::nb_workers(); id++) {
       buffers[id].clear();
     }
-    basetime = cycles::now();
+    event_type::base_time = cycles::now();
     push(event_type(enter_launch));
   }
 
@@ -295,11 +308,6 @@ public:
       return;
     }
     push(event_type(exit_launch));
-    for (auto i = 0; i < nb_ppts; i++) {
-      event_type e(program_point);
-      e.extra.ppt = ppts[i];
-      push(e);
-    }
     buffer_type b;
     for (auto id = 0; id != perworker::nb_workers(); id++) {
       buffer_type& b_id = buffers[id];
@@ -308,7 +316,7 @@ public:
       }
     }
     std::stable_sort(b.begin(), b.end(), [] (const event_type& e1, const event_type& e2) {
-      return e1.cyclecount < e2.cyclecount;
+      return e1.cycle_count < e2.cycle_count;
     });
     output_json(b, fname);
   }
@@ -324,26 +332,4 @@ bool logging_base<enabled>::tracking_kind[nb_kinds];
 template <bool enabled>
 bool logging_base<enabled>::real_time;
 
-template <bool enabled>
-int logging_base<enabled>::nb_ppts = 0;
-
-template <bool enabled>
-program_point_type logging_base<enabled>::ppts[max_nb_ppts];
-
-  /*
-static inline
-void log_program_point(int line_nb,
-                        const char* source_fname,
-                        void* ptr) {
-  if ((line_nb == -1) || (log_buffer::nb_ppts >= max_nb_ppts)) {
-    return;
-  }
-  program_point_type ppt;
-  ppt.line_nb = line_nb;
-  ppt.source_fname = source_fname;
-  ppt.ptr = ptr;
-  log_buffer::ppts[log_buffer::nb_ppts++] = ppt;
-}
-  */
-  
 } // end namespace

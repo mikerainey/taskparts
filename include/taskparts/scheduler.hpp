@@ -108,6 +108,7 @@ auto name_of(event_tag_type e) -> std::string {
     case worker_exit:       return "worker_exit ";
     case initiate_teardown: return "initiate_teardown";
     case algo_phase:        return "algo_phase ";
+    case program_point:        return "program_point ";
     default:                return "unknown_event ";
   }
 }
@@ -137,7 +138,7 @@ class minimal_logging {
 public:
 
   static
-  auto initialize(bool, bool, bool) { }
+  auto initialize() { }
 
   static
   auto reset() { }
@@ -153,6 +154,9 @@ public:
 
   static inline
   auto log_wake_child(size_t child_id) { }
+
+  static inline
+  auto log_program_point(int line_nb, const char* source_fname, void* ptr) { }
 
 };
 
@@ -301,7 +305,15 @@ public:
     Stats::on_new_fiber();
   }
 
+  static inline
+  auto log_program_point(int line_nb, const char* source_fname, void* ptr) {
+    Logging::log_program_point(line_nb, source_fname, ptr);
+  }
+  
 };
+
+#define TASKPARTS_LOG_PPT(scheduler, ptr) \
+  scheduler::log_program_point(__LINE__, __FILE__, ptr)
 
 /*---------------------------------------------------------------------*/
 /* Fibers */
