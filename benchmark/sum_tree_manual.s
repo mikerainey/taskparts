@@ -1620,26 +1620,6 @@
 .type  st399, @function
 .globl  st399_rf
 .type  st399_rf, @function
-.globl  st400
-.type  st400, @function
-.globl  st400_rf
-.type  st400_rf, @function
-.globl  st401
-.type  st401, @function
-.globl  st401_rf
-.type  st401_rf, @function
-.globl  st402
-.type  st402, @function
-.globl  st402_rf
-.type  st402_rf, @function
-.globl  st403
-.type  st403, @function
-.globl  st403_rf
-.type  st403_rf, @function
-.globl  st404
-.type  st404, @function
-.globl  st404_rf
-.type  st404_rf, @function
 _Z3sumP4nodeRSt6vectorI5vkontSaIS2_EE:
 st0:        pushq   %rbp
 st1:        pushq   %r15
@@ -1661,9 +1641,9 @@ st16:        jmp     .LBB0_2
 .LBB0_10:
 st17:        movl    $0, (%r13)
 st18:        movq    %r15, 8(%r13)
-st19:        movq    (%rdi), %rax
-st20:        addq    $24, %rax
-st21:        movq    %rdi, %rcx
+st19:        movq    %rdi, %rcx
+st20:        movq    (%rdi), %rax
+st21:        addq    $24, %rax
 .LBB0_18:
 st22:        movq    %rax, (%rcx)
 st23:        movq    8(%r15), %r15
@@ -1675,20 +1655,20 @@ st27:        cmpq    (%rbp), %r13
 st28:        jne     .LBB0_10
 st29:        movq    (%rsi), %rbx
 st30:        movq    %r13, %rax
-st31:        subq    %rbx, %rax
-st32:        movabsq $9223372036854775800, %rcx
+st31:        movabsq $9223372036854775800, %rcx
+st32:        subq    %rbx, %rax
 st33:        cmpq    %rcx, %rax
 st34:        je      .LBB0_20
 st35:        movq    %rax, %rbp
-st36:        sarq    $3, %rbp
-st37:        movabsq $-6148914691236517205, %rcx
+st36:        movabsq $-6148914691236517205, %rcx
+st37:        sarq    $3, %rbp
 st38:        imulq   %rcx, %rbp
 st39:        testq   %rax, %rax
-st40:        movq    %rbp, %rax
-st41:        movl    $1, %ecx
+st40:        movl    $1, %ecx
+st41:        movq    %rbp, %rax
 st42:        cmoveq  %rcx, %rax
-st43:        leaq    (%rax,%rbp), %r14
-st44:        movabsq $384307168202282325, %rcx
+st43:        movabsq $384307168202282325, %rcx
+st44:        leaq    (%rax,%rbp), %r14
 st45:        cmpq    %rcx, %r14
 st46:        cmovaq  %rcx, %r14
 st47:        addq    %rbp, %rax
@@ -1696,230 +1676,230 @@ st48:        cmovbq  %rcx, %r14
 st49:        leaq    (,%r14,8), %rax
 st50:        leaq    (%rax,%rax,2), %rdi
 st51:        callq   _Znwm
-st52:        leaq    (,%rbp,2), %rcx
-st53:        addq    %rbp, %rcx
-st54:        movq    %rax, %rbp
-st55:        movl    $0, (%rax,%rcx,8)
-st56:        movq    %r15, 8(%rax,%rcx,8)
-st57:        cmpq    %r13, %rbx
-st58:        movq    %rbx, %rdi
-st59:        movq    %rax, %r12
-st60:        je      .LBB0_15
-st61:        movq    %rdi, %rax
+st52:        leaq    (%rbp,%rbp,2), %rcx
+st53:        movq    %rax, %rbp
+st54:        movq    %rbx, %rdi
+st55:        movq    %rax, %r12
+st56:        movl    $0, (%rax,%rcx,8)
+st57:        movq    %r15, 8(%rax,%rcx,8)
+st58:        cmpq    %r13, %rbx
+st59:        je      .LBB0_15
+st60:        movq    %rdi, %rax
 .LBB0_14:
-st62:        movq    16(%rax), %rcx
-st63:        movq    %rcx, 16(%r12)
-st64:        movups  (%rax), %xmm0
-st65:        movups  %xmm0, (%r12)
-st66:        addq    $24, %rax
-st67:        addq    $24, %r12
-st68:        cmpq    %rax, %r13
-st69:        jne     .LBB0_14
+st61:        movq    16(%rax), %rcx
+st62:        movq    %rcx, 16(%r12)
+st63:        vmovups (%rax), %xmm0
+st64:        addq    $24, %rax
+st65:        vmovups %xmm0, (%r12)
+st66:        addq    $24, %r12
+st67:        cmpq    %rax, %r13
+st68:        jne     .LBB0_14
 .LBB0_15:
-st70:        addq    $24, %r12
-st71:        testq   %rdi, %rdi
-st72:        je      .LBB0_17
-st73:        callq   _ZdlPv
+st69:        addq    $24, %r12
+st70:        testq   %rdi, %rdi
+st71:        je      .LBB0_17
+st72:        callq   _ZdlPv
 .LBB0_17:
-st74:        movq    16(%rsp), %rsi
-st75:        movq    %rbp, (%rsi)
-st76:        movq    %r12, 8(%rsi)
-st77:        leaq    (%r14,%r14,2), %rax
-st78:        leaq    (,%rax,8), %rax
-st79:        addq    %rbp, %rax
-st80:        movq    (%rsp), %rbp
-st81:        movq    %rbp, %rcx
-st82:        movq    8(%rsp), %rdi
-st83:        jmp     .LBB0_18
+st73:        movq    16(%rsp), %rsi
+st74:        leaq    (%r14,%r14,2), %rax
+st75:        movq    8(%rsp), %rdi
+st76:        leaq    (%rbp,%rax,8), %rax
+st77:        movq    %rbp, (%rsi)
+st78:        movq    (%rsp), %rbp
+st79:        movq    %r12, 8(%rsi)
+st80:        movq    %rbp, %rcx
+st81:        jmp     .LBB0_18
 .LBB0_2:
-st84:        xorl    %eax, %eax
+st82:        xorl    %eax, %eax
 .LBB0_3:
-st85:        leaq    -24(%r13), %rcx
-st86:        movl    -24(%r13), %edx
+st83:        movl    -24(%r13), %edx
+st84:        leaq    -24(%r13), %rcx
 .LBB0_4:
-st87:        testl   %edx, %edx
-st88:        je      .LBB0_8
-st89:        cmpl    $2, %edx
-st90:        je      .LBB0_19
-st91:        cmpl    $1, %edx
-st92:        jne     .LBB0_4
-st93:        addl    -16(%r13), %eax
-st94:        movq    -8(%r13), %rdx
-st95:        addl    (%rdx), %eax
-st96:        movq    %rcx, (%rdi)
-st97:        movq    %rcx, %r13
-st98:        jmp     .LBB0_3
+st85:        testl   %edx, %edx
+st86:        je      .LBB0_8
+st87:        cmpl    $2, %edx
+st88:        je      .LBB0_19
+st89:        cmpl    $1, %edx
+st90:        jne     .LBB0_4
+st91:        movq    -8(%r13), %rdx
+st92:        addl    -16(%r13), %eax
+st93:        movq    %rcx, %r13
+st94:        addl    (%rdx), %eax
+st95:        movq    %rcx, (%rdi)
+st96:        jmp     .LBB0_3
 .LBB0_8:
-st99:        movq    -16(%r13), %rcx
-st100:        movq    16(%rcx), %r15
-st101:        movl    $1, -24(%r13)
-st102:        movl    %eax, -16(%r13)
-st103:        movq    %rcx, -8(%r13)
-st104:        movq    (%rdi), %r13
-st105:        testq   %r15, %r15
-st106:        jne     .LBB0_9
-st107:        jmp     .LBB0_2
+st97:        movq    -16(%r13), %rcx
+st98:        movq    16(%rcx), %r15
+st99:        movl    $1, -24(%r13)
+st100:        movl    %eax, -16(%r13)
+st101:        movq    %rcx, -8(%r13)
+st102:        movq    (%rdi), %r13
+st103:        testq   %r15, %r15
+st104:        jne     .LBB0_9
+st105:        jmp     .LBB0_2
 .LBB0_19:
-st108:        movl    %eax, answer(%rip)
-st109:        addq    $24, %rsp
-st110:        popq    %rbx
-st111:        popq    %r12
-st112:        popq    %r13
-st113:        popq    %r14
-st114:        popq    %r15
-st115:        popq    %rbp
-st116:        retq
+st106:        movl    %eax, answer(%rip)
+st107:        addq    $24, %rsp
+st108:        popq    %rbx
+st109:        popq    %r12
+st110:        popq    %r13
+st111:        popq    %r14
+st112:        popq    %r15
+st113:        popq    %rbp
+st114:        retq
 .LBB0_20:
-st117:        movl    $.L.str, %edi
-st118:        callq   _ZSt20__throw_length_errorPKc
-st119:
+st115:        movl    $.L.str, %edi
+st116:        callq   _ZSt20__throw_length_errorPKc
+st117:
 _Z10sum_serialP4node:
-st120:        pushq   %rbx
-st121:        subq    $48, %rsp
-st122:        movq    %rdi, %rbx
-st123:        movl    $24, %edi
-st124:        callq   _Znwm
-st125:        movq    %rax, (%rsp)
-st126:        leaq    24(%rax), %rcx
-st127:        movq    %rcx, 16(%rsp)
-st128:        movl    $2, (%rax)
-st129:        movl    44(%rsp), %edx
+st118:        pushq   %rbx
+st119:        subq    $48, %rsp
+st120:        movq    %rdi, %rbx
+st121:        movl    $24, %edi
+st122:        callq   _Znwm
+st123:        movl    44(%rsp), %edx
+st124:        vmovups 28(%rsp), %xmm0
+st125:        leaq    24(%rax), %rcx
+st126:        movl    $2, (%rax)
+st127:        movq    %rax, (%rsp)
+st128:        movq    %rcx, 16(%rsp)
+st129:        movq    %rcx, 8(%rsp)
 st130:        movl    %edx, 20(%rax)
-st131:        movups  28(%rsp), %xmm0
-st132:        movups  %xmm0, 4(%rax)
-st133:        movq    %rcx, 8(%rsp)
-st134:        movq    %rsp, %rsi
-st135:        movq    %rbx, %rdi
-st136:        callq   _Z3sumP4nodeRSt6vectorI5vkontSaIS2_EE
-st137:        movq    (%rsp), %rdi
-st138:        testq   %rdi, %rdi
-st139:        je      .LBB1_3
-st140:        callq   _ZdlPv
+st131:        vmovups %xmm0, 4(%rax)
+st132:        movq    %rsp, %rsi
+st133:        movq    %rbx, %rdi
+st134:        callq   _Z3sumP4nodeRSt6vectorI5vkontSaIS2_EE
+st135:        movq    (%rsp), %rdi
+st136:        testq   %rdi, %rdi
+st137:        je      .LBB1_3
+st138:        callq   _ZdlPv
 .LBB1_3:
-st141:        addq    $48, %rsp
-st142:        popq    %rbx
-st143:        retq
-st144:        movq    %rax, %rbx
-st145:        movq    (%rsp), %rdi
-st146:        testq   %rdi, %rdi
-st147:        je      .LBB1_6
-st148:        callq   _ZdlPv
+st139:        addq    $48, %rsp
+st140:        popq    %rbx
+st141:        retq
+st142:        movq    (%rsp), %rdi
+st143:        movq    %rax, %rbx
+st144:        testq   %rdi, %rdi
+st145:        je      .LBB1_6
+st146:        callq   _ZdlPv
 .LBB1_6:
-st149:        movq    %rbx, %rdi
-st150:        callq   _Unwind_Resume@PLT
-st151:
+st147:        movq    %rbx, %rdi
+st148:        callq   _Unwind_Resume@PLT
+st149:
 _Z17prmlist_push_backRSt6vectorI7vhbkontSaIS0_EEiii:
-st152:        movl    %esi, %eax
-st153:        cmpl    $-1, %edx
-st154:        je      .LBB2_2
-st155:        movslq  %edx, %rdx
-st156:        movq    (%rdi), %rsi
-st157:        shlq    $5, %rdx
-st158:        movl    %ecx, 20(%rsi,%rdx)
+st150:        movl    %esi, %eax
+st151:        cmpl    $-1, %edx
+st152:        je      .LBB2_2
+st153:        movq    (%rdi), %rsi
+st154:        movslq  %edx, %rdx
+st155:        shlq    $5, %rdx
+st156:        movl    %ecx, 20(%rsi,%rdx)
 .LBB2_2:
-st159:        cmpl    $-1, %eax
-st160:        cmovel  %ecx, %eax
-st161:        shlq    $32, %rcx
-st162:        orq     %rcx, %rax
-st163:        retq
-st164:
+st157:        cmpl    $-1, %eax
+st158:        cmovel  %ecx, %eax
+st159:        shlq    $32, %rcx
+st160:        orq     %rcx, %rax
+st161:        retq
+st162:
 _Z16prmlist_pop_backRSt6vectorI7vhbkontSaIS0_EEii:
-st165:        movslq  %edx, %rcx
-st166:        movq    (%rdi), %r8
-st167:        shlq    $5, %rcx
-st168:        movslq  16(%r8,%rcx), %rax
-st169:        cmpq    $-1, %rax
-st170:        je      .LBB3_1
-st171:        movq    %rax, %rdx
-st172:        shlq    $5, %rdx
-st173:        movl    $-1, 20(%r8,%rdx)
-st174:        movq    (%rdi), %rdx
-st175:        movl    $-1, 16(%rdx,%rcx)
-st176:        movl    %esi, %ecx
-st177:        shlq    $32, %rax
-st178:        orq     %rcx, %rax
-st179:        retq
+st163:        movq    (%rdi), %r8
+st164:        movslq  %edx, %rcx
+st165:        shlq    $5, %rcx
+st166:        movslq  16(%r8,%rcx), %rax
+st167:        cmpq    $-1, %rax
+st168:        je      .LBB3_1
+st169:        movq    %rax, %rdx
+st170:        shlq    $5, %rdx
+st171:        movl    $-1, 20(%r8,%rdx)
+st172:        movq    (%rdi), %rdx
+st173:        movl    $-1, 16(%rdx,%rcx)
+st174:        movl    %esi, %ecx
+st175:        shlq    $32, %rax
+st176:        orq     %rcx, %rax
+st177:        retq
 .LBB3_1:
-st180:        movl    $4294967295, %ecx
-st181:        shlq    $32, %rax
-st182:        orq     %rcx, %rax
-st183:        retq
-st184:
+st178:        movl    $4294967295, %ecx
+st179:        shlq    $32, %rax
+st180:        orq     %rcx, %rax
+st181:        retq
+st182:
 _Z13sum_heartbeatP4nodeRSt6vectorI7vhbkontSaIS2_EEii:
-st185:        pushq   %rbp
-st186:        pushq   %r15
-st187:        pushq   %r14
-st188:        pushq   %r13
-st189:        pushq   %r12
-st190:        pushq   %rbx
-st191:        subq    $24, %rsp
-st192:        movl    %ecx, %ebx
-st193:        movl    %edx, %r14d
-st194:        movq    %rsi, %r15
+st183:        pushq   %rbp
+st184:        pushq   %r15
+st185:        pushq   %r14
+st186:        pushq   %r13
+st187:        pushq   %r12
+st188:        pushq   %rbx
+st189:        subq    $24, %rsp
+st190:        movl    %ecx, %ebx
+st191:        movl    %edx, %r14d
+st192:        movq    %rsi, %r15
 .LBB4_1:
-st195:        nop
-st196:        jmp     .LBB4_2
-st197:        movq    %rdi, %rbp
-st198:        movq    %r15, %rdi
-st199:        movl    %r14d, %esi
-st200:        movl    %ebx, %edx
-st201:        callq   _Z26sum_tree_heartbeat_handlerRSt6vectorI7vhbkontSaIS0_EEii
+st193:        nop
+st194:        jmp      .LBB4_2
+st195:        movq    %rdi, %rbp
+st196:        movq    %r15, %rdi
+st197:        movl    %r14d, %esi
+st198:        movl    %ebx, %edx
+st199:        vzeroupper
+st200:        callq   _Z26sum_tree_heartbeat_handlerRSt6vectorI7vhbkontSaIS0_EEii
+st201:        movq    %rax, %r13
 st202:        movq    %rbp, %rdi
 st203:        movq    %rax, %r14
-st204:        movq    %rax, %r13
-st205:        shrq    $32, %r13
-st206:        testq   %rdi, %rdi
-st207:        je      .LBB4_5
-.LBB4_26:
-st208:        movq    8(%r15), %r12
-st209:        cmpq    16(%r15), %r12
-st210:        je      .LBB4_28
-st211:        movl    $0, (%r12)
-st212:        movq    %rdi, 8(%r12)
-st213:        movl    %r13d, 16(%r12)
-st214:        movl    $-1, 20(%r12)
+st204:        shrq    $32, %r13
+st205:        testq   %rdi, %rdi
+st206:        je      .LBB4_5
+.LBB4_24:
+st207:        movq    8(%r15), %r12
+st208:        cmpq    16(%r15), %r12
+st209:        je      .LBB4_26
+st210:        movl    $0, (%r12)
+st211:        movq    %rdi, 8(%r12)
+st212:        movl    %r13d, 16(%r12)
+st213:        movl    $-1, 20(%r12)
+st214:        movq    8(%r15), %rbx
 st215:        movq    (%r15), %rbp
-st216:        movq    8(%r15), %rbx
-st217:        addq    $32, %rbx
-st218:        movq    %rbx, 8(%r15)
-st219:        jmp     .LBB4_38
+st216:        addq    $32, %rbx
+st217:        movq    %rbx, 8(%r15)
+st218:        jmp     .LBB4_36
 .LBB4_2:
-st220:        movl    %ebx, %r13d
-st221:        testq   %rdi, %rdi
-st222:        jne     .LBB4_26
+st219:        movl    %ebx, %r13d
+st220:        testq   %rdi, %rdi
+st221:        jne     .LBB4_24
 .LBB4_5:
-st223:        nop
-st224:        jmp      .LBB4_11
-st225:        xorl    %ebp, %ebp
-st226:        movb    $1, %al
-st227:        jmp     .LBB4_7
-.LBB4_22:
-st228:        leaq    -32(%rax), %rcx
-st229:        addl    -24(%rax), %ebp
-st230:        movq    -16(%rax), %rax
-st231:        addl    (%rax), %ebp
-st232:        movq    %rcx, 8(%r15)
-.LBB4_23:
-st233:        nop
+st222:        nop
+st223:        jmp      .LBB4_11
+st224:        xorl    %ebp, %ebp
+st225:        movb    $1, %al
+st226:        jmp     .LBB4_7
+.LBB4_20:
+st227:        leaq    -32(%rax), %rcx
+st228:        addl    -24(%rax), %ebp
+st229:        movq    -16(%rax), %rax
+st230:        addl    (%rax), %ebp
+st231:        movq    %rcx, 8(%r15)
+.LBB4_21:
+st232:        nop
 .LBB4_7:
-st234:        testb   %al, %al
-st235:        jmp      .LBB4_9
-st236:        movq    %r15, %rdi
-st237:        movl    %r14d, %esi
-st238:        movl    %r13d, %edx
+st233:        nop
+st234:        jmp      .LBB4_9
+st235:        movq    %r15, %rdi
+st236:        movl    %r14d, %esi
+st237:        movl    %r13d, %edx
+st238:        vzeroupper
 st239:        callq   _Z26sum_tree_heartbeat_handlerRSt6vectorI7vhbkontSaIS0_EEii
-st240:        movq    %rax, %r14
-st241:        movq    %rax, %r13
+st240:        movq    %rax, %r13
+st241:        movq    %rax, %r14
 st242:        shrq    $32, %r13
 .LBB4_9:
 st243:        movq    8(%r15), %rax
 st244:        movl    -32(%rax), %ecx
 st245:        cmpq    $4, %rcx
-st246:        ja      .LBB4_23
+st246:        ja      .LBB4_21
 st247:        jmpq    *.LJTI4_0(,%rcx,8)
 .LBB4_16:
-st248:        movslq  %r13d, %rcx
-st249:        movq    (%r15), %rdx
+st248:        movq    (%r15), %rdx
+st249:        movslq  %r13d, %rcx
 st250:        shlq    $5, %rcx
 st251:        movslq  16(%rdx,%rcx), %rbx
 st252:        cmpq    $-1, %rbx
@@ -1929,19 +1909,19 @@ st255:        shlq    $5, %rsi
 st256:        movl    $-1, 20(%rdx,%rsi)
 st257:        movq    (%r15), %rdx
 st258:        movl    $-1, 16(%rdx,%rcx)
-st259:        jmp     .LBB4_25
-.LBB4_28:
+st259:        jmp     .LBB4_23
+.LBB4_26:
 st260:        movq    (%r15), %rdx
 st261:        movq    %r12, %rax
-st262:        subq    %rdx, %rax
-st263:        movabsq $9223372036854775776, %rcx
+st262:        movabsq $9223372036854775776, %rcx
+st263:        subq    %rdx, %rax
 st264:        cmpq    %rcx, %rax
 st265:        je      .LBB4_41
 st266:        movq    %rax, %rbx
-st267:        sarq    $5, %rbx
-st268:        testq   %rax, %rax
-st269:        movq    %rbx, %rax
-st270:        movl    $1, %ecx
+st267:        movl    $1, %ecx
+st268:        sarq    $5, %rbx
+st269:        testq   %rax, %rax
+st270:        movq    %rbx, %rax
 st271:        cmoveq  %rcx, %rax
 st272:        leaq    (%rax,%rbx), %rsi
 st273:        movq    %rsi, %rcx
@@ -1950,152 +1930,147 @@ st275:        movabsq $288230376151711743, %rcx
 st276:        cmovneq %rcx, %rsi
 st277:        addq    %rbx, %rax
 st278:        cmovbq  %rcx, %rsi
-st279:        testq   %rsi, %rsi
-st280:        movq    %rsi, 16(%rsp)
-st281:        je      .LBB4_30
+st279:        movq    %rsi, 16(%rsp)
+st280:        testq   %rsi, %rsi
+st281:        je      .LBB4_28
 st282:        movq    %rdi, 8(%rsp)
 st283:        movq    %rsi, %rdi
-st284:        shlq    $5, %rdi
-st285:        movq    %rdx, %rbp
-st286:        callq   _Znwm
-st287:        movq    %rbp, %rdx
+st284:        movq    %rdx, %rbp
+st285:        shlq    $5, %rdi
+st286:        vzeroupper
+st287:        callq   _Znwm
 st288:        movq    8(%rsp), %rdi
-st289:        movq    %rax, %rbp
-st290:        jmp     .LBB4_32
+st289:        movq    %rbp, %rdx
+st290:        movq    %rax, %rbp
+st291:        jmp     .LBB4_30
 .LBB4_11:
-st291:        movq    8(%r15), %rax
-st292:        xorl    %ebp, %ebp
+st292:        movq    8(%r15), %rax
+st293:        xorl    %ebp, %ebp
 .LBB4_12:
-st293:        leaq    -32(%rax), %rdx
 st294:        movl    -32(%rax), %ecx
+st295:        leaq    -32(%rax), %rdx
 .LBB4_13:
-st295:        cmpl    $4, %ecx
-st296:        ja      .LBB4_13
-st297:        movl    %ecx, %esi
-st298:        jmpq    *.LJTI4_1(,%rsi,8)
+st296:        cmpl    $4, %ecx
+st297:        ja      .LBB4_13
+st298:        movl    %ecx, %esi
+st299:        jmpq    *.LJTI4_1(,%rsi,8)
 .LBB4_15:
-st299:        addl    -24(%rax), %ebp
-st300:        movq    -16(%rax), %rax
-st301:        addl    (%rax), %ebp
-st302:        movq    %rdx, 8(%r15)
-st303:        movq    %rdx, %rax
-st304:        jmp     .LBB4_12
+st300:        addl    -24(%rax), %ebp
+st301:        movq    -16(%rax), %rax
+st302:        addl    (%rax), %ebp
+st303:        movq    %rdx, 8(%r15)
+st304:        movq    %rdx, %rax
+st305:        jmp     .LBB4_12
+.LBB4_28:
+st306:        xorl    %ebp, %ebp
 .LBB4_30:
-st305:        xorl    %ebp, %ebp
+st307:        shlq    $5, %rbx
+st308:        movl    $0, (%rbp,%rbx)
+st309:        movq    %rdi, 8(%rbp,%rbx)
+st310:        movl    %r13d, 16(%rbp,%rbx)
+st311:        movl    $-1, 20(%rbp,%rbx)
+st312:        movq    %rbp, %rbx
+st313:        cmpq    %r12, %rdx
+st314:        je      .LBB4_33
+st315:        movq    %rbp, %rbx
+st316:        movq    %rdx, %rax
 .LBB4_32:
-st306:        shlq    $5, %rbx
-st307:        movl    $0, (%rbp,%rbx)
-st308:        movq    %rdi, 8(%rbp,%rbx)
-st309:        movl    %r13d, 16(%rbp,%rbx)
-st310:        movl    $-1, 20(%rbp,%rbx)
-st311:        movq    %rbp, %rbx
-st312:        cmpq    %r12, %rdx
-st313:        je      .LBB4_35
-st314:        movq    %rbp, %rbx
-st315:        movq    %rdx, %rax
-.LBB4_34:
-st316:        movups  (%rax), %xmm0
-st317:        movups  16(%rax), %xmm1
-st318:        movups  %xmm1, 16(%rbx)
-st319:        movups  %xmm0, (%rbx)
-st320:        addq    $32, %rax
-st321:        addq    $32, %rbx
-st322:        cmpq    %rax, %r12
-st323:        jne     .LBB4_34
-.LBB4_35:
-st324:        addq    $32, %rbx
-st325:        testq   %rdx, %rdx
-st326:        je      .LBB4_37
-st327:        movq    %rdi, %r12
-st328:        movq    %rdx, %rdi
+st317:        vmovups (%rax), %ymm0
+st318:        addq    $32, %rax
+st319:        vmovups %ymm0, (%rbx)
+st320:        addq    $32, %rbx
+st321:        cmpq    %rax, %r12
+st322:        jne     .LBB4_32
+.LBB4_33:
+st323:        addq    $32, %rbx
+st324:        testq   %rdx, %rdx
+st325:        je      .LBB4_35
+st326:        movq    %rdi, %r12
+st327:        movq    %rdx, %rdi
+st328:        vzeroupper
 st329:        callq   _ZdlPv
 st330:        movq    %r12, %rdi
-.LBB4_37:
-st331:        movq    %rbp, (%r15)
-st332:        movq    %rbx, 8(%r15)
-st333:        movq    16(%rsp), %rax
+.LBB4_35:
+st331:        movq    16(%rsp), %rax
+st332:        movq    %rbp, (%r15)
+st333:        movq    %rbx, 8(%r15)
 st334:        shlq    $5, %rax
 st335:        addq    %rbp, %rax
 st336:        movq    %rax, 16(%r15)
-.LBB4_38:
+.LBB4_36:
 st337:        subq    %rbp, %rbx
 st338:        shrq    $5, %rbx
-st339:        addl    $-1, %ebx
+st339:        decl    %ebx
 st340:        cmpl    $-1, %r13d
-st341:        je      .LBB4_40
+st341:        je      .LBB4_38
 st342:        movslq  %r13d, %rax
 st343:        shlq    $5, %rax
 st344:        movl    %ebx, 20(%rbp,%rax)
-.LBB4_40:
-st345:        cmpl    $-1, %r14d
-st346:        cmovel  %ebx, %r14d
-st347:        movq    8(%rdi), %rdi
+.LBB4_38:
+st345:        movq    8(%rdi), %rdi
+st346:        cmpl    $-1, %r14d
+st347:        cmovel  %ebx, %r14d
 st348:        jmp     .LBB4_1
 .LBB4_17:
 st349:        movl    $-1, %r14d
-.LBB4_25:
+.LBB4_23:
 st350:        movq    -24(%rax), %rcx
 st351:        movq    16(%rcx), %rdi
 st352:        movl    $1, -32(%rax)
 st353:        movl    %ebp, -24(%rax)
 st354:        movq    %rcx, -16(%rax)
 st355:        jmp     .LBB4_1
-.LBB4_19:
-st356:        xorl    %edx, %edx
-st357:        cmpl    $3, %ecx
-st358:        setne   %dl
-st359:        movq    -24(%rax), %rcx
-st360:        movl    %ebp, (%rcx,%rdx,4)
+.LBB4_18:
+st356:        movq    -24(%rax), %rsi
+st357:        xorl    %edx, %edx
+st358:        cmpl    $3, %ecx
+st359:        setne   %dl
+st360:        movl    %ebp, (%rsi,%rdx,4)
 st361:        movq    -16(%rax), %rdi
-st362:        jne     .LBB4_21
+st362:        jne     .LBB4_40
 st363:        movq    -8(%rax), %rcx
-st364:        movups  (%rcx), %xmm0
-st365:        movq    16(%rcx), %rdx
-st366:        movq    (%r15), %rsi
+st364:        movq    (%r15), %rsi
+st365:        vmovups (%rcx), %xmm0
+st366:        movq    16(%rcx), %rdx
 st367:        movq    %rsi, (%rcx)
 st368:        movq    %rax, 8(%rcx)
 st369:        movq    16(%r15), %rax
 st370:        movq    %rax, 16(%rcx)
-st371:        movups  %xmm0, (%r15)
+st371:        vmovups %xmm0, (%r15)
 st372:        movq    %rdx, 16(%r15)
-.LBB4_21:
-st373:        addq    $24, %rsp
-st374:        popq    %rbx
-st375:        popq    %r12
-st376:        popq    %r13
-st377:        popq    %r14
-st378:        popq    %r15
-st379:        popq    %rbp
-st380:        jmp     _Z4joinPv
-.LBB4_18:
-st381:        movl    %ebp, answer(%rip)
-st382:        addq    $24, %rsp
-st383:        popq    %rbx
-st384:        popq    %r12
-st385:        popq    %r13
-st386:        popq    %r14
-st387:        popq    %r15
-st388:        popq    %rbp
-st389:        retq
+st373:        jmp     .LBB4_40
+.LBB4_39:
+st374:        movl    %ebp, answer(%rip)
+st375:        movq    -24(%rax), %rdi
+.LBB4_40:
+st376:        addq    $24, %rsp
+st377:        popq    %rbx
+st378:        popq    %r12
+st379:        popq    %r13
+st380:        popq    %r14
+st381:        popq    %r15
+st382:        popq    %rbp
+st383:        vzeroupper
+st384:        jmp     _Z4joinPv
 .LBB4_41:
-st390:        movl    $.L.str, %edi
-st391:        callq   _ZSt20__throw_length_errorPKc
+st385:        movl    $.L.str, %edi
+st386:        vzeroupper
+st387:        callq   _ZSt20__throw_length_errorPKc
 .LJTI4_0:
-st392:        .quad   .LBB4_16
-st393:        .quad   .LBB4_22
-st394:        .quad   .LBB4_18
-st395:        .quad   .LBB4_19
-st396:        .quad   .LBB4_19
+st388:        .quad   .LBB4_16
+st389:        .quad   .LBB4_20
+st390:        .quad   .LBB4_39
+st391:        .quad   .LBB4_18
+st392:        .quad   .LBB4_18
 .LJTI4_1:
-st397:        .quad   .LBB4_16
-st398:        .quad   .LBB4_15
-st399:        .quad   .LBB4_18
-st400:        .quad   .LBB4_19
-st401:        .quad   .LBB4_19
-st402:
+st393:        .quad   .LBB4_16
+st394:        .quad   .LBB4_15
+st395:        .quad   .LBB4_39
+st396:        .quad   .LBB4_18
+st397:        .quad   .LBB4_18
+st398:
 .L.str:
-st403:        .asciz  "vector::_M_realloc_insert"
-st404:	
+st399:        .asciz  "vector::_M_realloc_insert"
 
 _Z3sumP4nodeRSt6vectorI5vkontSaIS2_EE_rf:
 st0_rf:        pushq   %rbp
@@ -2118,9 +2093,9 @@ st16_rf:        jmp     .LBB0_2_rf
 .LBB0_10_rf:
 st17_rf:        movl    $0, (%r13)
 st18_rf:        movq    %r15, 8(%r13)
-st19_rf:        movq    (%rdi), %rax
-st20_rf:        addq    $24, %rax
-st21_rf:        movq    %rdi, %rcx
+st19_rf:        movq    %rdi, %rcx
+st20_rf:        movq    (%rdi), %rax
+st21_rf:        addq    $24, %rax
 .LBB0_18_rf:
 st22_rf:        movq    %rax, (%rcx)
 st23_rf:        movq    8(%r15), %r15
@@ -2132,20 +2107,20 @@ st27_rf:        cmpq    (%rbp), %r13
 st28_rf:        jne     .LBB0_10_rf
 st29_rf:        movq    (%rsi), %rbx
 st30_rf:        movq    %r13, %rax
-st31_rf:        subq    %rbx, %rax
-st32_rf:        movabsq $9223372036854775800, %rcx
+st31_rf:        movabsq $9223372036854775800, %rcx
+st32_rf:        subq    %rbx, %rax
 st33_rf:        cmpq    %rcx, %rax
 st34_rf:        je      .LBB0_20_rf
 st35_rf:        movq    %rax, %rbp
-st36_rf:        sarq    $3, %rbp
-st37_rf:        movabsq $-6148914691236517205, %rcx
+st36_rf:        movabsq $-6148914691236517205, %rcx
+st37_rf:        sarq    $3, %rbp
 st38_rf:        imulq   %rcx, %rbp
 st39_rf:        testq   %rax, %rax
-st40_rf:        movq    %rbp, %rax
-st41_rf:        movl    $1, %ecx
+st40_rf:        movl    $1, %ecx
+st41_rf:        movq    %rbp, %rax
 st42_rf:        cmoveq  %rcx, %rax
-st43_rf:        leaq    (%rax,%rbp), %r14
-st44_rf:        movabsq $384307168202282325, %rcx
+st43_rf:        movabsq $384307168202282325, %rcx
+st44_rf:        leaq    (%rax,%rbp), %r14
 st45_rf:        cmpq    %rcx, %r14
 st46_rf:        cmovaq  %rcx, %r14
 st47_rf:        addq    %rbp, %rax
@@ -2153,230 +2128,230 @@ st48_rf:        cmovbq  %rcx, %r14
 st49_rf:        leaq    (,%r14,8), %rax
 st50_rf:        leaq    (%rax,%rax,2), %rdi
 st51_rf:        callq   _Znwm
-st52_rf:        leaq    (,%rbp,2), %rcx
-st53_rf:        addq    %rbp, %rcx
-st54_rf:        movq    %rax, %rbp
-st55_rf:        movl    $0, (%rax,%rcx,8)
-st56_rf:        movq    %r15, 8(%rax,%rcx,8)
-st57_rf:        cmpq    %r13, %rbx
-st58_rf:        movq    %rbx, %rdi
-st59_rf:        movq    %rax, %r12
-st60_rf:        je      .LBB0_15_rf
-st61_rf:        movq    %rdi, %rax
+st52_rf:        leaq    (%rbp,%rbp,2), %rcx
+st53_rf:        movq    %rax, %rbp
+st54_rf:        movq    %rbx, %rdi
+st55_rf:        movq    %rax, %r12
+st56_rf:        movl    $0, (%rax,%rcx,8)
+st57_rf:        movq    %r15, 8(%rax,%rcx,8)
+st58_rf:        cmpq    %r13, %rbx
+st59_rf:        je      .LBB0_15_rf
+st60_rf:        movq    %rdi, %rax
 .LBB0_14_rf:
-st62_rf:        movq    16(%rax), %rcx
-st63_rf:        movq    %rcx, 16(%r12)
-st64_rf:        movups  (%rax), %xmm0
-st65_rf:        movups  %xmm0, (%r12)
-st66_rf:        addq    $24, %rax
-st67_rf:        addq    $24, %r12
-st68_rf:        cmpq    %rax, %r13
-st69_rf:        jne     .LBB0_14_rf
+st61_rf:        movq    16(%rax), %rcx
+st62_rf:        movq    %rcx, 16(%r12)
+st63_rf:        vmovups (%rax), %xmm0
+st64_rf:        addq    $24, %rax
+st65_rf:        vmovups %xmm0, (%r12)
+st66_rf:        addq    $24, %r12
+st67_rf:        cmpq    %rax, %r13
+st68_rf:        jne     .LBB0_14_rf
 .LBB0_15_rf:
-st70_rf:        addq    $24, %r12
-st71_rf:        testq   %rdi, %rdi
-st72_rf:        je      .LBB0_17_rf
-st73_rf:        callq   _ZdlPv
+st69_rf:        addq    $24, %r12
+st70_rf:        testq   %rdi, %rdi
+st71_rf:        je      .LBB0_17_rf
+st72_rf:        callq   _ZdlPv
 .LBB0_17_rf:
-st74_rf:        movq    16(%rsp), %rsi
-st75_rf:        movq    %rbp, (%rsi)
-st76_rf:        movq    %r12, 8(%rsi)
-st77_rf:        leaq    (%r14,%r14,2), %rax
-st78_rf:        leaq    (,%rax,8), %rax
-st79_rf:        addq    %rbp, %rax
-st80_rf:        movq    (%rsp), %rbp
-st81_rf:        movq    %rbp, %rcx
-st82_rf:        movq    8(%rsp), %rdi
-st83_rf:        jmp     .LBB0_18_rf
+st73_rf:        movq    16(%rsp), %rsi
+st74_rf:        leaq    (%r14,%r14,2), %rax
+st75_rf:        movq    8(%rsp), %rdi
+st76_rf:        leaq    (%rbp,%rax,8), %rax
+st77_rf:        movq    %rbp, (%rsi)
+st78_rf:        movq    (%rsp), %rbp
+st79_rf:        movq    %r12, 8(%rsi)
+st80_rf:        movq    %rbp, %rcx
+st81_rf:        jmp     .LBB0_18_rf
 .LBB0_2_rf:
-st84_rf:        xorl    %eax, %eax
+st82_rf:        xorl    %eax, %eax
 .LBB0_3_rf:
-st85_rf:        leaq    -24(%r13), %rcx
-st86_rf:        movl    -24(%r13), %edx
+st83_rf:        movl    -24(%r13), %edx
+st84_rf:        leaq    -24(%r13), %rcx
 .LBB0_4_rf:
-st87_rf:        testl   %edx, %edx
-st88_rf:        je      .LBB0_8_rf
-st89_rf:        cmpl    $2, %edx
-st90_rf:        je      .LBB0_19_rf
-st91_rf:        cmpl    $1, %edx
-st92_rf:        jne     .LBB0_4_rf
-st93_rf:        addl    -16(%r13), %eax
-st94_rf:        movq    -8(%r13), %rdx
-st95_rf:        addl    (%rdx), %eax
-st96_rf:        movq    %rcx, (%rdi)
-st97_rf:        movq    %rcx, %r13
-st98_rf:        jmp     .LBB0_3_rf
+st85_rf:        testl   %edx, %edx
+st86_rf:        je      .LBB0_8_rf
+st87_rf:        cmpl    $2, %edx
+st88_rf:        je      .LBB0_19_rf
+st89_rf:        cmpl    $1, %edx
+st90_rf:        jne     .LBB0_4_rf
+st91_rf:        movq    -8(%r13), %rdx
+st92_rf:        addl    -16(%r13), %eax
+st93_rf:        movq    %rcx, %r13
+st94_rf:        addl    (%rdx), %eax
+st95_rf:        movq    %rcx, (%rdi)
+st96_rf:        jmp     .LBB0_3_rf
 .LBB0_8_rf:
-st99_rf:        movq    -16(%r13), %rcx
-st100_rf:        movq    16(%rcx), %r15
-st101_rf:        movl    $1, -24(%r13)
-st102_rf:        movl    %eax, -16(%r13)
-st103_rf:        movq    %rcx, -8(%r13)
-st104_rf:        movq    (%rdi), %r13
-st105_rf:        testq   %r15, %r15
-st106_rf:        jne     .LBB0_9_rf
-st107_rf:        jmp     .LBB0_2_rf
+st97_rf:        movq    -16(%r13), %rcx
+st98_rf:        movq    16(%rcx), %r15
+st99_rf:        movl    $1, -24(%r13)
+st100_rf:        movl    %eax, -16(%r13)
+st101_rf:        movq    %rcx, -8(%r13)
+st102_rf:        movq    (%rdi), %r13
+st103_rf:        testq   %r15, %r15
+st104_rf:        jne     .LBB0_9_rf
+st105_rf:        jmp     .LBB0_2_rf
 .LBB0_19_rf:
-st108_rf:        movl    %eax, answer(%rip)
-st109_rf:        addq    $24, %rsp
-st110_rf:        popq    %rbx
-st111_rf:        popq    %r12
-st112_rf:        popq    %r13
-st113_rf:        popq    %r14
-st114_rf:        popq    %r15
-st115_rf:        popq    %rbp
-st116_rf:        retq
+st106_rf:        movl    %eax, answer(%rip)
+st107_rf:        addq    $24, %rsp
+st108_rf:        popq    %rbx
+st109_rf:        popq    %r12
+st110_rf:        popq    %r13
+st111_rf:        popq    %r14
+st112_rf:        popq    %r15
+st113_rf:        popq    %rbp
+st114_rf:        retq
 .LBB0_20_rf:
-st117_rf:        movl    $.L.str_rf, %edi
-st118_rf:        callq   _ZSt20__throw_length_errorPKc
-st119_rf:
+st115_rf:        movl    $.L.str_rf, %edi
+st116_rf:        callq   _ZSt20__throw_length_errorPKc
+st117_rf:
 _Z10sum_serialP4node_rf:
-st120_rf:        pushq   %rbx
-st121_rf:        subq    $48, %rsp
-st122_rf:        movq    %rdi, %rbx
-st123_rf:        movl    $24, %edi
-st124_rf:        callq   _Znwm
-st125_rf:        movq    %rax, (%rsp)
-st126_rf:        leaq    24(%rax), %rcx
-st127_rf:        movq    %rcx, 16(%rsp)
-st128_rf:        movl    $2, (%rax)
-st129_rf:        movl    44(%rsp), %edx
+st118_rf:        pushq   %rbx
+st119_rf:        subq    $48, %rsp
+st120_rf:        movq    %rdi, %rbx
+st121_rf:        movl    $24, %edi
+st122_rf:        callq   _Znwm
+st123_rf:        movl    44(%rsp), %edx
+st124_rf:        vmovups 28(%rsp), %xmm0
+st125_rf:        leaq    24(%rax), %rcx
+st126_rf:        movl    $2, (%rax)
+st127_rf:        movq    %rax, (%rsp)
+st128_rf:        movq    %rcx, 16(%rsp)
+st129_rf:        movq    %rcx, 8(%rsp)
 st130_rf:        movl    %edx, 20(%rax)
-st131_rf:        movups  28(%rsp), %xmm0
-st132_rf:        movups  %xmm0, 4(%rax)
-st133_rf:        movq    %rcx, 8(%rsp)
-st134_rf:        movq    %rsp, %rsi
-st135_rf:        movq    %rbx, %rdi
-st136_rf:        callq   _Z3sumP4nodeRSt6vectorI5vkontSaIS2_EE_rf
-st137_rf:        movq    (%rsp), %rdi
-st138_rf:        testq   %rdi, %rdi
-st139_rf:        je      .LBB1_3_rf
-st140_rf:        callq   _ZdlPv
+st131_rf:        vmovups %xmm0, 4(%rax)
+st132_rf:        movq    %rsp, %rsi
+st133_rf:        movq    %rbx, %rdi
+st134_rf:        callq   _Z3sumP4nodeRSt6vectorI5vkontSaIS2_EE_rf
+st135_rf:        movq    (%rsp), %rdi
+st136_rf:        testq   %rdi, %rdi
+st137_rf:        je      .LBB1_3_rf
+st138_rf:        callq   _ZdlPv
 .LBB1_3_rf:
-st141_rf:        addq    $48, %rsp
-st142_rf:        popq    %rbx
-st143_rf:        retq
-st144_rf:        movq    %rax, %rbx
-st145_rf:        movq    (%rsp), %rdi
-st146_rf:        testq   %rdi, %rdi
-st147_rf:        je      .LBB1_6_rf
-st148_rf:        callq   _ZdlPv
+st139_rf:        addq    $48, %rsp
+st140_rf:        popq    %rbx
+st141_rf:        retq
+st142_rf:        movq    (%rsp), %rdi
+st143_rf:        movq    %rax, %rbx
+st144_rf:        testq   %rdi, %rdi
+st145_rf:        je      .LBB1_6_rf
+st146_rf:        callq   _ZdlPv
 .LBB1_6_rf:
-st149_rf:        movq    %rbx, %rdi
-st150_rf:        callq   _Unwind_Resume@PLT
-st151_rf:
+st147_rf:        movq    %rbx, %rdi
+st148_rf:        callq   _Unwind_Resume@PLT
+st149_rf:
 _Z17prmlist_push_backRSt6vectorI7vhbkontSaIS0_EEiii_rf:
-st152_rf:        movl    %esi, %eax
-st153_rf:        cmpl    $-1, %edx
-st154_rf:        je      .LBB2_2_rf
-st155_rf:        movslq  %edx, %rdx
-st156_rf:        movq    (%rdi), %rsi
-st157_rf:        shlq    $5, %rdx
-st158_rf:        movl    %ecx, 20(%rsi,%rdx)
+st150_rf:        movl    %esi, %eax
+st151_rf:        cmpl    $-1, %edx
+st152_rf:        je      .LBB2_2_rf
+st153_rf:        movq    (%rdi), %rsi
+st154_rf:        movslq  %edx, %rdx
+st155_rf:        shlq    $5, %rdx
+st156_rf:        movl    %ecx, 20(%rsi,%rdx)
 .LBB2_2_rf:
-st159_rf:        cmpl    $-1, %eax
-st160_rf:        cmovel  %ecx, %eax
-st161_rf:        shlq    $32, %rcx
-st162_rf:        orq     %rcx, %rax
-st163_rf:        retq
-st164_rf:
+st157_rf:        cmpl    $-1, %eax
+st158_rf:        cmovel  %ecx, %eax
+st159_rf:        shlq    $32, %rcx
+st160_rf:        orq     %rcx, %rax
+st161_rf:        retq
+st162_rf:
 _Z16prmlist_pop_backRSt6vectorI7vhbkontSaIS0_EEii_rf:
-st165_rf:        movslq  %edx, %rcx
-st166_rf:        movq    (%rdi), %r8
-st167_rf:        shlq    $5, %rcx
-st168_rf:        movslq  16(%r8,%rcx), %rax
-st169_rf:        cmpq    $-1, %rax
-st170_rf:        je      .LBB3_1_rf
-st171_rf:        movq    %rax, %rdx
-st172_rf:        shlq    $5, %rdx
-st173_rf:        movl    $-1, 20(%r8,%rdx)
-st174_rf:        movq    (%rdi), %rdx
-st175_rf:        movl    $-1, 16(%rdx,%rcx)
-st176_rf:        movl    %esi, %ecx
-st177_rf:        shlq    $32, %rax
-st178_rf:        orq     %rcx, %rax
-st179_rf:        retq
+st163_rf:        movq    (%rdi), %r8
+st164_rf:        movslq  %edx, %rcx
+st165_rf:        shlq    $5, %rcx
+st166_rf:        movslq  16(%r8,%rcx), %rax
+st167_rf:        cmpq    $-1, %rax
+st168_rf:        je      .LBB3_1_rf
+st169_rf:        movq    %rax, %rdx
+st170_rf:        shlq    $5, %rdx
+st171_rf:        movl    $-1, 20(%r8,%rdx)
+st172_rf:        movq    (%rdi), %rdx
+st173_rf:        movl    $-1, 16(%rdx,%rcx)
+st174_rf:        movl    %esi, %ecx
+st175_rf:        shlq    $32, %rax
+st176_rf:        orq     %rcx, %rax
+st177_rf:        retq
 .LBB3_1_rf:
-st180_rf:        movl    $4294967295, %ecx
-st181_rf:        shlq    $32, %rax
-st182_rf:        orq     %rcx, %rax
-st183_rf:        retq
-st184_rf:
+st178_rf:        movl    $4294967295, %ecx
+st179_rf:        shlq    $32, %rax
+st180_rf:        orq     %rcx, %rax
+st181_rf:        retq
+st182_rf:
 _Z13sum_heartbeatP4nodeRSt6vectorI7vhbkontSaIS2_EEii_rf:
-st185_rf:        pushq   %rbp
-st186_rf:        pushq   %r15
-st187_rf:        pushq   %r14
-st188_rf:        pushq   %r13
-st189_rf:        pushq   %r12
-st190_rf:        pushq   %rbx
-st191_rf:        subq    $24, %rsp
-st192_rf:        movl    %ecx, %ebx
-st193_rf:        movl    %edx, %r14d
-st194_rf:        movq    %rsi, %r15
+st183_rf:        pushq   %rbp
+st184_rf:        pushq   %r15
+st185_rf:        pushq   %r14
+st186_rf:        pushq   %r13
+st187_rf:        pushq   %r12
+st188_rf:        pushq   %rbx
+st189_rf:        subq    $24, %rsp
+st190_rf:        movl    %ecx, %ebx
+st191_rf:        movl    %edx, %r14d
+st192_rf:        movq    %rsi, %r15
 .LBB4_1_rf:
-st195_rf:        nop
-st196_rf:        nop
-st197_rf:        movq    %rdi, %rbp
-st198_rf:        movq    %r15, %rdi
-st199_rf:        movl    %r14d, %esi
-st200_rf:        movl    %ebx, %edx
-st201_rf:        callq   _Z26sum_tree_heartbeat_handlerRSt6vectorI7vhbkontSaIS0_EEii
+st193_rf:        nop
+st194_rf:        nop
+st195_rf:        movq    %rdi, %rbp
+st196_rf:        movq    %r15, %rdi
+st197_rf:        movl    %r14d, %esi
+st198_rf:        movl    %ebx, %edx
+st199_rf:        vzeroupper
+st200_rf:        callq   _Z26sum_tree_heartbeat_handlerRSt6vectorI7vhbkontSaIS0_EEii
+st201_rf:        movq    %rax, %r13
 st202_rf:        movq    %rbp, %rdi
 st203_rf:        movq    %rax, %r14
-st204_rf:        movq    %rax, %r13
-st205_rf:        shrq    $32, %r13
-st206_rf:        testq   %rdi, %rdi
-st207_rf:        je      .LBB4_5_rf
-.LBB4_26_rf:
-st208_rf:        movq    8(%r15), %r12
-st209_rf:        cmpq    16(%r15), %r12
-st210_rf:        je      .LBB4_28_rf
-st211_rf:        movl    $0, (%r12)
-st212_rf:        movq    %rdi, 8(%r12)
-st213_rf:        movl    %r13d, 16(%r12)
-st214_rf:        movl    $-1, 20(%r12)
+st204_rf:        shrq    $32, %r13
+st205_rf:        testq   %rdi, %rdi
+st206_rf:        je      .LBB4_5_rf
+.LBB4_24_rf:
+st207_rf:        movq    8(%r15), %r12
+st208_rf:        cmpq    16(%r15), %r12
+st209_rf:        je      .LBB4_26_rf
+st210_rf:        movl    $0, (%r12)
+st211_rf:        movq    %rdi, 8(%r12)
+st212_rf:        movl    %r13d, 16(%r12)
+st213_rf:        movl    $-1, 20(%r12)
+st214_rf:        movq    8(%r15), %rbx
 st215_rf:        movq    (%r15), %rbp
-st216_rf:        movq    8(%r15), %rbx
-st217_rf:        addq    $32, %rbx
-st218_rf:        movq    %rbx, 8(%r15)
-st219_rf:        jmp     .LBB4_38_rf
+st216_rf:        addq    $32, %rbx
+st217_rf:        movq    %rbx, 8(%r15)
+st218_rf:        jmp     .LBB4_36_rf
 .LBB4_2_rf:
-st220_rf:        movl    %ebx, %r13d
-st221_rf:        testq   %rdi, %rdi
-st222_rf:        jne     .LBB4_26_rf
+st219_rf:        movl    %ebx, %r13d
+st220_rf:        testq   %rdi, %rdi
+st221_rf:        jne     .LBB4_24_rf
 .LBB4_5_rf:
+st222_rf:        nop
 st223_rf:        nop
-st224_rf:        nop
-st225_rf:        xorl    %ebp, %ebp
-st226_rf:        movb    $1, %al
-st227_rf:        jmp     .LBB4_7_rf
-.LBB4_22_rf:
-st228_rf:        leaq    -32(%rax), %rcx
-st229_rf:        addl    -24(%rax), %ebp
-st230_rf:        movq    -16(%rax), %rax
-st231_rf:        addl    (%rax), %ebp
-st232_rf:        movq    %rcx, 8(%r15)
-.LBB4_23_rf:
-st233_rf:        nop
+st224_rf:        xorl    %ebp, %ebp
+st225_rf:        movb    $1, %al
+st226_rf:        jmp     .LBB4_7_rf
+.LBB4_20_rf:
+st227_rf:        leaq    -32(%rax), %rcx
+st228_rf:        addl    -24(%rax), %ebp
+st229_rf:        movq    -16(%rax), %rax
+st230_rf:        addl    (%rax), %ebp
+st231_rf:        movq    %rcx, 8(%r15)
+.LBB4_21_rf:
+st232_rf:        nop
 .LBB4_7_rf:
-st234_rf:        testb   %al, %al
-st235_rf:        nop
-st236_rf:        movq    %r15, %rdi
-st237_rf:        movl    %r14d, %esi
-st238_rf:        movl    %r13d, %edx
+st233_rf:        nop
+st234_rf:        nop
+st235_rf:        movq    %r15, %rdi
+st236_rf:        movl    %r14d, %esi
+st237_rf:        movl    %r13d, %edx
+st238_rf:        vzeroupper
 st239_rf:        callq   _Z26sum_tree_heartbeat_handlerRSt6vectorI7vhbkontSaIS0_EEii
-st240_rf:        movq    %rax, %r14
-st241_rf:        movq    %rax, %r13
+st240_rf:        movq    %rax, %r13
+st241_rf:        movq    %rax, %r14
 st242_rf:        shrq    $32, %r13
 .LBB4_9_rf:
 st243_rf:        movq    8(%r15), %rax
 st244_rf:        movl    -32(%rax), %ecx
 st245_rf:        cmpq    $4, %rcx
-st246_rf:        ja      .LBB4_23_rf
+st246_rf:        ja      .LBB4_21_rf
 st247_rf:        jmpq    *.LJTI4_0(,%rcx,8)
 .LBB4_16_rf:
-st248_rf:        movslq  %r13d, %rcx
-st249_rf:        movq    (%r15), %rdx
+st248_rf:        movq    (%r15), %rdx
+st249_rf:        movslq  %r13d, %rcx
 st250_rf:        shlq    $5, %rcx
 st251_rf:        movslq  16(%rdx,%rcx), %rbx
 st252_rf:        cmpq    $-1, %rbx
@@ -2386,19 +2361,19 @@ st255_rf:        shlq    $5, %rsi
 st256_rf:        movl    $-1, 20(%rdx,%rsi)
 st257_rf:        movq    (%r15), %rdx
 st258_rf:        movl    $-1, 16(%rdx,%rcx)
-st259_rf:        jmp     .LBB4_25_rf
-.LBB4_28_rf:
+st259_rf:        jmp     .LBB4_23_rf
+.LBB4_26_rf:
 st260_rf:        movq    (%r15), %rdx
 st261_rf:        movq    %r12, %rax
-st262_rf:        subq    %rdx, %rax
-st263_rf:        movabsq $9223372036854775776, %rcx
+st262_rf:        movabsq $9223372036854775776, %rcx
+st263_rf:        subq    %rdx, %rax
 st264_rf:        cmpq    %rcx, %rax
 st265_rf:        je      .LBB4_41_rf
 st266_rf:        movq    %rax, %rbx
-st267_rf:        sarq    $5, %rbx
-st268_rf:        testq   %rax, %rax
-st269_rf:        movq    %rbx, %rax
-st270_rf:        movl    $1, %ecx
+st267_rf:        movl    $1, %ecx
+st268_rf:        sarq    $5, %rbx
+st269_rf:        testq   %rax, %rax
+st270_rf:        movq    %rbx, %rax
 st271_rf:        cmoveq  %rcx, %rax
 st272_rf:        leaq    (%rax,%rbx), %rsi
 st273_rf:        movq    %rsi, %rcx
@@ -2407,150 +2382,145 @@ st275_rf:        movabsq $288230376151711743, %rcx
 st276_rf:        cmovneq %rcx, %rsi
 st277_rf:        addq    %rbx, %rax
 st278_rf:        cmovbq  %rcx, %rsi
-st279_rf:        testq   %rsi, %rsi
-st280_rf:        movq    %rsi, 16(%rsp)
-st281_rf:        je      .LBB4_30_rf
+st279_rf:        movq    %rsi, 16(%rsp)
+st280_rf:        testq   %rsi, %rsi
+st281_rf:        je      .LBB4_28_rf
 st282_rf:        movq    %rdi, 8(%rsp)
 st283_rf:        movq    %rsi, %rdi
-st284_rf:        shlq    $5, %rdi
-st285_rf:        movq    %rdx, %rbp
-st286_rf:        callq   _Znwm
-st287_rf:        movq    %rbp, %rdx
+st284_rf:        movq    %rdx, %rbp
+st285_rf:        shlq    $5, %rdi
+st286_rf:        vzeroupper
+st287_rf:        callq   _Znwm
 st288_rf:        movq    8(%rsp), %rdi
-st289_rf:        movq    %rax, %rbp
-st290_rf:        jmp     .LBB4_32_rf
+st289_rf:        movq    %rbp, %rdx
+st290_rf:        movq    %rax, %rbp
+st291_rf:        jmp     .LBB4_30_rf
 .LBB4_11_rf:
-st291_rf:        movq    8(%r15), %rax
-st292_rf:        xorl    %ebp, %ebp
+st292_rf:        movq    8(%r15), %rax
+st293_rf:        xorl    %ebp, %ebp
 .LBB4_12_rf:
-st293_rf:        leaq    -32(%rax), %rdx
 st294_rf:        movl    -32(%rax), %ecx
+st295_rf:        leaq    -32(%rax), %rdx
 .LBB4_13_rf:
-st295_rf:        cmpl    $4, %ecx
-st296_rf:        ja      .LBB4_13_rf
-st297_rf:        movl    %ecx, %esi
-st298_rf:        jmpq    *.LJTI4_1(,%rsi,8)
+st296_rf:        cmpl    $4, %ecx
+st297_rf:        ja      .LBB4_13_rf
+st298_rf:        movl    %ecx, %esi
+st299_rf:        jmpq    *.LJTI4_1(,%rsi,8)
 .LBB4_15_rf:
-st299_rf:        addl    -24(%rax), %ebp
-st300_rf:        movq    -16(%rax), %rax
-st301_rf:        addl    (%rax), %ebp
-st302_rf:        movq    %rdx, 8(%r15)
-st303_rf:        movq    %rdx, %rax
-st304_rf:        jmp     .LBB4_12_rf
+st300_rf:        addl    -24(%rax), %ebp
+st301_rf:        movq    -16(%rax), %rax
+st302_rf:        addl    (%rax), %ebp
+st303_rf:        movq    %rdx, 8(%r15)
+st304_rf:        movq    %rdx, %rax
+st305_rf:        jmp     .LBB4_12_rf
+.LBB4_28_rf:
+st306_rf:        xorl    %ebp, %ebp
 .LBB4_30_rf:
-st305_rf:        xorl    %ebp, %ebp
+st307_rf:        shlq    $5, %rbx
+st308_rf:        movl    $0, (%rbp,%rbx)
+st309_rf:        movq    %rdi, 8(%rbp,%rbx)
+st310_rf:        movl    %r13d, 16(%rbp,%rbx)
+st311_rf:        movl    $-1, 20(%rbp,%rbx)
+st312_rf:        movq    %rbp, %rbx
+st313_rf:        cmpq    %r12, %rdx
+st314_rf:        je      .LBB4_33_rf
+st315_rf:        movq    %rbp, %rbx
+st316_rf:        movq    %rdx, %rax
 .LBB4_32_rf:
-st306_rf:        shlq    $5, %rbx
-st307_rf:        movl    $0, (%rbp,%rbx)
-st308_rf:        movq    %rdi, 8(%rbp,%rbx)
-st309_rf:        movl    %r13d, 16(%rbp,%rbx)
-st310_rf:        movl    $-1, 20(%rbp,%rbx)
-st311_rf:        movq    %rbp, %rbx
-st312_rf:        cmpq    %r12, %rdx
-st313_rf:        je      .LBB4_35_rf
-st314_rf:        movq    %rbp, %rbx
-st315_rf:        movq    %rdx, %rax
-.LBB4_34_rf:
-st316_rf:        movups  (%rax), %xmm0
-st317_rf:        movups  16(%rax), %xmm1
-st318_rf:        movups  %xmm1, 16(%rbx)
-st319_rf:        movups  %xmm0, (%rbx)
-st320_rf:        addq    $32, %rax
-st321_rf:        addq    $32, %rbx
-st322_rf:        cmpq    %rax, %r12
-st323_rf:        jne     .LBB4_34_rf
-.LBB4_35_rf:
-st324_rf:        addq    $32, %rbx
-st325_rf:        testq   %rdx, %rdx
-st326_rf:        je      .LBB4_37_rf
-st327_rf:        movq    %rdi, %r12
-st328_rf:        movq    %rdx, %rdi
+st317_rf:        vmovups (%rax), %ymm0
+st318_rf:        addq    $32, %rax
+st319_rf:        vmovups %ymm0, (%rbx)
+st320_rf:        addq    $32, %rbx
+st321_rf:        cmpq    %rax, %r12
+st322_rf:        jne     .LBB4_32_rf
+.LBB4_33_rf:
+st323_rf:        addq    $32, %rbx
+st324_rf:        testq   %rdx, %rdx
+st325_rf:        je      .LBB4_35_rf
+st326_rf:        movq    %rdi, %r12
+st327_rf:        movq    %rdx, %rdi
+st328_rf:        vzeroupper
 st329_rf:        callq   _ZdlPv
 st330_rf:        movq    %r12, %rdi
-.LBB4_37_rf:
-st331_rf:        movq    %rbp, (%r15)
-st332_rf:        movq    %rbx, 8(%r15)
-st333_rf:        movq    16(%rsp), %rax
+.LBB4_35_rf:
+st331_rf:        movq    16(%rsp), %rax
+st332_rf:        movq    %rbp, (%r15)
+st333_rf:        movq    %rbx, 8(%r15)
 st334_rf:        shlq    $5, %rax
 st335_rf:        addq    %rbp, %rax
 st336_rf:        movq    %rax, 16(%r15)
-.LBB4_38_rf:
+.LBB4_36_rf:
 st337_rf:        subq    %rbp, %rbx
 st338_rf:        shrq    $5, %rbx
-st339_rf:        addl    $-1, %ebx
+st339_rf:        decl    %ebx
 st340_rf:        cmpl    $-1, %r13d
-st341_rf:        je      .LBB4_40_rf
+st341_rf:        je      .LBB4_38_rf
 st342_rf:        movslq  %r13d, %rax
 st343_rf:        shlq    $5, %rax
 st344_rf:        movl    %ebx, 20(%rbp,%rax)
-.LBB4_40_rf:
-st345_rf:        cmpl    $-1, %r14d
-st346_rf:        cmovel  %ebx, %r14d
-st347_rf:        movq    8(%rdi), %rdi
+.LBB4_38_rf:
+st345_rf:        movq    8(%rdi), %rdi
+st346_rf:        cmpl    $-1, %r14d
+st347_rf:        cmovel  %ebx, %r14d
 st348_rf:        jmp     .LBB4_1_rf
 .LBB4_17_rf:
 st349_rf:        movl    $-1, %r14d
-.LBB4_25_rf:
+.LBB4_23_rf:
 st350_rf:        movq    -24(%rax), %rcx
 st351_rf:        movq    16(%rcx), %rdi
 st352_rf:        movl    $1, -32(%rax)
 st353_rf:        movl    %ebp, -24(%rax)
 st354_rf:        movq    %rcx, -16(%rax)
 st355_rf:        jmp     .LBB4_1_rf
-.LBB4_19_rf:
-st356_rf:        xorl    %edx, %edx
-st357_rf:        cmpl    $3, %ecx
-st358_rf:        setne   %dl
-st359_rf:        movq    -24(%rax), %rcx
-st360_rf:        movl    %ebp, (%rcx,%rdx,4)
+.LBB4_18_rf:
+st356_rf:        movq    -24(%rax), %rsi
+st357_rf:        xorl    %edx, %edx
+st358_rf:        cmpl    $3, %ecx
+st359_rf:        setne   %dl
+st360_rf:        movl    %ebp, (%rsi,%rdx,4)
 st361_rf:        movq    -16(%rax), %rdi
-st362_rf:        jne     .LBB4_21_rf
+st362_rf:        jne     .LBB4_40_rf
 st363_rf:        movq    -8(%rax), %rcx
-st364_rf:        movups  (%rcx), %xmm0
-st365_rf:        movq    16(%rcx), %rdx
-st366_rf:        movq    (%r15), %rsi
+st364_rf:        movq    (%r15), %rsi
+st365_rf:        vmovups (%rcx), %xmm0
+st366_rf:        movq    16(%rcx), %rdx
 st367_rf:        movq    %rsi, (%rcx)
 st368_rf:        movq    %rax, 8(%rcx)
 st369_rf:        movq    16(%r15), %rax
 st370_rf:        movq    %rax, 16(%rcx)
-st371_rf:        movups  %xmm0, (%r15)
+st371_rf:        vmovups %xmm0, (%r15)
 st372_rf:        movq    %rdx, 16(%r15)
-.LBB4_21_rf:
-st373_rf:        addq    $24, %rsp
-st374_rf:        popq    %rbx
-st375_rf:        popq    %r12
-st376_rf:        popq    %r13
-st377_rf:        popq    %r14
-st378_rf:        popq    %r15
-st379_rf:        popq    %rbp
-st380_rf:        jmp     _Z4joinPv
-.LBB4_18_rf:
-st381_rf:        movl    %ebp, answer(%rip)
-st382_rf:        addq    $24, %rsp
-st383_rf:        popq    %rbx
-st384_rf:        popq    %r12
-st385_rf:        popq    %r13
-st386_rf:        popq    %r14
-st387_rf:        popq    %r15
-st388_rf:        popq    %rbp
-st389_rf:        retq
+st373_rf:        jmp     .LBB4_40_rf
+.LBB4_39_rf:
+st374_rf:        movl    %ebp, answer(%rip)
+st375_rf:        movq    -24(%rax), %rdi
+.LBB4_40_rf:
+st376_rf:        addq    $24, %rsp
+st377_rf:        popq    %rbx
+st378_rf:        popq    %r12
+st379_rf:        popq    %r13
+st380_rf:        popq    %r14
+st381_rf:        popq    %r15
+st382_rf:        popq    %rbp
+st383_rf:        vzeroupper
+st384_rf:        jmp     _Z4joinPv
 .LBB4_41_rf:
-st390_rf:        movl    $.L.str_rf, %edi
-st391_rf:        callq   _ZSt20__throw_length_errorPKc
+st385_rf:        movl    $.L.str_rf, %edi
+st386_rf:        vzeroupper
+st387_rf:        callq   _ZSt20__throw_length_errorPKc
 .LJTI4_0_rf:
-st392_rf:        .quad   .LBB4_16_rf
-st393_rf:        .quad   .LBB4_22_rf
-st394_rf:        .quad   .LBB4_18_rf
-st395_rf:        .quad   .LBB4_19_rf
-st396_rf:        .quad   .LBB4_19_rf
+st388_rf:        .quad   .LBB4_16_rf
+st389_rf:        .quad   .LBB4_20_rf
+st390_rf:        .quad   .LBB4_39_rf
+st391_rf:        .quad   .LBB4_18_rf
+st392_rf:        .quad   .LBB4_18_rf
 .LJTI4_1_rf:
-st397_rf:        .quad   .LBB4_16_rf
-st398_rf:        .quad   .LBB4_15_rf
-st399_rf:        .quad   .LBB4_18_rf
-st400_rf:        .quad   .LBB4_19_rf
-st401_rf:        .quad   .LBB4_19_rf
-st402_rf:
+st393_rf:        .quad   .LBB4_16_rf
+st394_rf:        .quad   .LBB4_15_rf
+st395_rf:        .quad   .LBB4_39_rf
+st396_rf:        .quad   .LBB4_18_rf
+st397_rf:        .quad   .LBB4_18_rf
+st398_rf:
 .L.str_rf:
-st403_rf:        .asciz  "vector::_M_realloc_insert"
-st404_rf:	
+st399_rf:        .asciz  "vector::_M_realloc_insert"
 

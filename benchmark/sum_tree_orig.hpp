@@ -1,3 +1,6 @@
+// compiled w/ clang 12.0.1
+// -DNDEBUG -O3 -march=znver2 -fno-verbose-asm -m64 -fno-stack-protector -fno-asynchronous-unwind-tables -fomit-frame-pointer
+
 #include <vector>
 #include <tuple>
 
@@ -85,6 +88,9 @@ public:
       node* n;
     } k2;
     struct {
+      task* tk;
+    } k3;
+    struct {
       int* s;
       task* tj;
       std::vector<vhbkont>* kp;
@@ -99,14 +105,12 @@ public:
     : tag(tag) { u.k4ork5.s = s; u.k4ork5.tj = tj; u.k4ork5.kp = kp; }
   vhbkont(kont_tag tag, int* s, task* tj) // K5
     : tag(tag) { u.k4ork5.s = s; u.k4ork5.tj = tj; u.k4ork5.kp = nullptr; }
-  vhbkont(kont_tag tag) // K3
-    : tag(tag) { }
+  vhbkont(kont_tag tag, task* tk) // K3
+    : tag(tag) { u.k3.tk = tk; }
 };
 
 extern
 void join(task*);
-
-namespace vheartbeat {
 
 extern
 bool heartbeat;
@@ -163,6 +167,7 @@ void sum_heartbeat(node* n, std::vector<vhbkont>& k, int prmlfr, int prmlbk) {
 	  k.pop_back();
 	} else if (f.tag == K3) {
 	  answer = s;
+	  join(f.u.k3.tk);
 	  return;
 	} else if (f.tag == K4 || f.tag == K5) {
 	  auto i = (f.tag == K4) ? 0 : 1;
@@ -183,12 +188,10 @@ void sum_heartbeat(node* n, std::vector<vhbkont>& k, int prmlfr, int prmlbk) {
   }
 }
   
-} // end namespace
-
 /*
-  auto sum(node* n) -> void {
+  auto sum(node* n, task* tk) -> void {
     scheduler::launch(new task([&] {
-      std::vector<vhbkont> k({vhbkont(K3)});
+      std::vector<vhbkont> k({vhbkont(K3, tk)});
       sum(n, k, nullprml, nullprml);
     }));
   } */

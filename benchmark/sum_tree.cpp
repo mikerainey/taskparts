@@ -30,9 +30,6 @@ public:
   }
 
   void finish() {
-    if (outedge != nullptr) {
-      notify();
-    }
     delete this;
   }
 
@@ -90,6 +87,9 @@ public:
       node* n;
     } k2;
     struct {
+      task* tk;
+    } k3;
+    struct {
       int* s;
       task* tj;
       std::vector<vhbkont>* kp;
@@ -104,8 +104,8 @@ public:
     : tag(tag) { u.k4ork5.s = s; u.k4ork5.tj = tj; u.k4ork5.kp = kp; }
   vhbkont(kont_tag tag, int* s, task* tj) // K5
     : tag(tag) { u.k4ork5.s = s; u.k4ork5.tj = tj; u.k4ork5.kp = nullptr; }
-  vhbkont(kont_tag tag) // K3
-    : tag(tag) { }
+  vhbkont(kont_tag tag, task* tk) // K3
+    : tag(tag) { u.k3.tk = tk; }
 };
 
 extern
@@ -182,9 +182,11 @@ int main() {
   auto n0 = gen_perfect_tree(28);
 
   taskparts::benchmark_nativeforkjoin([&] (auto sched) {
-    // todo: figure out why it's reporting elapsed time of zero 
     taskparts::nativefj_fiber<decltype(sched)>::fork1join(new task([&] {
-      std::vector<vhbkont> k({vhbkont(K3)});
+      auto _f = taskparts::nativefj_fiber<decltype(sched)>::current_fiber.mine();
+      std::vector<vhbkont> k({vhbkont(K3, new task([=] {
+	_f->release();
+      }))});
       sum_heartbeat(n0, k, nullprml, nullprml);
       //sum_serial(n0);
     }));
