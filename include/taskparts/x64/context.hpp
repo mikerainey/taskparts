@@ -92,8 +92,6 @@ public:
     _taskparts_ctx_restore(ctx2, val2);
   }
   
-#define _X86_64_SP_OFFSET   6
-  
   template <class Value>
   static
   Value capture(context_pointer ctx) {
@@ -112,7 +110,9 @@ public:
     char* stack = (char*)malloc(thread_stack_szb);
     char* stack_end = &stack[thread_stack_szb];
     stack_end -= (size_t)stack_end % stack_alignb;
-    void** _ctx = (void**)ctx;    
+    void** _ctx = (void**)ctx;
+    static constexpr
+    int _X86_64_SP_OFFSET = 6;
     _ctx[_X86_64_SP_OFFSET] = stack_end;
     return stack;
   }
