@@ -15,3 +15,6 @@ cmd="./gen_rollforward -file $file_orig -prefix $2"
 $cmd > $file_manual
 $cmd --only_table > $file_rf_map
 $cmd --only_header > $file_rf_decls
+
+echo "Generated from $file_orig: $file_manual $file_rf_map $file_rf_decls"
+rm -f gen_rollforward
