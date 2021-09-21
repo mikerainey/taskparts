@@ -83,6 +83,10 @@ auto benchmark_nativeforkjoin(const Benchmark& benchmark,
   if (const auto env_p = std::getenv("TASKPARTS_BENCHMARK_WARMUP_SECS")) {
     warmup_secs = std::stoi(env_p);
   }
+  bool verbose = true;
+  if (const auto env_p = std::getenv("TASKPARTS_BENCHMARK_VERBOSE")) {
+    verbose = std::stoi(env_p);
+  }
   auto timed_run = [&] {
     auto st = cycles::now();
     benchmark(sched);
@@ -93,13 +97,13 @@ auto benchmark_nativeforkjoin(const Benchmark& benchmark,
   Bench_stats::start_collecting();
   nativefj_from_lambda f_body([&] {
     if (warmup_secs >= 1) {
-      printf("======== WARMUP ========\n");
+      if (verbose) printf("======== WARMUP ========\n");
       auto warmup_start = cycles::now();
       while (cycles::seconds_since(warmup_start).whole_part < warmup_secs) {
 	auto el = timed_run();
-	printf("warmup_run %lu.%lu\n", el.whole_part, el.fractional_part);
+	if (verbose) printf("warmup_run %lu.%lu\n", el.whole_part, el.fractional_part);
       }
-      printf ("======== END WARMUP ========\n");
+      if (verbose) printf ("======== END WARMUP ========\n");
     }
     for (size_t i = 0; i < repeat; i++) {
       reset([&] {
@@ -116,8 +120,8 @@ auto benchmark_nativeforkjoin(const Benchmark& benchmark,
 	Bench_logging::output("log" + std::to_string(i) + ".json");
 	Bench_stats::start_collecting();
       }, sched);
-      printf("exectime %lu.%lu\n", el.whole_part, el.fractional_part);
-      if (i + 1 != repeat) {
+      if (verbose) printf("exectime %lu.%lu\n", el.whole_part, el.fractional_part);
+      if (i + 1 != repeat && verbose) {
 	printf("---\n");
       }
     }
