@@ -1,5 +1,7 @@
 #pragma once
 
+#include "../perworker.hpp"
+
 /*---------------------------------------------------------------------*/
 /* Context switching */
 
@@ -57,10 +59,10 @@ _taskparts_ctx_restore:
 namespace taskparts {
 
 static constexpr
-std::size_t stack_alignb = 16;
+size_t stack_alignb = 16;
 
 static constexpr
-std::size_t thread_stack_szb = stack_alignb * (1<<12);
+size_t thread_stack_szb = stack_alignb * (1<<12);
 
 class context {  
 public:
@@ -109,7 +111,7 @@ public:
     }
     char* stack = (char*)malloc(thread_stack_szb);
     char* stack_end = &stack[thread_stack_szb];
-    stack_end -= (std::size_t)stack_end % stack_alignb;
+    stack_end -= (size_t)stack_end % stack_alignb;
     void** _ctx = (void**)ctx;    
     _ctx[_X86_64_SP_OFFSET] = stack_end;
     return stack;
