@@ -1,0 +1,10 @@
+{"runs": [{"benchmark_run": {
+    "path": "./bin/fib_oracleguided.opt",
+    "cl_args": ["-n", "45", "--v", "1"],
+    "env_args": [{"var": "TASKPARTS_NUM_WORKERS", "val": "16"}, {"var": "TASKPARTS_KAPPA", "val": "200"}]
+}},
+	  {"benchmark_run": {
+    "path": "./bin/fib_nativeforkjoin.opt",
+    "cl_args": ["-n", "45", "--v", "1"],
+    "env_args": [{"var": "TASKPARTS_NUM_WORKERS", "val": "16"}]
+	  }}]}

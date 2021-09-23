@@ -1,0 +1,53 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "benchmark_run_series_schema",
+    "title": "Benchmark run series",
+    "description": "Configuration needed to invoke a series of benchmark runs from the command line",
+    "definitions": {
+	"benchmark_run": {
+	    "type": "object",
+	    "properties": {
+		"path": {
+		    "description": "The path to the benchmark executable",
+		    "type": "string"
+		},
+		"cl_args": {
+		    "description": "Command-line arguments to pass to the benchmark executable",
+		    "type": "array",
+		    "items": {
+			"type": "string"
+		    }
+		},
+		"env_args": {
+		    "description": "Environment-variable arguments to pass to the benchmark executable",
+		    "type": "array",
+		    "items": {
+			"properties": {
+			    "var": { "type": "string" },
+			    "val": { "type": "string" }
+			}
+		    }
+		},
+		"timeout_sec": {
+		    "description": "Amount of time (in seconds) to wait for the benchmark to complete",
+		    "type": "integer",
+		    "exclusiveMinimum": 1
+		}
+	    },
+	    "required": [ "path", "cl_args", "env_args" ]
+	}
+    },
+    "type": "object",
+    "properties": {
+	"runs": {
+	    "description": "Benchmark runs",
+	    "type": "array",
+	    "items": {
+		"type": "object",
+		"additionalProperties": {
+		    "$ref": "#/definitions/benchmark_run"
+		}
+	    }
+	}
+    }
+}
