@@ -48,7 +48,8 @@ OPT_COMPILE_PREFIX=\
 	-march=native \
 	-fno-asynchronous-unwind-tables \
 	-fomit-frame-pointer \
-	-DNDEBUG
+	-DNDEBUG \
+	-mavx2 -mfma -fopenmp
 
 OPT_PREFIX=\
 	$(OPT_COMPILE_PREFIX)

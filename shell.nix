@@ -34,5 +34,7 @@ stdenv.mkDerivation rec {
     # with the per-core pinning.
     export TASKPARTS_NUM_WORKERS=$( ${hwloc}/bin/hwloc-ls|grep Core|wc -l );
   '';
-  
+
+  # allow architecture-native optimization mode to be used by the C/C++ compiler
+  NIX_ENFORCE_NO_NATIVE=0;
 }
