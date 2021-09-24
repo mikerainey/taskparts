@@ -14,13 +14,17 @@
 
 namespace taskparts {
 
-#ifdef TASKPARTS_STATS
 class stats_configuration {
 public:
 
+#ifdef TASKPARTS_STATS
   static constexpr
-  bool enabled = true;
-
+  bool collect_all_stats = true;
+#else
+  static constexpr
+  bool collect_all_stats = false;
+#endif
+  
   using counter_id_type = enum counter_id_enum {
     nb_fibers,
     nb_steals,
@@ -34,10 +38,8 @@ public:
   }
   
 };
+  
 using bench_stats = stats_base<stats_configuration>;
-#else
-using bench_stats = minimal_stats;
-#endif
 
 #ifdef TASKPARTS_LOG
 using bench_logging = logging_base<true>;
@@ -83,7 +85,7 @@ auto benchmark_nativeforkjoin(const Benchmark& benchmark,
   if (const auto env_p = std::getenv("TASKPARTS_BENCHMARK_WARMUP_SECS")) {
     warmup_secs = std::stoi(env_p);
   }
-  bool verbose = true;
+  bool verbose = false;
   if (const auto env_p = std::getenv("TASKPARTS_BENCHMARK_VERBOSE")) {
     verbose = std::stoi(env_p);
   }
@@ -116,14 +118,10 @@ auto benchmark_nativeforkjoin(const Benchmark& benchmark,
       reset([&] {
 	Bench_stats::on_exit_work();
       }, [&] {
-	Bench_stats::output_summary();
+	Bench_stats::capture_summary(el);
 	Bench_logging::output("log" + std::to_string(i) + ".json");
 	Bench_stats::start_collecting();
       }, sched);
-      if (verbose) printf("exectime %lu.%lu\n", el.whole_part, el.fractional_part);
-      if (i + 1 != repeat && verbose) {
-	printf("---\n");
-      }
     }
   }, sched);
   auto f_term = new terminal_fiber<Scheduler>;
@@ -132,6 +130,7 @@ auto benchmark_nativeforkjoin(const Benchmark& benchmark,
   f_term->release();
   using cl = chase_lev_work_stealing_scheduler<Scheduler, fiber, Bench_stats, Bench_logging, Bench_elastic, Bench_worker, Bench_interrupt>;
   cl::launch();
+  Bench_stats::output_summaries();
   teardown_machine();
 }
 

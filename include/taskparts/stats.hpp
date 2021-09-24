@@ -25,6 +25,7 @@ public:
     timestamp_type total_idle_time;
     timestamp_type total_time;
     double utilization;
+    cycles::seconds_type exectime;
   };
   
 private:
@@ -61,12 +62,15 @@ private:
 
   static
   perworker::array<private_timers> all_timers;
-  
+
+  static
+  std::vector<summary_type> summaries;
+
 public:
 
   static inline
   auto increment(counter_id_type id) {
-    if (! Configuration::enabled) {
+    if (! Configuration::collect_all_stats) {
       return;
     }
     all_counters.mine().counters[id]++;
@@ -79,7 +83,7 @@ public:
 
   static
   auto on_enter_acquire() {
-    if (! Configuration::enabled) {
+    if (! Configuration::collect_all_stats) {
       return;
     }
     all_timers.mine().start_idle = now();
@@ -87,7 +91,7 @@ public:
   
   static
   auto on_exit_acquire() {
-    if (! Configuration::enabled) {
+    if (! Configuration::collect_all_stats) {
       return;
     }
     auto& t = all_timers.mine();
@@ -96,7 +100,7 @@ public:
 
   static
   auto on_enter_work() {
-    if (! Configuration::enabled) {
+    if (! Configuration::collect_all_stats) {
       return;
     }
     all_timers.mine().start_work = now();
@@ -104,7 +108,7 @@ public:
   
   static
   auto on_exit_work() {
-    if (! Configuration::enabled) {
+    if (! Configuration::collect_all_stats) {
       return;
     }
     auto& t = all_timers.mine();
@@ -129,10 +133,11 @@ public:
   }
 
   static
-  auto report() -> summary_type {
+  auto report(cycles::seconds_type exectime) -> summary_type {
     auto nb_workers = perworker::nb_workers();
     summary_type summary;
-    if (! Configuration::enabled) {
+    summary.exectime = exectime;
+    if (! Configuration::collect_all_stats) {
       return summary;
     }
     launch_duration = since(enter_launch_time);
@@ -163,35 +168,71 @@ public:
   }
 
   static
-  auto output_summary(std::string fname="", summary_type summary=report()) {
-    FILE* f = (fname == "") ? stdout : fopen(fname.c_str(), "w");
+  auto capture_summary(cycles::seconds_type exectime) {
+    summaries.push_back(report(exectime));
+  }
+
+  static
+  auto output_summary(summary_type summary, FILE* f) {
+    fprintf(f, "{ 'exectime': '%lu.%lu'",
+	    summary.exectime.whole_part,
+	    summary.exectime.fractional_part);
+    if (! Configuration::collect_all_stats) {
+      fprintf(f, "}\n");
+      return;
+    }
+    fprintf(f, ",\n");
     for (int i = 0; i < Configuration::nb_counters; i++) {
       auto n = Configuration::name_of_counter((counter_id_type)i);
-      fprintf(f, "%s %lu\n", n, summary.counters[i]);
+      fprintf(f, "'%s': '%lu',\n", n, summary.counters[i]);
     }
     {
       auto s = cycles::seconds_of(summary.launch_duration);
-      fprintf(f, "launch_duration %lu.%lu\n", s.whole_part, s.fractional_part);
+      fprintf(f, "'launch_duration': '%lu.%lu',\n", s.whole_part, s.fractional_part);
     }
     {
       auto s = cycles::seconds_of(summary.total_work_time);
-      fprintf(f, "total_work_time %lu.%lu\n", s.whole_part, s.fractional_part);
+      fprintf(f, "'total_work_time': '%lu.%lu',\n", s.whole_part, s.fractional_part);
     }
     {
-      auto s = cycles::seconds_of(summary.total_idle_time);
-      fprintf(f, "total_idle_time %lu.%lu\n", s.whole_part, s.fractional_part);
+    auto s = cycles::seconds_of(summary.total_idle_time);
+    fprintf(f, "'total_idle_time': '%lu.%lu',\n", s.whole_part, s.fractional_part);
     }
     {
       auto s = cycles::seconds_of(summary.total_time);
-      fprintf(f, "total_time %lu.%lu\n", s.whole_part, s.fractional_part);
+      fprintf(f, "'total_time': '%lu.%lu',\n", s.whole_part, s.fractional_part);
     }
-    fprintf(f, "utilization %.3f\n", summary.utilization);
-    if (fname != "") { // f != stdout
-      fclose(f);
-    }
+    fprintf(f, "'utilization': '%.3f' }", summary.utilization);
   }
 
+  static
+  auto output_summaries() {
+    std::string outfile = "";
+    if (const auto env_p = std::getenv("TASKPARTS_STATS_OUTFILE")) {
+      outfile = std::string(env_p);
+    }
+    FILE* f = (outfile == "") ? stdout : fopen(outfile.c_str(), "w");
+    fprintf(f, "[\n");
+    size_t i = 0;
+    for (auto s : summaries) {
+      output_summary(s, f);
+      if (i + 1 != summaries.size()) {
+	fprintf(f, ",");
+      }
+      fprintf(f, "\n");
+      i++;
+    }
+    fprintf(f, "]\n");
+    if (outfile != "") { // f != stdout
+      fclose(f);
+    }
+    summaries.clear();
+  }
+  
 };
+
+template <typename Configuration>
+std::vector<typename stats_base<Configuration>::summary_type> stats_base<Configuration>::summaries;
 
 template <typename Configuration>
 perworker::array<typename stats_base<Configuration>::private_counters> stats_base<Configuration>::all_counters;

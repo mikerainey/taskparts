@@ -7,7 +7,7 @@
 	"benchmark_run": {
 	    "type": "object",
 	    "properties": {
-		"path": {
+		"path_to_executable": {
 		    "description": "The path to the benchmark executable",
 		    "type": "string"
 		},
@@ -34,7 +34,7 @@
 		    "exclusiveMinimum": 1
 		}
 	    },
-	    "required": [ "path", "cl_args", "env_args" ]
+	    "required": [ "path_to_executable", "cl_args", "env_args" ]
 	}
     },
     "type": "object",

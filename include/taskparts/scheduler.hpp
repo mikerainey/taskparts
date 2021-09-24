@@ -45,7 +45,10 @@ public:
   auto report(size_t) { }
 
   static
-  auto output_summary() { }
+  auto capture_summary(cycles::seconds_type) { }
+
+  static
+  auto output_summaries() { }
 
   static inline
   auto on_enter_work() { }
