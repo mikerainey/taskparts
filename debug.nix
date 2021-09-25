@@ -35,5 +35,4 @@ stdenv.mkDerivation rec {
     export TASKPARTS_NUM_WORKERS=$( ${hwloc}/bin/hwloc-ls|grep Core|wc -l );
   '';
   
-  
 }

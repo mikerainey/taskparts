@@ -174,7 +174,7 @@ public:
 
   static
   auto output_summary(summary_type summary, FILE* f) {
-    fprintf(f, "{ 'exectime': '%lu.%lu'",
+    fprintf(f, "{ \"exectime\": \"%lu.%lu\"",
 	    summary.exectime.whole_part,
 	    summary.exectime.fractional_part);
     if (! Configuration::collect_all_stats) {
@@ -184,25 +184,25 @@ public:
     fprintf(f, ",\n");
     for (int i = 0; i < Configuration::nb_counters; i++) {
       auto n = Configuration::name_of_counter((counter_id_type)i);
-      fprintf(f, "'%s': '%lu',\n", n, summary.counters[i]);
+      fprintf(f, "\"%s\": \"%lu\",\n", n, summary.counters[i]);
     }
     {
       auto s = cycles::seconds_of(summary.launch_duration);
-      fprintf(f, "'launch_duration': '%lu.%lu',\n", s.whole_part, s.fractional_part);
+      fprintf(f, "\"launch_duration\": \"%lu.%lu\",\n", s.whole_part, s.fractional_part);
     }
     {
       auto s = cycles::seconds_of(summary.total_work_time);
-      fprintf(f, "'total_work_time': '%lu.%lu',\n", s.whole_part, s.fractional_part);
+      fprintf(f, "\"total_work_time\": \"%lu.%lu\",\n", s.whole_part, s.fractional_part);
     }
     {
     auto s = cycles::seconds_of(summary.total_idle_time);
-    fprintf(f, "'total_idle_time': '%lu.%lu',\n", s.whole_part, s.fractional_part);
+    fprintf(f, "\"total_idle_time\": \"%lu.%lu\",\n", s.whole_part, s.fractional_part);
     }
     {
       auto s = cycles::seconds_of(summary.total_time);
-      fprintf(f, "'total_time': '%lu.%lu',\n", s.whole_part, s.fractional_part);
+      fprintf(f, "\"total_time\": \"%lu.%lu\",\n", s.whole_part, s.fractional_part);
     }
-    fprintf(f, "'utilization': '%.3f' }", summary.utilization);
+    fprintf(f, "\"utilization\": \"%.3f\" }", summary.utilization);
   }
 
   static
