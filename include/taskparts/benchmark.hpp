@@ -89,11 +89,6 @@ auto benchmark_nativeforkjoin(const Benchmark& benchmark,
   if (const auto env_p = std::getenv("TASKPARTS_BENCHMARK_VERBOSE")) {
     verbose = std::stoi(env_p);
   }
-  auto timed_run = [&] {
-    auto st = cycles::now();
-    benchmark(sched);
-    return cycles::seconds_since(st);
-  };
   initialize_machine();
   Bench_logging::initialize();
   Bench_stats::start_collecting();
@@ -102,7 +97,9 @@ auto benchmark_nativeforkjoin(const Benchmark& benchmark,
       if (verbose) printf("======== WARMUP ========\n");
       auto warmup_start = cycles::now();
       while (cycles::seconds_since(warmup_start).whole_part < warmup_secs) {
-	auto el = timed_run();
+	auto st = cycles::now();
+	benchmark(sched);
+	auto el = cycles::seconds_since(st);
 	if (verbose) printf("warmup_run %lu.%lu\n", el.whole_part, el.fractional_part);
       }
       if (verbose) printf ("======== END WARMUP ========\n");
@@ -114,11 +111,11 @@ auto benchmark_nativeforkjoin(const Benchmark& benchmark,
 	Bench_logging::reset();
 	Bench_stats::start_collecting();
       }, sched);
-      auto el = timed_run();
+      benchmark(sched);
       reset([&] {
 	Bench_stats::on_exit_work();
       }, [&] {
-	Bench_stats::capture_summary(el);
+	Bench_stats::capture_summary();
 	Bench_logging::output("log" + std::to_string(i) + ".json");
 	Bench_stats::start_collecting();
       }, sched);

@@ -1,13 +1,15 @@
 #pragma once
 
 #include <cstdio>
+#include <sys/time.h>
+#include <sys/resource.h>
 
 #include "timing.hpp"
 #include "perworker.hpp"
 #include "machine.hpp"
 
 namespace taskparts {
-
+  
 template <typename Configuration>
 class stats_base {
 public:
@@ -18,14 +20,17 @@ public:
   
   using timestamp_type = uint64_t;
 
+  using rusage_type = struct rusage;
+
   using summary_type = struct summary_struct {
     uint64_t counters[Configuration::nb_counters];
-    timestamp_type launch_duration;
+    timestamp_type exectime;
     timestamp_type total_work_time;
     timestamp_type total_idle_time;
     timestamp_type total_time;
     double utilization;
-    cycles::seconds_type exectime;
+    rusage_type rusage_before;
+    rusage_type rusage_after;
   };
   
 private:
@@ -49,10 +54,10 @@ private:
 
   static
   timestamp_type enter_launch_time;
-  
-  static
-  timestamp_type launch_duration;
 
+  static
+  rusage_type ru_launch_time;
+  
   using private_timers = struct private_timers_struct {
     timestamp_type start_work;
     timestamp_type total_work_time;
@@ -117,6 +122,7 @@ public:
 
   static
   auto start_collecting() {
+    getrusage(RUSAGE_SELF, &ru_launch_time);
     enter_launch_time = now();
     for (int i = 0; i < all_counters.size(); i++) {
       for (int j = 0; j < Configuration::nb_counters; j++) {
@@ -133,14 +139,15 @@ public:
   }
 
   static
-  auto report(cycles::seconds_type exectime) -> summary_type {
+  auto report() -> summary_type {
     auto nb_workers = perworker::nb_workers();
     summary_type summary;
-    summary.exectime = exectime;
+    summary.exectime = since(enter_launch_time);
+    getrusage(RUSAGE_SELF, &(summary.rusage_after));
+    summary.rusage_before = ru_launch_time;
     if (! Configuration::collect_all_stats) {
       return summary;
     }
-    launch_duration = since(enter_launch_time);
     for (int counter_id = 0; counter_id < Configuration::nb_counters; counter_id++) {
       uint64_t counter_value = 0;
       for (size_t i = 0; i < nb_workers; ++i) {
@@ -148,8 +155,7 @@ public:
       }
       summary.counters[counter_id] = counter_value;
     }
-    summary.launch_duration = launch_duration;
-    timestamp_type cumulated_time = launch_duration * nb_workers;
+    timestamp_type cumulated_time = summary.exectime * nb_workers;
     timestamp_type total_work_time = 0;
     timestamp_type total_idle_time = 0;
     auto my_id = perworker::my_id();
@@ -168,8 +174,8 @@ public:
   }
 
   static
-  auto capture_summary(cycles::seconds_type exectime) {
-    summaries.push_back(report(exectime));
+  auto capture_summary() {
+    summaries.push_back(report());
   }
 
   static
@@ -199,15 +205,28 @@ public:
       fprintf(f, "\"%s\": \"%.3f\"", n, v);
       output_after(not_last);
     };
+    auto output_rusage_tv = [&] (const char* n, struct timeval before, struct timeval after,
+				 bool not_last = true) {
+      auto double_of_tv = [] (struct timeval tv) {
+	return ((double) tv.tv_sec) + ((double) tv.tv_usec)/1000000.;
+      };
+      output_double_value(n, double_of_tv(after) - double_of_tv(before), not_last);
+    };
     output_before();
-    output_seconds_value("exectime", summary.exectime, Configuration::collect_all_stats);
+    output_cycles_in_seconds("exectime", summary.exectime);
+    output_rusage_tv("usertime", summary.rusage_before.ru_utime, summary.rusage_after.ru_utime);
+    output_rusage_tv("systime", summary.rusage_before.ru_stime, summary.rusage_after.ru_stime);
+    output_uint64_value("nvcsw", summary.rusage_after.ru_nvcsw - summary.rusage_before.ru_nvcsw);
+    output_uint64_value("nivcsw", summary.rusage_after.ru_nivcsw - summary.rusage_before.ru_nivcsw);
+    output_uint64_value("maxrss", summary.rusage_after.ru_maxrss);
+    output_uint64_value("nsignals", summary.rusage_after.ru_nsignals - summary.rusage_before.ru_nsignals,
+			Configuration::collect_all_stats);
     if (! Configuration::collect_all_stats) {
       return;
     }
     for (int i = 0; i < Configuration::nb_counters; i++) {
       output_uint64_value(Configuration::name_of_counter((counter_id_type)i), summary.counters[i]);
     }
-    output_cycles_in_seconds("launch_duration", summary.launch_duration);
     output_cycles_in_seconds("total_work_time", summary.total_work_time);
     output_cycles_in_seconds("total_work_time", summary.total_idle_time);
     output_cycles_in_seconds("total_time", summary.total_time);
@@ -231,7 +250,7 @@ public:
       i++;
     }
     fprintf(f, "]\n");
-    if (outfile != "") { // f != stdout
+    if (f != stdout) {
       fclose(f);
     }
     summaries.clear();
@@ -246,10 +265,10 @@ template <typename Configuration>
 perworker::array<typename stats_base<Configuration>::private_counters> stats_base<Configuration>::all_counters;
 
 template <typename Configuration>
-typename stats_base<Configuration>::timestamp_type stats_base<Configuration>::enter_launch_time;
+typename stats_base<Configuration>::rusage_type stats_base<Configuration>::ru_launch_time;
 
 template <typename Configuration>
-typename stats_base<Configuration>::timestamp_type stats_base<Configuration>::launch_duration;
+typename stats_base<Configuration>::timestamp_type stats_base<Configuration>::enter_launch_time;
 
 template <typename Configuration>
 perworker::array<typename stats_base<Configuration>::private_timers> stats_base<Configuration>::all_timers;
