@@ -2,7 +2,10 @@
 
 let
   customPython = pkgs.python38.buildEnv.override {
-    extraLibs = [ pkgs.python38Packages.jsonschema pkgs.python38Packages.simplejson ];
+    extraLibs = [ pkgs.python38Packages.jsonschema
+                  pkgs.python38Packages.simplejson
+                  pkgs.python38Packages.matplotlib
+                ];
   };
 in
 
