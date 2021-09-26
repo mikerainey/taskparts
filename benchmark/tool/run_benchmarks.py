@@ -189,6 +189,7 @@ def run_benchmarks(rows, env_var_names = []):
 # Plotting
 # ========
 
+# todo: introduce mk_page parameter to select for multiple plots
 def create_plot(rows,
                 x_key = '<x axis>', x_vals = [],
                 get_y_val = lambda x_key, x_val: 0.0, y_label = '<y axis>',
@@ -212,6 +213,7 @@ def create_plot(rows,
         }
     }
 
+# todo: introduce pretty printing of curve labels, etc
 def output_plot(plot):
     plotd = plot['plot']
     for curve in plotd['curves']:
@@ -227,12 +229,13 @@ def output_plot(plot):
 # Misc
 # ====
 
+# todo: try plotting w/ multiple runs
 x_vals = [1,4,8,12,16]
 rows = mk_cross(mk_append(mk_path_to_executable('../bin/fib_oracleguided.sta'),
                           mk_path_to_executable('../bin/fib_nativeforkjoin.sta')),
                 mk_parameters('TASKPARTS_NUM_WORKERS', x_vals))
 
-#run_benchmarks(rows = rows, env_var_names = ['TASKPARTS_NUM_WORKERS'])
+run_benchmarks(rows = rows, env_var_names = ['TASKPARTS_NUM_WORKERS'])
 
 with open(results_file_name, 'r') as f:
     rows = json.load(f)
