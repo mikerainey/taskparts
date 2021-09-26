@@ -174,35 +174,44 @@ public:
 
   static
   auto output_summary(summary_type summary, FILE* f) {
-    fprintf(f, "{ \"exectime\": \"%lu.%lu\"",
-	    summary.exectime.whole_part,
-	    summary.exectime.fractional_part);
+    auto output_before = [&] {
+      fprintf(f, "{");
+    };
+    auto output_after = [&] (bool not_last) {
+      if (not_last) {
+	fprintf(f, ",\n");
+      } else {
+	fprintf(f, "}");
+      }
+    };
+    auto output_uint64_value = [&] (const char* n, uint64_t v, bool not_last = true) {
+      fprintf(f, "\"%s\": \"%lu\"", n, v);
+      output_after(not_last);
+    };
+    auto output_seconds_value = [&] (const char* n, cycles::seconds_type s, bool not_last = true) {
+      fprintf(f, "\"%s\": \"%lu.%lu\"", n, s.whole_part, s.fractional_part);
+      output_after(not_last);
+    };
+    auto output_cycles_in_seconds = [&] (const char* n, uint64_t cs, bool not_last = true) {
+      output_seconds_value(n, cycles::seconds_of(cs), not_last);
+    };
+    auto output_double_value = [&] (const char* n, double v, bool not_last = true) {
+      fprintf(f, "\"%s\": \"%.3f\"", n, v);
+      output_after(not_last);
+    };
+    output_before();
+    output_seconds_value("exectime", summary.exectime, Configuration::collect_all_stats);
     if (! Configuration::collect_all_stats) {
-      fprintf(f, "}\n");
       return;
     }
-    fprintf(f, ",\n");
     for (int i = 0; i < Configuration::nb_counters; i++) {
-      auto n = Configuration::name_of_counter((counter_id_type)i);
-      fprintf(f, "\"%s\": \"%lu\",\n", n, summary.counters[i]);
+      output_uint64_value(Configuration::name_of_counter((counter_id_type)i), summary.counters[i]);
     }
-    {
-      auto s = cycles::seconds_of(summary.launch_duration);
-      fprintf(f, "\"launch_duration\": \"%lu.%lu\",\n", s.whole_part, s.fractional_part);
-    }
-    {
-      auto s = cycles::seconds_of(summary.total_work_time);
-      fprintf(f, "\"total_work_time\": \"%lu.%lu\",\n", s.whole_part, s.fractional_part);
-    }
-    {
-    auto s = cycles::seconds_of(summary.total_idle_time);
-    fprintf(f, "\"total_idle_time\": \"%lu.%lu\",\n", s.whole_part, s.fractional_part);
-    }
-    {
-      auto s = cycles::seconds_of(summary.total_time);
-      fprintf(f, "\"total_time\": \"%lu.%lu\",\n", s.whole_part, s.fractional_part);
-    }
-    fprintf(f, "\"utilization\": \"%.3f\" }", summary.utilization);
+    output_cycles_in_seconds("launch_duration", summary.launch_duration);
+    output_cycles_in_seconds("total_work_time", summary.total_work_time);
+    output_cycles_in_seconds("total_work_time", summary.total_idle_time);
+    output_cycles_in_seconds("total_time", summary.total_time);
+    output_double_value("utilization", summary.utilization, false);
   }
 
   static
@@ -212,14 +221,13 @@ public:
       outfile = std::string(env_p);
     }
     FILE* f = (outfile == "") ? stdout : fopen(outfile.c_str(), "w");
-    fprintf(f, "[\n");
+    fprintf(f, "[");
     size_t i = 0;
     for (auto s : summaries) {
       output_summary(s, f);
       if (i + 1 != summaries.size()) {
 	fprintf(f, ",");
       }
-      fprintf(f, "\n");
       i++;
     }
     fprintf(f, "]\n");
