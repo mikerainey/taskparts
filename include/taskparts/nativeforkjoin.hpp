@@ -210,7 +210,7 @@ public:
   F f;
 
   nativefj_from_lambda(const F& f, Scheduler sched=Scheduler())
-    : nativefj_fiber<Scheduler>(), f(f) { }
+    : nativefj_fiber<Scheduler>(), f(std::move(f)) { }
 
   void run2() {
     f();
