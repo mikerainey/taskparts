@@ -6,6 +6,7 @@ import os
 import matplotlib.pyplot as plt
 import statistics
 import functools
+from matplotlib.backends.backend_pdf import PdfPages
 
 # String conversions
 # ==================
@@ -145,9 +146,12 @@ with open('benchmark_run_series_schema.json', 'r') as f:
 
 results_file_name = 'results.json'
 trace_file_name = 'trace.json'
+results_plot_name = 'results_plot.pdf'
 
 # todo: in addition to env_var_names, add silent_names, which are the names of parameters
 # that are not to be passed either as environment vars or command line args
+# todo: introduce append mode for the results file
+# todo: add command line argument to control number of repititions
 def run_benchmarks(rows, env_var_names = []):
     _br = mk_benchmark_runs(rows, env_var_names)
     jsonschema.validate(_br, benchmark_run_series_schema)
@@ -189,6 +193,8 @@ def run_benchmarks(rows, env_var_names = []):
 # Plotting
 # ========
 
+# todo: make it possible to gracefully deal with a benchmark exiting in error by either stopping the entire benchmark or by reporting a warning message and not displaying the or by finding which runs didn't succeed last time around and trying them again, after trying once before
+
 # todo: introduce mk_page parameter to select for multiple plots
 def create_plot(rows,
                 x_key = '<x axis>', x_vals = [],
@@ -218,24 +224,34 @@ def output_plot(plot):
     plotd = plot['plot']
     for curve in plotd['curves']:
         xy_pairs = list(curve['xy_pairs'])
-        xs = list(map(lambda xyp: xyp['x'], xy_pairs))
-        ys = list(map(lambda xyp: xyp['y'], xy_pairs))
+        xs = [xyp['x'] for xyp in xy_pairs]
+        ys = [xyp['y'] for xyp in xy_pairs] 
         plt.plot(xs, ys, label = curve['curve_label'])
     plt.xlabel(plotd['x_label'])
     plt.ylabel(plotd['y_label'])
     plt.legend()
-    plt.show()
+    with PdfPages(results_plot_name) as pdf:
+        pdf.savefig()
+        plt.close()
+#    plt.show()
+
 
 # Misc
 # ====
 
 # todo: try plotting w/ multiple runs
-x_vals = [1,4,8,12,16]
-rows = mk_cross(mk_append(mk_path_to_executable('../bin/fib_oracleguided.sta'),
-                          mk_path_to_executable('../bin/fib_nativeforkjoin.sta')),
+x_vals = [1,2,3,4] #,8,12,16
+kappa_usecs = [200,300,400]
+
+mk_oracleguided = mk_cross(mk_path_to_executable('../bin/fib_oracleguided.sta'),
+                           mk_parameters('TASKPARTS_KAPPA_USEC', kappa_usecs))
+
+mk_nativeforkjoin = mk_path_to_executable('../bin/fib_nativeforkjoin.sta')
+
+rows = mk_cross(mk_append(mk_oracleguided, mk_nativeforkjoin),
                 mk_parameters('TASKPARTS_NUM_WORKERS', x_vals))
 
-run_benchmarks(rows = rows, env_var_names = ['TASKPARTS_NUM_WORKERS'])
+run_benchmarks(rows = rows, env_var_names = ['TASKPARTS_NUM_WORKERS','TASKPARTS_KAPPA_USEC'])
 
 with open(results_file_name, 'r') as f:
     rows = json.load(f)
@@ -255,8 +271,7 @@ with open(results_file_name, 'r') as f:
                        lambda x_key, x_val, y_rows:
                        statistics.mean([float(x) for x in select_by(y_rows, y_label) ]),
                        y_label = y_label,
-                       mk_curve_rows = mk_append(mk_path_to_executable('../bin/fib_oracleguided.sta'),
-                                                 mk_path_to_executable('../bin/fib_nativeforkjoin.sta')),
+                       mk_curve_rows = mk_append(mk_oracleguided, mk_nativeforkjoin),
                        opt_args = opt_plot_args)
     print(plot)
     output_plot(plot)
