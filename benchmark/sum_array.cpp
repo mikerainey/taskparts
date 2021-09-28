@@ -71,9 +71,9 @@ int main() {
     sum_array_heartbeat(a, 0, n, 0.0, &result);
   }, [&] (auto sched) {
     a = new double[n];
-    taskparts::parallel_for(0, n, [&] (auto i) {
+    taskparts::parallel_for(0, n, [&] (size_t i) {
       a[i] = 1.0;
-    }, sched);
+    }, taskparts::dflt_parallel_for_cost_fn, sched);
   }, [&] (auto sched) {
     delete [] a;
   });

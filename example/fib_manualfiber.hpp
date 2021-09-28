@@ -1,6 +1,6 @@
 #pragma once
 
-#include "taskparts/fiber.hpp"
+#include <taskparts/fiber.hpp>
 #include "fib_sequential.hpp"
 
 int64_t fib_sequential_threshold = 15;

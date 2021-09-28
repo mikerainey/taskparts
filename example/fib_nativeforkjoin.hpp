@@ -1,6 +1,6 @@
 #pragma once
 
-#include "taskparts/nativeforkjoin.hpp"
+#include <taskparts/nativeforkjoin.hpp>
 #include "fib_sequential.hpp"
 
 int64_t fib_sequential_threshold = 15;

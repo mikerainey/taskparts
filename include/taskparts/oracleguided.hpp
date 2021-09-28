@@ -224,4 +224,36 @@ auto ogfork2join(const F1& f1, const F2& f2, Scheduler sched=Scheduler()) {
   timer.mine() = cycles::now();
 }
 
+auto dflt_parallel_for_cost_fn = [] (size_t start, size_t end) -> size_t {
+  return end - start;
+};
+    
+template <typename F,
+	  typename Cost_fn=decltype(dflt_parallel_for_cost_fn),
+	  typename Scheduler=minimal_scheduler<>>
+void parallel_for(size_t start, size_t end,
+		  const F& f,
+		  Cost_fn cost_fn=dflt_parallel_for_cost_fn,
+		  Scheduler sched=Scheduler()) {
+  spguard([&] { return cost_fn(start, end); }, [&] {
+    size_t n = end - start;
+    if (n == 0) {
+      return;
+    } else if (n == 1) {
+      f(start);
+    } else {
+      // Not in middle to avoid clashes on set-associative
+      // caches on powers of 2.
+      size_t mid = (start + (9 * (n + 1)) / 16);
+      ogfork2join([&] { parallel_for(start, mid, f, cost_fn, sched); },
+		  [&] { parallel_for(mid, end, f, cost_fn, sched); },
+		  sched);
+    }
+  }, [&] {
+    for (size_t i = start; i < end; i++) {
+      f(i);
+    }
+  });
+}
+  
 } // end namespace

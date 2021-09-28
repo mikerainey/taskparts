@@ -199,11 +199,11 @@ int main() {
   }, [&] (auto sched) {
     int h = taskparts::cmdline::parse_or_default_int("h", 28);
     n0 = gen_perfect_tree(h, sched);
+  }, [&] (auto sched) {
+    delete [] n0;
   });
   
   printf("answer=%d\n", answer);
-  
-  delete [] n0;
     
     /*
   auto ns = std::vector<node*>(
