@@ -27,7 +27,7 @@ std::tuple<size_t,size_t,size_t> wc(Seq const &s) {
 }
 
 int main() {
-  size_t n = 100000000;
+  size_t n = taskparts::cmdline::parse_or_default_long("n", 100000000);
   std::string s(n, 'b');
   parlay::benchmark_taskparts([&] (auto sched) {
     wc(s);

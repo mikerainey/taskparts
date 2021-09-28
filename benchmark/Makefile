@@ -91,4 +91,4 @@ DBG_PREFIX=\
 	$(CXX) $(DBG_PREFIX) -DTASKPARTS_TPALRTS $(basename $<)_manual.s -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
 
 clean:
-	rm -rf bin
+	rm -rf bin gen_rollforward

@@ -8,7 +8,7 @@
 #include <map>
 #include <functional>
 
-namespace deepsea {
+namespace taskparts {
 namespace cmdline {
   
 namespace {

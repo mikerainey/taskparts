@@ -6,17 +6,17 @@
 #include <vector>
 #include <deque>
 
-#include "cmdline.hpp"
+#include "../include/taskparts/cmdline.hpp"
 
 int main() {
   auto mk_rollforward_label = [] (const std::string& s) {
     return s + "_rf";
   };
 
-  std::string file = deepsea::cmdline::parse_or_default_string("file", "");
-  std::string prefix = deepsea::cmdline::parse_or_default_string("prefix", file);
-  bool only_table = deepsea::cmdline::parse_or_default_bool("only_table", false);
-  bool only_header = deepsea::cmdline::parse_or_default_bool("only_header", false);
+  std::string file = taskparts::cmdline::parse_or_default_string("file", "");
+  std::string prefix = taskparts::cmdline::parse_or_default_string("prefix", file);
+  bool only_table = taskparts::cmdline::parse_or_default_bool("only_table", false);
+  bool only_header = taskparts::cmdline::parse_or_default_bool("only_header", false);
 
   if (file == "") {
     std::cout << "bogus input file " << file << std::endl;
