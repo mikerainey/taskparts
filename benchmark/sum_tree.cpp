@@ -1,3 +1,6 @@
+#ifndef TASKPARTS_TPALRTS
+#error "need to compile with tpal flags, e.g., TASKPARTS_TPALRTS"
+#endif
 #include <vector>
 #include <tuple>
 #include <functional>

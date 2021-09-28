@@ -1,3 +1,6 @@
+#ifndef TASKPARTS_TPALRTS
+#error "need to compile with tpal flags, e.g., TASKPARTS_TPALRTS"
+#endif
 #include "taskparts/benchmark.hpp"
 #include "sum_array_rollforward_decls.hpp"
 

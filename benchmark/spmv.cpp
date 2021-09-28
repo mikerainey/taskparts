@@ -1,3 +1,6 @@
+#ifndef TASKPARTS_TPALRTS
+#error "need to compile with tpal flags, e.g., TASKPARTS_TPALRTS"
+#endif
 #include "taskparts/benchmark.hpp"
 // -DNDEBUG -O3 -march=native -fno-verbose-asm -fno-stack-protector -fno-asynchronous-unwind-tables -fomit-frame-pointer -mavx2 -mfma -fopenmp
 
