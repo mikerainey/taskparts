@@ -225,4 +225,22 @@ auto fork2join(const F1& f1, const F2& f2, Scheduler sched=Scheduler()) {
   nativefj_fiber<Scheduler>::fork2join(&fb1, &fb2);
 }
 
+template <typename F, typename Scheduler=minimal_scheduler<>>
+void parallel_for(size_t start, size_t end, const F& f,
+		  Scheduler sched=Scheduler(), size_t granularity=10000) {
+  if ((end - start) <= granularity) {
+    for (size_t i = start; i < end; i++) {
+      f(i);
+    }
+  } else {
+    size_t n = end - start;
+    // Not in middle to avoid clashes on set-associative
+    // caches on powers of 2.
+    size_t mid = (start + (9 * (n + 1)) / 16);
+    fork2join([&]() { parallel_for(start, mid, f, sched, granularity); },
+	      [&]() { parallel_for(mid, end, f, sched, granularity); },
+	      sched);
+  }
+}
+  
 } // end namespace

@@ -1,12 +1,8 @@
 #ifndef TASKPARTS_TPALRTS
 #error "need to compile with tpal flags, e.g., TASKPARTS_TPALRTS"
 #endif
-#include "taskparts/benchmark.hpp"
+#include <taskparts/benchmark.hpp>
 #include "sum_array_rollforward_decls.hpp"
-
-// namespace taskparts {
-// using scheduler = minimal_scheduler<bench_stats, bench_logging, bench_elastic, bench_worker, bench_interrupt>;
-// } // end name
 
 void sum_array_heartbeat(double* a, uint64_t lo, uint64_t hi, double r, double* dst);
 
@@ -67,18 +63,21 @@ auto initialize_rollforward() {
 
 int main() {
   taskparts::initialize_rollforward();
-  uint64_t nb_items = 100 * 1000 * 1000;
+  uint64_t n = taskparts::cmdline::parse_or_default_long("n", 100 * 1000 * 1000);
   double result = 0.0;
-  double* a = new double[nb_items];
-  for (size_t i = 0; i < nb_items; i++) {
-    a[i] = 1.0;
-  }
+  double* a;
 
   taskparts::benchmark_nativeforkjoin([&] (auto sched) {
-    sum_array_heartbeat(a, 0, nb_items, 0.0, &result);
+    sum_array_heartbeat(a, 0, n, 0.0, &result);
+  }, [&] (auto sched) {
+    a = new double[n];
+    taskparts::parallel_for(0, n, [&] (auto i) {
+      a[i] = 1.0;
+    }, sched);
+  }, [&] (auto sched) {
+    delete [] a;
   });
   
   printf("result=%f\n",result);
-  delete [] a;
   return 0;
 }

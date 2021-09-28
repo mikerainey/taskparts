@@ -66,8 +66,13 @@ using bench_interrupt = minimal_interrupt;
 
 using bench_scheduler = minimal_scheduler<bench_stats, bench_logging, bench_elastic,
 					  bench_worker, bench_interrupt>;
+
+auto dflt_benchmark_setup = [] (bench_scheduler) { };
+auto dflt_benchmark_teardown = [] (bench_scheduler) { };
   
 template <typename Benchmark,
+	  typename Benchmark_setup=decltype(dflt_benchmark_setup),
+	  typename Benchmark_teardown=decltype(dflt_benchmark_teardown),
 	  typename Bench_stats=bench_stats,
 	  typename Bench_logging=bench_logging,
 	  template <typename, typename> typename Bench_elastic=bench_elastic,
@@ -75,6 +80,8 @@ template <typename Benchmark,
 	  typename Bench_interrupt=bench_interrupt,
 	  typename Scheduler=minimal_scheduler<Bench_stats, Bench_logging, Bench_elastic, Bench_worker, Bench_interrupt>>
 auto benchmark_nativeforkjoin(const Benchmark& benchmark,
+			      Benchmark_setup benchmark_setup=dflt_benchmark_setup,
+			      Benchmark_teardown benchmark_teardown=dflt_benchmark_teardown,
 			      Bench_stats stats=Bench_stats(),
 			      Bench_logging logging=Bench_logging(),
 			      Bench_elastic<Bench_stats, Bench_logging> elastic=Bench_elastic<Bench_stats, Bench_logging>(),
@@ -97,6 +104,7 @@ auto benchmark_nativeforkjoin(const Benchmark& benchmark,
   Bench_logging::initialize();
   Bench_stats::start_collecting();
   nativefj_from_lambda f_body([&] {
+    benchmark_setup(sched);
     if (warmup_secs >= 1) {
       if (verbose) printf("======== WARMUP ========\n");
       auto warmup_start = cycles::now();
@@ -124,6 +132,7 @@ auto benchmark_nativeforkjoin(const Benchmark& benchmark,
 	Bench_stats::start_collecting();
       }, sched);
     }
+    benchmark_teardown(sched);
   }, sched);
   auto f_term = new terminal_fiber<Scheduler>;
   fiber<Scheduler>::add_edge(&f_body, f_term);

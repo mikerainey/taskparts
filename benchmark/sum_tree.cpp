@@ -155,7 +155,8 @@ auto nb_nodes_of_height(size_t h) {
   return (1 << (h + 1)) - 1;
 };
 
-auto fill(node* tree, size_t h, size_t i) -> void {
+template <typename Scheduler=taskparts::minimal_scheduler<>>
+auto fill(node* tree, size_t h, size_t i, Scheduler sched=Scheduler()) -> void {
   if (h <= 0) {
     return;
   }
@@ -164,14 +165,18 @@ auto fill(node* tree, size_t h, size_t i) -> void {
   size_t i_r = i_l + nb_nodes_of_height(h - 1);
   n->left = &tree[i_l];
   n->right = &tree[i_r];
-  fill(tree, h - 1, i_l);
-  fill(tree, h - 1, i_r);
+  taskparts::fork2join([&] {
+    fill(tree, h - 1, i_l, sched);
+  }, [&] {
+    fill(tree, h - 1, i_r, sched);
+  }, sched);
 };
 
-auto gen_perfect_tree(size_t height) -> node* {
+template <typename Scheduler=taskparts::minimal_scheduler<>>
+auto gen_perfect_tree(size_t height, Scheduler sched=Scheduler()) -> node* {
   size_t nb_nodes = nb_nodes_of_height(height);
   node* tree = new node[nb_nodes];
-  fill(tree, height, 0);
+  fill(tree, height, 0, sched);
   return tree;
 }
 
@@ -180,7 +185,7 @@ void sum_serial(node* n);
 int main() {
   taskparts::initialize_rollforward();
 
-  auto n0 = gen_perfect_tree(28);
+  node* n0;
 
   taskparts::benchmark_nativeforkjoin([&] (auto sched) {
     taskparts::nativefj_fiber<decltype(sched)>::fork1join(new task([&] {
@@ -191,6 +196,9 @@ int main() {
       sum_heartbeat(n0, k, nullprml, nullprml);
       //sum_serial(n0);
     }));
+  }, [&] (auto sched) {
+    int h = taskparts::cmdline::parse_or_default_int("h", 28);
+    n0 = gen_perfect_tree(h, sched);
   });
   
   printf("answer=%d\n", answer);
