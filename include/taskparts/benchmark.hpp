@@ -63,6 +63,9 @@ using bench_interrupt = ping_thread_interrupt;
 using bench_worker = minimal_worker;
 using bench_interrupt = minimal_interrupt;
 #endif
+
+using bench_scheduler = minimal_scheduler<bench_stats, bench_logging, bench_elastic,
+					  bench_worker, bench_interrupt>;
   
 template <typename Benchmark,
 	  typename Bench_stats=bench_stats,

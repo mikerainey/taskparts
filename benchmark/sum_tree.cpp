@@ -6,12 +6,10 @@
 #include <functional>
 #include <stdio.h>
 
-#include "taskparts/benchmark.hpp"
+#include <taskparts/benchmark.hpp>
 #include "sum_tree_rollforward_decls.hpp"
 
 namespace taskparts {
-using scheduler = minimal_scheduler<bench_stats, bench_logging, bench_elastic, bench_worker, bench_interrupt>;
-
 auto initialize_rollforward() {
   rollforward_table = {
     #include "sum_tree_rollforward_map.hpp"
@@ -20,7 +18,7 @@ auto initialize_rollforward() {
 }
 } // end namespace
 
-class task : public taskparts::fiber<taskparts::scheduler> {
+class task : public taskparts::fiber<taskparts::bench_scheduler> {
 public:
 
   std::function<void()> f;
