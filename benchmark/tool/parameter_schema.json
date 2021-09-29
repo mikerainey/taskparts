@@ -8,7 +8,10 @@
 		"type": "object",
 		"properties": {
 		    "key": { "type": "string" },
-		    "val": { "type": "string" }
+		    "val": { "val": { "type": "object",
+				      "oneOf": [{"type": "string"},
+						{"type": "number"}]}
+			   }
 		},
 		"uniqueKeys": ["/key"],
 		"required": ["key", "val"]
@@ -28,7 +31,6 @@
             "required": ["value"]
 	},
         
-        
         "expr-append": {
             "type": "object",
             "properties": {
@@ -36,8 +38,8 @@
 		    
 		    "type": "object",
                     "properties": {
-			"e1":{"$ref": "#/$defs/expr-value" },
-                        "e2":{"$ref": "#/$defs/expr-value" }
+			"e1":{"$ref": "#/$defs/expr" },
+                        "e2":{"$ref": "#/$defs/expr" }
 
                     },
                     "required": ["e1", "e2"]
@@ -53,8 +55,8 @@
 		    
 		    "type": "object",
                     "properties": {
-			"e1":{"$ref": "#/$defs/expr-value" },
-                        "e2":{"$ref": "#/$defs/expr-value" }
+			"e1":{"$ref": "#/$defs/expr" },
+                        "e2":{"$ref": "#/$defs/expr" }
 
                     },
                     "required": ["e1", "e2"]
@@ -70,8 +72,8 @@
 		    
 		    "type": "object",
                     "properties": {
-			"e1":{"$ref": "#/$defs/expr-value" },
-                        "e2":{"$ref": "#/$defs/expr-value" }
+			"e1":{"$ref": "#/$defs/expr" },
+                        "e2":{"$ref": "#/$defs/expr" }
 
                     },
                     "required": ["e1", "e2"]
@@ -87,8 +89,8 @@
 		    
 		    "type": "object",
                     "properties": {
-			"e1":{"$ref": "#/$defs/expr-value" },
-                        "e2":{"$ref": "#/$defs/expr-value" }
+			"e1":{"$ref": "#/$defs/expr" },
+                        "e2":{"$ref": "#/$defs/expr" }
 
                     },
                     "required": ["e1", "e2"]
