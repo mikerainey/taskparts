@@ -35,12 +35,10 @@
             "type": "object",
             "properties": {
 		"append": {
-		    
 		    "type": "object",
                     "properties": {
 			"e1":{"$ref": "#/$defs/expr" },
                         "e2":{"$ref": "#/$defs/expr" }
-
                     },
                     "required": ["e1", "e2"]
 		}
@@ -52,12 +50,10 @@
             "type": "object",
             "properties": {
 		"cross": {
-		    
 		    "type": "object",
                     "properties": {
 			"e1":{"$ref": "#/$defs/expr" },
                         "e2":{"$ref": "#/$defs/expr" }
-
                     },
                     "required": ["e1", "e2"]
 		}
@@ -69,12 +65,10 @@
             "type": "object",
             "properties": {
 		"take_kvp": {
-		    
 		    "type": "object",
                     "properties": {
 			"e1":{"$ref": "#/$defs/expr" },
                         "e2":{"$ref": "#/$defs/expr" }
-
                     },
                     "required": ["e1", "e2"]
 		}
@@ -86,7 +80,21 @@
             "type": "object",
             "properties": {
 		"drop_kvp": {
-		    
+		    "type": "object",
+                    "properties": {
+			"e1":{"$ref": "#/$defs/expr" },
+                        "e2":{"$ref": "#/$defs/expr" }
+                    },
+                    "required": ["e1", "e2"]
+		}
+            },
+            "required": ["drop_kvp"]
+        },
+
+	"expr-take_k": {
+            "type": "object",
+            "properties": {
+		"take_k": {
 		    "type": "object",
                     "properties": {
 			"e1":{"$ref": "#/$defs/expr" },
@@ -96,7 +104,23 @@
                     "required": ["e1", "e2"]
 		}
             },
-            "required": ["drop_kvp"]
+            "required": ["take_k"]
+        },
+
+	"expr-drop_k": {
+            "type": "object",
+            "properties": {
+		"drop_k": {
+		    "type": "object",
+                    "properties": {
+			"e1":{"$ref": "#/$defs/expr" },
+                        "e2":{"$ref": "#/$defs/expr" }
+
+                    },
+                    "required": ["e1", "e2"]
+		}
+            },
+            "required": ["drop_k"]
         },
 
 	"expr": {
@@ -105,7 +129,9 @@
 		{"$ref": "#/$defs/expr-append"},
 		{"$ref": "#/$defs/expr-cross"},
 		{"$ref": "#/$defs/expr-take_kvp"},
-		{"$ref": "#/$defs/expr-drop_kvp"}
+		{"$ref": "#/$defs/expr-drop_kvp"},
+		{"$ref": "#/$defs/expr-take_k"},
+		{"$ref": "#/$defs/expr-drop_k"}
             ]
 	}
     },
