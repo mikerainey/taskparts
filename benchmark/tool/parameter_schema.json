@@ -65,10 +65,10 @@
             "required": ["cross"]
         },
 
-	"expr-take": {
+	"expr-take_kvp": {
             "type": "object",
             "properties": {
-		"take": {
+		"take_kvp": {
 		    
 		    "type": "object",
                     "properties": {
@@ -79,13 +79,13 @@
                     "required": ["e1", "e2"]
 		}
             },
-            "required": ["take"]
+            "required": ["take_kvp"]
         },
 
-	"expr-drop": {
+	"expr-drop_kvp": {
             "type": "object",
             "properties": {
-		"drop": {
+		"drop_kvp": {
 		    
 		    "type": "object",
                     "properties": {
@@ -96,7 +96,7 @@
                     "required": ["e1", "e2"]
 		}
             },
-            "required": ["drop"]
+            "required": ["drop_kvp"]
         },
 
 	"expr": {
@@ -104,8 +104,8 @@
 		{"$ref": "#/$defs/expr-value" },
 		{"$ref": "#/$defs/expr-append"},
 		{"$ref": "#/$defs/expr-cross"},
-		{"$ref": "#/$defs/expr-take"},
-		{"$ref": "#/$defs/expr-drop"}
+		{"$ref": "#/$defs/expr-take_kvp"},
+		{"$ref": "#/$defs/expr-drop_kvp"}
             ]
 	}
     },
