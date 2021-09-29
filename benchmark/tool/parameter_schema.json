@@ -1,0 +1,112 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+
+    "$defs": {
+	"row": {
+	    "type": "array",
+	    "items": {
+		"type": "object",
+		"properties": {
+		    "key": { "type": "string" },
+		    "val": { "type": "string" }
+		},
+		"uniqueKeys": ["/key"],
+		"required": ["key", "val"]
+            }
+	},
+	
+	"expr-value": {
+            "type": "object",
+            "properties": {
+		"value": {
+		    "type": "array",
+		    "items": {
+			"$ref": "#/$defs/row" 
+		    }
+		}
+            },
+            "required": ["value"]
+	},
+        
+        
+        "expr-append": {
+            "type": "object",
+            "properties": {
+		"append": {
+		    
+		    "type": "object",
+                    "properties": {
+			"e1":{"$ref": "#/$defs/expr-value" },
+                        "e2":{"$ref": "#/$defs/expr-value" }
+
+                    },
+                    "required": ["e1", "e2"]
+		}
+            },
+            "required": ["append"]
+        },
+
+	"expr-cross": {
+            "type": "object",
+            "properties": {
+		"cross": {
+		    
+		    "type": "object",
+                    "properties": {
+			"e1":{"$ref": "#/$defs/expr-value" },
+                        "e2":{"$ref": "#/$defs/expr-value" }
+
+                    },
+                    "required": ["e1", "e2"]
+		}
+            },
+            "required": ["cross"]
+        },
+
+	"expr-take": {
+            "type": "object",
+            "properties": {
+		"take": {
+		    
+		    "type": "object",
+                    "properties": {
+			"e1":{"$ref": "#/$defs/expr-value" },
+                        "e2":{"$ref": "#/$defs/expr-value" }
+
+                    },
+                    "required": ["e1", "e2"]
+		}
+            },
+            "required": ["take"]
+        },
+
+	"expr-drop": {
+            "type": "object",
+            "properties": {
+		"drop": {
+		    
+		    "type": "object",
+                    "properties": {
+			"e1":{"$ref": "#/$defs/expr-value" },
+                        "e2":{"$ref": "#/$defs/expr-value" }
+
+                    },
+                    "required": ["e1", "e2"]
+		}
+            },
+            "required": ["drop"]
+        },
+
+	"expr": {
+            "oneOf": [
+		{"$ref": "#/$defs/expr-value" },
+		{"$ref": "#/$defs/expr-append"},
+		{"$ref": "#/$defs/expr-cross"},
+		{"$ref": "#/$defs/expr-take"},
+		{"$ref": "#/$defs/expr-drop"}
+            ]
+	}
+    },
+    
+    "$ref": "#/$defs/expr" 
+}
