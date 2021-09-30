@@ -168,7 +168,8 @@ public:
   
   template <typename Worker_reset, typename Global_reset>
   auto _reset(Worker_reset worker_reset, Global_reset global_reset) {
-    fork1join(new reset_fiber(worker_reset, global_reset, Scheduler()));
+    using rf = reset_fiber<Worker_reset,Global_reset,Scheduler>;
+    fork1join(new rf(worker_reset, global_reset));
   }
 
   template <typename Worker_reset, typename Global_reset>
