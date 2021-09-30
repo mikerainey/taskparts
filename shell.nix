@@ -3,6 +3,8 @@
 # By default, the environment uses clang/llvm instead of GCC. To
 # use GCC instead, use the following:
 #   $ nix-shell --arg stdenv '(import <nixpkgs> {}).stdenv'
+# If you need to use Cilk, then use the following:
+#   $ nix-shell --arg stdenv '(import <nixpkgs> {}).gcc7Stdenv'
 #
 # If you don't want to use jemalloc:
 #   $ nix-shell --arg jemalloc null
