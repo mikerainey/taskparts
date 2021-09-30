@@ -9,7 +9,8 @@ def string_of_cl_args(args):
     out = ''
     i = 0
     for a in args:
-        out = (out + ' ' + a) if i > 0 else a
+        sa = "-" + a['var'] + ' ' + str(a['val'])
+        out = (out + ' ' + sa) if i > 0 else sa
         i = i + 1
     return out
 
@@ -18,20 +19,20 @@ def string_of_env_args(vargs):
     i = 0
     for va in vargs:
         v = va['var']
-        a = va['val']
-        o = (v + '=' + str(a))
+        sa = str(va['val'])
+        o = (v + '=' + sa)
         out = (out + ' ' + o) if i > 0 else o
         i = i + 1
     return out
 
 def string_of_benchmark_run(r):
     br = r['benchmark_run']
-    cl_args = string_of_cl_args(br['cl_args'])
-    env_args = string_of_env_args(br['env_args'])
-    return env_args + ' ' + br['path_to_executable'] + ' ' + cl_args
+    cl_args = (' ' if br['cl_args'] != [] else '') + string_of_cl_args(br['cl_args'])
+    env_args = string_of_env_args(br['env_args']) + (' ' if br['env_args'] != [] else '')
+    return env_args + br['path_to_executable'] + cl_args
 
-# Benchmark runs
-# ==============
+# Benchmark runs configuration
+# ============================
 
 path_to_executable = 'path_to_executable'
 
@@ -65,3 +66,15 @@ def mk_benchmark_runs(value, env_vars, silent_vars):
     r = {'runs': runs }
     jsonschema.validate(r, benchmark_run_series_schema)
     return r
+
+# Benchmark invocation
+# ====================
+
+def dry_runs(expr, env_vars = [], silent_vars = [], output_vars = []):
+    lines = ''
+    value = eval(expr)
+    br = mk_benchmark_runs(value, env_vars, silent_vars)
+    for r in br['runs']:
+        lines += string_of_benchmark_run(r) + '\n'
+    return lines
+
