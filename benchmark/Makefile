@@ -2,10 +2,13 @@
 INSTALL_PATH=bin
 # root folder of taskparts repository:
 TASKPARTS_PATH=../
-# Other parameters:
+# Other parameters (all nil by default):
 #   HWLOC_INCLUDE_PREFIX           include directives for hwloc (optionally empty)
 #   HWLOC_LIBRARY_PREFIX           linker directives for hwloc (optionally empty)
 #   TASKPARTS_ELASTIC_PREFIX       build configuration for elastic work stealing
+#   PARLAYLIB_INCLUDE_PREFIX       include directives needed for parlay
+#   PBBSBENCH_INCLUDE_PREFIX       include directives needed for pbbs
+#   MINI_UTS_PREFIX                include directives needed for mini uts benchmark
 
 .PHONY: install_folder
 install_folder:
@@ -28,7 +31,8 @@ INCLUDE_PREFIX=\
 	-I $(TASKPARTS_INCLUDE_PATH) \
 	$(HWLOC_INCLUDE_PREFIX) \
 	$(PARLAYLIB_INCLUDE_PREFIX) \
-	$(PBBSBENCH_INCLUDE_PREFIX)
+	$(PBBSBENCH_INCLUDE_PREFIX) \
+	$(MINI_UTS_PREFIX)
 
 LINKER_PREFIX=\
 	-pthread \
