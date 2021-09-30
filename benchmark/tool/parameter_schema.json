@@ -91,10 +91,10 @@
             "required": ["drop_kvp"]
         },
 
-	"expr-take_k": {
+	"expr-take_ktp": {
             "type": "object",
             "properties": {
-		"take_k": {
+		"take_ktp": {
 		    "type": "object",
                     "properties": {
 			"e1":{"$ref": "#/$defs/expr" },
@@ -104,13 +104,13 @@
                     "required": ["e1", "e2"]
 		}
             },
-            "required": ["take_k"]
+            "required": ["take_ktp"]
         },
 
-	"expr-drop_k": {
+	"expr-drop_ktp": {
             "type": "object",
             "properties": {
-		"drop_k": {
+		"drop_ktp": {
 		    "type": "object",
                     "properties": {
 			"e1":{"$ref": "#/$defs/expr" },
@@ -120,7 +120,7 @@
                     "required": ["e1", "e2"]
 		}
             },
-            "required": ["drop_k"]
+            "required": ["drop_ktp"]
         },
 
 	"expr": {
@@ -130,8 +130,8 @@
 		{"$ref": "#/$defs/expr-cross"},
 		{"$ref": "#/$defs/expr-take_kvp"},
 		{"$ref": "#/$defs/expr-drop_kvp"},
-		{"$ref": "#/$defs/expr-take_k"},
-		{"$ref": "#/$defs/expr-drop_k"}
+		{"$ref": "#/$defs/expr-take_ktp"},
+		{"$ref": "#/$defs/expr-drop_ktp"}
             ]
 	}
     },

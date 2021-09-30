@@ -4,6 +4,9 @@ import simplejson as json
 def pretty_print_json(j):
     print(json.dumps(j, indent=4, sort_keys=True))
 
+# Smart constructors
+# ==================
+
 def mk_unit():
     return { 'value': [ [ ] ] }
 
@@ -25,27 +28,74 @@ def mk_take_kvp(e1, e2):
 def mk_drop_kvp(e1, e2):
     return {'drop_kvp': {'e1': e1, 'e2': e2}}
 
-def does_row_contain(r, kvp):
-    res = False
-    for kvpr in r:
-        if kvp == kvpr:
-            return True
-    return res
+def mk_take_ktp(e1, e2):
+    return {'take_ktp': {'e1': e1, 'e2': e2}}
 
-def do_rows_match(r, rm):
+def mk_drop_ktp(e1, e2):
+    return {'drop_ktp': {'e1': e1, 'e2': e2}}
+
+# Queries
+# =======
+
+def do_rows_match(r, rm, does_row_contain):
     for kvp in rm:
         if not(does_row_contain(r, kvp)):
             return False
     return True
 
-def does_row_match_any(r, rms):
+def does_row_match_any(r, rms, does_row_contain):
     for rm in rms:
-        if do_rows_match(r, rm):
+        if do_rows_match(r, rm, does_row_contain):
             return True
     return False
 
+def does_row_contain_kvp(r, kvp):
+    for kvpr in r:
+        if kvp == kvpr:
+            return True
+    return False
+
+def get_first_key_in_dictionary(d):
+    return list(d.keys())[0]
+
+def is_number(v):
+    return (type(v) is int) or (type(v) is float)
+
+def does_row_contain_ktp(r, ktp):
+    for kvpr in r:
+        if kvpr['key'] == ktp['key']:
+            if type(kvpr['val']) is str and ktp['val'] == 'string':
+                return True
+            if is_number(kvpr['val']) and ktp['val'] == 'number':
+                return True
+    return False
+
+def does_row_contain_key(r, key):
+    for kvpr in r:
+        if kvpr['key'] == key:
+            return True
+    return False
+
+# Evaluation
+# ==========
+
+with open('parameter_schema.json', 'r') as f:
+    parameter_schema = json.loads(f.read())
+
 def eval(e):
-    k = list(e.keys())[0]
+    jsonschema.validate(e, parameter_schema)
+    r = _eval(e)
+    jsonschema.validate(r, parameter_schema)
+    return r
+
+def check_for_duplicate_keys(v1, v2):
+    for r2 in v2['value']:
+        for kvp in r2:
+            for r1 in v1['value']:
+                assert(not(does_row_contain_key(r1, kvp['key'])))
+
+def _eval(e):
+    k = get_first_key_in_dictionary(e)
     if k == 'value':
         return e
     v1 = eval(e[k]['e1'])
@@ -53,34 +103,22 @@ def eval(e):
     if k == 'append':
         return { 'value': v1['value'] + v2['value'] }
     if k == 'cross':
-        # todo: check and report any rows that contain duplicate keys
+        check_for_duplicate_keys(v1, v2)
         return { 'value': [ r1 + r2 for r2 in v2['value'] for r1 in v1['value'] ] }
     if k == 'take_kvp':
-        return { 'value': [ r for r in v1['value'] if does_row_match_any(r, v2['value']) ] }
+        return { 'value': [ r for r in v1['value']
+                            if does_row_match_any(r, v2['value'],
+                                                  does_row_contain_kvp) ] }
     if k == 'drop_kvp':
-        return { 'value': [ r for r in v1['value'] if not(does_row_match_any(r, v2['value'])) ] }
+        return { 'value': [ r for r in v1['value']
+                            if not(does_row_match_any(r, v2['value'],
+                                                      does_row_contain_kvp)) ] }
+    if k == 'take_ktp':
+        return { 'value': [ r for r in v1['value']
+                            if does_row_match_any(r, v2['value'],
+                                                  does_row_contain_ktp) ] }
+    if k == 'drop_ktp':
+        return { 'value': [ r for r in v1['value']
+                            if not(does_row_match_any(r, v2['value'],
+                                                      does_row_contain_ktp)) ] }
     assert(False)
-
-with open('parameter_schema.json', 'r') as f:
-    parameter_schema = json.loads(f.read())
-
-#p = json.loads('{"take_kvp": {"e1": {"value": [[ {"key": "x", "val": "3"} ], [{"key": "x", "val": "3"},{"key": "x", "val": 3}]] }, "e2": {"value": [] } }}')
-#p = json.loads('{"value": [[ {"key": "x", "val": "3"} ], [{"key": "x", "val": "3"},{"key": "x", "val": "3"}]] }')
-#p = json.loads('{"value": [[ {"key": "x", "val": "3"} ]] }')
-#v1 = '{"value": [[ {"key": "x", "val": "3"} ]] }'
-#p = json.loads('{"append": { "e1": ' +  v1 + ', "e2": ' + v1 + ' } }')
-p1 = mk_parameter('foo1', 'bar')
-p2 = mk_parameter('foo2', 321.0)
-p3 = mk_parameter('baz', 'xx')
-p4 = mk_parameters('baz', [1,2,3])
-p = mk_cross(p3, p3)
-q = mk_cross(p1, mk_append(p2, p3))
-pretty_print_json(eval(q))
-q = mk_take_kvp(q, p3)
-pretty_print_json(q)
-p = eval(q)
-jsonschema.validate(p, parameter_schema)
-pretty_print_json(p)
-
-   
-#{"append": {"e1": {"value": [[ {"key": "x", "val": "3"} ], [{"key": "x", "val": "3"},{"key": "x", "val": "3"}]] }, "e2": {"value": [] } }}

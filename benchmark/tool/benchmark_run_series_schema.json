@@ -15,7 +15,9 @@
 		    "description": "Command-line arguments to pass to the benchmark executable",
 		    "type": "array",
 		    "items": {
-			"type": "string"
+			"val": { "type": "object",
+				 "oneOf": [{"type": "string"},
+					   {"type": "number"}]}
 		    }
 		},
 		"env_args": {
@@ -24,8 +26,11 @@
 		    "items": {
 			"properties": {
 			    "var": { "type": "string" },
-			    "val": { "type": "string" }
-			}
+			    "val": { "val": { "type": "object",
+					      "oneOf": [{"type": "string"},
+							{"type": "number"}]} }
+			},
+			"required": ["var", "val"]
 		    }
 		},
 		"timeout_sec": {
