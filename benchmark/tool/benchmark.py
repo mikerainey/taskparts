@@ -40,12 +40,12 @@ def row_to_dictionary(row):
     return dict(zip([ kvp['key'] for kvp in row ],
                     [ kvp['val'] for kvp in row ]))
 
-def mk_benchmark_run(row, env_vars, silent_vars):
+def mk_benchmark_run(row, env_vars):
     d = row_to_dictionary(row)
     p = d[path_to_executable]
     cl_args = [ {'var': kvp['key'], 'val': kvp['val']}
                 for kvp in row
-                if not(kvp['key'] in ([path_to_executable] + env_vars + silent_vars)) ]
+                if not(kvp['key'] in ([path_to_executable] + env_vars)) ]
     env_args = [ {'var': kvp['key'], 'val': kvp['val']}
                  for kvp in row if kvp['key'] in env_vars ]
     return {
@@ -59,10 +59,10 @@ def mk_benchmark_run(row, env_vars, silent_vars):
 with open('benchmark_run_series_schema.json', 'r') as f:
     benchmark_run_series_schema = json.loads(f.read())
 
-def mk_benchmark_runs(value, env_vars, silent_vars):
+def mk_benchmark_runs(value, env_vars):
     runs = []
     for row in value['value']:
-        runs += [mk_benchmark_run(row, env_vars, silent_vars)]
+        runs += [mk_benchmark_run(row, env_vars)]
     r = {'runs': runs }
     jsonschema.validate(r, benchmark_run_series_schema)
     return r
@@ -70,11 +70,12 @@ def mk_benchmark_runs(value, env_vars, silent_vars):
 # Benchmark invocation
 # ====================
 
-def dry_runs(expr, env_vars = [], silent_vars = [], output_vars = []):
+def dry_runs(expr, env_vars = [], output_fname_vars = []):
     lines = ''
+    for ofn in output_fname_vars:
+        expr = mk_cross(expr, mk_parameter(ofn, '<temp file>'))
     value = eval(expr)
-    br = mk_benchmark_runs(value, env_vars, silent_vars)
+    br = mk_benchmark_runs(value, env_vars)
     for r in br['runs']:
         lines += string_of_benchmark_run(r) + '\n'
     return lines
-

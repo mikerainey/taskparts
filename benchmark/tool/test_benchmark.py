@@ -8,8 +8,8 @@ p = mk_cross(p3, p3)
 q = mk_cross(p1, mk_append(p2, p3))
 r0 = eval(q)
 #print(r0)
-b=mk_benchmark_runs(r0, ['baz'], [])
+b=mk_benchmark_runs(r0, ['baz'])
 #print(b)
 #print(string_of_benchmark_run(b))
-#def mk_benchmark_runs(params, env_vars, silent_vars):
-print(dry_runs(q, env_vars=['foo2']))
+#def mk_benchmark_runs(params, env_vars):
+print(dry_runs(q, env_vars=['foo2'], output_fname_vars = ['statsf']))
