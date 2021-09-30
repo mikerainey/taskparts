@@ -38,7 +38,7 @@ LINKER_PREFIX=\
 	-pthread \
 	$(HWLOC_LIBRARY_PREFIX)
 
-# WARNING: flag -fno-stack-protector needed for native fork join
+# WARNING: flag -fno-stack-protector needed for native fork join to compile safely
 COMMON_COMPILE_PREFIX=\
 	$(INCLUDE_PREFIX) \
 	-std=c++17 \
@@ -86,13 +86,13 @@ DBG_PREFIX=\
 # Binaries for tpal, task parallel assembly language
 # --------------------------------------------------
 
-%.tpalopt: %.cpp $(INCLUDE_FILES) install_folder
+%.tpal.opt: %.tpal.cpp $(INCLUDE_FILES) install_folder
 	$(CXX) $(OPT_PREFIX) -DTASKPARTS_TPALRTS $(basename $<)_manual.s -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
-%.tpalsta: %.cpp $(INCLUDE_FILES) install_folder
+%.tpal.sta: %.tpal.cpp $(INCLUDE_FILES) install_folder
 	$(CXX) $(STA_PREFIX) -DTASKPARTS_TPALRTS $(basename $<)_manual.s -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
-%.tpallog: %.cpp $(INCLUDE_FILES) install_folder
+%.tpal.log: %.tpal.cpp $(INCLUDE_FILES) install_folder
 	$(CXX) $(LOG_PREFIX) -DTASKPARTS_TPALRTS $(basename $<)_manual.s -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
-%.tpaldbg: %.cpp $(INCLUDE_FILES) install_folder
+%.tpal.dbg: %.tpal.cpp $(INCLUDE_FILES) install_folder
 	$(CXX) $(DBG_PREFIX) -DTASKPARTS_TPALRTS $(basename $<)_manual.s -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
 
 clean:
