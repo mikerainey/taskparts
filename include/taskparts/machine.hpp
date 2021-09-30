@@ -35,16 +35,6 @@ auto get_cpu_frequency_khz() -> uint64_t {
 namespace cycles {
 
 static inline
-auto seconds_of(uint64_t cs) -> seconds_type {
-  return seconds_of(get_cpu_frequency_khz(), cs);
-}
-
-static inline
-auto seconds_since(uint64_t cs) -> seconds_type {
-  return seconds_of(since(cs));
-}
-
-static inline
 auto nanoseconds_of(uint64_t cs) -> uint64_t {
   return nanoseconds_of(get_cpu_frequency_khz(), cs);
 }
@@ -52,6 +42,16 @@ auto nanoseconds_of(uint64_t cs) -> uint64_t {
 static inline
 auto nanoseconds_since(uint64_t cs) -> uint64_t {
   return nanoseconds_of(since(cs));
+}
+
+static inline
+auto seconds_of_nanoseconds(uint64_t ns) -> double {
+  return (double)ns / 1.0e9;
+}
+
+static inline
+auto seconds_of_cycles(uint64_t cycles) -> double {
+  return seconds_of_nanoseconds(nanoseconds_of(cycles));
 }
   
 } // end namespace

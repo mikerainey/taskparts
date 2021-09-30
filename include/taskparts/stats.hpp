@@ -24,7 +24,7 @@ public:
 
   using summary_type = struct summary_struct {
     uint64_t counters[Configuration::nb_counters];
-    timestamp_type exectime;
+    double exectime;
     timestamp_type total_work_time;
     timestamp_type total_idle_time;
     timestamp_type total_time;
@@ -53,7 +53,7 @@ private:
   perworker::array<private_counters> all_counters;
 
   static
-  timestamp_type enter_launch_time;
+  steadyclock::time_point_type enter_launch_time;
 
   static
   rusage_type ru_launch_time;
@@ -123,7 +123,7 @@ public:
   static
   auto start_collecting() {
     getrusage(RUSAGE_SELF, &ru_launch_time);
-    enter_launch_time = now();
+    enter_launch_time = steadyclock::now();
     for (int i = 0; i < all_counters.size(); i++) {
       for (int j = 0; j < Configuration::nb_counters; j++) {
         all_counters[i].counters[j] = 0;
@@ -142,7 +142,7 @@ public:
   auto report() -> summary_type {
     auto nb_workers = perworker::nb_workers();
     summary_type summary;
-    summary.exectime = since(enter_launch_time);
+    summary.exectime = steadyclock::since(enter_launch_time);
     getrusage(RUSAGE_SELF, &(summary.rusage_after));
     summary.rusage_before = ru_launch_time;
     if (! Configuration::collect_all_stats) {
@@ -155,7 +155,7 @@ public:
       }
       summary.counters[counter_id] = counter_value;
     }
-    timestamp_type cumulated_time = summary.exectime * nb_workers;
+    double cumulated_time = summary.exectime * nb_workers;
     timestamp_type total_work_time = 0;
     timestamp_type total_idle_time = 0;
     auto my_id = perworker::my_id();
@@ -164,7 +164,7 @@ public:
       total_work_time += t.total_work_time;
       total_idle_time += t.total_idle_time;
     }
-    double relative_idle = (double)total_idle_time / (double)cumulated_time;
+    double relative_idle = cycles::seconds_of_nanoseconds(total_idle_time) / cumulated_time;
     double utilization = 1.0 - relative_idle;
     summary.total_work_time = total_work_time;
     summary.total_idle_time = total_idle_time;
@@ -194,16 +194,13 @@ public:
       fprintf(f, "\"%s\": \"%lu\"", n, v);
       output_after(not_last);
     };
-    auto output_seconds_value = [&] (const char* n, cycles::seconds_type s, bool not_last = true) {
-      fprintf(f, "\"%s\": \"%lu.%lu\"", n, s.whole_part, s.fractional_part);
-      output_after(not_last);
-    };
-    auto output_cycles_in_seconds = [&] (const char* n, uint64_t cs, bool not_last = true) {
-      output_seconds_value(n, cycles::seconds_of(cs), not_last);
-    };
     auto output_double_value = [&] (const char* n, double v, bool not_last = true) {
       fprintf(f, "\"%s\": \"%.3f\"", n, v);
       output_after(not_last);
+    };
+    auto output_cycles_in_seconds = [&] (const char* n, uint64_t cs, bool not_last = true) {
+      double s = cycles::seconds_of_cycles(cs);
+      output_double_value(n, s, not_last);
     };
     auto output_rusage_tv = [&] (const char* n, struct timeval before, struct timeval after,
 				 bool not_last = true) {
@@ -213,7 +210,7 @@ public:
       output_double_value(n, double_of_tv(after) - double_of_tv(before), not_last);
     };
     output_before();
-    output_cycles_in_seconds("exectime", summary.exectime);
+    output_double_value("exectime", summary.exectime);
     output_rusage_tv("usertime", summary.rusage_before.ru_utime, summary.rusage_after.ru_utime);
     output_rusage_tv("systime", summary.rusage_before.ru_stime, summary.rusage_after.ru_stime);
     output_uint64_value("nvcsw", summary.rusage_after.ru_nvcsw - summary.rusage_before.ru_nvcsw);
@@ -268,7 +265,7 @@ template <typename Configuration>
 typename stats_base<Configuration>::rusage_type stats_base<Configuration>::ru_launch_time;
 
 template <typename Configuration>
-typename stats_base<Configuration>::timestamp_type stats_base<Configuration>::enter_launch_time;
+steadyclock::time_point_type stats_base<Configuration>::enter_launch_time;
 
 template <typename Configuration>
 perworker::array<typename stats_base<Configuration>::private_timers> stats_base<Configuration>::all_timers;

@@ -93,9 +93,9 @@ auto benchmark_nativeforkjoin(const Benchmark& benchmark,
   if (const auto env_p = std::getenv("TASKPARTS_BENCHMARK_NUM_REPEAT")) {
     repeat = std::stoi(env_p);
   }
-  size_t warmup_secs = 3;
+  double warmup_secs = 3.0;
   if (const auto env_p = std::getenv("TASKPARTS_BENCHMARK_WARMUP_SECS")) {
-    warmup_secs = std::stoi(env_p);
+    warmup_secs = (double)std::stoi(env_p);
   }
   bool verbose = false;
   if (const auto env_p = std::getenv("TASKPARTS_BENCHMARK_VERBOSE")) {
@@ -106,14 +106,14 @@ auto benchmark_nativeforkjoin(const Benchmark& benchmark,
   Bench_stats::start_collecting();
   nativefj_from_lambda f_body([&] {
     benchmark_setup(sched);
-    if (warmup_secs >= 1) {
+    if (warmup_secs >= 1.0) {
       if (verbose) printf("======== WARMUP ========\n");
-      auto warmup_start = cycles::now();
-      while (cycles::seconds_since(warmup_start).whole_part < warmup_secs) {
-	auto st = cycles::now();
+      auto warmup_start = steadyclock::now();
+      while (steadyclock::since(warmup_start) < warmup_secs) {
+	auto st = steadyclock::now();
 	benchmark(sched);
-	auto el = cycles::seconds_since(st);
-	if (verbose) printf("warmup_run %lu.%lu\n", el.whole_part, el.fractional_part);
+	auto el = steadyclock::since(st);
+	if (verbose) printf("warmup_run %.3f\n", el);
       }
       if (verbose) printf ("======== END WARMUP ========\n");
     }

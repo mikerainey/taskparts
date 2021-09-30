@@ -4,6 +4,13 @@
 #include <cstdlib>
 
 #include "diagnostics.hpp"
+#if defined(TASKPARTS_POSIX)
+#include "posix/steadyclock.hpp"
+#elif defined (TASKPARTS_NAUTILUS)
+#include "nautilus/steadyclock.hpp"
+#else
+#error need to declare platform (e.g., TASKPARTS_POSIX)
+#endif
 
 namespace taskparts {
 
@@ -61,24 +68,6 @@ auto since(uint64_t start) -> uint64_t {
 static inline
 auto spin_for(uint64_t nb_cycles) {
   rdtsc_wait(nb_cycles);
-}
-
-using seconds_type = struct seconds_struct {
-  uint64_t whole_part;
-  uint64_t fractional_part;
-};
-
-static inline
-auto seconds_of(uint64_t cpu_frequency_khz, uint64_t cycles) -> seconds_type {
-  if (cpu_frequency_khz == 0) {
-    taskparts_die("cannot convert from cycles to seconds because cpu frequency is not known\n");
-    return {.whole_part = 0, .fractional_part = 0 };
-  }
-  uint64_t cpms = cycles / cpu_frequency_khz;
-  seconds_type t;
-  t.whole_part = cpms / 1000l;
-  t.fractional_part = cpms - (1000l * t.whole_part);
-  return t;
 }
 
 static inline

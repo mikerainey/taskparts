@@ -66,8 +66,9 @@ public:
   } extra;
             
   void print_text(FILE* f) {
-    auto s = cycles::seconds_of(cycles::diff(base_time, cycle_count));
-    fprintf(f, "%lu.%lu\t%ld\t%s\t", s.whole_part, s.fractional_part, worker_id, name_of(tag).c_str());
+    auto ns = cycles::nanoseconds_since(cycles::diff(base_time, cycle_count));
+    auto s = cycles::seconds_of_nanoseconds(ns);
+    fprintf(f, "%.3f\t%ld\t%s\t", s, worker_id, name_of(tag).c_str());
     switch (tag) {
       case program_point: {
         fprintf(f, "%s \t %d \t %p",
