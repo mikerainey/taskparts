@@ -18,7 +18,8 @@ stdenv.mkDerivation rec {
   name = "taskparts-debug";
 
   buildInputs =
-    [ hwloc ]
+    [ ]
+    ++ (if hwloc == null then [] else [ hwloc ])
     ++ (if jemalloc == null then [] else [ jemalloc ])
     ++ (if valgrind == null then [] else [ valgrind ]);
 
@@ -26,9 +27,9 @@ stdenv.mkDerivation rec {
   LD_PRELOAD=if jemalloc == null then "" else "${jemalloc}/lib/libjemalloc.so";
   
   # hwloc configuration
-  HWLOC_INCLUDE_PREFIX="-DTASKPARTS_HAVE_HWLOC -I${hwloc.dev}/include/";
-  HWLOC_LIBRARY_PREFIX="-L${hwloc.lib}/lib/ -lhwloc";
-  shellHook = ''
+  HWLOC_INCLUDE_PREFIX=if hwloc == null then "" else "-DTASKPARTS_HAVE_HWLOC -I${hwloc.dev}/include/";
+  HWLOC_LIBRARY_PREFIX=if hwloc == null then "" else "-L${hwloc.lib}/lib/ -lhwloc";
+  shellHook = if hwloc == null then "" else ''
     # The line below is needed, at present, because otherwise taskparts may 
     # request more workers than there are cores, which would be incompatible 
     # with the per-core pinning.
