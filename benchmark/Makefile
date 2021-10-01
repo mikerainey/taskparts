@@ -38,7 +38,7 @@ LINKER_PREFIX=\
 	-pthread \
 	$(HWLOC_LIBRARY_PREFIX)
 
-# WARNING: flag -fno-stack-protector needed for native fork join to compile safely
+# WARNING: flag -fno-stack-protector needed for native fork join to compile safely 
 COMMON_COMPILE_PREFIX=\
 	$(INCLUDE_PREFIX) \
 	-std=c++17 \

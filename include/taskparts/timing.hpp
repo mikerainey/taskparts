@@ -76,7 +76,7 @@ auto nanoseconds_of(uint64_t cpu_frequency_khz, uint64_t cycles) -> uint64_t {
     taskparts_die("cannot convert from cycles to nanoseconds because cpu frequency is not known\n");
     return 0;
   }
-  return 10000l * cycles / cpu_frequency_khz;
+  return 1000000l * cycles / cpu_frequency_khz;
 }
   
 } // end namespace

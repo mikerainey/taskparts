@@ -46,7 +46,6 @@ auto nanoseconds_since(uint64_t cs) -> uint64_t {
 
 static inline
 auto seconds_of_nanoseconds(uint64_t ns) -> double {
-  printf("%lu %.3f\n",ns, (double)ns / 1.0e9);
   return (double)ns / 1.0e9;
 }
 

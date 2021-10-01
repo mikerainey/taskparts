@@ -27,7 +27,7 @@ public:
     double exectime;
     timestamp_type total_work_time;
     timestamp_type total_idle_time;
-    timestamp_type total_time;
+    double total_time;
     double utilization;
     rusage_type rusage_before;
     rusage_type rusage_after;
@@ -166,7 +166,7 @@ public:
     }
     double relative_idle = cycles::seconds_of_nanoseconds(total_idle_time) / cumulated_time;
     double utilization = 1.0 - relative_idle;
-    summary.total_work_time = total_work_time; printf("tw %lu\n",total_work_time);
+    summary.total_work_time = total_work_time;
     summary.total_idle_time = total_idle_time;
     summary.total_time = cumulated_time;
     summary.utilization = utilization;
@@ -225,8 +225,8 @@ public:
       output_uint64_value(Configuration::name_of_counter((counter_id_type)i), summary.counters[i]);
     }
     output_cycles_in_seconds("total_work_time", summary.total_work_time);
-    output_cycles_in_seconds("total_work_time", summary.total_idle_time);
-    output_cycles_in_seconds("total_time", summary.total_time);
+    output_cycles_in_seconds("total_idle_time", summary.total_idle_time);
+    output_double_value("total_time", summary.total_time);
     output_double_value("utilization", summary.utilization, false);
   }
 

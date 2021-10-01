@@ -35,5 +35,6 @@ stdenv.mkDerivation rec {
     # with the per-core pinning.
     export TASKPARTS_NUM_WORKERS=$( ${hwloc}/bin/hwloc-ls|grep Core|wc -l );
   '';
-  
+
+  TASKPARTS_BENCHMARK_WARMUP_SECS=0  
 }
