@@ -1,5 +1,8 @@
 from benchmark import *
 
+def pretty_print_json(j):
+    print(json.dumps(j, indent=4))
+
 # p1 = mk_parameter(path_to_executable, 'bar')
 # p2 = mk_parameter('foo2', 321.0)
 # p3 = mk_parameter('baz', 555)

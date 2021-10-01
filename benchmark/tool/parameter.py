@@ -1,9 +1,6 @@
 import jsonschema
 import simplejson as json
 
-def pretty_print_json(j):
-    print(json.dumps(j, indent=4, sort_keys=True))
-
 # Smart constructors
 # ==================
 
@@ -84,7 +81,7 @@ with open('parameter_schema.json', 'r') as f:
 
 def eval(e):
     jsonschema.validate(e, parameter_schema)
-    r = _eval(e)
+    r = eval_rec(e)
     jsonschema.validate(r, parameter_schema)
     return r
 
@@ -94,7 +91,7 @@ def check_for_duplicate_keys(v1, v2):
             for r1 in v1['value']:
                 assert(not(does_row_contain_key(r1, kvp['key'])))
 
-def _eval(e):
+def eval_rec(e):
     k = get_first_key_in_dictionary(e)
     if k == 'value':
         return e
