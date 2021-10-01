@@ -191,11 +191,11 @@ public:
       }
     };
     auto output_uint64_value = [&] (const char* n, uint64_t v, bool not_last = true) {
-      fprintf(f, "\"%s\": \"%lu\"", n, v);
+      fprintf(f, "\"%s\": %lu", n, v);
       output_after(not_last);
     };
     auto output_double_value = [&] (const char* n, double v, bool not_last = true) {
-      fprintf(f, "\"%s\": \"%.3f\"", n, v);
+      fprintf(f, "\"%s\": %.3f", n, v);
       output_after(not_last);
     };
     auto output_cycles_in_seconds = [&] (const char* n, uint64_t cs, bool not_last = true) {

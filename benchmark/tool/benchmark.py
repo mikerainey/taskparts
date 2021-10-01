@@ -122,7 +122,7 @@ def do_benchmark_runs(expr, env_vars = [], outfile_keys = [],
         old_results = json.load(results_fd)
         print(old_results)
         jsonschema.validate(old_results, parameter_schema)
-        results_rows = old_results['value'] if len(old_results.items()) > 0 else []
+        results_rows = old_results['value'] if len(old_results['value']) > 0 else []
         open(results_fname, 'w').close() 
         results_fd = open(results_fname, 'w')
     trace_rows = []
