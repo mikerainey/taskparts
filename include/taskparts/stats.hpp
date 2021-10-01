@@ -166,7 +166,7 @@ public:
     }
     double relative_idle = cycles::seconds_of_nanoseconds(total_idle_time) / cumulated_time;
     double utilization = 1.0 - relative_idle;
-    summary.total_work_time = total_work_time;
+    summary.total_work_time = total_work_time; printf("tw %lu\n",total_work_time);
     summary.total_idle_time = total_idle_time;
     summary.total_time = cumulated_time;
     summary.utilization = utilization;

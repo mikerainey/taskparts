@@ -1,5 +1,8 @@
 import jsonschema
 import simplejson as json
+import subprocess
+import tempfile
+import os
 from parameter import *
 
 # String conversions
@@ -25,20 +28,28 @@ def string_of_env_args(vargs):
         i = i + 1
     return out
 
-def string_of_benchmark_run(r):
+def string_of_benchmark_run(r, show_env_args = False):
     br = r['benchmark_run']
     cl_args = (' ' if br['cl_args'] != [] else '') + string_of_cl_args(br['cl_args'])
-    env_args = string_of_env_args(br['env_args']) + (' ' if br['env_args'] != [] else '')
+    env_args = ''
+    if show_env_args:
+        env_args = string_of_env_args(br['env_args']) + (' ' if br['env_args'] != [] else '')
     return env_args + br['path_to_executable'] + cl_args
 
 # Benchmark runs configuration
 # ============================
 
+# reserved keys:
 path_to_executable = 'path_to_executable'
+cwd = 'cwd'
 
 def row_to_dictionary(row):
     return dict(zip([ kvp['key'] for kvp in row ],
                     [ kvp['val'] for kvp in row ]))
+
+def dictionary_to_row(dct):
+    print(dct)
+    return [ {'key': k, 'val': v} for k, v in dct.items() ]
 
 def mk_benchmark_run(row, env_vars):
     d = row_to_dictionary(row)
@@ -70,12 +81,70 @@ def mk_benchmark_runs(value, env_vars):
 # Benchmark invocation
 # ====================
 
-def dry_runs(expr, env_vars = [], output_fname_vars = []):
+def extend_expr_with_output_file_targets(expr, outfile_keys, gen_tmpfiles = True):
+    tmpfiles = []
+    for ofn in outfile_keys:
+        ofv = '<temp file name>'
+        if gen_tmpfiles:
+            fd, ofv = tempfile.mkstemp(suffix = '.json', text = True)
+            tmpfiles += [{'key': ofn, 'val': ofv}]
+            os.close(fd)
+        expr = mk_cross(expr, mk_parameter(ofn, ofv))
+    return expr, tmpfiles
+
+# later: allow key specified by the cwd variable above to change current directory too its value
+def string_of_dry_runs(expr, env_vars = [], outfile_keys = []):
     lines = ''
-    for ofn in output_fname_vars:
-        expr = mk_cross(expr, mk_parameter(ofn, '<temp file>'))
+    expr, _ = extend_expr_with_output_file_targets(expr, outfile_keys, gen_tmpfiles = False)
     value = eval(expr)
-    br = mk_benchmark_runs(value, env_vars)
-    for r in br['runs']:
-        lines += string_of_benchmark_run(r) + '\n'
+    brs = mk_benchmark_runs(value, env_vars)
+    i = 0
+    for r in brs['runs']:
+        sbr = string_of_benchmark_run(r, show_env_args = True)
+        lines += '[' + str(i) + '] ' + sbr + '\n'
+        i += 1
     return lines
+
+# todo: support cwd
+def do_benchmark_runs(expr, env_vars = [], outfile_keys = [],
+                      append_output = False,
+                      results_fname = 'results.json', trace_fname = 'trace.json'):
+    if not(append_output):
+        open(results_fname, 'w').close()
+        open(trace_fname, 'w').close()
+    results_rows = []
+    trace_rows = []
+    results_fd = open(results_fname, 'a+')
+    trace_fd = open(trace_fname, 'a+')
+    expr, tmpfiles = extend_expr_with_output_file_targets(expr, outfile_keys)
+    value = eval(expr)
+    _ = mk_benchmark_runs(value, env_vars) # for json schema validation
+    for input_row in value['value']:
+        run = mk_benchmark_run(input_row, env_vars)
+        cmd = string_of_benchmark_run(run)
+        env_args_dict = { a['var']: str(a['val']) for a in run['benchmark_run']['env_args'] }
+        current_child = subprocess.Popen(cmd, shell = True, env = env_args_dict,
+                                         stdout = subprocess.PIPE, stderr = subprocess.PIPE)
+        so, se = current_child.communicate()
+        rc = current_child.returncode
+        results_row = []
+        for tf in tmpfiles:
+            tfn = tf['val']
+            tfd = open(tfn, 'r')
+            j = json.load(tfd)
+            open(tfn, 'w').close()
+            results_row += eval(mk_cross({'value': [input_row]},
+                                         {'value': [dictionary_to_row(d) for d in j] }))['value']
+        results_rows += results_row
+        trace = run.copy()
+        trace['return_code'] = rc
+        trace_rows += [trace]
+    for tf in tmpfiles:
+        os.unlink(tf['val'])
+    results_val = {'value': results_rows}
+    jsonschema.validate(results_val, parameter_schema)
+    json.dump(results_val, results_fd, indent = 2)
+    results_fd.close()
+    json.dump(trace_rows, trace_fd, indent = 2)
+    trace_fd.close()
+    return results_val
