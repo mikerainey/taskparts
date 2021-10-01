@@ -3,6 +3,7 @@ import simplejson as json
 import subprocess
 import tempfile
 import os
+import sys
 from parameter import *
 
 # String conversions
@@ -107,15 +108,24 @@ def string_of_dry_runs(expr, env_vars = [], outfile_keys = []):
 
 # todo: support cwd
 def do_benchmark_runs(expr, env_vars = [], outfile_keys = [],
+                      results_fname = 'results.json', trace_fname = 'trace.json',
                       append_output = False,
-                      results_fname = 'results.json', trace_fname = 'trace.json'):
-    if not(append_output):
-        open(results_fname, 'w').close()
-        open(trace_fname, 'w').close()
-    results_rows = []
-    trace_rows = []
-    results_fd = open(results_fname, 'a+')
+                      client_format_to_row = lambda d: dictionary_to_row(d)):
+    results_fd = sys.stdout
     trace_fd = open(trace_fname, 'a+')
+    if not(append_output):
+        open(results_fname, 'w').close() 
+        results_fd = open(results_fname, 'w')
+        results_rows = []
+    else:
+        results_fd = open(results_fname, 'r')
+        old_results = json.load(results_fd)
+        print(old_results)
+        jsonschema.validate(old_results, parameter_schema)
+        results_rows = old_results['value'] if len(old_results.items()) > 0 else []
+        open(results_fname, 'w').close() 
+        results_fd = open(results_fname, 'w')
+    trace_rows = []
     expr, tmpfiles = extend_expr_with_output_file_targets(expr, outfile_keys)
     value = eval(expr)
     _ = mk_benchmark_runs(value, env_vars) # for json schema validation
@@ -134,7 +144,7 @@ def do_benchmark_runs(expr, env_vars = [], outfile_keys = [],
             j = json.load(tfd)
             open(tfn, 'w').close()
             results_row += eval(mk_cross({'value': [input_row]},
-                                         {'value': [dictionary_to_row(d) for d in j] }))['value']
+                                         {'value': [client_format_to_row(d) for d in j] }))['value']
         results_rows += results_row
         trace = run.copy()
         trace['return_code'] = rc

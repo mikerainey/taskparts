@@ -25,5 +25,5 @@ print(string_of_dry_runs(q,
                          outfile_keys = [taskparts_outfile_key]))
 do_benchmark_runs(q,
                   env_vars=[taskparts_num_workers_key, taskparts_outfile_key],
-                  outfile_keys = [taskparts_outfile_key])
+                  outfile_keys = [taskparts_outfile_key], append_output = True)
 
