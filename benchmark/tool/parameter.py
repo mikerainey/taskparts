@@ -52,9 +52,6 @@ def does_row_contain_kvp(r, kvp):
             return True
     return False
 
-def get_first_key_in_dictionary(d):
-    return list(d.keys())[0]
-
 def is_number(v):
     return (type(v) is int) or (type(v) is float)
 
@@ -91,6 +88,9 @@ def check_for_duplicate_keys(v1, v2):
             for r1 in v1['value']:
                 assert(not(does_row_contain_key(r1, kvp['key'])))
 
+def get_first_key_in_dictionary(d):
+    return list(d.keys())[0]
+                
 def eval_rec(e):
     k = get_first_key_in_dictionary(e)
     if k == 'value':
