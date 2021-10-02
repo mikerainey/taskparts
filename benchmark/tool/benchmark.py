@@ -49,7 +49,6 @@ def row_to_dictionary(row):
                     [ kvp['val'] for kvp in row ]))
 
 def dictionary_to_row(dct):
-    print(dct)
     return [ {'key': k, 'val': v} for k, v in dct.items() ]
 
 def mk_benchmark_run(row, env_vars):
@@ -110,7 +109,11 @@ def string_of_dry_runs(expr, env_vars = [], outfile_keys = []):
 def do_benchmark_runs(expr, env_vars = [], outfile_keys = [],
                       results_fname = 'results.json', trace_fname = 'trace.json',
                       append_output = False,
-                      client_format_to_row = lambda d: dictionary_to_row(d)):
+                      client_format_to_row = lambda d: dictionary_to_row(d),
+                      dry_run = False, verbose = True):
+    if dry_run:
+        print(string_of_dry_runs(expr, env_vars, outfile_keys))
+        return []
     results_fd = sys.stdout
     trace_fd = open(trace_fname, 'a+')
     if not(append_output):
@@ -120,7 +123,6 @@ def do_benchmark_runs(expr, env_vars = [], outfile_keys = [],
     else:
         results_fd = open(results_fname, 'r')
         old_results = json.load(results_fd)
-        print(old_results)
         jsonschema.validate(old_results, parameter_schema)
         results_rows = old_results['value'] if len(old_results['value']) > 0 else []
         open(results_fname, 'w').close() 
@@ -131,6 +133,8 @@ def do_benchmark_runs(expr, env_vars = [], outfile_keys = [],
     _ = mk_benchmark_runs(value, env_vars) # for json schema validation
     for input_row in value['value']:
         run = mk_benchmark_run(input_row, env_vars)
+        if verbose:
+            print(string_of_benchmark_run(run, show_env_args = True))
         cmd = string_of_benchmark_run(run)
         env_args_dict = { a['var']: str(a['val']) for a in run['benchmark_run']['env_args'] }
         current_child = subprocess.Popen(cmd, shell = True, env = env_args_dict,

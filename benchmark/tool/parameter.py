@@ -70,6 +70,14 @@ def does_row_contain_key(r, key):
             return True
     return False
 
+def select_from_expr_by_key(expr, k):
+    vals = []
+    for r in eval(expr)['value']:
+        for kvp in r:
+            if kvp['key'] == k:
+                vals += [kvp['val']]
+    return vals
+
 # Evaluation
 # ==========
 
@@ -97,25 +105,27 @@ def eval_rec(e):
         return e
     v1 = eval(e[k]['e1'])
     v2 = eval(e[k]['e2'])
+    v1rs = v1['value']
+    v2rs = v2['value']
     if k == 'append':
-        return { 'value': v1['value'] + v2['value'] }
+        return { 'value': v1rs + v2rs }
     if k == 'cross':
         check_for_duplicate_keys(v1, v2)
-        return { 'value': [ r1 + r2 for r2 in v2['value'] for r1 in v1['value'] ] }
+        return { 'value': [ r1 + r2 for r2 in v2rs for r1 in v1rs ] }
     if k == 'take_kvp':
-        return { 'value': [ r for r in v1['value']
-                            if does_row_match_any(r, v2['value'],
+        return { 'value': [ r for r in v1rs
+                            if does_row_match_any(r, v2rs,
                                                   does_row_contain_kvp) ] }
     if k == 'drop_kvp':
-        return { 'value': [ r for r in v1['value']
-                            if not(does_row_match_any(r, v2['value'],
+        return { 'value': [ r for r in v1rs
+                            if not(does_row_match_any(r, v2rs,
                                                       does_row_contain_kvp)) ] }
     if k == 'take_ktp':
-        return { 'value': [ r for r in v1['value']
-                            if does_row_match_any(r, v2['value'],
+        return { 'value': [ r for r in v1rs
+                            if does_row_match_any(r, v2rs,
                                                   does_row_contain_ktp) ] }
     if k == 'drop_ktp':
-        return { 'value': [ r for r in v1['value']
-                            if not(does_row_match_any(r, v2['value'],
+        return { 'value': [ r for r in v1rs
+                            if not(does_row_match_any(r, v2rs,
                                                       does_row_contain_ktp)) ] }
     assert(False)
