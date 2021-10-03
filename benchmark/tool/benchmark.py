@@ -40,8 +40,8 @@ def string_of_benchmark_run(r, show_env_args = False):
         env_args = string_of_env_args(br['env_args']) + (' ' if br['env_args'] != [] else '')
     return env_args + br['path_to_executable'] + cl_args
 
-# Benchmark runs configuration
-# ============================
+# Benchmark stepper
+# =================
 
 def row_to_dictionary(row):
     return dict(zip([ kvp['key'] for kvp in row ],
@@ -134,8 +134,7 @@ def step_benchmark_1(benchmark_1, verbose = True):
         fd = open(of['file_name'], 'r')
         j = json.load(fd)
         open(of['file_name'], 'w').close()
-        results_expr = mk_cross(results_expr,
-                                {'value': [dictionary_to_row(d) for d in j] })
+        results_expr = mk_cross(results_expr, {'value': [dictionary_to_row(d) for d in j] })
     # Save the results
     trace_2 = next_run.copy()
     trace_2['benchmark_run']['return_code'] = rc
