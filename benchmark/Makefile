@@ -107,5 +107,14 @@ DBG_PREFIX=\
 %.tpal.dbg: %.tpal.cpp $(INCLUDE_FILES) install_folder
 	$(CXX) $(DBG_PREFIX) -DTASKPARTS_TPALRTS $(basename $<)_manual.s -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
 
+%.serial.tpal.opt: %.serial.tpal.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(OPT_PREFIX) -DTASKPARTS_TPALRTS $(basename $<)_manual.s -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+%.serial.tpal.sta: %.serial.tpal.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(STA_PREFIX) -DTASKPARTS_TPALRTS $(basename $<)_manual.s -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+%.serial.tpal.log: %.serial.tpal.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(LOG_PREFIX) -DTASKPARTS_TPALRTS $(basename $<)_manual.s -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+%.serial.tpal.dbg: %.serial.tpal.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(DBG_PREFIX) -DTASKPARTS_TPALRTS $(basename $<)_manual.s -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+
 clean:
 	rm -rf bin gen_rollforward
