@@ -36,7 +36,8 @@
 		    "type": "integer",
 		    "exclusiveMinimum": 1
 		},
-		"return_code": { "type": "number" }
+		"return_code": { "type": "number" },
+		"hostname": { "type": "string" }
 	    },
 	    "required": [ "path_to_executable", "cl_args", "env_args", "return_code" ]
 	},

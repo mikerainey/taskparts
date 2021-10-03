@@ -1,9 +1,6 @@
-import jsonschema
+import jsonschema, subprocess, tempfile, os, sys, socket
 import simplejson as json
-import subprocess
-import tempfile
-import os
-import sys
+from datetime import datetime
 from parameter import *
 
 with open('benchmark_schema.json', 'r') as f:
@@ -90,7 +87,15 @@ def seed_benchmark(benchmark_1):
     assert(get_first_key_in_dictionary(benchmark_2['todo']) == 'value')
     if nb_todo_in_benchmark(benchmark_2) == 0:
         benchmark_2['todo'] = eval(benchmark_1['parameters'])
-    return benchmark_2    
+    return benchmark_2
+
+def run_benchmark(cmd, env_args, cwd = ''):
+    if cwd == '':
+        return subprocess.Popen(cmd, shell = True, env = env_args,
+                                stdout = subprocess.PIPE, stderr = subprocess.PIPE)
+    else:
+        return subprocess.Popen(cmd, shell = True, env = env_args,
+                                stdout = subprocess.PIPE, stderr = subprocess.PIPE, cwd = cwd)
 
 def step_benchmark_1(benchmark_1, verbose = True):
     jsonschema.validate(benchmark_1, benchmark_schema)
@@ -111,8 +116,6 @@ def step_benchmark_1(benchmark_1, verbose = True):
         os.close(fd)
     # Fetch the next run
     next_row = eval(mk_cross(todo, mk_outfile_keys(outfiles)))['value'].pop()
-    for r in outfiles:
-        os.unlink(r['file_name'])
     todo_2 = todo['value'].copy()
     todo_2.pop()
     env_vars = modifiers['env_vars'] if 'env_vars' in modifiers else []
@@ -122,10 +125,9 @@ def step_benchmark_1(benchmark_1, verbose = True):
         print(string_of_benchmark_run(next_run, show_env_args = True))
     # Do the next run
     # todo: handle cwd
-    cmd = string_of_benchmark_run(next_run)
-    env_args_dict = { a['var']: str(a['val']) for a in next_run['benchmark_run']['env_args'] }
-    current_child = subprocess.Popen(cmd, shell = True, env = env_args_dict,
-                                     stdout = subprocess.PIPE, stderr = subprocess.PIPE)
+    current_child = run_benchmark(string_of_benchmark_run(next_run),
+                                  { a['var']: str(a['val']) for a in next_run['benchmark_run']['env_args'] },
+                                  modifiers['cwd'] if 'cwd' in modifiers else '')
     so, se = current_child.communicate()
     rc = current_child.returncode
     # Collect the results
@@ -138,6 +140,8 @@ def step_benchmark_1(benchmark_1, verbose = True):
     # Save the results
     trace_2 = next_run.copy()
     trace_2['benchmark_run']['return_code'] = rc
+    trace_2['benchmark_run']['timestamp'] = datetime.now().strftime("%y-%m-%d %H:%M:%S.%f")
+    trace_2['benchmark_run']['host'] = socket.gethostname()
     benchmark_2['todo'] = { 'value': todo_2 }
     benchmark_2['trace'] += [ trace_2 ]
     benchmark_2['done'] = eval(mk_append(benchmark_1['done'], results_expr))
