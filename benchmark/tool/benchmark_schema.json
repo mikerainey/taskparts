@@ -37,7 +37,10 @@
 		    "exclusiveMinimum": 1
 		},
 		"return_code": { "type": "number" },
-		"hostname": { "type": "string" }
+		"hostname": { "type": "string" },
+		"stdout": { "type": "string" },
+		"stderr": { "type": "string" },
+		"elapsed": { "type": "number" }
 	    },
 	    "required": [ "path_to_executable", "cl_args", "env_args", "return_code" ]
 	},
@@ -57,6 +60,7 @@
 			"items": { "type": "string" }
 		    },
 		    "cwd": { "type": "string" },
+		    "timeout_sec": { "type": "number" },
 		    "required": [ "path_to_executable_key", "outfile_keys" ]
 		},
 		"todo": { "$ref": "file:parameter_schema.json#/$defs/expr-value" },
