@@ -70,10 +70,12 @@ using bench_scheduler = minimal_scheduler<bench_stats, bench_logging, bench_elas
 
 auto dflt_benchmark_setup = [] (bench_scheduler) { };
 auto dflt_benchmark_teardown = [] (bench_scheduler) { };
+auto dflt_benchmark_reset = [] (bench_scheduler) { };
   
 template <typename Benchmark,
 	  typename Benchmark_setup=decltype(dflt_benchmark_setup),
 	  typename Benchmark_teardown=decltype(dflt_benchmark_teardown),
+	  typename Benchmark_reset=decltype(dflt_benchmark_reset),
 	  typename Bench_stats=bench_stats,
 	  typename Bench_logging=bench_logging,
 	  template <typename, typename> typename Bench_elastic=bench_elastic,
@@ -83,6 +85,7 @@ template <typename Benchmark,
 auto benchmark_nativeforkjoin(const Benchmark& benchmark,
 			      Benchmark_setup benchmark_setup=dflt_benchmark_setup,
 			      Benchmark_teardown benchmark_teardown=dflt_benchmark_teardown,
+			      Benchmark_reset benchmark_reset=dflt_benchmark_reset,
 			      Bench_stats stats=Bench_stats(),
 			      Bench_logging logging=Bench_logging(),
 			      Bench_elastic<Bench_stats, Bench_logging> elastic=Bench_elastic<Bench_stats, Bench_logging>(),
@@ -130,6 +133,7 @@ auto benchmark_nativeforkjoin(const Benchmark& benchmark,
       }, [&] {
 	Bench_stats::capture_summary();
 	Bench_logging::output("log" + std::to_string(i) + ".json");
+	benchmark_reset(sched);
 	Bench_stats::start_collecting();
       }, sched);
     }
