@@ -6,6 +6,9 @@ import os
 import sys
 from parameter import *
 
+with open('benchmark_schema.json', 'r') as f:
+    benchmark_schema = json.loads(f.read())
+
 # String conversions
 # ==================
 
@@ -40,10 +43,6 @@ def string_of_benchmark_run(r, show_env_args = False):
 # Benchmark runs configuration
 # ============================
 
-# reserved keys:
-path_to_executable = 'path_to_executable'
-cwd = 'cwd'
-
 def row_to_dictionary(row):
     return dict(zip([ kvp['key'] for kvp in row ],
                     [ kvp['val'] for kvp in row ]))
@@ -51,114 +50,110 @@ def row_to_dictionary(row):
 def dictionary_to_row(dct):
     return [ {'key': k, 'val': v} for k, v in dct.items() ]
 
-def mk_benchmark_run(row, env_vars):
+def mk_benchmark_run(row, env_vars, path_to_executable_key):
     d = row_to_dictionary(row)
-    p = d[path_to_executable]
+    p = d[path_to_executable_key]
     cl_args = [ {'var': kvp['key'], 'val': kvp['val']}
                 for kvp in row
-                if not(kvp['key'] in ([path_to_executable] + env_vars)) ]
+                if not(kvp['key'] in ([path_to_executable_key] + env_vars)) ]
     env_args = [ {'var': kvp['key'], 'val': kvp['val']}
                  for kvp in row if kvp['key'] in env_vars ]
     return {
-        "benchmark_run": {
-            "path_to_executable": p,
-            "cl_args": cl_args,
-            "env_args": env_args
+        'benchmark_run': {
+            'path_to_executable': p,
+            'cl_args': cl_args,
+            'env_args': env_args
         }
     }
 
-with open('benchmark_run_series_schema.json', 'r') as f:
-    benchmark_run_series_schema = json.loads(f.read())
+def mk_outfile_keys(outfiles):
+    e = mk_unit()
+    for r in outfiles:
+        e = mk_append(e, mk_parameter(r['key'], r['file_name']))
+    return e
 
-def mk_benchmark_runs(value, env_vars):
-    runs = []
-    for row in value['value']:
-        runs += [mk_benchmark_run(row, env_vars)]
-    r = {'runs': runs }
-    jsonschema.validate(r, benchmark_run_series_schema)
-    return r
+def mk_benchmark(parameters,
+                 modifiers = {
+                     'path_to_executable_key': 'path_to_executable',
+                     'outfile_keys': []
+                 },
+                 todo = mk_unit(), trace = [], done = mk_unit()):
+    b = {'parameters': parameters, 'modifiers': modifiers, 'todo': todo, 'trace': [], 'done': done}
+    jsonschema.validate(b, benchmark_schema)
+    return b
 
-# Benchmark invocation
-# ====================
+def pretty_print_json(j):
+    print(json.dumps(j, indent=2))
 
-def extend_expr_with_output_file_targets(expr, outfile_keys, gen_tmpfiles = True):
-    tmpfiles = []
-    for ofn in outfile_keys:
-        ofv = '<temp file name>'
-        if gen_tmpfiles:
-            fd, ofv = tempfile.mkstemp(suffix = '.json', text = True)
-            tmpfiles += [{'key': ofn, 'val': ofv}]
-            os.close(fd)
-        expr = mk_cross(expr, mk_parameter(ofn, ofv))
-    return expr, tmpfiles
+def seed_benchmark(benchmark_1):
+    benchmark_2 = benchmark_1.copy()
+    todo = benchmark_2['todo']
+    assert(get_first_key_in_dictionary(todo) == 'value')
+    if todo['value'] == []:
+        todo = eval(benchmark_1['parameters'])
+    benchmark_2['todo'] = todo
+    return benchmark_2    
 
-# later: allow key specified by the cwd variable above to change current directory too its value
-def string_of_dry_runs(expr, env_vars = [], outfile_keys = []):
-    lines = ''
-    expr, _ = extend_expr_with_output_file_targets(expr, outfile_keys, gen_tmpfiles = False)
-    value = eval(expr)
-    brs = mk_benchmark_runs(value, env_vars)
-    i = 0
-    for r in brs['runs']:
-        sbr = string_of_benchmark_run(r, show_env_args = True)
-        lines += '[' + str(i) + '] ' + sbr + '\n'
-        i += 1
-    return lines
+def step_benchmark_1(benchmark_1, verbose = True):
+    jsonschema.validate(benchmark_1, benchmark_schema)
+    parameters = benchmark_1['parameters']
+    modifiers = benchmark_1['modifiers']
+    # Try to load the next run to do
+    benchmark_2 = seed_benchmark(benchmark_1)
+    todo = benchmark_2['todo']
+    if todo['value'] == []:
+        jsonschema.validate(benchmark_2, benchmark_schema)
+        return benchmark_2
+    # Create any tempfiles needed to collect results
+    outfile_keys = modifiers['outfile_keys']
+    outfiles = []
+    for k in outfile_keys:
+        fd, n = tempfile.mkstemp(suffix = '.json', text = True)
+        outfiles += [{'key': k, 'file_name': n, 'fd': fd}]
+        os.close(fd)
+    # Fetch the next run
+    next_row = eval(mk_cross(todo, mk_outfile_keys(outfiles)))['value'].pop()
+    for r in outfiles:
+        os.unlink(r['file_name'])
+    todo_2 = todo['value'].copy()
+    todo_2.pop()
+    env_vars = modifiers['env_vars'] if 'env_vars' in modifiers else []
+    next_run = mk_benchmark_run(next_row, env_vars, modifiers['path_to_executable_key'])
+    # Print
+    if verbose:
+        print(string_of_benchmark_run(next_run, show_env_args = True))
+    # Do the next run
+    # todo: handle cwd
+    cmd = string_of_benchmark_run(next_run)
+    env_args_dict = { a['var']: str(a['val']) for a in next_run['benchmark_run']['env_args'] }
+    current_child = subprocess.Popen(cmd, shell = True, env = env_args_dict,
+                                     stdout = subprocess.PIPE, stderr = subprocess.PIPE)
+    so, se = current_child.communicate()
+    rc = current_child.returncode
+    # Collect the results
+    results_expr = {'value': [ next_row ]}
+    for of in outfiles:
+        fd = open(of['file_name'], 'r')
+        j = json.load(fd)
+        open(of['file_name'], 'w').close()
+        results_expr = mk_cross(results_expr,
+                                {'value': [dictionary_to_row(d) for d in j] })
+    # Save the results
+    trace_2 = next_run.copy()
+    trace_2['benchmark_run']['return_code'] = rc
+    benchmark_2['todo'] = { 'value': todo_2 }
+    benchmark_2['trace'] += [ trace_2 ]
+    benchmark_2['done'] = eval(mk_append(benchmark_1['done'], results_expr))
+    jsonschema.validate(benchmark_2, benchmark_schema)
+    return benchmark_2
 
-# todo: support cwd
-def do_benchmark_runs(expr, env_vars = [], outfile_keys = [],
-                      results_fname = 'results.json', trace_fname = 'trace.json',
-                      append_output = False,
-                      client_format_to_row = lambda d: dictionary_to_row(d),
-                      dry_run = False, verbose = True):
-    if dry_run:
-        print(string_of_dry_runs(expr, env_vars, outfile_keys))
-        return []
-    results_fd = sys.stdout
-    trace_fd = open(trace_fname, 'a+')
-    if not(append_output):
-        open(results_fname, 'w').close() 
-        results_fd = open(results_fname, 'w')
-        results_rows = []
-    else:
-        results_fd = open(results_fname, 'r')
-        old_results = json.load(results_fd)
-        jsonschema.validate(old_results, parameter_schema)
-        results_rows = old_results['value'] if len(old_results['value']) > 0 else []
-        open(results_fname, 'w').close() 
-        results_fd = open(results_fname, 'w')
-    trace_rows = []
-    expr, tmpfiles = extend_expr_with_output_file_targets(expr, outfile_keys)
-    value = eval(expr)
-    _ = mk_benchmark_runs(value, env_vars) # for json schema validation
-    for input_row in value['value']:
-        run = mk_benchmark_run(input_row, env_vars)
-        if verbose:
-            print(string_of_benchmark_run(run, show_env_args = True))
-        cmd = string_of_benchmark_run(run)
-        env_args_dict = { a['var']: str(a['val']) for a in run['benchmark_run']['env_args'] }
-        current_child = subprocess.Popen(cmd, shell = True, env = env_args_dict,
-                                         stdout = subprocess.PIPE, stderr = subprocess.PIPE)
-        so, se = current_child.communicate()
-        rc = current_child.returncode
-        results_row = []
-        for tf in tmpfiles:
-            tfn = tf['val']
-            tfd = open(tfn, 'r')
-            j = json.load(tfd)
-            open(tfn, 'w').close()
-            results_row += eval(mk_cross({'value': [input_row]},
-                                         {'value': [client_format_to_row(d) for d in j] }))['value']
-        results_rows += results_row
-        trace = run.copy()
-        trace['return_code'] = rc
-        trace_rows += [trace]
-    for tf in tmpfiles:
-        os.unlink(tf['val'])
-    results_val = {'value': results_rows}
-    jsonschema.validate(results_val, parameter_schema)
-    json.dump(results_val, results_fd, indent = 2)
-    results_fd.close()
-    json.dump(trace_rows, trace_fd, indent = 2)
-    trace_fd.close()
-    return results_val
+def nb_todo_in_benchmark(b):
+    return len(b['todo']['value'])
+
+def step_benchmark(benchmark_1):
+    benchmark_2 = seed_benchmark(benchmark_1)
+    nb_todo = nb_todo_in_benchmark(benchmark_2)
+    while nb_todo > 0:
+        benchmark_2 = step_benchmark_1(benchmark_2)
+        nb_todo = nb_todo_in_benchmark(benchmark_2)
+    return benchmark_2

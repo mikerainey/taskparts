@@ -1,0 +1,80 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+
+    "definitions": {
+	"benchmark_run": {
+	    "type": "object",
+	    "properties": {
+		"path_to_executable": {
+		    "description": "The path to the benchmark executable",
+		    "type": "string"
+		},
+		"cl_args": {
+		    "description": "Command-line arguments to pass to the benchmark executable",
+		    "type": "array",
+		    "items": {
+			"val": { "type": "object",
+				 "oneOf": [ {"type": "string"},
+					    {"type": "number"} ] }
+		    }
+		},
+		"env_args": {
+		    "description": "Environment-variable arguments to pass to the benchmark executable",
+		    "type": "array",
+		    "items": {
+			"properties": {
+			    "var": { "type": "string" },
+			    "val": { "val": { "type": "object",
+					      "oneOf": [ {"type": "string"},
+							 {"type": "number"} ] } }
+			},
+			"required": [ "var", "val" ]
+		    }
+		},
+		"timeout_sec": {
+		    "description": "Amount of time (in seconds) to wait for the benchmark to complete",
+		    "type": "integer",
+		    "exclusiveMinimum": 1
+		},
+		"return_code": { "type": "number" }
+	    },
+	    "required": [ "path_to_executable", "cl_args", "env_args", "return_code" ]
+	},
+
+	"benchmark": {
+	    "type": "object",
+	    "properties": {
+		"parameters": { "$ref": "file:parameter_schema.json" },
+		"modifiers": {
+		    "path_to_executable_key": { "type": "string" },
+		    "outfile_keys": {
+			"type": "array",
+			"items": { "type": "string" }
+		    },
+		    "env_vars": {
+			"type": "array",
+			"items": { "type": "string" }
+		    },
+		    "cwd": { "type": "string" },
+		    "required": [ "path_to_executable_key", "outfile_keys" ]
+		},
+		"todo": { "$ref": "file:parameter_schema.json#/$defs/expr-value" },
+		"trace": {
+		    "type": "array",
+		    "items": {
+			"type": "object",
+			"additionalProperties": { "$ref": "#/definitions/benchmark_run" }
+		    }
+		},
+		"done": { "$ref": "file:parameter_schema.json#/$defs/expr-value" }
+	    },
+	    "required": [ "parameters", "modifiers", "todo", "trace", "done" ]
+	}
+
+    },
+
+    "oneOf": [
+	{ "$ref": "#/definitions/benchmark" },
+	{ "$ref": "file:parameter_schema.json" }
+    ]
+}

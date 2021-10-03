@@ -5,7 +5,7 @@ import simplejson as json
 # ==================
 
 def mk_unit():
-    return { 'value': [ [ ] ] }
+    return { 'value': [ ] }
 
 def mk_parameter(key, val):
     return { 'value': [ [ {'key': key, 'val': val } ] ] }
