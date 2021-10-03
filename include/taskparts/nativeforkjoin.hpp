@@ -221,9 +221,14 @@ public:
 
 template <typename F1, typename F2, typename Scheduler=minimal_scheduler<>>
 auto fork2join(const F1& f1, const F2& f2, Scheduler sched=Scheduler()) {
+#ifndef TASKPARTS_SERIAL_ELISION
   nativefj_from_lambda fb1(f1, sched);
   nativefj_from_lambda fb2(f2, sched);
   nativefj_fiber<Scheduler>::fork2join(&fb1, &fb2);
+#else
+  f1();
+  f2();
+#endif
 }
   
 } // end namespace
