@@ -11,6 +11,6 @@ int main() {
     taskparts::fork1fiberjoin(new fib_manualfiber(n, &dst, sched));
   });
   printf("result %lu\n",dst);
-  assert(dst == fib_sequential(n));
+  assert(dst == fib_serial(n));
   return 0;
 }

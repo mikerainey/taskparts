@@ -3,7 +3,7 @@
 #include <math.h>
 
 #include <taskparts/oracleguided.hpp>
-#include "fib_sequential.hpp"
+#include "fib_serial.hpp"
 
 template <typename Scheduler>
 auto fib_oracleguided(int64_t n, Scheduler sched=Scheduler()) -> int64_t {
@@ -22,7 +22,7 @@ auto fib_oracleguided(int64_t n, Scheduler sched=Scheduler()) -> int64_t {
       r = r1 + r2;
     }
   }, [&] {
-    r = fib_sequential(n);
+    r = fib_serial(n);
   });
   return r;
 }

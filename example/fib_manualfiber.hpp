@@ -1,9 +1,9 @@
 #pragma once
 
 #include <taskparts/fiber.hpp>
-#include "fib_sequential.hpp"
+#include "fib_serial.hpp"
 
-int64_t fib_sequential_threshold = 15;
+int64_t fib_serial_threshold = 15;
 
 template <typename Scheduler=taskparts::minimal_scheduler<>>
 class fib_manualfiber : public taskparts::fiber<Scheduler> {
@@ -22,8 +22,8 @@ public:
   auto run() -> taskparts::fiber_status_type {
     switch (trampoline) {
     case entry: {
-      if (n <= fib_sequential_threshold) {
-        *dst = fib_sequential(n);
+      if (n <= fib_serial_threshold) {
+        *dst = fib_serial(n);
         break;
       }
       auto f1 = new fib_manualfiber(n-1, &d1);
