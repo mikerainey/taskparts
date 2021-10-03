@@ -82,16 +82,14 @@ def mk_benchmark(parameters,
     jsonschema.validate(b, benchmark_schema)
     return b
 
-def pretty_print_json(j):
-    print(json.dumps(j, indent=2))
+def nb_todo_in_benchmark(b):
+    return len(b['todo']['value'])
 
 def seed_benchmark(benchmark_1):
     benchmark_2 = benchmark_1.copy()
-    todo = benchmark_2['todo']
-    assert(get_first_key_in_dictionary(todo) == 'value')
-    if todo['value'] == []:
-        todo = eval(benchmark_1['parameters'])
-    benchmark_2['todo'] = todo
+    assert(get_first_key_in_dictionary(benchmark_2['todo']) == 'value')
+    if nb_todo_in_benchmark(benchmark_2) == 0:
+        benchmark_2['todo'] = eval(benchmark_1['parameters'])
     return benchmark_2    
 
 def step_benchmark_1(benchmark_1, verbose = True):
@@ -146,9 +144,6 @@ def step_benchmark_1(benchmark_1, verbose = True):
     benchmark_2['done'] = eval(mk_append(benchmark_1['done'], results_expr))
     jsonschema.validate(benchmark_2, benchmark_schema)
     return benchmark_2
-
-def nb_todo_in_benchmark(b):
-    return len(b['todo']['value'])
 
 def step_benchmark(benchmark_1):
     benchmark_2 = seed_benchmark(benchmark_1)

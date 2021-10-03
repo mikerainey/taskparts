@@ -1,5 +1,8 @@
 from benchmark import *
 
+def pretty_print_json(j):
+    print(json.dumps(j, indent=2))
+
 
 taskparts_outfile_key = 'TASKPARTS_STATS_OUTFILE'
 taskparts_num_workers_key = 'TASKPARTS_NUM_WORKERS'
