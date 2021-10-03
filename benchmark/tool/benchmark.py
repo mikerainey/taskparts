@@ -97,7 +97,8 @@ def run_benchmark(cmd, env_args, cwd = ''):
         return subprocess.Popen(cmd, shell = True, env = env_args,
                                 stdout = subprocess.PIPE, stderr = subprocess.PIPE, cwd = cwd)
 
-def step_benchmark_1(benchmark_1, verbose = True):
+def step_benchmark_1(benchmark_1, verbose = True,
+                     client_format_to_row = lambda d: dictionary_to_row(d)):
     jsonschema.validate(benchmark_1, benchmark_schema)
     parameters = benchmark_1['parameters']
     modifiers = benchmark_1['modifiers']
@@ -124,7 +125,6 @@ def step_benchmark_1(benchmark_1, verbose = True):
     if verbose:
         print(string_of_benchmark_run(next_run, show_env_args = True))
     # Do the next run
-    # todo: handle cwd
     current_child = run_benchmark(string_of_benchmark_run(next_run),
                                   { a['var']: str(a['val']) for a in next_run['benchmark_run']['env_args'] },
                                   modifiers['cwd'] if 'cwd' in modifiers else '')
@@ -136,7 +136,8 @@ def step_benchmark_1(benchmark_1, verbose = True):
         fd = open(of['file_name'], 'r')
         j = json.load(fd)
         open(of['file_name'], 'w').close()
-        results_expr = mk_cross(results_expr, {'value': [dictionary_to_row(d) for d in j] })
+        results_expr = mk_cross(results_expr, {'value': [client_format_to_row(d) for d in j] })
+        os.unlink(of['file_name'])
     # Save the results
     trace_2 = next_run.copy()
     trace_2['benchmark_run']['return_code'] = rc
