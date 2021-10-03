@@ -164,12 +164,11 @@ public:
       total_work_time += t.total_work_time;
       total_idle_time += t.total_idle_time;
     }
-    double relative_idle = cycles::seconds_of_nanoseconds(total_idle_time) / cumulated_time;
-    double utilization = 1.0 - relative_idle;
+    double relative_idle = cycles::seconds_of_cycles(total_idle_time) / cumulated_time;
     summary.total_work_time = total_work_time;
     summary.total_idle_time = total_idle_time;
     summary.total_time = cumulated_time;
-    summary.utilization = utilization;
+    summary.utilization = 1.0 - relative_idle;
     return summary;
   }
 
