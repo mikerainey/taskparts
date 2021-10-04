@@ -19,7 +19,7 @@ auto fib_cilk(int64_t n) -> int64_t {
 }
 
 int main() {
-  int64_t n = taskparts::cmdline::parse_or_default_long("n", 45);
+  int64_t n = taskparts::cmdline::parse_or_default_long("n", 44);
   int64_t dst;
   taskparts::benchmark_cilk([&] {
     dst = fib_cilk(n);
