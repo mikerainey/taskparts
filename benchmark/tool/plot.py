@@ -28,8 +28,8 @@ def mk_plot(expr,
         }
     }
 
-# popup plot of results_plot_name == ''
-def output_plot(plot, results_plot_name = 'plot.pdf'):
+# plot is shown in a popup window if results_plot_fname == ''
+def output_plot(plot, results_plot_fname = 'plot.pdf'):
     plotd = plot['plot']
     for curve in plotd['curves']:
         xy_pairs = list(curve['xy_pairs'])
@@ -39,9 +39,9 @@ def output_plot(plot, results_plot_name = 'plot.pdf'):
     plt.xlabel(plotd['x_label'])
     plt.ylabel(plotd['y_label'])
     plt.legend()
-    if results_plot_name == '':
+    if results_plot_fname == '':
         plt.show()
         return    
-    with PdfPages(results_plot_name) as pdf:
+    with PdfPages(results_plot_fname) as pdf:
         pdf.savefig()
         plt.close()

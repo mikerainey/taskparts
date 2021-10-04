@@ -59,6 +59,10 @@
 			"type": "array",
 			"items": { "type": "string" }
 		    },
+		    "silent_keys": {
+			"type": "array",
+			"items": { "type": "string" }
+		    },
 		    "cwd": { "type": "string" },
 		    "timeout_sec": { "type": "number" },
 		    "required": [ "path_to_executable_key", "outfile_keys" ]

@@ -53,5 +53,5 @@ plot = mk_plot(expr,
                y_label = y_label,
                curves_expr = mk_append(mk_oracleguided, mk_nativeforkjoin),
                opt_args = opt_plot_args)
-output_plot(plot, results_plot_name = 'plot.pdf')
+output_plot(plot, results_plot_fname = 'plot.pdf')
 

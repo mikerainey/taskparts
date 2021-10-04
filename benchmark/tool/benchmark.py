@@ -29,13 +29,20 @@ def string_of_env_args(vargs):
         i = i + 1
     return out
 
-def string_of_benchmark_run(r, show_env_args = False):
+def string_of_benchmark_run(r, show_env_args = False, show_silent_args = False):
     br = r['benchmark_run']
     cl_args = (' ' if br['cl_args'] != [] else '') + string_of_cl_args(br['cl_args'])
     env_args = ''
     if show_env_args:
         env_args = string_of_env_args(br['env_args']) + (' ' if br['env_args'] != [] else '')
-    return env_args + br['path_to_executable'] + cl_args
+    silent_args = ''
+    if show_silent_args:
+        if 'silent_keys' in br:
+            silent_args = 'silent:('
+            for s in br['silent_keys']:
+                silent_args += s + ' '
+            silent_args += ')'
+    return env_args + br['path_to_executable'] + cl_args + silent_args
 
 # Benchmark stepper
 # =================
@@ -47,12 +54,15 @@ def row_to_dictionary(row):
 def dictionary_to_row(dct):
     return [ {'key': k, 'val': v} for k, v in dct.items() ]
 
-def mk_benchmark_run(row, env_vars, path_to_executable_key):
+def mk_benchmark_run(row,
+                     path_to_executable_key = 'path_to_executable',
+                     env_vars = [],
+                     silent_keys = []):
     d = row_to_dictionary(row)
     p = d[path_to_executable_key]
     cl_args = [ {'var': kvp['key'], 'val': kvp['val']}
                 for kvp in row
-                if not(kvp['key'] in ([path_to_executable_key] + env_vars)) ]
+                if not(kvp['key'] in ([path_to_executable_key] + env_vars + silent_keys)) ]
     env_args = [ {'var': kvp['key'], 'val': kvp['val']}
                  for kvp in row if kvp['key'] in env_vars ]
     return {
@@ -138,8 +148,9 @@ def step_benchmark_1(benchmark_1,
     todo_2 = todo['value'].copy()
     todo_2.pop()
     env_vars = modifiers['env_vars'] if 'env_vars' in modifiers else []
-    next_run = mk_benchmark_run(next_row, env_vars, modifiers['path_to_executable_key'])
-    # Print
+    silent_keys = modifiers['silent_keys'] if 'silent_keys' in modifiers else []
+    next_run = mk_benchmark_run(next_row, modifiers['path_to_executable_key'], env_vars, silent_keys)
+    # Print the command to be issued to the command line for the next run
     if verbose:
         print(string_of_benchmark_run(next_run, show_env_args = True))
     # Do the next run
@@ -205,7 +216,8 @@ def string_of_benchmark_runs(b):
     for next_row in b['todo']['value']:
         modifiers = b['modifiers'] 
         env_vars = modifiers['env_vars'] if 'env_vars' in modifiers else []
-        next_run = mk_benchmark_run(next_row, env_vars, modifiers['path_to_executable_key'])
-        sr += string_of_benchmark_run(next_run, show_env_args = True) + '\n'
+        silent_keys = modifiers['silent_keys'] if 'silent_keys' in modifiers else []
+        next_run = mk_benchmark_run(next_row, modifiers['path_to_executable_key'], env_vars, silent_keys)
+        sr += string_of_benchmark_run(next_run, show_env_args = True, show_silent_args = True) + '\n'
     return sr
     
