@@ -147,6 +147,46 @@ CILK_COMMON_PREFIX=-fcilkplus -lcilkrts -DCILK -ldl -DPARLAY_CILK
 
 %.cilk.opt: %.cilk.cpp $(INCLUDE_FILES) install_folder
 	$(CXX) $(OPT_PREFIX) $(CILK_COMMON_PREFIX) -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+# TODO: enable cilk w/ stats
+%.cilk.sta: %.cilk.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(OPT_PREFIX) $(CILK_COMMON_PREFIX) -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+%.cilk.dbg: %.cilk.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(DBG_PREFIX) $(CILK_COMMON_PREFIX) -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
 
 clean:
 	rm -rf bin gen_rollforward
+
+# Benchmarks
+# ----------
+
+BENCHMARKS=\
+	bfs \
+	fib \
+	integrate \
+	mcss \
+	primes \
+	quickhull \
+	removeduplicates \
+	samplesort \
+	suffixarray \
+	wc
+
+all_taskparts_opt: $(BENCHMARKS:%=%.opt)
+all_taskparts_sta: $(BENCHMARKS:%=%.sta)
+all_taskparts_log: $(BENCHMARKS:%=%.log)
+all_taskparts_dbg: $(BENCHMARKS:%=%.dbg)
+
+all_elastic_opt: $(BENCHMARKS:%=%.elastic.opt)
+all_elastic_sta: $(BENCHMARKS:%=%.elastic.sta)
+all_elastic_log: $(BENCHMARKS:%=%.elastic.log)
+all_elastic_dbg: $(BENCHMARKS:%=%.elastic.dbg)
+
+all_cilk_opt: $(BENCHMARKS:%=%.cilk.opt)
+all_cilk_sta: $(BENCHMARKS:%=%.cilk.sta)
+
+all_serial_opt: $(BENCHMARKS:%=%.serial.opt)
+all_serial_sta: $(BENCHMARKS:%=%.serial.sta)
+
+all_opt: all_taskparts_opt all_cilk_opt all_serial_opt
+all_sta: all_taskparts_sta all_cilk_sta all_serial_sta
+
