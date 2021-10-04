@@ -78,7 +78,9 @@ auto benchmark_cilk(const Benchmark& benchmark,
     bench_stats::start_collecting();
     benchmark();
     bench_stats::capture_summary();
-    benchmark_reset();    
+    if (i + 1 < repeat) {
+      benchmark_reset();
+    }
     benchmark_teardown();
   }
   bench_stats::output_summaries();
