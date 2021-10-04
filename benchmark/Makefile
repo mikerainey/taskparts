@@ -95,6 +95,18 @@ DBG_PREFIX=\
 %.elision.dbg: %.cpp $(INCLUDE_FILES) install_folder
 	$(CXX) $(DBG_PREFIX) -DTASKPARTS_SERIAL_ELISION -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
 
+# Binaries for serial elision
+# ---------------------------
+
+%.serial.opt: %.serial.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(OPT_PREFIX) -DTASKPARTS_SERIAL_ELISION -DPARLAY_SEQUENTIAL -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+%.serial.sta: %.serial.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(STA_PREFIX) -DTASKPARTS_SERIAL_ELISION -DPARLAY_SEQUENTIAL -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+%.serial.log: %.serial.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(LOG_PREFIX) -DTASKPARTS_SERIAL_ELISION -DPARLAY_SEQUENTIAL -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+%.serial.dbg: %.serial.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(DBG_PREFIX) -DTASKPARTS_SERIAL_ELISION -DPARLAY_SEQUENTIAL -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+
 # Binaries for tpal, task parallel assembly language
 # --------------------------------------------------
 

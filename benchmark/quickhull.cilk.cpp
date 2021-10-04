@@ -1,4 +1,4 @@
-#include <taskparts/benchmark.hpp>
+#include "cilk.hpp"
 #include "quickhull.hpp"
 
 int main() {
@@ -9,9 +9,9 @@ int main() {
   bool onSphere = taskparts::cmdline::parse_or_default_bool("on_sphere", false);
   bool plummerOrKuzmin = taskparts::cmdline::parse_or_default_bool("plummer_or_kuzmin", true);
   parlay::sequence<indexT> result;
-  parlay::benchmark_taskparts([&] (auto sched) {
+  taskparts::benchmark_cilk([&] {
     result = hull(Points);
-  }, [&] (auto sched) {
+  }, [&] {
     Points = parlay::tabulate(n, [&] (size_t i) -> point2d<coord> {
 	if (inSphere) return randInUnitSphere2d<coord>(i);
 	else if (onSphere) return randOnUnitSphere2d<coord>(i);

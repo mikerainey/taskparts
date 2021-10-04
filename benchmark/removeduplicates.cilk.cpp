@@ -1,4 +1,4 @@
-#include <taskparts/benchmark.hpp>
+#include "cilk.hpp"
 #include "removeduplicates.hpp"
 
 int main() {
@@ -7,9 +7,9 @@ int main() {
   
   parlay::sequence<int> a;
   parlay::sequence<int> res;
-  parlay::benchmark_taskparts([&] (auto sched) {
+  taskparts::benchmark_cilk([&] {
     res = dedup(a);
-  }, [&] (auto sched) {
+  }, [&] {
     a = dataGen::randIntRange<int>((size_t) 0,n,r);
   });
   return 0;

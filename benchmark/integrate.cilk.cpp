@@ -1,4 +1,4 @@
-#include <taskparts/benchmark.hpp>
+#include "cilk.hpp"
 #include "integrate.hpp"
 
 int main() {
@@ -8,7 +8,7 @@ int main() {
   };
   double start = static_cast<double>(0);
   double end = static_cast<double>(1000);
-  parlay::benchmark_taskparts([&] (auto sched) {
+  taskparts::benchmark_cilk([&] {
     integrate(n, start, end, f);
   });
   return 0;
