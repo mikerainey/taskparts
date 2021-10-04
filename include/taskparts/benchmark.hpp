@@ -117,6 +117,7 @@ auto benchmark_nativeforkjoin(const Benchmark& benchmark,
 	benchmark(sched);
 	auto el = steadyclock::since(st);
 	if (verbose) printf("warmup_run %.3f\n", el);
+	benchmark_reset(sched);
       }
       if (verbose) printf ("======== END WARMUP ========\n");
     }

@@ -71,6 +71,7 @@ auto benchmark_cilk(const Benchmark& benchmark,
       benchmark();
       auto el = steadyclock::since(st);
       if (verbose) printf("warmup_run %.3f\n", el);
+      benchmark_reset();
     }
     if (verbose) printf ("======== END WARMUP ========\n");
   }
