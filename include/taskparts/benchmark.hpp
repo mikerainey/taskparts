@@ -133,7 +133,9 @@ auto benchmark_nativeforkjoin(const Benchmark& benchmark,
       }, [&] {
 	Bench_stats::capture_summary();
 	Bench_logging::output("log" + std::to_string(i) + ".json");
-	benchmark_reset(sched);
+	if (i + 1 < repeat) {
+	  benchmark_reset(sched);
+	}
 	Bench_stats::start_collecting();
       }, sched);
     }
