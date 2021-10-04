@@ -2,45 +2,56 @@ from plot import *
 from parameter import *
 from benchmark import *
 
-# todo: try plotting w/ multiple runs
-x_vals = [8,12,16]
-kappa_usecs = [200,300,400]
+x_vals = [12,16]
+kappa_usecs = [200]
 taskparts_kappa_usec_key = 'TASKPARTS_KAPPA_USEC_KEY'
 taskparts_outfile_key = 'TASKPARTS_STATS_OUTFILE'
 taskparts_num_workers_key = 'TASKPARTS_NUM_WORKERS'
+taskparts_benchmark_num_repeat_key = 'TASKPARTS_BENCHMARK_NUM_REPEAT'
+
+mk_serial = mk_parameter('path_to_executable', './fib_serial.serial.sta')
 
 mk_oracleguided = mk_cross(mk_parameter('path_to_executable', './fib_oracleguided.sta'),
                            mk_parameters(taskparts_kappa_usec_key, kappa_usecs))
 
 mk_nativeforkjoin = mk_parameter('path_to_executable', './fib_nativeforkjoin.sta')
 
-
-q = mk_cross(mk_append(mk_oracleguided, mk_nativeforkjoin),
-             mk_parameters(taskparts_num_workers_key, x_vals))
-env_vars = [taskparts_num_workers_key, taskparts_outfile_key, taskparts_kappa_usec_key]
-mods = modifiers = {
+q = mk_append(mk_serial,
+              mk_cross(mk_cross(mk_append(mk_oracleguided, mk_nativeforkjoin),
+                                mk_parameters(taskparts_num_workers_key, x_vals)),
+                       mk_parameter(taskparts_benchmark_num_repeat_key, 3)))
+env_vars = [taskparts_num_workers_key, taskparts_outfile_key, taskparts_kappa_usec_key, taskparts_benchmark_num_repeat_key]
+mods = {
     'path_to_executable_key': 'path_to_executable',
     'outfile_keys': [taskparts_outfile_key],
     'env_vars': env_vars,
     'cwd': '../bin/'
 }
-bench = mk_benchmark(q, mods)
+bench = mk_benchmark(q, modifiers = mods)
+
+print('--- Todo:')
+print(string_of_benchmark_runs(bench))
+print('---')
+
 bench_2 = step_benchmark(bench)
-#do_benchmark_runs(q, env_vars=env_vars, outfile_keys = [taskparts_outfile_key], append_output = False)
 
 expr = eval(bench_2['done'])
 x_label = 'workers'
-y_label = 'exectime'
+y_key = 'exectime'
+y_label = 'speedup'
 opt_plot_args = {
     "x_label": x_label
 }
-plot = create_plot(expr,
-                   x_key = taskparts_num_workers_key, x_vals = [x for x in x_vals ],
-                   get_y_val =
-                   lambda x_key, x_val, y_expr:
-                   statistics.mean([float(x) for x in select_from_expr_by_key(y_expr, y_label) ]),
-                   y_label = y_label,
-                   curves_expr = mk_append(mk_oracleguided, mk_nativeforkjoin),
-                   opt_args = opt_plot_args)
+
+def get_y_val(x_key, x_val, y_expr):
+    b = statistics.mean([float(x) for x in select_from_expr_by_key(mk_take_kvp(expr, mk_serial), y_key)])
+    return b / statistics.mean([float(x) for x in select_from_expr_by_key(y_expr, y_key) ])
+
+plot = mk_plot(expr,
+               x_key = taskparts_num_workers_key, x_vals = [x for x in x_vals ],
+               get_y_val = get_y_val,
+               y_label = y_label,
+               curves_expr = mk_append(mk_oracleguided, mk_nativeforkjoin),
+               opt_args = opt_plot_args)
 output_plot(plot, results_plot_name = 'plot.pdf')
 

@@ -3,11 +3,11 @@ import statistics
 from matplotlib.backends.backend_pdf import PdfPages
 from parameter import *
 
-def create_plot(expr,
-                x_key = 'x', x_vals = [],
-                get_y_val = lambda x_key, x_val: 0.0, y_label = 'y',
-                curves_expr = mk_unit(),
-                opt_args = {}):
+def mk_plot(expr,
+            x_key = 'x', x_vals = [],
+            get_y_val = lambda x_key, x_val: 0.0, y_label = 'y',
+            curves_expr = mk_unit(),
+            opt_args = {}):
     val = eval(expr)
     curves_val = eval(curves_expr)
     curves = []

@@ -112,7 +112,8 @@ def run_benchmark(cmd, env_args, cwd = ''):
         return subprocess.Popen(cmd, shell = True, env = env_args,
                                 stdout = subprocess.PIPE, stderr = subprocess.PIPE, cwd = cwd)
 
-def step_benchmark_1(benchmark_1, verbose = True,
+def step_benchmark_1(benchmark_1,
+                     verbose = True,
                      client_format_to_row = lambda d: dictionary_to_row(d),
                      parse_output_to_json = lambda x: x,
                      timeout_sec = 0.0):
@@ -153,6 +154,15 @@ def step_benchmark_1(benchmark_1, verbose = True,
         if timer != -1:
             timer.start()
         child_stdout, child_stderr = current_child.communicate()
+        child_stdout = child_stdout.decode('utf-8')
+        child_stderr = child_stderr.decode('utf-8')
+        return_code = current_child.returncode
+        if return_code != 0:
+            print('Warning: benchmark run returned error code ' + str(return_code))
+            print('stdout:')
+            print(child_stdout)
+            print('stderr:')
+            print(child_stderr)
         # Collect the results
         results_expr = {'value': [ next_row ]}
         for of in outfiles:
@@ -162,7 +172,6 @@ def step_benchmark_1(benchmark_1, verbose = True,
             results_expr = mk_cross(results_expr, {'value': [client_format_to_row(d) for d in j] })
         benchmark_2['todo'] = { 'value': todo_2 }
         benchmark_2['done'] = eval(mk_append(benchmark_1['done'], results_expr))
-        return_code = current_child.returncode
     finally:
         if timer != -1:
             timer.cancel()
@@ -186,3 +195,17 @@ def step_benchmark(benchmark_1):
         benchmark_2 = step_benchmark_1(benchmark_2)
         nb_todo = nb_todo_in_benchmark(benchmark_2)
     return benchmark_2
+
+def string_of_benchmark_runs(b):
+    sr = ''
+    if 'cwd' in b['modifiers']:
+        sr += 'cd ' + b['modifiers']['cwd'] + '\n'
+    b = seed_benchmark(b)
+    todo = b['todo']
+    for next_row in b['todo']['value']:
+        modifiers = b['modifiers'] 
+        env_vars = modifiers['env_vars'] if 'env_vars' in modifiers else []
+        next_run = mk_benchmark_run(next_row, env_vars, modifiers['path_to_executable_key'])
+        sr += string_of_benchmark_run(next_run, show_env_args = True) + '\n'
+    return sr
+    
