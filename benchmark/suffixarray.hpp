@@ -12,6 +12,7 @@
 #else
 #include <suffixArray/bench/SA.h>
 #include <suffixArray/parallelKS/SA.C>
+// later: get serial algorithm to compile
 /*
 #include <suffixArray/bench/SA.h>
 #include <suffixArray/serialDivsufsort/SA.C>
