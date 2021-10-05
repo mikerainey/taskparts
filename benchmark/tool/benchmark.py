@@ -47,13 +47,6 @@ def string_of_benchmark_run(r, show_env_args = False, show_silent_args = False):
 # Benchmark stepper
 # =================
 
-def row_to_dictionary(row):
-    return dict(zip([ kvp['key'] for kvp in row ],
-                    [ kvp['val'] for kvp in row ]))
-
-def dictionary_to_row(dct):
-    return [ {'key': k, 'val': v} for k, v in dct.items() ]
-
 def mk_benchmark_run(row,
                      path_to_executable_key = 'path_to_executable',
                      env_vars = [],

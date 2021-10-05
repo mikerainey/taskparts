@@ -4,6 +4,7 @@ import simplejson as json
 # Smart constructors
 # ==================
 
+# shouldn't unit be [[]]?
 def mk_unit():
     return { 'value': [ ] }
 
@@ -141,3 +142,13 @@ def eval_rec(e):
                             if not(does_row_match_any(r, v2rs,
                                                       does_row_contain_ktp)) ] }
     assert(False)
+
+# Misc
+
+def row_to_dictionary(row):
+    return dict(zip([ kvp['key'] for kvp in row ],
+                    [ kvp['val'] for kvp in row ]))
+
+def dictionary_to_row(dct):
+    return [ {'key': k, 'val': v} for k, v in dct.items() ]
+

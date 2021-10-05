@@ -2,14 +2,15 @@ from plot import *
 from parameter import *
 from benchmark import *
 
-x_vals = [12,16]
+x_vals = range(1, 16)
+max_num_workers = max(x_vals)
 kappa_usecs = [200]
 taskparts_kappa_usec_key = 'TASKPARTS_KAPPA_USEC_KEY'
 taskparts_outfile_key = 'TASKPARTS_STATS_OUTFILE'
 taskparts_num_workers_key = 'TASKPARTS_NUM_WORKERS'
 taskparts_benchmark_num_repeat_key = 'TASKPARTS_BENCHMARK_NUM_REPEAT'
 
-mk_serial = mk_parameter('path_to_executable', './fib_serial.serial.sta')
+mk_serial = mk_parameter('path_to_executable', './fib.serial.sta')
 
 mk_oracleguided = mk_cross(mk_parameter('path_to_executable', './fib_oracleguided.sta'),
                            mk_parameters(taskparts_kappa_usec_key, kappa_usecs))
@@ -40,7 +41,11 @@ x_label = 'workers'
 y_key = 'exectime'
 y_label = 'speedup'
 opt_plot_args = {
-    "x_label": x_label
+    "x_label": x_label,
+    'title': 'Speedup curves for fib(44)',
+    'default_outfile_pdf_name': 'fib44',
+    'xlim': [1, max_num_workers + 1],
+    'ylim': [1, max_num_workers + 1]
 }
 
 def get_y_val(x_key, x_val, y_expr):
@@ -53,5 +58,5 @@ plot = mk_plot(expr,
                y_label = y_label,
                curves_expr = mk_append(mk_oracleguided, mk_nativeforkjoin),
                opt_args = opt_plot_args)
-output_plot(plot, results_plot_fname = 'plot.pdf')
+output_plot(plot)
 
