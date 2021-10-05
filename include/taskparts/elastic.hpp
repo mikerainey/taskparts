@@ -179,7 +179,9 @@ public:
         // Wait on my own semaphore
 	Stats::on_exit_acquire();
         Logging::log_enter_sleep(target, target_status.bits.priority, my_status.bits.priority);
+	Stats::on_enter_sleep(); 
         fields[my_id].sem.wait();
+	Stats::on_exit_sleep(); 
         // Must not set busybit here, because it will go back to stealing
         Logging::log_event(exit_sleep);
 	Stats::on_enter_acquire();

@@ -27,6 +27,7 @@ public:
     double exectime;
     timestamp_type total_work_time;
     timestamp_type total_idle_time;
+    timestamp_type total_sleep_time;
     double total_time;
     double utilization;
     rusage_type rusage_before;
@@ -63,6 +64,8 @@ private:
     timestamp_type total_work_time;
     timestamp_type start_idle;
     timestamp_type total_idle_time;
+    timestamp_type start_sleep;
+    timestamp_type total_sleep_time;
   };
 
   static
@@ -121,6 +124,23 @@ public:
   }
 
   static
+  auto on_enter_sleep() {
+    if (! Configuration::collect_all_stats) {
+      return;
+    }
+    all_timers.mine().start_sleep = now();
+  }
+  
+  static
+  auto on_exit_sleep() {
+    if (! Configuration::collect_all_stats) {
+      return;
+    }
+    auto& t = all_timers.mine();
+    t.total_sleep_time += since(t.start_sleep);
+  }
+
+  static
   auto start_collecting() {
     getrusage(RUSAGE_SELF, &ru_launch_time);
     enter_launch_time = steadyclock::now();
@@ -135,6 +155,8 @@ public:
       t.total_work_time = 0;
       t.start_idle = now();
       t.total_idle_time = 0;
+      t.start_sleep = now();
+      t.total_sleep_time = 0;
     }
   }
 
@@ -158,15 +180,19 @@ public:
     double cumulated_time = summary.exectime * nb_workers;
     timestamp_type total_work_time = 0;
     timestamp_type total_idle_time = 0;
+    timestamp_type total_sleep_time = 0;
     auto my_id = perworker::my_id();
     for (size_t i = 0; i < nb_workers; ++i) {
       auto& t = all_timers[i];
       total_work_time += t.total_work_time;
       total_idle_time += t.total_idle_time;
+      total_sleep_time += t.total_sleep_time;
     }
-    double relative_idle = cycles::seconds_of_cycles(total_idle_time) / cumulated_time;
+    double relative_idle =
+      cycles::seconds_of_cycles(total_idle_time + total_sleep_time) / cumulated_time;
     summary.total_work_time = total_work_time;
     summary.total_idle_time = total_idle_time;
+    summary.total_sleep_time = total_sleep_time;
     summary.total_time = cumulated_time;
     summary.utilization = 1.0 - relative_idle;
     return summary;
@@ -225,6 +251,7 @@ public:
     }
     output_cycles_in_seconds("total_work_time", summary.total_work_time);
     output_cycles_in_seconds("total_idle_time", summary.total_idle_time);
+    output_cycles_in_seconds("total_sleep_time", summary.total_sleep_time);
     output_double_value("total_time", summary.total_time);
     output_double_value("utilization", summary.utilization, false);
   }
