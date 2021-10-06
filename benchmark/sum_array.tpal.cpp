@@ -21,34 +21,7 @@ int sum_array_heartbeat_handler(double* a, uint64_t lo, uint64_t hi, double r, d
   auto fj = [&] {
     *dst = r + dst1 + dst2;
   };
-  taskparts::nativefj_from_lambda<decltype(f1), taskparts::bench_scheduler> fb1(f1);
-  taskparts::nativefj_from_lambda<decltype(f2), taskparts::bench_scheduler> fb2(f2);
-  taskparts::nativefj_from_lambda<decltype(fj), taskparts::bench_scheduler> fbj(fj);
-  auto cfb = taskparts::nativefj_fiber<taskparts::bench_scheduler>::current_fiber.mine();
-  cfb->status = taskparts::fiber_status_pause;
-  taskparts::fiber<taskparts::bench_scheduler>::add_edge(&fb1, &fbj);
-  taskparts::fiber<taskparts::bench_scheduler>::add_edge(&fb2, &fbj);
-  taskparts::fiber<taskparts::bench_scheduler>::add_edge(&fbj, cfb);
-  fb1.release();
-  fb2.release();
-  fbj.release();
-  if (taskparts::context::capture<taskparts::nativefj_fiber<taskparts::bench_scheduler>*>(taskparts::context::addr(cfb->ctx))) {
-    return 1;
-  }
-  fb1.stack = taskparts::nativefj_fiber<taskparts::bench_scheduler>::notownstackptr;
-  fb1.swap_with_scheduler();
-  fb1.run();
-  auto f = taskparts::bench_scheduler::take<taskparts::nativefj_fiber>();
-  if (f == nullptr) {
-    cfb->status = taskparts::fiber_status_finish;
-    cfb->exit_to_scheduler();
-    return 1; // unreachable
-  }
-  fb2.stack = taskparts::nativefj_fiber<taskparts::bench_scheduler>::notownstackptr;
-  fb2.swap_with_scheduler();
-  fb2.run();
-  cfb->status = taskparts::fiber_status_finish;
-  cfb->swap_with_scheduler();
+  tpalrts_promote_via_nativefj(f1, f2, fj, taskparts::bench_scheduler());
   return 1;
 }
 
