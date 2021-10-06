@@ -9,6 +9,7 @@ TASKPARTS_PATH=../
 #   PARLAYLIB_INCLUDE_PREFIX       include directives needed for parlay
 #   PBBSBENCH_INCLUDE_PREFIX       include directives needed for pbbs
 #   MINI_UTS_PREFIX                include directives needed for mini uts benchmark
+#   CHUNKEDSEQ_PREFIX              include directives needed for chunked sequence library
 
 .PHONY: install_folder
 install_folder:
@@ -32,7 +33,8 @@ INCLUDE_PREFIX=\
 	$(HWLOC_INCLUDE_PREFIX) \
 	$(PARLAYLIB_INCLUDE_PREFIX) \
 	$(PBBSBENCH_INCLUDE_PREFIX) \
-	$(MINI_UTS_PREFIX)
+	$(MINI_UTS_PREFIX) \
+	$(CHUNKEDSEQ_PREFIX)
 
 LINKER_PREFIX=\
 	-pthread \
