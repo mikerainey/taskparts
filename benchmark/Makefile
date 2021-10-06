@@ -7,6 +7,7 @@ TASKPARTS_PATH=../
 #   HWLOC_LIBRARY_PREFIX           linker directives for hwloc (optionally empty)
 #   TASKPARTS_ELASTIC_PREFIX       build configuration for elastic work stealing
 #   PARLAYLIB_INCLUDE_PREFIX       include directives needed for parlay
+#   PARLAYLIB_SERIAL_PREFIX       include directives needed for parlay
 #   PBBSBENCH_INCLUDE_PREFIX       include directives needed for pbbs
 #   MINI_UTS_PREFIX                include directives needed for mini uts benchmark
 #   CHUNKEDSEQ_PREFIX              include directives needed for chunked sequence library
@@ -100,14 +101,17 @@ DBG_PREFIX=\
 # Binaries for serial elision
 # ---------------------------
 
+# later: figure out how to handle these flags
+PARLAYLIB_SERIAL_PREFIX=-DPARLAY_SEQUENTIAL -DPARLAY_USE_STD_ALLOC
+
 %.serial.opt: %.serial.cpp $(INCLUDE_FILES) install_folder
-	$(CXX) $(OPT_PREFIX) -DTASKPARTS_SERIAL_ELISION -DPARLAY_SEQUENTIAL -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+	$(CXX) $(OPT_PREFIX) -DTASKPARTS_SERIAL_ELISION $(PARLAYLIB_SERIAL_PREFIX)  -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
 %.serial.sta: %.serial.cpp $(INCLUDE_FILES) install_folder
-	$(CXX) $(STA_PREFIX) -DTASKPARTS_SERIAL_ELISION -DPARLAY_SEQUENTIAL -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+	$(CXX) $(STA_PREFIX) -DTASKPARTS_SERIAL_ELISION $(PARLAYLIB_SERIAL_PREFIX) -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
 %.serial.log: %.serial.cpp $(INCLUDE_FILES) install_folder
-	$(CXX) $(LOG_PREFIX) -DTASKPARTS_SERIAL_ELISION -DPARLAY_SEQUENTIAL -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+	$(CXX) $(LOG_PREFIX) -DTASKPARTS_SERIAL_ELISION $(PARLAYLIB_SERIAL_PREFIX) -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
 %.serial.dbg: %.serial.cpp $(INCLUDE_FILES) install_folder
-	$(CXX) $(DBG_PREFIX) -DTASKPARTS_SERIAL_ELISION -DPARLAY_SEQUENTIAL -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+	$(CXX) $(DBG_PREFIX) -DTASKPARTS_SERIAL_ELISION $(PARLAYLIB_SERIAL_PREFIX) -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
 
 # Binaries for tpal, task parallel assembly language
 # --------------------------------------------------
