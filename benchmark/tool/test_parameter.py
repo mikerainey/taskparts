@@ -1,5 +1,8 @@
 from parameter import *
 
+def pretty_print_json(j):
+    print(json.dumps(j, indent=2))
+
 #p = json.loads('{"take_kvp": {"e1": {"value": [[ {"key": "x", "val": "3"} ], [{"key": "x", "val": "3"},{"key": "x", "val": 3}]] }, "e2": {"value": [] } }}')
 #p = json.loads('{"value": [[ {"key": "x", "val": "3"} ], [{"key": "x", "val": "3"},{"key": "x", "val": "3"}]] }')
 #p = json.loads('{"value": [[ {"key": "x", "val": "3"} ]] }')
@@ -18,5 +21,4 @@ p = eval(q)
 jsonschema.validate(p, parameter_schema)
 pretty_print_json(p)
 
-   
-#{"append": {"e1": {"value": [[ {"key": "x", "val": "3"} ], [{"key": "x", "val": "3"},{"key": "x", "val": "3"}]] }, "e2": {"value": [] } }}
+

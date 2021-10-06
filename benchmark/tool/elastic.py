@@ -89,7 +89,9 @@ x_label = 'workers'
 y_key = 'exectime'
 y_label = 'speedup'
 opt_plot_args = {
-    "x_label": x_label
+    "x_label": x_label,
+    'xlim': [1, max_num_workers + 1],
+    'ylim': [1, max_num_workers + 1]
 }
 
 plots_expr = mk_parameters(benchmark_key, benchmarks)
