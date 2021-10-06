@@ -39,7 +39,7 @@ public:
   using self_type = frontiersegbase<Graph, Vertex_container>;
   using size_type = size_t;
   using graph_type = Graph;
-  using vtxid_type = typename graph_type::vertexId;
+  using vtxid_type = typename graph_type::vtxid;
   using const_vtxid_pointer = const vtxid_type*;
   
   class edgelist_type {
@@ -97,11 +97,11 @@ private:
   /*---------------------------------------------------------------------*/
   
   static size_type out_degree_of_vertex(graph_type g, vtxid_type v) {
-    return size_type(g[v].degree);
+    return size_type(g.get_degree(v));
   }
   
   static const vtxid_type* neighbors_of_vertex(graph_type g, vtxid_type v) {
-    return g[v].Neighbors();
+    return g.get_neighbors(v);
   }
   
   edgelist_type create_edgelist(vtxid_type v) const {
