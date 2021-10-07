@@ -1,181 +1,118 @@
 #ifndef TASKPARTS_TPALRTS
 #error "need to compile with tpal flags, e.g., TASKPARTS_TPALRTS"
 #endif
-#include "taskparts/benchmark.hpp"
-// -DNDEBUG -O3 -march=native -fno-verbose-asm -fno-stack-protector -fno-asynchronous-unwind-tables -fomit-frame-pointer -mavx2 -mfma -fopenmp
+#include "spmv.hpp"
+#include "spmv_rollforward_decls.hpp"
 
-auto rand_float(size_t i) -> float {
-  int m = 1000000;
-  float v = taskparts::hash(i) % m;
-  return v / m;
-}
-
-using edge_type = std::pair<uint64_t, uint64_t>;
-
-using edgelist_type = std::vector<edge_type>;
-
-auto mk_random_local_edgelist(size_t dim, size_t degree, size_t num_rows)
-  -> edgelist_type {
-  size_t non_zeros = num_rows*degree;
-  edgelist_type edges;
-  for (size_t k = 0; k < non_zeros; k++) { 
-    size_t i = k / degree;
-    size_t j;
-    if (dim==0) {
-      size_t h = k;
-      do {
-	j = ((h = taskparts::hash(h)) % num_rows);
-      } while (j == i);
-    } else {
-      size_t _pow = dim+2;
-      size_t h = k;
-      do {
-	while ((((h = taskparts::hash(h)) % 1000003) < 500001)) _pow += dim;
-	j = (i + ((h = taskparts::hash(h)) % (((long) 1) << _pow))) % num_rows;
-      } while (j == i);
-    }
-    edges.push_back(std::make_pair(i, j));
-  }
-  return edges;
-}
-
-char* random_bigrows_input = "random_bigrows";
-char* random_bigcols_input = "random_bigcols";
-char* arrowhead_input = "arrowhead";
-
-uint64_t n_bigrows = 300000;
-uint64_t degree_bigrows = 100;
-uint64_t n_bigcols = 23;
-uint64_t n_arrowhead = 100000000;
-  
-uint64_t row_len = 1000;
-uint64_t degree = 4;
-uint64_t dim = 5;
-uint64_t nb_rows;
-uint64_t nb_vals;
-float* val;
-uint64_t* row_ptr;
-uint64_t* col_ind;
-float* x;
-float* y;
-
-auto csr_of_edgelist(edgelist_type& edges) {
-  std::sort(edges.begin(), edges.end(), std::less<edge_type>());
-  {
-    edgelist_type edges2;
-    edge_type prev = edges.back();
-    for (auto& e : edges) {
-      if (e != prev) {
-	edges2.push_back(e);
-      }
-      prev = e;
-    }
-    edges2.swap(edges);
-    edges2.clear();
-  }
-  nb_vals = edges.size();
-  row_ptr = (uint64_t*)malloc(sizeof(uint64_t) * (nb_rows + 1));
-  for (size_t i = 0; i < nb_rows + 1; i++) {
-    row_ptr[i] = 0;
-  }
-  for (auto& e : edges) {
-    assert((e.first >= 0) && (e.first < nb_rows));
-    row_ptr[e.first]++;
-  }
-  size_t max_col_len = 0;
-  size_t tot_col_len = 0;
-  {
-    for (size_t i = 0; i < nb_rows + 1; i++) {
-      max_col_len = std::max(max_col_len, row_ptr[i]);
-      tot_col_len += row_ptr[i];
-    }
-  }
-  { // initialize column indices
-    col_ind = (uint64_t*)malloc(sizeof(uint64_t) * nb_vals);
-    uint64_t i = 0;
-    for (auto& e : edges) {
-      col_ind[i++] = e.second;
-    }
-  }
-  edges.clear();
-  { // initialize row pointers
-    uint64_t a = 0;
-    for (size_t i = 0; i < nb_rows; i++) {
-      auto e = row_ptr[i];
-      row_ptr[i] = a;
-      a += e;
-    }
-    row_ptr[nb_rows] = a;
-  }
-  { // initialize nonzero values array
-    val = (float*)malloc(sizeof(float) * nb_vals);
-    for (size_t i = 0; i < nb_vals; i++) {
-      val[i] = rand_float(i);
-    }
-  }
-  printf("nb_vals %lu\n", nb_vals);
-  printf("max_col_len %lu\n", max_col_len);
-  printf("tot_col_len %lu\n", tot_col_len);
-}
-
-template <typename T>
-void zero_init(T* a, std::size_t n) {
-  volatile T* b = (volatile T*)a;
-  for (std::size_t i = 0; i < n; i++) {
-    b[i] = 0;
-  }
-}
-
-#ifdef TASKPARTS_TPALRTS
-extern
-void spmv_serial(
+int row_loop_handler(
   float* val,
   uint64_t* row_ptr,
   uint64_t* col_ind,
   float* x,
   float* y,
-  uint64_t n);
-#else
+  uint64_t row_lo,
+  uint64_t row_hi) {
+  if ((row_hi - row_lo) <= 1) {
+    return 0;
+  }
+  auto mid = (row_lo + row_hi) / 2;
+  taskparts::tpalrts_promote_via_nativefj([=] {
+    spmv_interrupt(val, row_ptr, col_ind, x, y, row_lo, mid);
+  }, [=] {
+    spmv_interrupt(val, row_ptr, col_ind, x, y, mid, row_hi);
+  }, [=] { }, taskparts::bench_scheduler());
+  return 1;
+}
 
-void spmv_serial(
+int col_loop_handler(
   float* val,
   uint64_t* row_ptr,
   uint64_t* col_ind,
   float* x,
   float* y,
-  uint64_t n) {
-  for (uint64_t i = 0; i < n; i++) { // row loop
-    float r = 0.0;
-    #pragma omp simd reduction(+:r)
-    for (uint64_t k = row_ptr[i]; k < row_ptr[i + 1]; k++) { // col loop
-      r += val[k] * x[col_ind[k]];
-    }
-    y[i] = r;
+  uint64_t row_lo,
+  uint64_t row_hi,
+  uint64_t col_lo,
+  uint64_t col_hi,
+  float t) {
+  auto nb_rows = row_hi - row_lo;
+  if (nb_rows == 0) {
+    return 0;
   }
+  return 0;
+  /*
+  auto cf = [=] (tpalrts::promotable* p2) {
+    spmv_interrupt_col_loop(val, row_ptr, col_ind, x, y, col_lo, col_hi, t, &y[row_lo], p2);
+  };
+  if (nb_rows == 1) {
+    p->async_finish_promote(cf);
+    return 1;
+  }
+  row_lo++;
+  if (nb_rows == 2) {
+    p->fork_join_promote2(cf, [=] (tpalrts::promotable* p2) {
+      spmv_interrupt(val, row_ptr, col_ind, x, y, row_lo, row_hi, p2);
+    }, [=] (tpalrts::promotable*) {
+      // nothing left to do
+    });
+  } else {
+    auto row_mid = (row_lo + row_hi) / 2;
+    p->fork_join_promote3(cf, [=] (tpalrts::promotable* p2) {
+      spmv_interrupt(val, row_ptr, col_ind, x, y, row_lo, row_mid, p2);
+    }, [=] (tpalrts::promotable* p2) {
+      spmv_interrupt(val, row_ptr, col_ind, x, y, row_mid, row_hi, p2);
+    }, [=] (tpalrts::promotable*) {
+      // nothing left to do
+    });    
+  }
+  return 1; */
 }
-#endif
+
+int col_loop_handler_col_loop(
+  float* val,
+  uint64_t* row_ptr,
+  uint64_t* col_ind,
+  float* x,
+  float* y,
+  uint64_t col_lo,
+  uint64_t col_hi,
+  float t,
+  float* dst) {
+  if ((col_hi - col_lo) <= 1) {
+    return 0;
+  }
+  return 0;
+  /*
+  auto col_mid = (col_lo + col_hi) / 2;
+  using dst_rec_type = std::pair<float, float>;
+  dst_rec_type* dst_rec;
+  tpalrts::arena_block_type* dst_blk;
+  std::tie(dst_rec, dst_blk) = tpalrts::alloc_arena<dst_rec_type>();
+  p->fork_join_promote2([=] (tpalrts::promotable* p2) {
+    spmv_interrupt_col_loop(val, row_ptr, col_ind, x, y, col_lo, col_mid, t, &(dst_rec->first), p2);
+  }, [=] (tpalrts::promotable* p2) {
+    spmv_interrupt_col_loop(val, row_ptr, col_ind, x, y, col_mid, col_hi, 0.0, &(dst_rec->second), p2);
+  }, [=] (tpalrts::promotable*) {
+    *dst = dst_rec->first + dst_rec->second;
+    decr_arena_block(dst_blk);
+  });
+  return 1; */
+}
+
+namespace taskparts {
+auto initialize_rollforward() {
+  rollforward_table = {
+    #include "spmv_rollforward_map.hpp"
+  };
+  initialize_rollfoward_table();
+}
+} // end namespace
 
 int main() {
-  nb_rows = n_bigrows;
-  degree = degree_bigrows;
-  auto edges = mk_random_local_edgelist(dim, degree, nb_rows);
-  csr_of_edgelist(edges);
-  
-  x = (float*)malloc(sizeof(float) * nb_rows);
-  y = (float*)malloc(sizeof(float) * nb_rows);
-  if ((val == nullptr) || (row_ptr == nullptr) || (col_ind == nullptr) || (x == nullptr) || (y == nullptr)) {
-    printf("oops\n");
-    exit(1);
-  }
-  // initialize x and y vectors
-  {
-    for (size_t i = 0; i < nb_rows; i++) {
-      x[i] = rand_float(i);
-    }
-    zero_init(y, nb_rows);
-  }
+  taskparts::initialize_rollforward();
+  bench_pre_bigcols();
   taskparts::benchmark_nativeforkjoin([&] (auto sched) {
-    spmv_serial(val, row_ptr, col_ind, x, y, nb_rows);
+    spmv_interrupt(val, row_ptr, col_ind, x, y, 0, nb_rows);
   });
   return 0;
 }
