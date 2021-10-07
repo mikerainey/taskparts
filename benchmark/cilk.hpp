@@ -3,47 +3,27 @@
 #include <string>
 #include <cilk/cilk.h>
 #include <cilk/cilk_api.h>
+#include <cilk/reducer_opadd.h>
 #include <taskparts/machine.hpp>
 #include <taskparts/stats.hpp>
 #include <taskparts/cmdline.hpp>
+#include <taskparts/defaults.hpp>
 
 namespace taskparts {
 
-class stats_configuration {
-public:
-
-  static constexpr
-  bool collect_all_stats = false;
-  
-  using counter_id_type = enum counter_id_enum {
-    nb_fibers,
-    nb_steals,
-    nb_counters
-  };
-
-  static
-  auto name_of_counter(counter_id_type id) -> const char* {
-    const char* names [] = { "nb_fibers", "nb_steals" };
-    return names[id];
-  }
-  
-};
-  
-using bench_stats = stats_base<stats_configuration>;
-
-auto dflt_benchmark_setup = [] { };
-auto dflt_benchmark_teardown = []  { };
-auto dflt_benchmark_reset = [] { };
+auto dflt_cilk_benchmark_setup = [] { };
+auto dflt_cilk_benchmark_teardown = []  { };
+auto dflt_cilk_benchmark_reset = [] { };
   
 template <typename Benchmark,
-	  typename Benchmark_setup=decltype(dflt_benchmark_setup),
-	  typename Benchmark_teardown=decltype(dflt_benchmark_teardown),
-	  typename Benchmark_reset=decltype(dflt_benchmark_reset)
+	  typename Benchmark_setup=decltype(dflt_cilk_benchmark_setup),
+	  typename Benchmark_teardown=decltype(dflt_cilk_benchmark_teardown),
+	  typename Benchmark_reset=decltype(dflt_cilk_benchmark_reset)
 >
 auto benchmark_cilk(const Benchmark& benchmark,
-		    Benchmark_setup benchmark_setup=dflt_benchmark_setup,
-		    Benchmark_teardown benchmark_teardown=dflt_benchmark_teardown,
-		    Benchmark_reset benchmark_reset=dflt_benchmark_reset) {
+		    Benchmark_setup benchmark_setup=dflt_cilk_benchmark_setup,
+		    Benchmark_teardown benchmark_teardown=dflt_cilk_benchmark_teardown,
+		    Benchmark_reset benchmark_reset=dflt_cilk_benchmark_reset) {
   size_t repeat = 1;
   if (const auto env_p = std::getenv("TASKPARTS_BENCHMARK_NUM_REPEAT")) {
     repeat = std::stoi(env_p);
