@@ -21,4 +21,3 @@ p = eval(q)
 jsonschema.validate(p, parameter_schema)
 pretty_print_json(p)
 
-

@@ -41,7 +41,7 @@ def mk_elastic_benchmark(basename, mode = mode_taskparts, ext = 'sta'):
     return mk_cross(e, mk_mode(mode))
     
 max_num_workers = 15
-workers = range(14, max_num_workers + 1)
+workers = range(1, max_num_workers + 1, 3)
 x_vals = workers
 mk_num_workers = mk_parameters(taskparts_num_workers_key, workers)
     
