@@ -332,7 +332,7 @@ public:
   static
   auto schedule(fiber_type* f) {
     assert(f->is_ready());
-    buffers.mine().push_back(f);
+    buffers.mine().push_back(f); // todo: use resizeable buffer
   }
 
   static

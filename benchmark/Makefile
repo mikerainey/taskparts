@@ -125,15 +125,6 @@ SERIAL_PREFIX=-DTASKPARTS_SERIAL -DTASKPARTS_SERIAL_ELISION $(PARLAYLIB_SERIAL_P
 %.tpal.dbg: %.tpal.cpp $(INCLUDE_FILES) install_folder
 	$(CXX) $(DBG_PREFIX) -DTASKPARTS_TPALRTS $(basename $<)_manual.s -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
 
-%.serial.tpal.opt: %.serial.tpal.cpp $(INCLUDE_FILES) install_folder
-	$(CXX) $(OPT_PREFIX) -DTASKPARTS_TPALRTS $(basename $<)_manual.s -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
-%.serial.tpal.sta: %.serial.tpal.cpp $(INCLUDE_FILES) install_folder
-	$(CXX) $(STA_PREFIX) -DTASKPARTS_TPALRTS $(basename $<)_manual.s -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
-%.serial.tpal.log: %.serial.tpal.cpp $(INCLUDE_FILES) install_folder
-	$(CXX) $(LOG_PREFIX) -DTASKPARTS_TPALRTS $(basename $<)_manual.s -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
-%.serial.tpal.dbg: %.serial.tpal.cpp $(INCLUDE_FILES) install_folder
-	$(CXX) $(DBG_PREFIX) -DTASKPARTS_TPALRTS $(basename $<)_manual.s -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
-
 # Binaries for elastic scheduling
 # -------------------------------
 
@@ -203,3 +194,5 @@ all_serial_sta: $(BENCHMARKS:%=%.serial.sta)
 all_opt: all_taskparts_opt all_cilk_opt all_serial_opt
 all_sta: all_taskparts_sta all_cilk_sta all_serial_sta
 
+# e.g.,
+# make PARLAYLIB_INCLUDE_PREFIX="-I /home/rainey/Work/parlaylib+taskparts/include/ -DPARLAY_TASKPARTS" PBBSBENCH_INCLUDE_PREFIX="-I /home/rainey/Work/pbbsbench/ -Wno-pragmas" -j all_elastic_sta all_serial_sta all_cilk_sta
