@@ -252,4 +252,38 @@ void spmv_interrupt_col_loop(
   float t,
   float* dst);
 
+auto bench_pre() {
+  taskparts::cmdline::dispatcher d;
+  d.add("bigcols", bench_pre_bigcols);
+  d.add("bigrows", bench_pre_bigrows);
+  d.add("arrowhead", bench_pre_arrowhead);
+  d.dispatch_or_default("input_matrix", "bigcols");
+}
 
+auto bench_post() {
+#ifndef NDEBUG
+  double* yref = (double*)malloc(sizeof(double) * nb_rows);
+  {
+    for (uint64_t i = 0; i != nb_rows; i++) {
+      yref[i] = 1.0;
+    }
+    spmv_serial(val, row_ptr, col_ind, x, yref, nb_rows);
+  }
+  uint64_t nb_diffs = 0;
+  double epsilon = 0.01;
+  for (uint64_t i = 0; i != nb_rows; i++) {
+    auto diff = std::abs(y[i] - yref[i]);
+    if (diff > epsilon) {
+      //printf("diff=%f y[i]=%f yref[i]=%f at i=%ld\n", diff, y[i], yref[i], i);
+      nb_diffs++;
+    }
+  }
+  //aprintf("nb_diffs %ld\n", nb_diffs);
+  free(yref);
+#endif
+  free(val);
+  free(row_ptr);
+  free(col_ind);
+  free(x);
+  free(y);
+};

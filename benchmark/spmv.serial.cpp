@@ -18,9 +18,8 @@ void spmv_serial(
 }
 
 int main() {
-  bench_pre_bigcols();
   taskparts::benchmark_nativeforkjoin([&] (auto sched) {
     spmv_serial(val, row_ptr, col_ind, x, y, nb_rows);
-  });
+  }, [&] (auto sched) { bench_pre(); }, [&] (auto sched) { bench_post(); });
   return 0;
 }
