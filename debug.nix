@@ -46,7 +46,7 @@ stdenv.mkDerivation rec {
     # request more workers than there are cores, which would be incompatible 
     # with the per-core pinning.
     export TASKPARTS_NUM_WORKERS=$( ${hwloc}/bin/hwloc-ls|grep Core|wc -l );
-    export CILKRTS_STATS_PREFIX="${cilk-stats-rts-params}"y
+    export CILKRTS_STATS_PREFIX="${cilk-stats-rts-params}"
   '';
 
   TASKPARTS_BENCHMARK_WARMUP_SECS=0;
