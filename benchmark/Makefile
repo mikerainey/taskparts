@@ -15,7 +15,7 @@ TASKPARTS_PATH?=../
 # 
 
 # External parameters
-PARLAYLIB_INCLUDE_PREFIX?=-I $(TASKPARTS_PATH)/../parlaylib+taskparts/include/ -DPARLAY_TASKPARTS
+PARLAYLIB_INCLUDE_PREFIX?=-I $(TASKPARTS_PATH)/../parlaylib/include/ -DPARLAY_TASKPARTS
 PBBSBENCH_INCLUDE_PREFIX?=-I $(TASKPARTS_PATH)/../pbbsbench/ -Wno-pragmas
 MINI_UTS_PREFIX?=-I $(TASKPARTS_PATH)/../mini-uts/ -lm
 CHUNKEDSEQ_PREFIX?=-I $(TASKPARTS_PATH)/../chunkedseq/include
