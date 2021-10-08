@@ -1,4 +1,5 @@
 #include <deque>
+//#include "uvector.h"
 #include <parlay/delayed_sequence.h>
 #include <parlay/monoid.h>
 #include <parlay/primitives.h>
@@ -82,7 +83,10 @@ int main() {
     }); 
     d.add("sequence", [&] {
       sum_iterative<parlay::sequence<vkont>>(n0);
-    });     
+    }); /*
+    d.add("uvector", [&] {
+      sum_iterative<ao::uvector<vkont>>(n0);
+      }); */  
     d.dispatch_or_default("algorithm", "iterative");
   }, [&] (auto sched) { gen_input(sched); }, [&] (auto sched) { teardown(); });
   printf("answer=%d\n", answer);
