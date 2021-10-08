@@ -18,6 +18,10 @@ namespace taskparts {
 
 auto detect_cpu_frequency_khz() -> uint64_t {
   uint64_t cpu_frequency_khz = 0;
+  if (const auto env_p = std::getenv("TASKPARTS_CPU_FREQUENCY")) {
+    cpu_frequency_khz = std::stoi(env_p);
+    return cpu_frequency_khz;
+  }
   FILE *f;
   f = fopen("/sys/devices/system/cpu/cpu0/cpufreq/base_frequency", "r");
   if (f == nullptr) {
