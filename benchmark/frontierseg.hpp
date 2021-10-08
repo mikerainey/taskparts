@@ -422,8 +422,8 @@ public:
       if (b_size >= nb_left) {
         // process only part of the back, leave the rest to the front
         auto e = edgelist_type::take(b, nb_left);
-        f = edgelist_type::drop(b, nb_left);
-        b.clear();
+        f = edgelist_type::drop(b, nb_left); 
+       b.clear();
         e.for_each(func);
         return nb;
       } else {

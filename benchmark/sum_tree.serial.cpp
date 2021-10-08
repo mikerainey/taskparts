@@ -1,4 +1,8 @@
 #include <deque>
+#include <parlay/delayed_sequence.h>
+#include <parlay/monoid.h>
+#include <parlay/primitives.h>
+#include <parlay/parallel.h>
 #include <stdio.h>
 
 #include <taskparts/benchmark.hpp>
@@ -25,7 +29,8 @@ public:
     : tag(tag) { }
 };
 
-auto sum(node* n, std::deque<vkont>& k) -> void {
+template <typename Seq=std::deque<vkont>>
+auto sum(node* n, Seq& k) -> void {
   while (true) {
     if (n == nullptr) {
       int s = 0;
@@ -50,35 +55,36 @@ auto sum(node* n, std::deque<vkont>& k) -> void {
   }
 }
 
-void sum_serial(node* n) {
-  std::deque<vkont> k({vkont(K3)});
-  sum(n, k);
+template <typename Seq=std::deque<vkont>>
+void sum_iterative(node* n) {
+  Seq k({vkont(K3)});
+  sum<Seq>(n, k);
 }
 
-auto sum(node* n) -> int {
+auto sum_recursive(node* n) -> int {
   if (n == nullptr) {
     return 0;
   } else {
-    auto s0 = /* spawn */ sum(n->left);
-    auto s1 =             sum(n->right);
-    /* sync; */
+    auto s0 = sum_recursive(n->left);
+    auto s1 = sum_recursive(n->right);
     return s0 + s1 + n->value;
   }
 }
 
 int main() {
-  
   taskparts::benchmark_nativeforkjoin([&] (auto sched) {
     taskparts::cmdline::dispatcher d;
     d.add("iterative", [&] {
-      sum_serial(n0);
+      sum_iterative(n0);
     });
     d.add("recursive", [&] {
-      answer = sum(n0);
-    });
+      answer = sum_recursive(n0);
+    }); 
+    d.add("sequence", [&] {
+      sum_iterative<parlay::sequence<vkont>>(n0);
+    });     
     d.dispatch_or_default("algorithm", "iterative");
   }, [&] (auto sched) { gen_input(sched); }, [&] (auto sched) { teardown(); });
-  
   printf("answer=%d\n", answer);
   return 0;
 }
