@@ -24,7 +24,10 @@ auto get_cpu_frequency_khz() -> uint64_t {
     cpu_frequency_khz = detect_cpu_frequency_khz();
   }
   if (cpu_frequency_khz == 0) {
-    taskparts_die("failed to detect CPU frequency\n");
+    auto s =
+      "Failed to detect CPU frequency. Correct this issue by assigning" \
+      "the environment variable TASKPARTS_CPU_BASE_FREQUENCY_KHZ appropriately.\n";
+    taskparts_die(s);    
   }
   return cpu_frequency_khz;
 }
