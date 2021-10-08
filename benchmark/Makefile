@@ -1,16 +1,25 @@
-# binaries go here:
-INSTALL_PATH=bin
-# root folder of taskparts repository:
-TASKPARTS_PATH=../
+# Taskparts-specific parameters
+#   binaries go here:
+INSTALL_PATH?=bin
+#   root folder of taskparts repository:
+TASKPARTS_PATH?=../
 # Other parameters (all nil by default):
 #   HWLOC_INCLUDE_PREFIX           include directives for hwloc (optionally empty)
 #   HWLOC_LIBRARY_PREFIX           linker directives for hwloc (optionally empty)
 #   TASKPARTS_ELASTIC_PREFIX       build configuration for elastic work stealing
 #   PARLAYLIB_INCLUDE_PREFIX       include directives needed for parlay
-#   PARLAYLIB_SERIAL_PREFIX       include directives needed for parlay
+#   PARLAYLIB_SERIAL_PREFIX        include directives needed for parlay
 #   PBBSBENCH_INCLUDE_PREFIX       include directives needed for pbbs
 #   MINI_UTS_PREFIX                include directives needed for mini uts benchmark
 #   CHUNKEDSEQ_PREFIX              include directives needed for chunked sequence library
+# 
+
+# External parameters
+PARLAYLIB_INCLUDE_PREFIX?=-I $(TASKPARTS_PATH)/../parlaylib+taskparts/include/ -DPARLAY_TASKPARTS
+PBBSBENCH_INCLUDE_PREFIX?=-I $(TASKPARTS_PATH)/../pbbsbench/ -Wno-pragmas
+MINI_UTS_PREFIX?=-I $(TASKPARTS_PATH)/../mini-uts/ -lm
+CHUNKEDSEQ_PREFIX?=-I $(TASKPARTS_PATH)/../chunkedseq/include
+CILKRTS_STATS_PREFIX?=
 
 .PHONY: install_folder
 install_folder:
@@ -41,7 +50,8 @@ LINKER_PREFIX=\
 	-pthread \
 	$(HWLOC_LIBRARY_PREFIX)
 
-# WARNING: flag -fno-stack-protector needed for native fork join to compile safely 
+# WARNING: flag -fno-stack-protector needed for native fork join to
+# compile binaries that do not segfault
 COMMON_COMPILE_PREFIX=\
 	$(INCLUDE_PREFIX) \
 	-std=c++17 \
@@ -146,7 +156,7 @@ CILK_COMMON_PREFIX=-fcilkplus -lcilkrts -DCILK -ldl -DPARLAY_CILK
 	$(CXX) $(OPT_PREFIX) $(CILK_COMMON_PREFIX) -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
 # TODO: enable cilk w/ stats
 %.cilk.sta: %.cilk.cpp $(INCLUDE_FILES) install_folder
-	$(CXX) $(OPT_PREFIX) $(CILK_COMMON_PREFIX) -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+	$(CXX) $(OPT_PREFIX) $(CILK_COMMON_PREFIX) $(CILKRTS_STATS_PREFIX) -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
 %.cilk.dbg: %.cilk.cpp $(INCLUDE_FILES) install_folder
 	$(CXX) $(DBG_PREFIX) $(CILK_COMMON_PREFIX) -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
 
@@ -193,6 +203,3 @@ all_serial_sta: $(BENCHMARKS:%=%.serial.sta)
 
 all_opt: all_taskparts_opt all_cilk_opt all_serial_opt
 all_sta: all_taskparts_sta all_cilk_sta all_serial_sta
-
-# e.g.,
-# make PARLAYLIB_INCLUDE_PREFIX="-I /home/rainey/Work/parlaylib+taskparts/include/ -DPARLAY_TASKPARTS" PBBSBENCH_INCLUDE_PREFIX="-I /home/rainey/Work/pbbsbench/ -Wno-pragmas" -j all_elastic_sta all_serial_sta all_cilk_sta

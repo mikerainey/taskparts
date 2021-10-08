@@ -11,6 +11,21 @@
 
 namespace taskparts {
 
+#ifdef TASKPARTS_CILKRTS_WITH_STATS
+void trigger_cilk() {
+  printf("");
+}
+#endif
+
+__attribute__((constructor))
+void init_cilkrts() {
+  size_t nb_workers = perworker::nb_workers_requested();
+  int cilk_failed = __cilkrts_set_param("nworkers", std::to_string((int)nb_workers).c_str());
+  if (cilk_failed) {
+    taskparts_die("Failed to set number of processors to %d in Cilk runtime", nb_workers);
+  }
+}
+
 auto dflt_cilk_benchmark_setup = [] { };
 auto dflt_cilk_benchmark_teardown = []  { };
 auto dflt_cilk_benchmark_reset = [] { };
@@ -36,12 +51,12 @@ auto benchmark_cilk(const Benchmark& benchmark,
   if (const auto env_p = std::getenv("TASKPARTS_BENCHMARK_VERBOSE")) {
     verbose = std::stoi(env_p);
   }
-  initialize_machine();
   size_t nb_workers = perworker::nb_workers_requested();
-  int cilk_failed = __cilkrts_set_param("nworkers", std::to_string(nb_workers).c_str());
-  if (cilk_failed) {
-    taskparts_die("Failed to set number of processors to %d in Cilk runtime", nb_workers);
-  }
+  initialize_machine();
+#ifdef TASKPARTS_CILKRTS_WITH_STATS
+  cilk_spawn trigger_cilk();
+  cilk_sync;
+#endif
   benchmark_setup();
   if (warmup_secs >= 1.0) {
     if (verbose) printf("======== WARMUP ========\n");

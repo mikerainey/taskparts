@@ -2,6 +2,9 @@
 #include "uts.c"
 #include "rng/brg_sha1.c"
 
+// to load UTS parameters
+// source o../../mini-uts/sample_trees.sh
+
 // ===========================================================================
 
 int main(int argc, char *argv[]) {
