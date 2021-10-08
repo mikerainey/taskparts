@@ -9,6 +9,8 @@
 #include "sum_tree.hpp"
 #include "sum_tree_rollforward_decls.hpp"
 
+// todo: replace use of std::vector for stack by some faster structure, e.g., std::deque or chunkedseq
+
 class task : public taskparts::fiber<taskparts::bench_scheduler> {
 public:
 

@@ -1,4 +1,4 @@
-#include <vector>
+#include <deque>
 #include <stdio.h>
 
 #include <taskparts/benchmark.hpp>
@@ -25,7 +25,7 @@ public:
     : tag(tag) { }
 };
 
-auto sum(node* n, std::vector<vkont>& k) -> void {
+auto sum(node* n, std::deque<vkont>& k) -> void {
   while (true) {
     if (n == nullptr) {
       int s = 0;
@@ -51,14 +51,32 @@ auto sum(node* n, std::vector<vkont>& k) -> void {
 }
 
 void sum_serial(node* n) {
-  std::vector<vkont> k({vkont(K3)});
+  std::deque<vkont> k({vkont(K3)});
   sum(n, k);
+}
+
+auto sum(node* n) -> int {
+  if (n == nullptr) {
+    return 0;
+  } else {
+    auto s0 = /* spawn */ sum(n->left);
+    auto s1 =             sum(n->right);
+    /* sync; */
+    return s0 + s1 + n->value;
+  }
 }
 
 int main() {
   
   taskparts::benchmark_nativeforkjoin([&] (auto sched) {
-    sum_serial(n0);
+    taskparts::cmdline::dispatcher d;
+    d.add("iterative", [&] {
+      sum_serial(n0);
+    });
+    d.add("recursive", [&] {
+      answer = sum(n0);
+    });
+    d.dispatch_or_default("algorithm", "iterative");
   }, [&] (auto sched) { gen_input(sched); }, [&] (auto sched) { teardown(); });
   
   printf("answer=%d\n", answer);
