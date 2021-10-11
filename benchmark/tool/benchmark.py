@@ -18,52 +18,8 @@ def nb_done_in_benchmark(b):
 def nb_traced_in_benchmark(b):
     return len(b['trace'])
 
-# String conversions
-# ==================
-
-def string_of_cl_args(args):
-    out = ''
-    i = 0
-    for a in args:
-        sa = "-" + a['var'] + ' ' + str(a['val'])
-        out = (out + ' ' + sa) if i > 0 else sa
-        i = i + 1
-    return out
-
-def string_of_env_args(vargs):
-    out = ''
-    i = 0
-    for va in vargs:
-        v = va['var']
-        sa = str(va['val'])
-        o = (v + '=' + sa)
-        out = (out + ' ' + o) if i > 0 else o
-        i = i + 1
-    return out
-
-def string_of_benchmark_run(r,
-                            show_env_args = False,
-                            show_silent_args = False,
-                            nb_traced = -1):
-    br = r['benchmark_run']
-    cl_args = (' ' if br['cl_args'] != [] else '') + string_of_cl_args(br['cl_args'])
-    env_args = ''
-    if show_env_args:
-        env_args = string_of_env_args(br['env_args']) + (' ' if br['env_args'] != [] else '')
-    silent_args = ''
-    if show_silent_args:
-        if 'silent_keys' in br:
-            silent_args = 'silent:('
-            for s in br['silent_keys']:
-                silent_args += s + ' '
-            silent_args += ')'
-    return env_args + br['path_to_executable'] + cl_args + silent_args
-
-def string_of_benchmark_progress(row_number, nb_traced, nb_todo):
-    return '[' + str(row_number) + '/' + str(nb_traced + nb_todo) + '] $ '
-
-# Benchmark stepper
-# =================
+# Benchmark construction
+# ======================
 
 def mk_benchmark_run(row,
                      path_to_executable_key = 'path_to_executable',
@@ -112,6 +68,76 @@ def seed_benchmark(benchmark_1):
         benchmark_2['todo'] = eval(benchmark_1['parameters'])
     return benchmark_2
 
+def serial_merge_benchmarks(b1, b2):
+    bm = b2.copy()
+    return bm
+
+# String conversions
+# ==================
+
+def string_of_cl_args(args):
+    out = ''
+    i = 0
+    for a in args:
+        sa = "-" + a['var'] + ' ' + str(a['val'])
+        out = (out + ' ' + sa) if i > 0 else sa
+        i = i + 1
+    return out
+
+def string_of_env_args(vargs):
+    out = ''
+    i = 0
+    for va in vargs:
+        v = va['var']
+        sa = str(va['val'])
+        o = (v + '=' + sa)
+        out = (out + ' ' + o) if i > 0 else o
+        i = i + 1
+    return out
+
+def string_of_benchmark_run(r,
+                            show_env_args = False,
+                            show_silent_args = False,
+                            nb_traced = -1):
+    br = r['benchmark_run']
+    cl_args = (' ' if br['cl_args'] != [] else '') + string_of_cl_args(br['cl_args'])
+    env_args = ''
+    if show_env_args:
+        env_args = string_of_env_args(br['env_args']) + (' ' if br['env_args'] != [] else '')
+    silent_args = ''
+    if show_silent_args:
+        if 'silent_keys' in br:
+            silent_args = 'silent:('
+            for s in br['silent_keys']:
+                silent_args += s + ' '
+            silent_args += ')'
+    return env_args + br['path_to_executable'] + cl_args + silent_args
+
+def string_of_benchmark_progress(row_number, nb_traced, nb_todo):
+    return '[' + str(row_number) + '/' + str(nb_traced + nb_todo) + '] $ '
+
+def string_of_benchmark_runs(b, show_run_numbers = True):
+    sr = ''
+    if 'cwd' in b['modifiers']:
+        sr += 'cd ' + b['modifiers']['cwd'] + '\n'
+    b = seed_benchmark(b.copy())
+    nb_traced = nb_traced_in_benchmark(b)
+    nb_todo = nb_todo_in_benchmark(b)
+    todo = b['todo']
+    row_number = nb_traced + 1
+    for next_row in b['todo']['value']:
+        modifiers = b['modifiers'] 
+        env_vars = modifiers['env_vars'] if 'env_vars' in modifiers else []
+        silent_keys = modifiers['silent_keys'] if 'silent_keys' in modifiers else []
+        next_run = mk_benchmark_run(next_row, modifiers['path_to_executable_key'], env_vars, silent_keys)
+        pre = string_of_benchmark_progress(row_number, nb_traced, nb_todo) if show_run_numbers else ''
+        sr += pre + string_of_benchmark_run(next_run, show_env_args = True, show_silent_args = True) + '\n'
+        row_number += 1
+    return sr
+
+# Benchmark stepper
+# =================
+
 _currentChild = None
 def _signalHandler(signal, frame):
   sys.stderr.write("[ERR] Interrupted.\n")
@@ -135,6 +161,32 @@ def run_benchmark(cmd, env_args, cwd = ''):
         return subprocess.Popen(cmd, shell = True, env = env_args,
                                 stdout = subprocess.PIPE, stderr = subprocess.PIPE, cwd = cwd)
 
+def step_benchmark_todo(todo_1, outfiles = []):
+    next_todo_position = 0
+    next_row = eval(mk_cross(todo_1, mk_outfile_keys(outfiles)))['value'].pop(next_todo_position)
+    todo_2 = todo_1['value'].copy()
+    todo_2.pop(next_todo_position)
+    return next_row, todo_2
+
+def create_benchmark_run_outfiles(outfile_keys):
+    outfiles = []
+    for k in outfile_keys:
+        fd, n = tempfile.mkstemp(suffix = '.json', text = True)
+        outfiles += [{'key': k, 'file_name': n, 'fd': fd}]
+        os.close(fd)
+    return outfiles
+
+def collect_benchmark_run_outfiles(outfiles, next_row,
+                                   client_format_to_row = lambda d: dictionary_to_row(d),
+                                   parse_output_to_json = lambda x: x):
+    results_expr = {'value': [ next_row ]}
+    for of in outfiles:
+        j = json.load(parse_output_to_json(open(of['file_name'], 'r')))
+        open(of['file_name'], 'w').close()
+        os.unlink(of['file_name'])
+        results_expr = mk_cross(results_expr, {'value': [client_format_to_row(d) for d in j] })
+    return results_expr
+
 def step_benchmark_run(benchmark_1,
                        verbose = True,
                        client_format_to_row = lambda d: dictionary_to_row(d),
@@ -148,21 +200,13 @@ def step_benchmark_run(benchmark_1,
     modifiers = benchmark_1['modifiers']
     # Try to load the next run to do
     benchmark_2 = seed_benchmark(benchmark_1)
-    todo = benchmark_2['todo']
-    if todo['value'] == []:
+    if nb_todo == 0:
         jsonschema.validate(benchmark_2, benchmark_schema)
         return benchmark_2
     # Create any tempfiles needed to collect results
-    outfile_keys = modifiers['outfile_keys']
-    outfiles = []
-    for k in outfile_keys:
-        fd, n = tempfile.mkstemp(suffix = '.json', text = True)
-        outfiles += [{'key': k, 'file_name': n, 'fd': fd}]
-        os.close(fd)
+    outfiles = create_benchmark_run_outfiles(modifiers['outfile_keys'])
     # Fetch the next run
-    next_row = eval(mk_cross(todo, mk_outfile_keys(outfiles)))['value'].pop()
-    todo_2 = todo['value'].copy()
-    todo_2.pop()
+    next_row, todo_2 = step_benchmark_todo(benchmark_2['todo'], outfiles)
     env_vars = modifiers['env_vars'] if 'env_vars' in modifiers else []
     silent_keys = modifiers['silent_keys'] if 'silent_keys' in modifiers else []
     next_run = mk_benchmark_run(next_row, modifiers['path_to_executable_key'], env_vars, silent_keys)
@@ -192,12 +236,9 @@ def step_benchmark_run(benchmark_1,
             print('stderr:')
             print(child_stderr)
         # Collect the results
-        results_expr = {'value': [ next_row ]}
-        for of in outfiles:
-            j = json.load(parse_output_to_json(open(of['file_name'], 'r')))
-            open(of['file_name'], 'w').close()
-            os.unlink(of['file_name'])
-            results_expr = mk_cross(results_expr, {'value': [client_format_to_row(d) for d in j] })
+        results_expr = collect_benchmark_run_outfiles(outfiles, next_row,
+                                                      client_format_to_row,
+                                                      parse_output_to_json)
         benchmark_2['todo'] = { 'value': todo_2 }
         benchmark_2['done'] = eval(mk_append(benchmark_1['done'], results_expr))
     finally:
@@ -225,22 +266,4 @@ def step_benchmark(benchmark_1):
         nb_todo = nb_todo_in_benchmark(benchmark_2)
     return benchmark_2
 
-def string_of_benchmark_runs(b, show_run_numbers = True):
-    sr = ''
-    if 'cwd' in b['modifiers']:
-        sr += 'cd ' + b['modifiers']['cwd'] + '\n'
-    b = seed_benchmark(b)
-    nb_traced = nb_traced_in_benchmark(b)
-    nb_todo = nb_todo_in_benchmark(b)
-    todo = b['todo']
-    row_number = nb_traced + 1
-    for next_row in b['todo']['value']:
-        modifiers = b['modifiers'] 
-        env_vars = modifiers['env_vars'] if 'env_vars' in modifiers else []
-        silent_keys = modifiers['silent_keys'] if 'silent_keys' in modifiers else []
-        next_run = mk_benchmark_run(next_row, modifiers['path_to_executable_key'], env_vars, silent_keys)
-        pre = string_of_benchmark_progress(row_number, nb_traced, nb_todo) if show_run_numbers else ''
-        sr += pre + string_of_benchmark_run(next_run, show_env_args = True, show_silent_args = True) + '\n'
-        row_number += 1
-    return sr
     
