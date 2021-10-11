@@ -9,7 +9,7 @@ def mean(fs):
     return statistics.mean(fs)
 
 benchmarks = [
-    'fib',
+    'wc',
     'mcss'
 ]
 

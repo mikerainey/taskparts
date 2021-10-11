@@ -75,9 +75,18 @@
 			"additionalProperties": { "$ref": "#/definitions/benchmark_run" }
 		    }
 		},
-		"done": { "$ref": "file:parameter_schema.json#/$defs/expr-value" }
+		"done": { "$ref": "file:parameter_schema.json#/$defs/expr-value" },
+		"done_trace_links": {
+		    "type": "array",
+		    "items": {
+			"properties": {
+			    "trace_position": { "type": "number" },
+			    "done_position": { "type": "number" }
+			}
+		    }
+		}
 	    },
-	    "required": [ "parameters", "modifiers", "todo", "trace", "done" ]
+	    "required": [ "parameters", "modifiers", "todo", "trace", "done", "done_trace_links" ]
 	}
 
     },
