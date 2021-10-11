@@ -1,10 +1,16 @@
-import jsonschema, subprocess, tempfile, os, sys, socket, signal, threading, time
+import jsonschema, subprocess, tempfile, os, sys, socket, signal, threading, time, hashlib
 import simplejson as json
 from datetime import datetime
 from parameter import *
 
+# JSON schema validation for benchmark records
+# ============================================
+
 with open('benchmark_schema.json', 'r') as f:
     benchmark_schema = json.loads(f.read())
+
+def validate_benchmark(b):
+    jsonschema.validate(b, benchmark_schema)
 
 # Benchmark queries
 # =================
@@ -43,7 +49,7 @@ def mk_benchmark_run(row,
 def mk_outfile_keys(outfiles):
     e = mk_unit()
     for r in outfiles:
-        e = mk_append(e, mk_parameter(r['key'], r['file_name']))
+        e = mk_append(e, mk_parameter(r['key'], r['file_path']))
     return e
 
 def mk_benchmark(parameters,
@@ -58,7 +64,7 @@ def mk_benchmark(parameters,
           'trace': [],
           'done': done,
           'done_trace_links': [] }
-    jsonschema.validate(b, benchmark_schema)
+    validate_benchmark(b)
     return b
 
 def seed_benchmark(benchmark_1):
@@ -68,12 +74,8 @@ def seed_benchmark(benchmark_1):
         benchmark_2['todo'] = eval(benchmark_1['parameters'])
     return benchmark_2
 
-def serial_merge_benchmarks(b1, b2):
-    bm = b2.copy()
-    return bm
-
-# String conversions
-# ==================
+# String conversions & hashing
+# ============================
 
 def string_of_cl_args(args):
     out = ''
@@ -135,6 +137,18 @@ def string_of_benchmark_runs(b, show_run_numbers = True):
         row_number += 1
     return sr
 
+def json_dumps(thing):
+    return json.dumps(
+        thing,
+        ensure_ascii=False,
+        sort_keys=True,
+        indent=2,
+        separators=(',', ':'),
+    )
+
+def get_hash(thing):
+    return hashlib.sha256(json_dumps(thing).encode('utf-8')).hexdigest()
+
 # Benchmark stepper
 # =================
 
@@ -172,18 +186,19 @@ def create_benchmark_run_outfiles(outfile_keys):
     outfiles = []
     for k in outfile_keys:
         fd, n = tempfile.mkstemp(suffix = '.json', text = True)
-        outfiles += [{'key': k, 'file_name': n, 'fd': fd}]
+        outfiles += [{'key': k, 'file_path': n, 'fd': fd}]
         os.close(fd)
     return outfiles
 
-def collect_benchmark_run_outfiles(outfiles, next_row,
+def collect_benchmark_run_outfiles(outfiles,
+                                   next_row,
                                    client_format_to_row = lambda d: dictionary_to_row(d),
                                    parse_output_to_json = lambda x: x):
     results_expr = {'value': [ next_row ]}
     for of in outfiles:
-        j = json.load(parse_output_to_json(open(of['file_name'], 'r')))
-        open(of['file_name'], 'w').close()
-        os.unlink(of['file_name'])
+        j = json.load(parse_output_to_json(open(of['file_path'], 'r')))
+        open(of['file_path'], 'w').close()
+        os.unlink(of['file_path'])
         results_expr = mk_cross(results_expr, {'value': [client_format_to_row(d) for d in j] })
     return results_expr
 
@@ -192,7 +207,7 @@ def step_benchmark_run(benchmark_1,
                        client_format_to_row = lambda d: dictionary_to_row(d),
                        parse_output_to_json = lambda x: x,
                        timeout_sec = 0.0):
-    jsonschema.validate(benchmark_1, benchmark_schema)
+    validate_benchmark(benchmark_1)
     nb_done = nb_done_in_benchmark(benchmark_1)
     nb_traced = nb_traced_in_benchmark(benchmark_1)
     nb_todo = nb_todo_in_benchmark(benchmark_1)
@@ -201,7 +216,7 @@ def step_benchmark_run(benchmark_1,
     # Try to load the next run to do
     benchmark_2 = seed_benchmark(benchmark_1)
     if nb_todo == 0:
-        jsonschema.validate(benchmark_2, benchmark_schema)
+        validate_benchmark(benchmark_2)
         return benchmark_2
     # Create any tempfiles needed to collect results
     outfiles = create_benchmark_run_outfiles(modifiers['outfile_keys'])
@@ -236,7 +251,8 @@ def step_benchmark_run(benchmark_1,
             print('stderr:')
             print(child_stderr)
         # Collect the results
-        results_expr = collect_benchmark_run_outfiles(outfiles, next_row,
+        results_expr = collect_benchmark_run_outfiles(outfiles,
+                                                      next_row,
                                                       client_format_to_row,
                                                       parse_output_to_json)
         benchmark_2['todo'] = { 'value': todo_2 }
@@ -255,7 +271,7 @@ def step_benchmark_run(benchmark_1,
     trace_2['benchmark_run']['stderr'] = str(child_stderr)
     benchmark_2['trace'] += [ trace_2 ]
     benchmark_2['done_trace_links'] += [ {'trace_position': nb_traced, 'done_position': nb_done } ]
-    jsonschema.validate(benchmark_2, benchmark_schema)
+    validate_benchmark(benchmark_2)
     return benchmark_2
 
 def step_benchmark(benchmark_1):
@@ -266,4 +282,54 @@ def step_benchmark(benchmark_1):
         nb_todo = nb_todo_in_benchmark(benchmark_2)
     return benchmark_2
 
+def serial_merge_benchmarks(b1, b2):
+    validate_benchmark(b1)
+    validate_benchmark(b2)
+    b3 = b2.copy()
+    b3['todo'] = eval(mk_append(b1['todo'], b2['todo']))
+    b3['trace'] = b1['trace'] + b2['trace']
+    b3['done'] = eval(mk_append(b1['done'], b2['done']))
+    nb_done = nb_done_in_benchmark(b1)
+    nb_traced = nb_traced_in_benchmark(b1)
+    b2_done_trace_links = [ {'trace_position': dtl['trace_position'] + nb_traced,
+                             'done_position': dtl['done_position'] + nb_done }
+                             for dtl in b2['done_trace_links'] ]
+    b3['done_trace_links'] = b1['done_trace_links'] + b2_done_trace_links
+    b3['parent_hashes'] = [ get_hash(json_dumps(b1)), get_hash(json_dumps(b2)) ]
+    validate_benchmark(b3)
+    return b3
     
+# Benchmark I/O
+# =============
+
+def write_string_to_file_path(bstr, file_path = './results.json', verbose = True):
+    with open(file_path, 'w', encoding='utf-8') as fd:
+        fd.write(bstr)
+        fd.close()
+        if verbose:
+            print('Wrote benchmark to file: ' + file_path)
+
+def write_benchmark_to_file_path(benchmark, file_path = '', verbose = True):
+    bstr = json_dumps(benchmark)
+    file_path = file_path if file_path != '' else 'results-' + get_hash(bstr) + '.json'
+    write_string_to_file_path(bstr, file_path, verbose)
+    return file_path
+
+def read_benchmark_from_file_path(file_path):
+    with open(file_path, 'r', encoding='utf-8') as fd:
+        bench_2 = json.load(fd)
+        fd.close()
+        return bench_2
+
+def append_benchmark_to_file_path(benchmark_2, file_path_benchmark_1 = '', file_path_benchmark_result = '',
+                                  verbose = True):
+    if file_path_benchmark_1 == '':
+        return write_benchmark_to_file_path(benchmark_2, file_path_benchmark_result)
+    benchmark_1 = read_benchmark_from_file_path(file_path_benchmark_1)
+    write_benchmark_to_file_path(benchmark_2)
+    benchmark_3 = serial_merge_benchmarks(benchmark_1, benchmark_2)
+    if verbose:
+        print('Appending benchmarks: ' + get_hash(json_dumps(benchmark_1)) +
+              ' and ' + get_hash(json_dumps(benchmark_2)) +
+              ' to make ' + get_hash(json_dumps(benchmark_3)))
+    return write_benchmark_to_file_path(benchmark_3, file_path_benchmark_result)

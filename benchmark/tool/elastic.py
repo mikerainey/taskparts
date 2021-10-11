@@ -41,7 +41,7 @@ def mk_elastic_benchmark(basename, mode = mode_taskparts, ext = 'sta'):
     return mk_cross(e, mk_mode(mode))
     
 max_num_workers = 15
-workers = range(1, max_num_workers + 1, 3)
+workers = range(1, max_num_workers + 1, 7)
 x_vals = workers
 mk_num_workers = mk_parameters(taskparts_num_workers_key, workers)
     
@@ -74,14 +74,18 @@ print(string_of_benchmark_runs(bench))
 print('Invoking runs...')
 bench_2 = step_benchmark(bench)
 
-with open('results.json', 'w') as fd:
-    json.dump(bench_2, fd, indent = 2)
-    fd.close()
+#write_benchmark_to_file_path(bench_2)
+prevfname = 'results-ca5725f898ab1d09d7f29970576b600f832b70be8e06ecb7710724fdc76ad51b.json'
+append_benchmark_to_file_path(bench_2, file_path_benchmark_1 = prevfname)
 
-# with open('results.json', 'r') as fd:
-#     bench_2 = json.load(fd)
+# with open('results.json', 'w') as fd:
+#     json.dump(bench_2, fd, indent = 2)
 #     fd.close()
 
+# bench_t1 = read_benchmark_from_file_path('results-f6341bcd251547d044c2ed6e2c8defab3175ffb95b3fe4ffa7c39c080fbb58a0.json')
+# bench_t2 = read_benchmark_from_file_path('results-4cb9b2cc5330f82f6d771b54d73705f080f974d93c12e1c8a11d4c33196f0c2b.json')
+# bench_2 = serial_merge_benchmarks(bench_t1, bench_t2)
+# write_benchmark_to_file_path(bench_2)
 #pretty_print_json(bench_2)
 
 expr = eval(bench_2['done'])

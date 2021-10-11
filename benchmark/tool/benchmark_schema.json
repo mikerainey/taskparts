@@ -84,6 +84,10 @@
 			    "done_position": { "type": "number" }
 			}
 		    }
+		},
+		"parent_hashes": {
+		    "type": "array",
+		    "items": { "type": "string" }
 		}
 	    },
 	    "required": [ "parameters", "modifiers", "todo", "trace", "done", "done_trace_links" ]
