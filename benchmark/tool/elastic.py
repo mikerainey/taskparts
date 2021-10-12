@@ -137,6 +137,8 @@ def generate_basic_plots(y_key, y_label, curves_expr):
         output_plot(plot)
                      
 generate_basic_plots('usertime', 'user time', all_curves)
+generate_basic_plots('systime', 'system time', all_curves)
+generate_basic_plots('maxrss', 'max resident size', all_curves)
         
 # Number of steals
 # ================
