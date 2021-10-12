@@ -147,6 +147,15 @@ SERIAL_PREFIX=-DTASKPARTS_SERIAL -DTASKPARTS_SERIAL_ELISION $(PARLAYLIB_SERIAL_P
 %.elastic.dbg: %.cpp $(INCLUDE_FILES) install_folder
 	$(CXX) $(DBG_PREFIX) -DTASKPARTS_ELASTIC -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
 
+%.elastic_elision.opt: %.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(OPT_PREFIX) -DTASKPARTS_ELASTIC -DTASKPARTS_SERIAL_ELISION -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+%.elastic_elision.sta: %.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(STA_PREFIX) -DTASKPARTS_ELASTIC -DTASKPARTS_SERIAL_ELISION -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+%.elastic_elision.log: %.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(LOG_PREFIX) -DTASKPARTS_ELASTIC -DTASKPARTS_SERIAL_ELISION -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+%.elastic_elision.dbg: %.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(DBG_PREFIX) -DTASKPARTS_ELASTIC -DTASKPARTS_SERIAL_ELISION -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+
 # Binaries for Cilk
 # -----------------
 
@@ -190,10 +199,10 @@ all_taskparts_sta: $(BENCHMARKS:%=%.sta)
 all_taskparts_log: $(BENCHMARKS:%=%.log)
 all_taskparts_dbg: $(BENCHMARKS:%=%.dbg)
 
-all_elastic_opt: $(BENCHMARKS:%=%.elastic.opt)
-all_elastic_sta: $(BENCHMARKS:%=%.elastic.sta)
-all_elastic_log: $(BENCHMARKS:%=%.elastic.log)
-all_elastic_dbg: $(BENCHMARKS:%=%.elastic.dbg)
+all_elastic_opt: $(BENCHMARKS:%=%.elastic.opt) $(BENCHMARKS:%=%.elastic_elision.opt)
+all_elastic_sta: $(BENCHMARKS:%=%.elastic.sta) $(BENCHMARKS:%=%.elastic_elision.sta)
+all_elastic_log: $(BENCHMARKS:%=%.elastic.log) $(BENCHMARKS:%=%.elastic_elision.log)
+all_elastic_dbg: $(BENCHMARKS:%=%.elastic.dbg) $(BENCHMARKS:%=%.elastic_elision.dbg)
 
 all_cilk_opt: $(BENCHMARKS:%=%.cilk.opt)
 all_cilk_sta: $(BENCHMARKS:%=%.cilk.sta)
