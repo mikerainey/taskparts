@@ -116,7 +116,8 @@ public:
     auto print_ftr = [&] {
       fprintf(f, "}%s", (last ? "\n" : ",\n"));
     };
-    auto ns = cycles::nanoseconds_of(cycles::diff(base_time, cycle_count));
+    // we report in microseconds because it's the unit assumed by Chrome's tracer utility
+    auto ns = cycles::nanoseconds_of(cycles::diff(base_time, cycle_count)) / 1000;
     auto print_end = [&] {
       print_json_number("pid", 0);
       print_json_number("tid", worker_id);
