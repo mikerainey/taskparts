@@ -8,13 +8,13 @@ from benchmark import *
 benchmarks = [
     'wc',
     'mcss',
-    # 'fib',
-    # 'integrate',
-    # 'samplesort',
-    # 'suffixarray',
-    # 'primes',
-    # 'quickhull',
-    # 'removeduplicates'
+    'fib',
+    'integrate',
+    'samplesort',
+    'suffixarray',
+    'primes',
+    'quickhull',
+    'removeduplicates'
 ]
 
 path_to_executable_key = 'path_to_executable'
@@ -54,7 +54,7 @@ def mk_parallel_runs(mode):
                     mk_num_repeat(3))
 
 max_num_workers = 15
-workers = range(1, max_num_workers + 1, 7)
+workers = range(1, max_num_workers + 1, 2)
 x_vals = workers
 mk_num_workers = mk_parameters(taskparts_num_workers_key, workers)
     
