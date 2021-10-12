@@ -25,14 +25,14 @@ auto DFS(vertexId source, const Graph& g) -> parlay::sequence<int> {
 }
 
 int main() {
-  auto fname = taskparts::cmdline::parse_or_default_string("fname", "randlocal.adj");
+  auto infile = taskparts::cmdline::parse_or_default_string("infile", "randlocal.adj");
   Graph G;
   sequence<int> visited;
   size_t source = 0;
   parlay::benchmark_taskparts([&] (auto sched) { // benchmark
     visited = DFS(source, G);
   }, [&] (auto sched) { // setup
-    G = readGraphFromFile<vertexId,edgeId>((char*)fname.c_str());
+    G = readGraphFromFile<vertexId,edgeId>((char*)infile.c_str());
     G.addDegrees();
   }, [&] (auto sched) { // teardown
     size_t nb_visited = parlay::reduce(visited);
