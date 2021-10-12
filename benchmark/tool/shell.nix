@@ -6,6 +6,7 @@ let
                   pkgs.python38Packages.simplejson
                   pkgs.python38Packages.matplotlib
                   pkgs.python38Packages.pathvalidate
+                  pkgs.python38Packages.tabulate
                 ];
   };
 in
