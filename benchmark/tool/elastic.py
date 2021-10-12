@@ -39,6 +39,9 @@ def benchname(basename, mode = mode_taskparts, ext = 'sta'):
 def mk_mode(m):
     return mk_parameter(mode_key, m)
 
+def mk_num_repeat(n):
+    return mk_parameter(taskparts_benchmark_num_repeat_key, n)
+
 def mk_elastic_benchmark(basename, mode = mode_taskparts, ext = 'sta'):
     e = mk_cross(mk_parameter(path_to_executable_key,
                               benchname(basename, mode, ext)),
@@ -47,7 +50,8 @@ def mk_elastic_benchmark(basename, mode = mode_taskparts, ext = 'sta'):
 
 def mk_parallel_runs(mode):
     mk_benchmarks = [mk_elastic_benchmark(b, mode = mode) for b in benchmarks]
-    return mk_cross(mk_append_sequence(mk_benchmarks), mk_num_workers)
+    return mk_cross(mk_cross(mk_append_sequence(mk_benchmarks), mk_num_workers),
+                    mk_num_repeat(3))
 
 max_num_workers = 15
 workers = range(1, max_num_workers + 1, 7)
@@ -85,8 +89,8 @@ print('Runs to be invoked:')
 print(string_of_benchmark_runs(bench))
 print('---\n')
 
-#bench_2 = step_benchmark(bench, done_peek_keys = ['exectime'])
-#add_benchmark_to_results_repository(bench_2)
+bench_2 = step_benchmark(bench, done_peek_keys = ['exectime'])
+add_benchmark_to_results_repository(bench_2)
 
 all_results = eval(read_head_from_benchmark_repository()['done'])
 

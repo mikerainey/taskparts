@@ -210,6 +210,8 @@ def collect_benchmark_run_outfiles(outfiles,
         results_expr = mk_cross(results_expr, {'value': [client_format_to_row(d) for d in j] })
     return results_expr
 
+# later: find a way to process results of multiple repeats in the same benchmark run
+
 def step_benchmark_run(benchmark_1,
                        done_peek_keys = [],
                        verbose = True,
