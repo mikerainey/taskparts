@@ -8,13 +8,13 @@ from benchmark import *
 benchmarks = [
     'wc',
     'mcss',
-    'fib',
-    'integrate',
-    'samplesort',
-    'suffixarray',
-    'primes',
-    'quickhull',
-    'removeduplicates'
+    # 'fib',
+    # 'integrate',
+    # 'samplesort',
+    # 'suffixarray',
+    # 'primes',
+    # 'quickhull',
+    # 'removeduplicates'
 ]
 
 path_to_executable_key = 'path_to_executable'
@@ -25,6 +25,7 @@ mode_key = 'mode'
 benchmark_key = 'benchmark'
 
 mode_serial = 'serial'
+mode_elastic_elision = 'elastic_elision'
 mode_elastic = 'elastic'
 mode_taskparts = 'taskparts'
 mode_cilk = 'cilk'
@@ -59,6 +60,7 @@ x_vals = workers
 mk_num_workers = mk_parameters(taskparts_num_workers_key, workers)
     
 mk_serial = mk_append_sequence([mk_elastic_benchmark(b, mode = mode_serial) for b in benchmarks])
+mk_elastic_elision = mk_append_sequence([mk_elastic_benchmark(b, mode = mode_elastic_elision) for b in benchmarks])
 mk_taskparts = mk_parallel_runs(mode_taskparts)
 mk_elastic = mk_parallel_runs(mode_elastic)
 mk_cilk = mk_parallel_runs(mode_cilk)
@@ -89,8 +91,8 @@ print('Runs to be invoked:')
 print(string_of_benchmark_runs(bench))
 print('---\n')
 
-bench_2 = step_benchmark(bench, done_peek_keys = ['exectime'])
-add_benchmark_to_results_repository(bench_2)
+# bench_2 = step_benchmark(bench, done_peek_keys = ['exectime'])
+# add_benchmark_to_results_repository(bench_2)
 
 all_results = eval(read_head_from_benchmark_repository()['done'])
 
@@ -119,10 +121,17 @@ def generate_speedup_plots():
 
 generate_speedup_plots()
 
-# Usertime curves
-# ===============
+# Plots for other measures
+# ========================
 
-def generate_basic_plots(y_key, y_label, curves_expr):
+def percent_difference(v1, v2):
+    return abs((v1 - v2) / ((v1 + v2) / 2))
+
+def mk_get_y_val(y_key):
+    get_y_val = lambda x_key, x_val, y_expr: mean(select_from_expr_by_key(y_expr, y_key))
+    return get_y_val
+
+def generate_basic_plots(get_y_val, y_label, curves_expr):
     x_label = 'workers'
     opt_plot_args = {
         'x_label': x_label,
@@ -132,19 +141,24 @@ def generate_basic_plots(y_key, y_label, curves_expr):
                      mk_parameters(benchmark_key, benchmarks),
                      x_key = taskparts_num_workers_key,
                      x_vals = x_vals,
-                     get_y_val = lambda x_key, x_val, y_expr:
-                     mean(select_from_expr_by_key(y_expr, y_key)),
+                     get_y_val = get_y_val,
                      y_label = y_label,
                      curves_expr = curves_expr,
                      opt_args = opt_plot_args)
     for plot in plots:
         output_plot(plot)
-                     
-generate_basic_plots('usertime', 'user time', all_curves)
-generate_basic_plots('systime', 'system time', all_curves)
-generate_basic_plots('maxrss', 'max resident size', all_curves)
-        
-# Number of steals
-# ================
 
-# later: modify Cilk RTS stats to output json
+generate_basic_plots(mk_get_y_val('exectime'), 'run time (s)', all_curves)
+generate_basic_plots(mk_get_y_val('usertime'), 'user time (s)', all_curves)
+generate_basic_plots(mk_get_y_val('systime'), 'system time (s)', all_curves)
+generate_basic_plots(mk_get_y_val('maxrss'), 'max resident size (kb)', all_curves)
+
+def get_percent_of_one_to_another(x_key, x_val, y_expr, y_key, ref_key):
+    st = mean(select_from_expr_by_key(y_expr, y_key))
+    tt = mean(select_from_expr_by_key(y_expr, ref_key))
+    return (st / tt) * 100.0
+    
+generate_basic_plots(
+    lambda x_key, x_val, y_expr: get_percent_of_one_to_another(x_key, x_val, y_expr, 'total_sleep_time', 'total_time'),
+    'percent of total time spent sleeping',
+    mk_mode(mode_elastic))
