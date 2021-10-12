@@ -156,6 +156,15 @@ SERIAL_PREFIX=-DTASKPARTS_SERIAL -DTASKPARTS_SERIAL_ELISION $(PARLAYLIB_SERIAL_P
 %.elastic_elision.dbg: %.cpp $(INCLUDE_FILES) install_folder
 	$(CXX) $(DBG_PREFIX) -DTASKPARTS_ELASTIC -DTASKPARTS_SERIAL_ELISION -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
 
+%.elastic_tpal.opt: %.tpal.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(OPT_PREFIX) -DTASKPARTS_ELASTIC -DTASKPARTS_TPALRTS $(basename $<)_manual.s -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+%.elastic_tpal.sta: %.tpal.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(STA_PREFIX) -DTASKPARTS_ELASTIC -DTASKPARTS_TPALRTS $(basename $<)_manual.s -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+%.elastic_tpal.log: %.tpal.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(LOG_PREFIX) -DTASKPARTS_ELASTIC -DTASKPARTS_TPALRTS $(basename $<)_manual.s -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+%.elastic_tpal.dbg: %.tpal.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(DBG_PREFIX) -DTASKPARTS_ELASTIC -DTASKPARTS_TPALRTS $(basename $<)_manual.s -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+
 # Binaries for Cilk
 # -----------------
 
