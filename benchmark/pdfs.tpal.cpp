@@ -32,9 +32,9 @@ bool try_to_mark(parlay::sequence<std::atomic<int>>& visited, vertexId target) {
 using frontier_type = pasl::graph::frontiersegbag<graph_alias>;
 
 void loop(const Graph& g, frontier_type& _frontier, parlay::sequence<std::atomic<int>>& visited) {
-  size_t poll_cutoff = 128;
-  size_t split_cutoff = 128;
-  size_t cutoff = 128;
+  size_t poll_cutoff = 10000;
+  size_t split_cutoff = 10000;
+  size_t cutoff = 10000;
   frontier_type frontier;
   frontier.swap(_frontier);
   size_t nb_since_last_split = 0;
