@@ -22,7 +22,7 @@ benchmark_key = 'benchmark'
 
 mode_serial = 'serial'
 mode_elastic = 'elastic'
-mode_taskparts = 'taksparts'
+mode_taskparts = 'taskparts'
 mode_cilk = 'cilk'
 
 benchmark_bin_path = './bin/'
@@ -46,10 +46,11 @@ x_vals = workers
 mk_num_workers = mk_parameters(taskparts_num_workers_key, workers)
     
 mk_serial = mk_append_sequence([mk_elastic_benchmark(b, mode = mode_serial) for b in benchmarks])
+mk_taskparts = mk_cross(mk_append_sequence([mk_elastic_benchmark(b, mode = mode_taskparts) for b in benchmarks]), mk_num_workers)
 mk_elastic = mk_cross(mk_append_sequence([mk_elastic_benchmark(b, mode = mode_elastic) for b in benchmarks]), mk_num_workers)
 mk_cilk = mk_cross(mk_append_sequence([mk_elastic_benchmark(b, mode = mode_cilk) for b in benchmarks]), mk_num_workers)
 
-expr = mk_append_sequence([mk_serial, mk_elastic, mk_cilk])
+expr = mk_append_sequence([mk_serial, mk_elastic, mk_taskparts, mk_cilk])
 
 mods = {
     'path_to_executable_key': 'path_to_executable',
@@ -66,32 +67,25 @@ mods = {
     'cwd': '../'
 }
 
+x_label = 'workers'
+y_key = 'exectime'
+y_label = 'speedup'
+
 bench = mk_benchmark(expr, modifiers = mods)
 
 print('Runs to be invoked:')
 print(string_of_benchmark_runs(bench))
 
 print('Invoking runs...')
-bench_2 = step_benchmark(bench)
+bench_2 = step_benchmark(bench, done_peek_keys = [y_key])
 
-#write_benchmark_to_file_path(bench_2)
-prevfname = 'results-ca5725f898ab1d09d7f29970576b600f832b70be8e06ecb7710724fdc76ad51b.json'
-append_benchmark_to_file_path(bench_2, file_path_benchmark_1 = prevfname)
+add_benchmark_to_results_repository(bench_2)
 
-# with open('results.json', 'w') as fd:
-#     json.dump(bench_2, fd, indent = 2)
-#     fd.close()
+bench_2 = read_head_from_benchmark_repository()
 
-# bench_t1 = read_benchmark_from_file_path('results-f6341bcd251547d044c2ed6e2c8defab3175ffb95b3fe4ffa7c39c080fbb58a0.json')
-# bench_t2 = read_benchmark_from_file_path('results-4cb9b2cc5330f82f6d771b54d73705f080f974d93c12e1c8a11d4c33196f0c2b.json')
-# bench_2 = serial_merge_benchmarks(bench_t1, bench_t2)
-# write_benchmark_to_file_path(bench_2)
 #pretty_print_json(bench_2)
 
 expr = eval(bench_2['done'])
-x_label = 'workers'
-y_key = 'exectime'
-y_label = 'speedup'
 opt_plot_args = {
     "x_label": x_label,
     'xlim': [1, max_num_workers + 1],
@@ -106,12 +100,6 @@ def get_y_val(x_key, x_val, y_expr):
     b = mean([float(x) for x in select_from_expr_by_key(mk_take_kvp(expr, mk_cross(mk_b, mk_s)), y_key)])
     p = mean([float(x) for x in select_from_expr_by_key(y_expr, y_key) ])
     s = b / p
-    # print('')
-    # pretty_print_json(y_expr)
-    # print(mk_b)
-    # print(b)
-    # print(p)
-    # print(s)
     return s
 
 plots = mk_plots(expr,
@@ -119,7 +107,9 @@ plots = mk_plots(expr,
                  x_key = taskparts_num_workers_key, x_vals = [x for x in x_vals ],
                  get_y_val = get_y_val,
                  y_label = y_label,
-                 curves_expr = mk_append(mk_mode(mode_elastic), mk_mode(mode_cilk)),
+                 curves_expr = mk_append_sequence([mk_mode(mode_elastic),
+                                                   mk_mode(mode_taskparts),
+                                                   mk_mode(mode_cilk)]),
                  opt_args = opt_plot_args)
 for plot in plots:
     output_plot(plot)

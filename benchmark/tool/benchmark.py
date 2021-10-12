@@ -1,4 +1,4 @@
-import jsonschema, subprocess, tempfile, os, sys, socket, signal, threading, time, hashlib
+import jsonschema, subprocess, tempfile, os, sys, socket, signal, threading, time, hashlib, pathlib
 import simplejson as json
 from datetime import datetime
 from parameter import *
@@ -6,11 +6,16 @@ from parameter import *
 # JSON schema validation for benchmark records
 # ============================================
 
+module_cwd = os.getcwd()
+
 with open('benchmark_schema.json', 'r') as f:
     benchmark_schema = json.loads(f.read())
 
 def validate_benchmark(b):
+    original_path = os.getcwd()
+    os.chdir(module_cwd)
     jsonschema.validate(b, benchmark_schema)
+    os.chdir(original_path)
 
 # Benchmark queries
 # =================
@@ -203,6 +208,7 @@ def collect_benchmark_run_outfiles(outfiles,
     return results_expr
 
 def step_benchmark_run(benchmark_1,
+                       done_peek_keys = [],
                        verbose = True,
                        client_format_to_row = lambda d: dictionary_to_row(d),
                        parse_output_to_json = lambda x: x,
@@ -237,6 +243,7 @@ def step_benchmark_run(benchmark_1,
     ts = time.time()
     child_stdout = ''
     child_stderr = ''
+    return_code = 1
     try:
         if timer != -1:
             timer.start()
@@ -257,10 +264,18 @@ def step_benchmark_run(benchmark_1,
                                                       parse_output_to_json)
         benchmark_2['todo'] = { 'value': todo_2 }
         benchmark_2['done'] = eval(mk_append(benchmark_1['done'], results_expr))
+        if verbose:
+            s = ''
+            d = row_to_dictionary(benchmark_2['done']['value'][-1])
+            for pk in done_peek_keys:
+                if pk in d:
+                    s += str(pk) + ' = ' + str(d[pk]) + ' '
+            if s != '':
+                s += '\n'
+            print(s, end = '')
     finally:
         if timer != -1:
             timer.cancel()
-        return_code = 1
     # Save the results
     trace_2 = next_run.copy()
     trace_2['benchmark_run']['return_code'] = return_code
@@ -274,11 +289,11 @@ def step_benchmark_run(benchmark_1,
     validate_benchmark(benchmark_2)
     return benchmark_2
 
-def step_benchmark(benchmark_1):
+def step_benchmark(benchmark_1, done_peek_keys = []):
     benchmark_2 = seed_benchmark(benchmark_1)
     nb_todo = nb_todo_in_benchmark(benchmark_2)
     while nb_todo > 0:
-        benchmark_2 = step_benchmark_run(benchmark_2)
+        benchmark_2 = step_benchmark_run(benchmark_2, done_peek_keys = done_peek_keys)
         nb_todo = nb_todo_in_benchmark(benchmark_2)
     return benchmark_2
 
@@ -321,10 +336,8 @@ def read_benchmark_from_file_path(file_path):
         fd.close()
         return bench_2
 
-def append_benchmark_to_file_path(benchmark_2, file_path_benchmark_1 = '', file_path_benchmark_result = '',
+def append_benchmark_to_file_path(benchmark_2, file_path_benchmark_1, file_path_benchmark_result = '',
                                   verbose = True):
-    if file_path_benchmark_1 == '':
-        return write_benchmark_to_file_path(benchmark_2, file_path_benchmark_result)
     benchmark_1 = read_benchmark_from_file_path(file_path_benchmark_1)
     write_benchmark_to_file_path(benchmark_2)
     benchmark_3 = serial_merge_benchmarks(benchmark_1, benchmark_2)
@@ -333,3 +346,30 @@ def append_benchmark_to_file_path(benchmark_2, file_path_benchmark_1 = '', file_
               ' and ' + get_hash(json_dumps(benchmark_2)) +
               ' to make ' + get_hash(json_dumps(benchmark_3)))
     return write_benchmark_to_file_path(benchmark_3, file_path_benchmark_result)
+
+results_head_file_name = 'results-head.json'
+default_results_folder_name = '_results'
+
+def add_benchmark_to_results_repository(benchmark,
+                                        results_repository_path = default_results_folder_name,
+                                        verbose = True):
+    pathlib.Path(results_repository_path).mkdir(parents=True, exist_ok=True)
+    original_path = os.getcwd()
+    os.chdir(results_repository_path)
+    benchmark_file_path = ''
+    if not(pathlib.Path(results_head_file_name).is_file()):
+        benchmark_file_path = write_benchmark_to_file_path(benchmark, verbose = verbose)
+    else:
+        benchmark_file_path = append_benchmark_to_file_path(benchmark,
+                                                            file_path_benchmark_1 = results_head_file_name,
+                                                            verbose = verbose)
+        os.unlink(results_head_file_name)
+    pathlib.Path(results_head_file_name).symlink_to(pathlib.Path(benchmark_file_path))
+    os.chdir(original_path)
+
+def read_head_from_benchmark_repository(results_repository_path = default_results_folder_name):
+    original_path = os.getcwd()
+    os.chdir(results_repository_path)
+    benchmark = read_benchmark_from_file_path(results_head_file_name)
+    os.chdir(original_path)
+    return benchmark

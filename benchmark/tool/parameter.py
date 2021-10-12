@@ -97,10 +97,13 @@ def select_from_expr_by_key(expr, k):
 with open('parameter_schema.json', 'r') as f:
     parameter_schema = json.loads(f.read())
 
+def validate_parameter(p):
+    jsonschema.validate(p, parameter_schema)
+
 def eval(e):
-    jsonschema.validate(e, parameter_schema)
+    validate_parameter(e)
     r = eval_rec(e)
-    jsonschema.validate(r, parameter_schema)
+    validate_parameter(r)
     return r
 
 def check_for_duplicate_keys(v1, v2):
