@@ -4,9 +4,11 @@ import simplejson as json
 # Smart constructors
 # ==================
 
-# shouldn't unit be [[]]?
-def mk_unit():
+def mk_nil():
     return { 'value': [ ] }
+
+def mk_unit():
+    return { 'value': [ [ ] ] }
 
 def mk_parameter(key, val):
     return { 'value': [ [ {'key': key, 'val': val } ] ] }
@@ -18,7 +20,7 @@ def mk_append(e1, e2):
     return {'append': {'e1': e1, 'e2': e2}}
 
 def mk_append_sequence(es):
-    r = mk_unit()
+    r = mk_nil()
     for e in es:
         r = mk_append(r, e)
     return r
@@ -27,7 +29,7 @@ def mk_cross(e1, e2):
     return {'cross': {'e1': e1, 'e2': e2}}
 
 def mk_cross_sequence(es):
-    r = mk_unit()
+    r = mk_nil()
     for e in es:
         r = mk_cross(r, e)
     return r

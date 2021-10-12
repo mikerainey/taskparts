@@ -6,7 +6,7 @@ from parameter import *
 def mk_plot(expr,
             x_key = 'x', x_vals = [],
             get_y_val = lambda x_key, x_val: 0.0, y_label = 'y',
-            curves_expr = mk_unit(),
+            curves_expr = mk_nil(),
             opt_args = {}):
     val = eval(expr)
     curves_val = eval(curves_expr)
@@ -41,7 +41,7 @@ def mk_plots(expr,
              plots_expr,
              x_key = 'x', x_vals = [],
              get_y_val = lambda x_key, x_val: 0.0, y_label = 'y',
-             curves_expr = mk_unit(),
+             curves_expr = mk_nil(),
              opt_args = {}):
     plots_val = eval(plots_expr)
     plots = []

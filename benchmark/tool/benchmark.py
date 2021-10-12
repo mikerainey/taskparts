@@ -52,7 +52,7 @@ def mk_benchmark_run(row,
     }
 
 def mk_outfile_keys(outfiles):
-    e = mk_unit()
+    e = mk_nil()
     for r in outfiles:
         e = mk_append(e, mk_parameter(r['key'], r['file_path']))
     return e
@@ -62,7 +62,7 @@ def mk_benchmark(parameters,
                      'path_to_executable_key': 'path_to_executable',
                      'outfile_keys': []
                  },
-                 todo = mk_unit(), trace = [], done = mk_unit()):
+                 todo = mk_nil(), trace = [], done = mk_nil()):
     b = { 'parameters': parameters,
           'modifiers': modifiers,
           'todo': todo,
