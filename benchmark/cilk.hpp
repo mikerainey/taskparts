@@ -86,7 +86,7 @@ auto benchmark_cilk(const Benchmark& benchmark,
     benchmark();
     bench_stats::capture_summary();
 #ifdef TASKPARTS_CILKRTS_WITH_STATS
-    __cilkg_dump_json_stats_to_file(f);
+    __cilkg_dump_json_stats_to_file(f, get_cpu_frequency_khz());
 #endif
     if (i + 1 < repeat) {
       benchmark_reset();
