@@ -70,16 +70,39 @@ auto benchmark_cilk(const Benchmark& benchmark,
     }
     if (verbose) printf ("======== END WARMUP ========\n");
   }
+#ifdef TASKPARTS_CILKRTS_WITH_STATS
+  std::string outfile = "";
+  if (const auto env_p = std::getenv("CILK_STATS_OUTFILE")) {
+    outfile = std::string(env_p);
+  }
+  FILE* f = (outfile == "") ? stdout : fopen(outfile.c_str(), "w");
+  fprintf(f, "[");
+#endif
   for (size_t i = 0; i < repeat; i++) {
+#ifdef TASKPARTS_CILKRTS_WITH_STATS
+    __cilkg_take_snapshot_for_stats();
+#endif
     bench_stats::start_collecting();
     benchmark();
     bench_stats::capture_summary();
+#ifdef TASKPARTS_CILKRTS_WITH_STATS
+    __cilkg_dump_json_stats_to_file(f);
+#endif
     if (i + 1 < repeat) {
       benchmark_reset();
+#ifdef TASKPARTS_CILKRTS_WITH_STATS
+      fprintf(f, ",");
+#endif
     }
     benchmark_teardown();
   }
   bench_stats::output_summaries();
+#ifdef TASKPARTS_CILKRTS_WITH_STATS
+  fprintf(f, "]");
+  if (f != stdout) {
+    fclose(f);
+  }
+#endif
   teardown_machine();
 }
   

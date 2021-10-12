@@ -3,10 +3,6 @@
 #include <cstdio>
 #include <sys/time.h>
 #include <sys/resource.h>
-#ifdef TASKPARTS_CILKRTS_WITH_STATS
-#include <cilk/cilk.h>
-#include <cilk/cilk_api.h>
-#endif
 
 #include "timing.hpp"
 #include "perworker.hpp"
@@ -162,9 +158,6 @@ public:
       t.start_sleep = now();
       t.total_sleep_time = 0;
     }
-#ifdef TASKPARTS_CILKRTS_WITH_STATS
-    __cilkg_take_snapshot_for_stats();
-#endif
   }
 
   static
@@ -208,9 +201,6 @@ public:
   static
   auto capture_summary() {
     summaries.push_back(report());
-#ifdef TASKPARTS_CILKRTS_WITH_STATS
-    __cilkg_dump_encore_stats_to_stderr();
-#endif
   }
 
   static

@@ -17,12 +17,7 @@
   stdenv ? pkgs.clangStdenv,
   hwloc ? pkgs.hwloc,
   jemalloc ? pkgs.jemalloc450,
-  cilk-stats-rts ? import (pkgs.fetchFromGitHub {
-    owner  = "deepsea-inria";
-    repo   = "cilk-plus-rts-with-stats";
-    rev    = "d143c31554bc9c122d168ec22ed65e7941d4c91d";
-    sha256 = "123bsrqcp6kq6xz2rn4bvj2nifflfci7rd9ij82fpi2x6xvvsmsb";
-  }) {}
+  cilk-stats-rts ? import ../cilk-plus-rts-with-stats {}
 }:
 
 let cilk-stats-rts-params =
