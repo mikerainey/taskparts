@@ -10,7 +10,14 @@ def mean(fs):
 
 benchmarks = [
     'wc',
-    'mcss'
+    'mcss',
+    'fib',
+    'integrate',
+    'samplesort',
+    'suffixarray',
+    'primes',
+    'quickhull',
+    'removeduplicates'
 ]
 
 path_to_executable_key = 'path_to_executable'
@@ -81,36 +88,20 @@ bench_2 = step_benchmark(bench, done_peek_keys = [y_key])
 
 add_benchmark_to_results_repository(bench_2)
 
-bench_2 = read_head_from_benchmark_repository()
+bench_all = read_head_from_benchmark_repository()
 
-#pretty_print_json(bench_2)
+plots = mk_speedup_plots(eval(bench_all['done']),
+                         mk_parameters(benchmark_key, benchmarks),
+                         max_num_workers = max_num_workers,
+                         benchmark_key = benchmark_key,
+                         mk_serial_mode = mk_mode(mode_serial),
+                         x_key = taskparts_num_workers_key,
+                         x_vals = x_vals,
+                         y_key = y_key,
+                         curves_expr = mk_append_sequence([mk_mode(mode_elastic),
+                                                           mk_mode(mode_taskparts),
+                                                           mk_mode(mode_cilk)]))
 
-expr = eval(bench_2['done'])
-opt_plot_args = {
-    "x_label": x_label,
-    'xlim': [1, max_num_workers + 1],
-    'ylim': [1, max_num_workers + 1]
-}
-
-plots_expr = mk_parameters(benchmark_key, benchmarks)
-
-def get_y_val(x_key, x_val, y_expr):
-    mk_b = mk_parameter(benchmark_key, select_from_expr_by_key(y_expr, benchmark_key)[0])
-    mk_s = mk_mode(mode_serial)
-    b = mean([float(x) for x in select_from_expr_by_key(mk_take_kvp(expr, mk_cross(mk_b, mk_s)), y_key)])
-    p = mean([float(x) for x in select_from_expr_by_key(y_expr, y_key) ])
-    s = b / p
-    return s
-
-plots = mk_plots(expr,
-                 plots_expr,
-                 x_key = taskparts_num_workers_key, x_vals = [x for x in x_vals ],
-                 get_y_val = get_y_val,
-                 y_label = y_label,
-                 curves_expr = mk_append_sequence([mk_mode(mode_elastic),
-                                                   mk_mode(mode_taskparts),
-                                                   mk_mode(mode_cilk)]),
-                 opt_args = opt_plot_args)
 for plot in plots:
     output_plot(plot)
 

@@ -4,8 +4,10 @@ from matplotlib.backends.backend_pdf import PdfPages
 from parameter import *
 
 def mk_plot(expr,
-            x_key = 'x', x_vals = [],
-            get_y_val = lambda x_key, x_val: 0.0, y_label = 'y',
+            x_key = 'x',
+            x_vals = [],
+            get_y_val = lambda x_key, x_val: 0.0,
+            y_label = 'y',
             curves_expr = mk_nil(),
             opt_args = {}):
     val = eval(expr)
@@ -39,8 +41,10 @@ def mk_plot(expr,
 
 def mk_plots(expr,
              plots_expr,
-             x_key = 'x', x_vals = [],
-             get_y_val = lambda x_key, x_val: 0.0, y_label = 'y',
+             x_key = 'x',
+             x_vals = [],
+             get_y_val = lambda x_key, x_val: 0.0,
+             y_label = 'y',
              curves_expr = mk_nil(),
              opt_args = {}):
     plots_val = eval(plots_expr)
@@ -54,6 +58,41 @@ def mk_plots(expr,
         opt_args['default_outfile_pdf_name'] = pathvalidate.sanitize_filename(plot_row_str)
         plots += [mk_plot(mk_take_kvp(expr, plot_expr),
                           x_key, x_vals, get_y_val, y_label, curves_expr, opt_args)]
+    return plots
+
+def get_speedup_y_val(benchmark_expr, benchmark_key, mk_serial_mode, y_key, x_key, x_val, y_expr):
+    mk_b = mk_parameter(benchmark_key, select_from_expr_by_key(y_expr, benchmark_key)[0])
+    b = statistics.mean([float(x) for x in select_from_expr_by_key(mk_take_kvp(benchmark_expr, mk_cross(mk_b, mk_serial_mode)), y_key)])
+    p = statistics.mean([float(x) for x in select_from_expr_by_key(y_expr, y_key) ])
+    return b / p
+
+def mk_speedup_plots(expr,
+                     plots_expr,
+                     max_num_workers,
+                     benchmark_key,
+                     mk_serial_mode,
+                     x_key = 'nb_workers',
+                     x_vals = [],
+                     x_label = 'workers',
+                     y_key = 'exectime',
+                     y_label = 'speedup',
+                     curves_expr = mk_nil(),
+                     opt_args = {}):
+    opt_plot_args = {
+        'x_label': x_label,
+        'xlim': [1, max_num_workers + 1] if 'xlim' not in opt_args else opt_args['xlim'],
+        'ylim': [1, max_num_workers + 1] if 'ylim' not in opt_args else opt_args['ylim']
+    }
+    plots = mk_plots(expr,
+                     plots_expr,
+                     x_key = x_key,
+                     x_vals = x_vals,
+                     get_y_val =
+                     lambda x_key, x_val, y_expr:
+                     get_speedup_y_val(expr, benchmark_key, mk_serial_mode, y_key, x_key, x_val, y_expr),
+                     y_label = y_label,
+                     curves_expr = curves_expr,
+                     opt_args = opt_plot_args)
     return plots
 
 def output_plot(plot, show_as_popup = False):
