@@ -12,6 +12,9 @@ with open('benchmark_schema.json', 'r') as f:
     benchmark_schema = json.loads(f.read())
 
 def validate_benchmark(b):
+    # We change the working directory because the benchmark schema
+    # refers to the parameter schema, and the reference can be
+    # resolved only in the folder containing the latter schema.
     original_path = os.getcwd()
     os.chdir(module_cwd)
     jsonschema.validate(b, benchmark_schema)
@@ -289,6 +292,7 @@ def step_benchmark_run(benchmark_1,
     validate_benchmark(benchmark_2)
     return benchmark_2
 
+# later: save benchmark runs incrementally, based on some client specification
 def step_benchmark(benchmark_1, done_peek_keys = []):
     benchmark_2 = seed_benchmark(benchmark_1)
     nb_todo = nb_todo_in_benchmark(benchmark_2)

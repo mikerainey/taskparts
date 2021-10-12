@@ -3,6 +3,8 @@ import statistics, pathvalidate
 from matplotlib.backends.backend_pdf import PdfPages
 from parameter import *
 
+# later: better pretty printing support
+
 def mk_plot(expr,
             x_key = 'x',
             x_vals = [],
@@ -60,10 +62,14 @@ def mk_plots(expr,
                           x_key, x_vals, get_y_val, y_label, curves_expr, opt_args)]
     return plots
 
+def mean(xs):
+    return statistics.mean([float(x) for x in xs])
+
 def get_speedup_y_val(benchmark_expr, benchmark_key, mk_serial_mode, y_key, x_key, x_val, y_expr):
-    mk_b = mk_parameter(benchmark_key, select_from_expr_by_key(y_expr, benchmark_key)[0])
-    b = statistics.mean([float(x) for x in select_from_expr_by_key(mk_take_kvp(benchmark_expr, mk_cross(mk_b, mk_serial_mode)), y_key)])
-    p = statistics.mean([float(x) for x in select_from_expr_by_key(y_expr, y_key) ])
+    mk_benchmark = mk_parameter(benchmark_key, select_from_expr_by_key(y_expr, benchmark_key)[0])
+    mk_baseline = mk_take_kvp(benchmark_expr, mk_cross(mk_benchmark, mk_serial_mode))
+    b = mean(select_from_expr_by_key(mk_baseline, y_key))
+    p = mean(select_from_expr_by_key(y_expr, y_key))
     return b / p
 
 def mk_speedup_plots(expr,
@@ -95,13 +101,19 @@ def mk_speedup_plots(expr,
                      opt_args = opt_plot_args)
     return plots
 
-def output_plot(plot, show_as_popup = False):
+# later: generator for factored speedup plots
+
+default_markers = ['.', '^', 'x', '>', '+', '*', '--', 'v', 'o']
+
+def output_plot(plot, markers = default_markers, show_as_popup = False):
     plotd = plot['plot']
+    i_m = 0
     for curve in plotd['curves']:
         xy_pairs = list(curve['xy_pairs'])
         xs = [xyp['x'] for xyp in xy_pairs]
         ys = [xyp['y'] for xyp in xy_pairs] 
-        plt.plot(xs, ys, label = curve['curve_label'])
+        plt.plot(xs, ys, label = curve['curve_label'], marker = markers[i_m])
+        i_m = (i_m + 1) % len(default_markers)
     plt.xlabel(plotd['x_label'])
     plt.ylabel(plotd['y_label'])
     if 'title' in plotd:
