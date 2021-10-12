@@ -1,6 +1,10 @@
 import jsonschema
 import simplejson as json
 
+# For debugging purposes:
+def pretty_print_json(j):
+    print(json.dumps(j, indent=2))
+
 # Smart constructors
 # ==================
 

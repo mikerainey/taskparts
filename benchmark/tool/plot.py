@@ -57,7 +57,7 @@ def mk_plots(expr,
         plot_row_dict = row_to_dictionary(plot_row)
         plot_row_str = ",".join("{}-{}".format(*i) for i in plot_row_dict.items())
         opt_args['title'] = plot_row_str
-        opt_args['default_outfile_pdf_name'] = pathvalidate.sanitize_filename(plot_row_str)
+        opt_args['default_outfile_pdf_name'] = y_label + '-' + pathvalidate.sanitize_filename(plot_row_str)
         plots += [mk_plot(mk_take_kvp(expr, plot_expr),
                           x_key, x_vals, get_y_val, y_label, curves_expr, opt_args)]
     return plots

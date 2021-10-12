@@ -2,11 +2,8 @@ from plot import *
 from parameter import *
 from benchmark import *
 
-def pretty_print_json(j):
-    print(json.dumps(j, indent=2))
-
-def mean(fs):
-    return statistics.mean(fs)
+# Experiment configuration
+# ========================
 
 benchmarks = [
     'wc',
@@ -51,7 +48,7 @@ def mk_elastic_benchmark(basename, mode = mode_taskparts, ext = 'sta'):
 def mk_parallel_runs(mode):
     mk_benchmarks = [mk_elastic_benchmark(b, mode = mode) for b in benchmarks]
     return mk_cross(mk_append_sequence(mk_benchmarks), mk_num_workers)
-    
+
 max_num_workers = 15
 workers = range(1, max_num_workers + 1, 7)
 x_vals = workers
@@ -79,9 +76,8 @@ mods = {
     'cwd': '../'
 }
 
-x_label = 'workers'
-y_key = 'exectime'
-y_label = 'speedup'
+# Benchmark invocation
+# ====================
 
 bench = mk_benchmark(expr, modifiers = mods)
 
@@ -89,23 +85,60 @@ print('Runs to be invoked:')
 print(string_of_benchmark_runs(bench))
 print('---\n')
 
-#bench_2 = step_benchmark(bench, done_peek_keys = [y_key])
+#bench_2 = step_benchmark(bench, done_peek_keys = ['exectime'])
 #add_benchmark_to_results_repository(bench_2)
 
-bench_all = read_head_from_benchmark_repository()
+all_results = eval(read_head_from_benchmark_repository()['done'])
 
-plots = mk_speedup_plots(eval(bench_all['done']),
-                         mk_parameters(benchmark_key, benchmarks),
-                         max_num_workers = max_num_workers,
-                         benchmark_key = benchmark_key,
-                         mk_serial_mode = mk_mode(mode_serial),
-                         x_key = taskparts_num_workers_key,
-                         x_vals = x_vals,
-                         y_key = y_key,
-                         curves_expr = mk_append_sequence([mk_mode(mode_elastic),
-                                                           mk_mode(mode_taskparts),
-                                                           mk_mode(mode_cilk)]))
+all_curves = mk_append_sequence([mk_mode(mode_elastic),
+                                 mk_mode(mode_taskparts),
+                                 mk_mode(mode_cilk)])
 
-for plot in plots:
-    output_plot(plot)
+# Speedup curves
+# ==============
 
+def generate_speedup_plots():
+    x_label = 'workers'
+    y_key = 'exectime'
+    y_label = 'speedup'
+    plots = mk_speedup_plots(all_results,
+                             mk_parameters(benchmark_key, benchmarks),
+                             max_num_workers = max_num_workers,
+                             benchmark_key = benchmark_key,
+                             mk_serial_mode = mk_mode(mode_serial),
+                             x_key = taskparts_num_workers_key,
+                             x_vals = x_vals,
+                             y_key = y_key,
+                             curves_expr = all_curves)
+    for plot in plots:
+        output_plot(plot)
+
+generate_speedup_plots()
+
+# Usertime curves
+# ===============
+
+def generate_basic_plots(y_key, y_label, curves_expr):
+    x_label = 'workers'
+    opt_plot_args = {
+        'x_label': x_label,
+        'xlim': [1, max_num_workers + 1]
+    }
+    plots = mk_plots(all_results,
+                     mk_parameters(benchmark_key, benchmarks),
+                     x_key = taskparts_num_workers_key,
+                     x_vals = x_vals,
+                     get_y_val = lambda x_key, x_val, y_expr:
+                     mean(select_from_expr_by_key(y_expr, y_key)),
+                     y_label = y_label,
+                     curves_expr = curves_expr,
+                     opt_args = opt_plot_args)
+    for plot in plots:
+        output_plot(plot)
+                     
+generate_basic_plots('usertime', 'user time', all_curves)
+        
+# Number of steals
+# ================
+
+# later: modify Cilk RTS stats to output json
