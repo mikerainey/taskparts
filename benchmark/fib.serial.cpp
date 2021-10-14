@@ -1,8 +1,7 @@
 #include <stdio.h>
-#include <assert.h>
+#include <taskparts/benchmark.hpp>
 
 #include "../example/fib_serial.hpp"
-#include <taskparts/benchmark.hpp>
 
 int main() {
   int64_t n = taskparts::cmdline::parse_or_default_long("n", 44);

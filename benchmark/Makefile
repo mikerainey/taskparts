@@ -10,14 +10,16 @@ TASKPARTS_PATH?=../
 #   PARLAYLIB_INCLUDE_PREFIX       include directives needed for parlay
 #   PARLAYLIB_SERIAL_PREFIX        include directives needed for parlay
 #   PBBSBENCH_INCLUDE_PREFIX       include directives needed for pbbs
-#   MINI_UTS_PREFIX                include directives needed for mini uts benchmark
+#   MINI_UTS_INCLUDE_PREFIX        include directives needed for mini uts benchmark
+#   MINI_UTS_LINKER_FLAGS          linker flags needed for mini uts benchmark
 #   CHUNKEDSEQ_PREFIX              include directives needed for chunked sequence library
 # 
 
 # External parameters
 PARLAYLIB_INCLUDE_PREFIX?=-I $(TASKPARTS_PATH)/../parlaylib/include/ -DPARLAY_TASKPARTS
 PBBSBENCH_INCLUDE_PREFIX?=-I $(TASKPARTS_PATH)/../pbbsbench/ -Wno-pragmas
-MINI_UTS_PREFIX?=-I $(TASKPARTS_PATH)/../mini-uts/ -lm
+MINI_UTS_INCLUDE_PREFIX?=-I $(TASKPARTS_PATH)/../mini-uts/
+MINI_UTS_LINKER_FLAGS?=-lm
 CHUNKEDSEQ_PREFIX?=-I $(TASKPARTS_PATH)/../chunkedseq/include
 CILKRTS_STATS_PREFIX?=
 
@@ -43,12 +45,13 @@ INCLUDE_PREFIX=\
 	$(HWLOC_INCLUDE_PREFIX) \
 	$(PARLAYLIB_INCLUDE_PREFIX) \
 	$(PBBSBENCH_INCLUDE_PREFIX) \
-	$(MINI_UTS_PREFIX) \
+	$(MINI_UTS_INCLUDE_PREFIX) \
 	$(CHUNKEDSEQ_PREFIX)
 
 LINKER_PREFIX=\
 	-pthread \
-	$(HWLOC_LIBRARY_PREFIX)
+	$(HWLOC_LIBRARY_PREFIX) \
+	$(MINI_UTS_LINKER_FLAGS)
 
 # WARNING: flag -fno-stack-protector needed for native fork join to
 # compile binaries that do not segfault
@@ -123,7 +126,7 @@ SERIAL_PREFIX=-DTASKPARTS_SERIAL -DTASKPARTS_SERIAL_ELISION $(PARLAYLIB_SERIAL_P
 %.serial.dbg: %.serial.cpp $(INCLUDE_FILES) install_folder
 	$(CXX) $(DBG_PREFIX) $(SERIAL_PREFIX) -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
 
-# Binaries for tpal, task parallel assembly language
+# Binaries for TPAL, Task Parallel Assembly Language
 # --------------------------------------------------
 
 %.tpal.opt: %.tpal.cpp $(INCLUDE_FILES) install_folder
@@ -134,6 +137,10 @@ SERIAL_PREFIX=-DTASKPARTS_SERIAL -DTASKPARTS_SERIAL_ELISION $(PARLAYLIB_SERIAL_P
 	$(CXX) $(LOG_PREFIX) -DTASKPARTS_TPALRTS $(basename $<)_manual.s -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
 %.tpal.dbg: %.tpal.cpp $(INCLUDE_FILES) install_folder
 	$(CXX) $(DBG_PREFIX) -DTASKPARTS_TPALRTS $(basename $<)_manual.s -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+
+# For hand compiling TPAL programs from assembly output
+%.tpal_orig.s: %.tpal_orig.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(OPT_PREFIX) -fno-verbose-asm -mavx2 -mfma -DTASKPARTS_TPALRTS -S  $<
 
 # Binaries for elastic scheduling
 # -------------------------------
