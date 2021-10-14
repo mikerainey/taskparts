@@ -96,13 +96,13 @@ auto benchmark_cilk(const Benchmark& benchmark,
     }
     benchmark_teardown();
   }
-  bench_stats::output_summaries();
 #ifdef TASKPARTS_CILKRTS_WITH_STATS
-  fprintf(f, "]");
+  fprintf(f, "]\n");
   if (f != stdout) {
     fclose(f);
   }
 #endif
+  bench_stats::output_summaries();
   teardown_machine();
 }
   
