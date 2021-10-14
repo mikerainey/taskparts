@@ -8,6 +8,7 @@ from benchmark import *
 benchmarks = [
     'wc',
     'mcss',
+    # 'bfs',
     # 'fib',
     # 'integrate',
     # 'samplesort',
@@ -16,6 +17,8 @@ benchmarks = [
     # 'quickhull',
     # 'removeduplicates'
 ]
+
+# todo: experiment with an alternative way of grouping rows and calculating their, e.g., mean, stddev, etc
 
 path_to_executable_key = 'path_to_executable'
 taskparts_outfile_key = 'TASKPARTS_STATS_OUTFILE'
@@ -55,7 +58,7 @@ def mk_parallel_runs(mode):
                     mk_num_repeat(3))
 
 max_num_workers = 15
-workers = range(1, max_num_workers + 1, 2)
+workers = range(1, max_num_workers + 1, 7)
 x_vals = workers
 mk_num_workers = mk_parameters(taskparts_num_workers_key, workers)
     
@@ -91,8 +94,8 @@ print('Runs to be invoked:')
 print(string_of_benchmark_runs(bench))
 print('---\n')
 
-# bench_2 = step_benchmark(bench, done_peek_keys = ['exectime'])
-# add_benchmark_to_results_repository(bench_2)
+bench_2 = step_benchmark(bench, done_peek_keys = ['exectime'])
+add_benchmark_to_results_repository(bench_2)
 
 all_results = eval(read_head_from_benchmark_repository()['done'])
 

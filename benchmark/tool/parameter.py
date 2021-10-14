@@ -1,5 +1,7 @@
 import jsonschema
 import simplejson as json
+from heapq import merge
+from operator import itemgetter, attrgetter
 
 # For debugging purposes:
 def pretty_print_json(j):
@@ -65,6 +67,7 @@ def does_row_match_any(r, rms, does_row_contain):
             return True
     return False
 
+# todo: use binary search
 def does_row_contain_kvp(r, kvp):
     for kvpr in r:
         if kvp == kvpr:
@@ -74,6 +77,7 @@ def does_row_contain_kvp(r, kvp):
 def is_number(v):
     return (type(v) is int) or (type(v) is float)
 
+# todo: use binary search
 def does_row_contain_ktp(r, ktp):
     for kvpr in r:
         if kvpr['key'] == ktp['key']:
@@ -83,6 +87,7 @@ def does_row_contain_ktp(r, ktp):
                 return True
     return False
 
+# todo: use binary search
 def does_row_contain_key(r, key):
     for kvpr in r:
         if kvpr['key'] == key:
@@ -112,15 +117,48 @@ def eval(e):
     validate_parameter(r)
     return r
 
-def check_for_duplicate_keys(v1, v2):
-    for r2 in v2['value']:
-        for kvp in r2:
-            for r1 in v1['value']:
-                assert(not(does_row_contain_key(r1, kvp['key'])))
+# def check_for_duplicate_keys(v1, v2):
+#     for r2 in v2['value']:
+#         for kvp in r2:
+#             for r1 in v1['value']:
+#                 assert(not(does_row_contain_key(r1, kvp['key'])))
 
 def get_first_key_in_dictionary(d):
     return list(d.keys())[0]
-                
+
+def row_to_dictionary(row):
+    return dict(zip([ kvp['key'] for kvp in row ],
+                    [ kvp['val'] for kvp in row ]))
+
+def dictionary_to_row(dct):
+    dct = dict(sorted(dct.items(), key = itemgetter(0)))
+    return [ {'key': k, 'val': v} for k, v in dct.items() ]
+
+def mk_tuples_of_row(r):
+    return zip([ kvp['key'] for kvp in r ],
+               [ kvp['val'] for kvp in r ])
+
+def mk_dictionary_of_tuples(tups):
+    dict = {}
+    for x, y in tups:
+        dict.setdefault(x, []).append(y)
+    return dict
+
+def merge_list_of_tuples(tups1, tups2):
+    return merge(tups1, tups2, key = itemgetter(0))
+
+def eval_cross_of_rows(r1, r2,
+                       value_list_combiner =
+                       lambda vs: vs[0]):
+    tups = merge_list_of_tuples(mk_tuples_of_row(r1), mk_tuples_of_row(r2))
+    dct = mk_dictionary_of_tuples(tups)
+    return [ {'key': k, 'val': value_list_combiner(v)} for k, v in dct.items() ]
+
+# later: write proper error message
+def value_list_combiner_1(vs):
+    assert(len(vs) == 1)
+    return vs[0]
+
 def eval_rec(e):
     k = get_first_key_in_dictionary(e)
     if k == 'value':
@@ -132,8 +170,11 @@ def eval_rec(e):
     if k == 'append':
         return { 'value': v1rs + v2rs }
     if k == 'cross':
-        check_for_duplicate_keys(v1, v2)
-        return { 'value': [ r1 + r2 for r2 in v2rs for r1 in v1rs ] }
+#        check_for_duplicate_keys(v1, v2)
+        vr = { 'value': [ eval_cross_of_rows(r1, r2,
+                                             value_list_combiner = value_list_combiner_1)
+                          for r2 in v2rs for r1 in v1rs ] }
+        return vr
     if k == 'take_kvp':
         return { 'value': [ r for r in v1rs
                             if does_row_match_any(r, v2rs,
@@ -154,10 +195,4 @@ def eval_rec(e):
 
 # Misc
 
-def row_to_dictionary(row):
-    return dict(zip([ kvp['key'] for kvp in row ],
-                    [ kvp['val'] for kvp in row ]))
-
-def dictionary_to_row(dct):
-    return [ {'key': k, 'val': v} for k, v in dct.items() ]
 

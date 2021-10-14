@@ -211,7 +211,7 @@ def collect_benchmark_run_outfiles(outfiles,
     return results_expr
 
 # later: find a way to process results of multiple repeats in the same benchmark run
-# todo: fix bogus reporting of number of runs when there are multiple repeats
+# todo!!!: fix bogus reporting of number of runs when there are multiple repeats
 # later: make it possible to capture output of benchmark via stdout?
 
 def step_benchmark_run(benchmark_1,
