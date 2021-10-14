@@ -78,11 +78,15 @@ thread_local
 int id::my_id = uninitialized_id;
 
 auto nb_workers_requested() -> size_t {
+#ifndef TASKPARTS_SERIAL
   if (const auto env_p = std::getenv("TASKPARTS_NUM_WORKERS")) {
     return std::stoi(env_p);
   } else {
     return std::thread::hardware_concurrency();
   }
+#else
+  return 1;
+#endif
 }
   
 __attribute__((constructor))
