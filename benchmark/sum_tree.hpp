@@ -18,8 +18,6 @@ public:
     : value(value), left(left), right(right) { }
 };
 
-using kont_tag = enum kont_enum { K1, K2, K3, K4, K5 };
-
 auto nb_nodes_of_height(size_t h) {
   return (1 << (h + 1)) - 1;
 };
@@ -86,7 +84,8 @@ auto gen_near_perfect_tree(size_t height, Scheduler sched=Scheduler()) -> node* 
   return pt;
 }
 
-auto gen_input(auto sched) {
+template<typename Sched>
+auto gen_input(Sched sched) {
   int h = taskparts::cmdline::parse_or_default_int("h", 28);
   taskparts::cmdline::dispatcher d;
   d.add("perfect", [&] {

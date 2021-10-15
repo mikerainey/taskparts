@@ -1,15 +1,27 @@
 #ifndef TASKPARTS_TPALRTS
 #error "need to compile with tpal flags, e.g., TASKPARTS_TPALRTS"
 #endif
-#include <vector>
+#include <deque>
 #include <tuple>
 #include <functional>
 #include <stdio.h>
 
 #include "sum_tree.hpp"
 #include "sum_tree_rollforward_decls.hpp"
+#include "sum_tree.tpal.hpp"
 
-// todo: replace use of std::vector for stack by some faster structure, e.g., chunkedseq (std::deque is no good)
+auto tpalrts_prmlist_pop_front(tpalrts_prml prml) -> tpalrts_prml {
+  auto prev = prml.front;
+  auto next = prev->next;
+  if (next == nullptr) {
+    prml.back = nullptr;
+  } else {
+    next->prev = nullptr;
+    prev->next = nullptr;
+  }
+  prml.front = next;
+  return prml;
+}
 
 class task : public taskparts::fiber<taskparts::bench_scheduler> {
 public:
@@ -37,7 +49,7 @@ void release(task* t) {
   t->release();
 }
 
-void join(void* t) {
+void join(task* t) {
   release((task*)t);
 }
 
@@ -46,84 +58,41 @@ void fork(task* t, task* k) {
   release(t);
 }
 
-class vhbkont {
-public:
-  kont_tag tag;
-  union {
-    struct {
-      node* n;
-      int prev;
-      int next;
-    } k1;
-    struct {
-      int s0;
-      node* n;
-    } k2;
-    struct {
-      task* tk;
-    } k3;
-    struct {
-      int* s;
-      task* tj;
-      std::vector<vhbkont>* kp;
-    } k4ork5;
-  } u;
-
-  vhbkont(kont_tag tag, node* n, int prev) // K1
-    : tag(tag) { u.k1.n = n; u.k1.prev = prev; u.k1.next = -1; }
-  vhbkont(kont_tag tag, int s0, node* n) // K2
-    : tag(tag) { u.k2.s0 = s0; u.k2.n = n; }
-  vhbkont(kont_tag tag, int* s, task* tj, std::vector<vhbkont>* kp) // K4
-    : tag(tag) { u.k4ork5.s = s; u.k4ork5.tj = tj; u.k4ork5.kp = kp; }
-  vhbkont(kont_tag tag, int* s, task* tj) // K5
-    : tag(tag) { u.k4ork5.s = s; u.k4ork5.tj = tj; u.k4ork5.kp = nullptr; }
-  vhbkont(kont_tag tag, task* tk) // K3
-    : tag(tag) { u.k3.tk = tk; }
-};
-
 extern
-void sum_heartbeat(node* n, std::vector<vhbkont>& k, int prmlfr, int prmlbk);
+void sum_heartbeat(node* n, std::deque<vhbkont>& k, tpalrts_prml prml);
 
-static constexpr
-int nullprml = -1;
-
-auto prmlist_pop_front(std::vector<vhbkont>& k, int prmlfr, int prmlbk) -> std::pair<int, int> {
-  int prev = prmlfr;
-  int next = k[prev].u.k1.next;
-  if (next == nullprml) {
-    prmlbk = nullprml;
-  } else {
-    k[next].u.k1.prev = nullprml;
-    k[prev].u.k1.next = nullprml;
-  }
-  prmlfr = next;
-  return std::make_pair(prmlfr, prmlbk);    
+auto enclosing_frame_pointer_of(tpalrts_prml_node* n) -> vhbkont* {
+  auto r = vhbkont(K1, nullptr, (tpalrts_prml_node*)nullptr);
+  auto d = (char*)(&r.u.k1.prml_node)-(char*)(&r);
+  auto p = (char*)n;
+  auto h = p - d;
+  return (vhbkont*)h;
 }
 
-std::pair<int, int> sum_tree_heartbeat_handler(std::vector<vhbkont>& k, int prmlfr, int prmlbk) {
-  if (prmlfr == nullprml) {
-    return std::make_pair(prmlfr, prmlbk);
+tpalrts_prml sum_tree_heartbeat_handler(tpalrts_prml prml) {
+  if (prml.front == nullptr) {
+    return prml;
   }
-  assert(k[prmlfr].tag == K1);
-  auto n = k[prmlfr].u.k1.n;
+  auto f_fr = enclosing_frame_pointer_of(prml.front);
+  assert(f_fr->tag == K1);
+  auto n = f_fr->u.k1.n;
   auto s = new int[2];
-  auto kp = new std::vector<vhbkont>;
+  auto kp = new std::deque<vhbkont>;
   auto tj = new task([=] {
-    std::vector<vhbkont> kj;
+    std::deque<vhbkont> kj;
     kp->swap(kj);
-    kj[prmlfr] = vhbkont(K2, s[0] + s[1], n);
+    *f_fr = vhbkont(K2, s[0] + s[1], n);
     delete kp;
     delete [] s;	    
-    sum_heartbeat(nullptr, kj, nullprml, nullprml);
+    sum_heartbeat(nullptr, kj, tpalrts_prml());
   });
   fork(new task([=] {
-    std::vector<vhbkont> k2({vhbkont(K5, s, tj)});
-    sum_heartbeat(n->right, k2, nullprml, nullprml);
+    std::deque<vhbkont> k2({vhbkont(K5, s, tj)});
+    sum_heartbeat(n->right, k2, tpalrts_prml());
   }), tj);
-  auto fr = prmlfr;
-  std::tie(prmlfr, prmlbk) = prmlist_pop_front(k, prmlfr, prmlbk);
-  k[fr] = vhbkont(K4, s, tj, kp);
-  return std::make_pair(prmlfr, prmlbk);
+  prml = tpalrts_prmlist_pop_front(prml);
+  *f_fr = vhbkont(K4, s, tj, kp);
+  return prml;
 }
 
 namespace taskparts {
@@ -135,17 +104,16 @@ auto initialize_rollforward() {
 }
 } // end namespace
 
-
 int main() {
   taskparts::initialize_rollforward();
 
   taskparts::benchmark_nativeforkjoin([&] (auto sched) {
     taskparts::nativefj_fiber<decltype(sched)>::fork1join(new task([&] {
       auto _f = taskparts::nativefj_fiber<decltype(sched)>::current_fiber.mine();
-      std::vector<vhbkont> k({vhbkont(K3, new task([=] {
+      std::deque<vhbkont> k({vhbkont(K3, new task([=] {
 	_f->release();
       }))});
-      sum_heartbeat(n0, k, nullprml, nullprml);
+      sum_heartbeat(n0, k, tpalrts_prml());
     }));
   }, [&] (auto sched) { gen_input(sched); }, [&] (auto sched) { teardown(); });
   

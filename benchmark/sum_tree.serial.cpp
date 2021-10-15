@@ -1,5 +1,4 @@
 #include <deque>
-//#include "uvector.h"
 #include <parlay/delayed_sequence.h>
 #include <parlay/monoid.h>
 #include <parlay/primitives.h>
@@ -8,6 +7,8 @@
 
 #include <taskparts/benchmark.hpp>
 #include "sum_tree.hpp"
+
+using kont_tag = enum kont_enum { K1, K2, K3, K4, K5 };
 
 class vkont {
 public:
@@ -83,10 +84,7 @@ int main() {
     }); 
     d.add("sequence", [&] {
       sum_iterative<parlay::sequence<vkont>>(n0);
-    }); /*
-    d.add("uvector", [&] {
-      sum_iterative<ao::uvector<vkont>>(n0);
-      }); */  
+    });
     d.dispatch_or_default("algorithm", "iterative");
   }, [&] (auto sched) { gen_input(sched); }, [&] (auto sched) { teardown(); });
   printf("answer=%d\n", answer);
