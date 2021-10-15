@@ -2,6 +2,7 @@ import jsonschema
 import simplejson as json
 from heapq import merge
 from operator import itemgetter, attrgetter
+from bisect import bisect_left
 
 # For debugging purposes:
 def pretty_print_json(j):
@@ -55,6 +56,33 @@ def mk_drop_ktp(e1, e2):
 # Queries
 # =======
 
+with open('parameter_schema.json', 'r') as f:
+    parameter_schema = json.loads(f.read())
+
+def validate_parameter(p):
+    jsonschema.validate(p, parameter_schema)
+
+def check_if_row_is_well_formed(r):
+    n = len(r)
+    if (n < 2):
+        return True
+    prev = r[0]
+    for i in range(1, n):
+        nxt = r[i]
+        if not(prev['key'] < nxt['key']):
+            return False
+        prev = nxt
+    return True
+
+def check_if_value_is_well_formed(v):
+    if 'value' not in v:
+        return False
+    validate_parameter(v)
+    rows = v['value']
+    for r in rows:
+        check_if_row_is_well_formed(r)
+    return True
+
 def do_rows_match(r, rm, does_row_contain):
     for kvp in rm:
         if not(does_row_contain(r, kvp)):
@@ -67,31 +95,37 @@ def does_row_match_any(r, rms, does_row_contain):
             return True
     return False
 
-# todo: use binary search
-def does_row_contain_kvp(r, kvp):
-    for kvpr in r:
-        if kvp == kvpr:
-            return True
-    return False
+def index(a, x):
+    'Locate the leftmost value exactly equal to x'
+    i = bisect_left(a, x)
+    if i != len(a) and a[i] == x:
+        return i
+    return -1
 
+def index_of_key_in_row(r, k):
+    return index([kvp['key'] for kvp in r], k)
+
+def does_row_contain_key(r, key):
+    return index_of_key_in_row(r, kvp['key']) != -1
+
+def does_row_contain_kvp(r, kvp):
+    i = index_of_key_in_row(r, kvp['key'])
+    if i == -1:
+        return False
+    return kvp['val'] == r[i]['val']
+    
 def is_number(v):
     return (type(v) is int) or (type(v) is float)
 
-# todo: use binary search
 def does_row_contain_ktp(r, ktp):
-    for kvpr in r:
-        if kvpr['key'] == ktp['key']:
-            if type(kvpr['val']) is str and ktp['val'] == 'string':
-                return True
-            if is_number(kvpr['val']) and ktp['val'] == 'number':
-                return True
-    return False
-
-# todo: use binary search
-def does_row_contain_key(r, key):
-    for kvpr in r:
-        if kvpr['key'] == key:
-            return True
+    i = index_of_key_in_row(r, ktp['key'])
+    if i == -1:
+        return False
+    kvpr = r[i]
+    if type(kvpr['val']) is str and ktp['val'] == 'string':
+        return True
+    if is_number(kvpr['val']) and ktp['val'] == 'number':
+        return True
     return False
 
 def select_from_expr_by_key(expr, k):
@@ -105,23 +139,11 @@ def select_from_expr_by_key(expr, k):
 # Evaluation
 # ==========
 
-with open('parameter_schema.json', 'r') as f:
-    parameter_schema = json.loads(f.read())
-
-def validate_parameter(p):
-    jsonschema.validate(p, parameter_schema)
-
 def eval(e):
     validate_parameter(e)
-    r = eval_rec(e)
-    validate_parameter(r)
-    return r
-
-# def check_for_duplicate_keys(v1, v2):
-#     for r2 in v2['value']:
-#         for kvp in r2:
-#             for r1 in v1['value']:
-#                 assert(not(does_row_contain_key(r1, kvp['key'])))
+    v = eval_rec(e)
+    assert(check_if_value_is_well_formed(v))
+    return v
 
 def get_first_key_in_dictionary(d):
     return list(d.keys())[0]
@@ -192,7 +214,4 @@ def eval_rec(e):
                             if not(does_row_match_any(r, v2rs,
                                                       does_row_contain_ktp)) ] }
     assert(False)
-
-# Misc
-
 

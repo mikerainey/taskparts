@@ -50,7 +50,7 @@ void release(task* t) {
 }
 
 void join(task* t) {
-  release((task*)t);
+  release(t);
 }
 
 void fork(task* t, task* k) {
