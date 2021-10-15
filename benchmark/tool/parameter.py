@@ -192,7 +192,6 @@ def eval_rec(e):
     if k == 'append':
         return { 'value': v1rs + v2rs }
     if k == 'cross':
-#        check_for_duplicate_keys(v1, v2)
         vr = { 'value': [ eval_cross_of_rows(r1, r2,
                                              value_list_combiner = value_list_combiner_1)
                           for r2 in v2rs for r1 in v1rs ] }
