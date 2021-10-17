@@ -96,7 +96,7 @@ def does_row_match_any(r, rms, does_row_contain):
     return False
 
 def index(a, x):
-    'Locate the leftmost value exactly equal to x'
+    'Locates the leftmost value in array a exactly equal to x'
     i = bisect_left(a, x)
     if i != len(a) and a[i] == x:
         return i
@@ -136,50 +136,52 @@ def select_from_expr_by_key(expr, k):
                 vals += [kvp['val']]
     return vals
 
+def get_first_key_in_dictionary(d):
+    return list(d.keys())[0]
+
+# Conversions
+# ===========
+
+def mk_tuples_of_row(r):
+    return zip([ kvp['key'] for kvp in r ],
+               [ kvp['val'] for kvp in r ])
+
+def row_to_dictionary(r):
+    return dict(mk_tuples_of_row(r))
+
+def dictionary_to_row(dct):
+    return [ {'key': k, 'val': v}
+             for k, v in (dict(sorted(dct.items(), key = itemgetter(0)))).items() ]
+
+def mk_dictionary_of_tuples(ts):
+    dict = {}
+    for x, y in ts:
+        dict.setdefault(x, []).append(y)
+    return dict
+
+def merge_list_of_tuples(ts1, ts2):
+    return merge(ts1, ts2, key = itemgetter(0))
+
+def cross_rows(r1, r2,
+               value_list_combiner =
+               lambda vs: vs[0]):
+    ts = merge_list_of_tuples(mk_tuples_of_row(r1), mk_tuples_of_row(r2))
+    return [ {'key': k, 'val': value_list_combiner(v)}
+             for k, v in (mk_dictionary_of_tuples(ts)).items() ]
+
 # Evaluation
 # ==========
+
+# later: write proper error message
+def value_list_combiner_1(vs):
+    assert(len(vs) == 1)
+    return vs[0]
 
 def eval(e):
     validate_parameter(e)
     v = eval_rec(e)
     assert(check_if_value_is_well_formed(v))
     return v
-
-def get_first_key_in_dictionary(d):
-    return list(d.keys())[0]
-
-def row_to_dictionary(row):
-    return dict(zip([ kvp['key'] for kvp in row ],
-                    [ kvp['val'] for kvp in row ]))
-
-def dictionary_to_row(dct):
-    dct = dict(sorted(dct.items(), key = itemgetter(0)))
-    return [ {'key': k, 'val': v} for k, v in dct.items() ]
-
-def mk_tuples_of_row(r):
-    return zip([ kvp['key'] for kvp in r ],
-               [ kvp['val'] for kvp in r ])
-
-def mk_dictionary_of_tuples(tups):
-    dict = {}
-    for x, y in tups:
-        dict.setdefault(x, []).append(y)
-    return dict
-
-def merge_list_of_tuples(tups1, tups2):
-    return merge(tups1, tups2, key = itemgetter(0))
-
-def eval_cross_of_rows(r1, r2,
-                       value_list_combiner =
-                       lambda vs: vs[0]):
-    tups = merge_list_of_tuples(mk_tuples_of_row(r1), mk_tuples_of_row(r2))
-    dct = mk_dictionary_of_tuples(tups)
-    return [ {'key': k, 'val': value_list_combiner(v)} for k, v in dct.items() ]
-
-# later: write proper error message
-def value_list_combiner_1(vs):
-    assert(len(vs) == 1)
-    return vs[0]
 
 def eval_rec(e):
     k = get_first_key_in_dictionary(e)
@@ -192,8 +194,8 @@ def eval_rec(e):
     if k == 'append':
         return { 'value': v1rs + v2rs }
     if k == 'cross':
-        vr = { 'value': [ eval_cross_of_rows(r1, r2,
-                                             value_list_combiner = value_list_combiner_1)
+        vr = { 'value': [ cross_rows(r1, r2,
+                                     value_list_combiner = value_list_combiner_1)
                           for r2 in v2rs for r1 in v1rs ] }
         return vr
     if k == 'take_kvp':

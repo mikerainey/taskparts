@@ -66,7 +66,8 @@ def mean(xs):
     return statistics.mean([float(x) for x in xs])
 
 def get_speedup_y_val(benchmark_expr, benchmark_key, mk_serial_mode, y_key, x_key, x_val, y_expr):
-    mk_benchmark = mk_parameter(benchmark_key, select_from_expr_by_key(y_expr, benchmark_key)[0])
+    benchmark = select_from_expr_by_key(y_expr, benchmark_key)[0]
+    mk_benchmark = mk_parameter(benchmark_key, benchmark)
     mk_baseline = mk_take_kvp(benchmark_expr, mk_cross(mk_benchmark, mk_serial_mode))
     b = mean(select_from_expr_by_key(mk_baseline, y_key))
     p = mean(select_from_expr_by_key(y_expr, y_key))
