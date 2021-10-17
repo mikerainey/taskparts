@@ -397,12 +397,12 @@ public:
     lock[p].lock(); // This have to go through
     status[p].store(status_t::Working);
     fprintf(stderr, "[%ld] Working: Waking up other procs. \n", p);
+    lock[p].unlock();
     auto w = pool::choose();
     if (w) {
       sem[*w].post();
       fprintf(stderr, "[%ld] Working: Waking up %ld. \n", p, *w);
     }
-    lock[p].unlock();
   }
 
   // This is called once every time processor start to acquire work
