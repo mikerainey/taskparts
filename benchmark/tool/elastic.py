@@ -119,14 +119,14 @@ for b in [mk_expr_of_row(r) for r in rows_of(mk_benchmarks)]:
         print('---')
         ppj(m)
         cc = collapse_rows(rows_of(mk_take_kvp(mk_r, m)))
-        m = round(mean(val_of_key_in_row(cc, metric)), 3)
+        m = mean(val_of_key_in_row(cc, metric))
         print(m)
         cols += [m]
     table += [ ([ val_of_key_in_row(rows_of(b)[0], benchmark_key) ] + cols) ]
     print('')
 
 headers = ['benchmark'] + columns
-print(tabulate(table, headers))
+print(tabulate(table, headers, floatfmt=".3f", colalign=('right', 'decimal',)))
 
 # Speedup curves
 # ==============
