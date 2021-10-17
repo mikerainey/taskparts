@@ -32,6 +32,7 @@ auto benchmark_nativeforkjoin(const Benchmark& benchmark,
 			      Bench_worker worker=Bench_worker(),
 			      Bench_interrupt interrupt=Bench_interrupt(),
 			      Scheduler sched=Scheduler()) {
+  // runtime parameters
   size_t repeat = 1;
   if (const auto env_p = std::getenv("TASKPARTS_BENCHMARK_NUM_REPEAT")) {
     repeat = std::stoi(env_p);
@@ -44,11 +45,12 @@ auto benchmark_nativeforkjoin(const Benchmark& benchmark,
   if (const auto env_p = std::getenv("TASKPARTS_BENCHMARK_VERBOSE")) {
     verbose = std::stoi(env_p);
   }
+  // initialization
   initialize_machine();
   Bench_logging::initialize();
   Bench_stats::start_collecting();
+  // warmup
   auto warmup = [&] {
-    benchmark_setup(sched);
     if (warmup_secs >= 1.0) {
       if (verbose) printf("======== WARMUP ========\n");
       auto warmup_start = steadyclock::now();
@@ -62,7 +64,9 @@ auto benchmark_nativeforkjoin(const Benchmark& benchmark,
       if (verbose) printf ("======== END WARMUP ========\n");
     }
   };
-  nativefj_from_lambda f_body([&] {
+  // benchmark run
+  auto run = [&] {
+    benchmark_setup(sched);
     warmup();
     for (size_t i = 0; i < repeat; i++) {
       reset([&] {
@@ -70,7 +74,7 @@ auto benchmark_nativeforkjoin(const Benchmark& benchmark,
       }, [&] {
 	Bench_logging::reset();
 	Bench_stats::start_collecting();
-      }, sched);
+      }, false, sched);
       benchmark(sched);
       reset([&] {
 	Bench_stats::on_exit_work();
@@ -81,34 +85,26 @@ auto benchmark_nativeforkjoin(const Benchmark& benchmark,
 	  benchmark_reset(sched);
 	}
 	Bench_stats::start_collecting();
-      }, sched);
+      }, true, sched);
     }
     benchmark_teardown(sched);
-  }, sched);
+  };
 #ifndef TASKPARTS_SERIAL
+  // parallel run
+  nativefj_from_lambda f_body(run, sched);
   auto f_term = new terminal_fiber<Scheduler>;
   fiber<Scheduler>::add_edge(&f_body, f_term);
   f_body.release();
   f_term->release();
-  using cl = chase_lev_work_stealing_scheduler<Scheduler, fiber, Bench_stats, Bench_logging, Bench_elastic, Bench_worker, Bench_interrupt>;
+  using cl = chase_lev_work_stealing_scheduler<Scheduler, fiber,
+					       Bench_stats, Bench_logging,
+					       Bench_elastic, Bench_worker, Bench_interrupt>;
   cl::launch();
 #else
-  warmup();
-  for (size_t i = 0; i < repeat; i++) {
-    Bench_logging::reset();
-    Bench_stats::start_collecting();
-    Bench_stats::on_enter_work();
-    benchmark(sched);
-    Bench_stats::on_exit_work();
-    Bench_stats::capture_summary();
-    Bench_logging::output("log" + std::to_string(i) + ".json");
-    if (i + 1 < repeat) {
-      benchmark_reset(sched);
-    }
-    Bench_stats::start_collecting();
-  }
-  benchmark_teardown(sched);  
+  // serial run
+  run();
 #endif
+  // teardown
   Bench_stats::output_summaries();
   teardown_machine();
 }

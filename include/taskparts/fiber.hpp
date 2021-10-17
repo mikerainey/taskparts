@@ -116,13 +116,17 @@ public:
 
   Global_reset global_reset;
 
-  reset_fiber(Worker_reset worker_reset, Global_reset global_reset, Scheduler sched=Scheduler())
+  bool worker_first;
+
+  reset_fiber(Worker_reset worker_reset, Global_reset global_reset, bool worker_first,
+	      Scheduler sched=Scheduler())
     : fiber<Scheduler>(),
       nb_workers_spawned(new std::atomic<int>),
       nb_workers_paused(new std::atomic<int>),
       nb_workers_finished(new std::atomic<int>),
       worker_reset(worker_reset),
       global_reset(global_reset),
+      worker_first(worker_first),
       trampoline(reset_enter) { }
 
   reset_fiber(const reset_fiber& rf)
@@ -132,6 +136,7 @@ public:
        nb_workers_finished(rf.nb_workers_finished),
        worker_reset(rf.worker_reset),
        global_reset(rf.global_reset),
+       worker_first(rf.worker_first),
        trampoline(reset_try_to_spawn) { }
 
   auto run() -> fiber_status_type {
@@ -167,20 +172,31 @@ public:
       }
     }      
     case reset_pause: {
-      worker_reset();
+      if (worker_first) {
+	worker_reset();
+      }
       (*nb_workers_paused)++;
       while (nb_workers_finished->load() == 0) {
 	// wait for the initial fiber to finish
 	busywait_pause();
+      }
+      if (! worker_first) {
+	worker_reset();
       }
       (*nb_workers_finished)++;
       return fiber_status_finish;
     }
     case reset_pause0: {
       while (true) {
-	if (nb_workers_paused->load() + 1 == perworker::nb_workers()) {
-	  worker_reset();
+	if (! worker_first) {
 	  global_reset();
+	  worker_reset();
+	}
+	if (nb_workers_paused->load() + 1 == perworker::nb_workers()) {
+	  if (worker_first) {
+	    worker_reset();
+	    global_reset();
+	  }
 	  (*nb_workers_finished)++;
 	  trampoline = reset_wait_for_all;
 	  return fiber_status_continue;

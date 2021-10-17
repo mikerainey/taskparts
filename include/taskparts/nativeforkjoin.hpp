@@ -167,17 +167,17 @@ public:
   }
   
   template <typename Worker_reset, typename Global_reset>
-  auto _reset(Worker_reset worker_reset, Global_reset global_reset) {
+  auto _reset(Worker_reset worker_reset, Global_reset global_reset, bool worker_first) {
     using rf = reset_fiber<Worker_reset,Global_reset,Scheduler>;
-    fork1join(new rf(worker_reset, global_reset));
+    fork1join(new rf(worker_reset, global_reset, worker_first));
   }
 
   template <typename Worker_reset, typename Global_reset>
   static
-  void reset(Worker_reset worker_reset, Global_reset global_reset) {
+  void reset(Worker_reset worker_reset, Global_reset global_reset, bool worker_first) {
     auto f = current_fiber.mine();
     assert(f != nullptr);
-    f->_reset(worker_reset, global_reset);    
+    f->_reset(worker_reset, global_reset, worker_first);
   }
 
 };
@@ -200,8 +200,19 @@ auto fork1fiberjoin(Fiber<Scheduler>* f, Scheduler sched=Scheduler()) {
 }
 
 template <typename Worker_reset, typename Global_reset, typename Scheduler=minimal_scheduler<>>
-auto reset(Worker_reset worker_reset, Global_reset global_reset, Scheduler sched=Scheduler()) {
-  nativefj_fiber<Scheduler>::reset(worker_reset, global_reset);  
+auto reset(Worker_reset worker_reset, Global_reset global_reset, bool worker_first,
+	   Scheduler sched=Scheduler()) {
+#ifndef TASKPARTS_SERIAL
+  nativefj_fiber<Scheduler>::reset(worker_reset, global_reset, worker_first);
+#else
+  if (worker_first) {
+    worker_reset();
+    global_reset();
+  } else {
+    global_reset();
+    worker_reset();
+  }
+#endif
 }
 
 template <typename F, typename Scheduler=minimal_scheduler<>>
