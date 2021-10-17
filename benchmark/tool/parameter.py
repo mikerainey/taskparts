@@ -7,6 +7,8 @@ from bisect import bisect_left
 # For debugging purposes:
 def pretty_print_json(j):
     print(json.dumps(j, indent=2))
+def ppj(j):
+    pretty_print_json(j)
 
 # Smart constructors
 # ==================
@@ -105,8 +107,8 @@ def index(a, x):
 def index_of_key_in_row(r, k):
     return index([kvp['key'] for kvp in r], k)
 
-def does_row_contain_key(r, key):
-    return index_of_key_in_row(r, kvp['key']) != -1
+def does_row_contain_key(r, k):
+    return index_of_key_in_row(r, k) != -1
 
 def does_row_contain_kvp(r, kvp):
     i = index_of_key_in_row(r, kvp['key'])
@@ -139,6 +141,11 @@ def select_from_expr_by_key(expr, k):
 def get_first_key_in_dictionary(d):
     return list(d.keys())[0]
 
+def val_of_key_in_row(r, k):
+    i = index_of_key_in_row(r, k)
+    assert(i != -1)
+    return r[i]['val']
+
 # Conversions
 # ===========
 
@@ -149,15 +156,15 @@ def mk_tuples_of_row(r):
 def row_to_dictionary(r):
     return dict(mk_tuples_of_row(r))
 
-def dictionary_to_row(dct):
+def dictionary_to_row(d):
     return [ {'key': k, 'val': v}
-             for k, v in (dict(sorted(dct.items(), key = itemgetter(0)))).items() ]
+             for k, v in (dict(sorted(d.items(), key = itemgetter(0)))).items() ]
 
 def mk_dictionary_of_tuples(ts):
-    dict = {}
+    d = {}
     for x, y in ts:
-        dict.setdefault(x, []).append(y)
-    return dict
+        d.setdefault(x, []).append(y)
+    return d
 
 def merge_list_of_tuples(ts1, ts2):
     return merge(ts1, ts2, key = itemgetter(0))
@@ -168,6 +175,15 @@ def cross_rows(r1, r2,
     ts = merge_list_of_tuples(mk_tuples_of_row(r1), mk_tuples_of_row(r2))
     return [ {'key': k, 'val': value_list_combiner(v)}
              for k, v in (mk_dictionary_of_tuples(ts)).items() ]
+
+def mk_expr_of_row(r):
+    return { 'value': [ dictionary_to_row(row_to_dictionary(r)) ] }
+
+def collapse_rows(rs):
+    ts = []
+    for r in rs:
+        ts = merge_list_of_tuples(ts, mk_tuples_of_row(r))
+    return dictionary_to_row(mk_dictionary_of_tuples(ts))
 
 # Evaluation
 # ==========
@@ -183,6 +199,8 @@ def eval(e):
     assert(check_if_value_is_well_formed(v))
     return v
 
+# later: enforce a normal form for values whereby empty rows can occur
+# at most once
 def eval_rec(e):
     k = get_first_key_in_dictionary(e)
     if k == 'value':
@@ -216,3 +234,5 @@ def eval_rec(e):
                                                       does_row_contain_ktp)) ] }
     assert(False)
 
+def rows_of(e):
+    return eval(e)['value']

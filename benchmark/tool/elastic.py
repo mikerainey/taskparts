@@ -18,8 +18,6 @@ benchmarks = [
     # 'removeduplicates'
 ]
 
-# todo: experiment with an alternative way of grouping rows and calculating their, e.g., mean, stddev, etc
-
 path_to_executable_key = 'path_to_executable'
 taskparts_outfile_key = 'TASKPARTS_STATS_OUTFILE'
 taskparts_num_workers_key = 'TASKPARTS_NUM_WORKERS'
@@ -63,14 +61,14 @@ x_vals = workers
 mk_num_workers = mk_parameters(taskparts_num_workers_key, workers)
     
 mk_serial = mk_append_sequence([mk_elastic_benchmark(b, mode = mode_serial) for b in benchmarks])
-mk_elastic_elision = mk_append_sequence([mk_elastic_benchmark(b, mode = mode_elastic_elision) for b in benchmarks])
+#mk_elastic_elision = mk_append_sequence([mk_elastic_benchmark(b, mode = mode_elastic_elision) for b in benchmarks])
 mk_taskparts = mk_parallel_runs(mode_taskparts)
 mk_elastic = mk_parallel_runs(mode_elastic)
 mk_cilk = mk_parallel_runs(mode_cilk)
 
 expr = mk_append_sequence([mk_serial, mk_elastic, mk_taskparts, mk_cilk])
 
-mods = {
+modifiers = {
     'path_to_executable_key': path_to_executable_key,
     'outfile_keys': [taskparts_outfile_key],
     'env_vars': [
@@ -88,23 +86,54 @@ mods = {
 # Benchmark invocation
 # ====================
 
-bench = mk_benchmark(expr, modifiers = mods)
+bench = mk_benchmark(expr, modifiers = modifiers)
 
 print('Runs to be invoked:')
 print(string_of_benchmark_runs(bench))
 print('---\n')
 
-bench_2 = step_benchmark(bench, done_peek_keys = ['exectime'])
-add_benchmark_to_results_repository(bench_2)
+# bench_2 = step_benchmark(bench, done_peek_keys = ['exectime'])
+# add_benchmark_to_results_repository(bench_2)
 
 all_results = eval(read_head_from_benchmark_repository()['done'])
+
+# Tables
+# ======
+
+def mk_num_workers(n):
+    return mk_parameter(taskparts_num_workers_key, n)
+
+mk_benchmarks = mk_append_sequence([ mk_parameter(benchmark_key, b) for b in benchmarks ])
+
+from tabulate import *
+
+table = []
+columns = [mode_taskparts, mode_elastic, mode_cilk]
+metric = 'exectime'
+for b in [mk_expr_of_row(r) for r in rows_of(mk_benchmarks)]:
+    print('===')
+    ppj(b)
+    mk_r = eval(mk_take_kvp(all_results, mk_cross(b, mk_num_workers(max_num_workers))))
+    cols = []
+    for m in [mk_expr_of_row(r) for r in rows_of(mk_parameters(mode_key, columns))]:
+        print('---')
+        ppj(m)
+        cc = collapse_rows(rows_of(mk_take_kvp(mk_r, m)))
+        m = round(mean(val_of_key_in_row(cc, metric)), 3)
+        print(m)
+        cols += [m]
+    table += [ ([ val_of_key_in_row(rows_of(b)[0], benchmark_key) ] + cols) ]
+    print('')
+
+headers = ['benchmark'] + columns
+print(tabulate(table, headers))
+
+# Speedup curves
+# ==============
 
 all_curves = mk_append_sequence([mk_mode(mode_elastic),
                                  mk_mode(mode_taskparts),
                                  mk_mode(mode_cilk)])
-
-# Speedup curves
-# ==============
 
 def generate_speedup_plots():
     x_label = 'workers'
@@ -122,7 +151,7 @@ def generate_speedup_plots():
     for plot in plots:
         output_plot(plot)
 
-generate_speedup_plots()
+# generate_speedup_plots()
 
 # Plots for other measures
 # ========================
@@ -151,17 +180,17 @@ def generate_basic_plots(get_y_val, y_label, curves_expr):
     for plot in plots:
         output_plot(plot)
 
-generate_basic_plots(mk_get_y_val('exectime'), 'run time (s)', all_curves)
-generate_basic_plots(mk_get_y_val('usertime'), 'user time (s)', all_curves)
-generate_basic_plots(mk_get_y_val('systime'), 'system time (s)', all_curves)
-generate_basic_plots(mk_get_y_val('maxrss'), 'max resident size (kb)', all_curves)
+# generate_basic_plots(mk_get_y_val('exectime'), 'run time (s)', all_curves)
+# generate_basic_plots(mk_get_y_val('usertime'), 'user time (s)', all_curves)
+# generate_basic_plots(mk_get_y_val('systime'), 'system time (s)', all_curves)
+# generate_basic_plots(mk_get_y_val('maxrss'), 'max resident size (kb)', all_curves)
 
 def get_percent_of_one_to_another(x_key, x_val, y_expr, y_key, ref_key):
     st = mean(select_from_expr_by_key(y_expr, y_key))
     tt = mean(select_from_expr_by_key(y_expr, ref_key))
     return (st / tt) * 100.0
     
-generate_basic_plots(
-    lambda x_key, x_val, y_expr: get_percent_of_one_to_another(x_key, x_val, y_expr, 'total_sleep_time', 'total_time'),
-    'percent of total time spent sleeping',
-    mk_mode(mode_elastic))
+# generate_basic_plots(
+#     lambda x_key, x_val, y_expr: get_percent_of_one_to_another(x_key, x_val, y_expr, 'total_sleep_time', 'total_time'),
+#     'percent of total time spent sleeping',
+#     mk_mode(mode_elastic))
