@@ -62,7 +62,8 @@ using bench_logging = logging_base<false>;
 
 #ifdef TASKPARTS_ELASTIC
 template <typename Stats, typename Logging>
-using bench_elastic = elastic<Stats, Logging>;
+// using bench_elastic = elastic<Stats, Logging>;
+using bench_elastic = elastic_flat<Stats, Logging>;
 #else
 template <typename Stats, typename Logging>
 using bench_elastic = minimal_elastic<Stats, Logging>;

@@ -196,11 +196,16 @@ public:
     auto random_other_worker = [&] (size_t nb_workers, size_t my_id) -> size_t {
       assert(nb_workers != 1);
       auto& nb_sa = nb_steal_attempts_so_far[my_id];
-      auto id = (size_t)((hash(my_id) + hash(nb_sa)) % (nb_workers - 1));
-      if (id >= my_id) {
-        id++;
+      size_t id;
+      if constexpr (elastic_type::override_rand_worker) {
+        id = elastic_type::random_other_worker(nb_sa, nb_workers, my_id);
+      } else {
+        id = (size_t)((hash(my_id) + hash(nb_sa)) % (nb_workers - 1));
+        if (id >= my_id) {
+          id++;
+        }
+        nb_sa++;
       }
-      nb_sa++;
       assert(id != my_id);
       assert(id >= 0 && id < nb_workers);
       return id;
@@ -222,14 +227,14 @@ public:
         auto i = nb_steal_attempts;
         auto target = random_other_worker(nb_workers, my_id);
         do {
-	  termination_barrier.set_active(true);
-	  current = deques[target].steal();
-	  if (current == nullptr) {
-	    termination_barrier.set_active(false);
-	  } else {
-	    Stats::increment(Stats::configuration_type::nb_steals);
-	    break;
-	  }
+          termination_barrier.set_active(true);
+          current = deques[target].steal();
+          if (current == nullptr) {
+            termination_barrier.set_active(false);
+          } else {
+            Stats::increment(Stats::configuration_type::nb_steals);
+            break;
+          }
           i--;
           target = random_other_worker(nb_workers, my_id);
         } while (i > 0);
