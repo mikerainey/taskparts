@@ -309,7 +309,7 @@ public:
         auto expected = status_t::Sleeping;
         if (status[v].load() == expected) {
           if (status[v].compare_exchange_strong(expected, status_t::Stealing)) {
-            return i; 
+            return v; 
           }
         }
       }
@@ -373,10 +373,11 @@ public:
   static
   auto try_to_sleep(size_t v) {
     auto p = perworker::my_id();
+    fprintf(stderr, "[%ld] Try to sleep %ld.\n", p, v);
     if (lock2(v, p)) {
       if (status[v].load() == status_t::Stealing) {
         status[p].store(status_t::Sleeping);
-        fprintf(stderr, "[%ld] Sleeping.\n", p);
+        fprintf(stderr, "[%ld] Sleeping on %ld.\n", p, v);
         pool::add(p);
         unlock2(v, p);
         crs::remove(p);
@@ -410,7 +411,7 @@ public:
   auto accept_lifelines() {
     auto p = perworker::my_id();
     status[p].store(status_t::Stealing);
-    fprintf(stderr, "[%ld] Stealing: Acquire work.\n", p);
+    fprintf(stderr, "[%ld] Stealing: Attempting to acquire work.\n", p);
   }
 };
 

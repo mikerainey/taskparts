@@ -244,6 +244,7 @@ public:
           elastic_type::wake_children();
         }
         if (termination_barrier.is_terminated() || should_terminate) {
+          fprintf(stderr, "[%ld] Attempting to terminate.\n", perworker::my_id());
           assert(current == nullptr);
           Logging::log_event(worker_exit);
           elastic_type::wake_children();
@@ -256,6 +257,7 @@ public:
       buffers.mine().push_back(current);
       Stats::on_exit_acquire();
       Logging::log_event(exit_wait);
+      fprintf(stderr, "[%ld] Exit acquire.\n", perworker::my_id());
       return scheduler_status_active;
     };
 
@@ -280,6 +282,7 @@ public:
               assert(s == fiber_status_exit_launch);
               current->finish();
               status = scheduler_status_finish;
+              fprintf(stderr, "[%ld] Initiate teardown.\n", perworker::my_id());
               Logging::log_event(initiate_teardown);
               should_terminate = true;
             }
