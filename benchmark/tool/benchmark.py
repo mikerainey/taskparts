@@ -85,6 +85,9 @@ def seed_benchmark(benchmark_1):
 # String conversions & hashing
 # ============================
 
+def string_of_benchmark_progress(row_number, nb_todo):
+    return '[' + str(row_number) + '/' + str(nb_todo) + '] $ '
+
 def string_of_cl_args(args):
     out = ''
     i = 0
@@ -107,8 +110,7 @@ def string_of_env_args(vargs):
 
 def string_of_benchmark_run(r,
                             show_env_args = False,
-                            show_silent_args = False,
-                            nb_traced = -1):
+                            show_silent_args = False):
     br = r['benchmark_run']
     cl_args = (' ' if br['cl_args'] != [] else '') + string_of_cl_args(br['cl_args'])
     env_args = ''
@@ -123,26 +125,22 @@ def string_of_benchmark_run(r,
             silent_args += ')'
     return env_args + br['path_to_executable'] + cl_args + silent_args
 
-def string_of_benchmark_progress(row_number, nb_traced, nb_todo):
-    return '[' + str(row_number) + '/' + str(nb_traced + nb_todo) + '] $ '
-
 def string_of_benchmark_runs(b, show_run_numbers = True):
     sr = ''
     if 'cwd' in b['modifiers']:
         sr += 'cd ' + b['modifiers']['cwd'] + '\n'
     b = seed_benchmark(b.copy())
-    nb_traced = nb_traced_in_benchmark(b)
     nb_todo = nb_todo_in_benchmark(b)
+    nb_done_this_batch = 0
     todo = b['todo']
-    row_number = nb_traced + 1
     for next_row in b['todo']['value']:
         modifiers = b['modifiers'] 
         env_vars = modifiers['env_vars'] if 'env_vars' in modifiers else []
         silent_keys = modifiers['silent_keys'] if 'silent_keys' in modifiers else []
         next_run = mk_benchmark_run(next_row, modifiers['path_to_executable_key'], env_vars, silent_keys)
-        pre = string_of_benchmark_progress(row_number, nb_traced, nb_todo) if show_run_numbers else ''
+        pre = string_of_benchmark_progress(nb_done_this_batch + 1, nb_todo) if show_run_numbers else ''
         sr += pre + string_of_benchmark_run(next_run, show_env_args = True, show_silent_args = True) + '\n'
-        row_number += 1
+        nb_done_this_batch += 1
     return sr
 
 def json_dumps(thing):
@@ -210,11 +208,11 @@ def collect_benchmark_run_outfiles(outfiles,
         results_expr = mk_cross(results_expr, {'value': [client_format_to_row(d) for d in j] })
     return results_expr
 
-# later: find a way to process results of multiple repeats in the same benchmark run
-# todo!!!: fix bogus reporting of number of runs when there are multiple repeats
 # later: make it possible to capture output of benchmark via stdout?
 
 def step_benchmark_run(benchmark_1,
+                       nb_done_this_batch = 0,
+                       nb_todo_this_batch = 0,
                        done_peek_keys = [],
                        verbose = True,
                        client_format_to_row = lambda d: dictionary_to_row(d),
@@ -240,7 +238,7 @@ def step_benchmark_run(benchmark_1,
     next_run = mk_benchmark_run(next_row, modifiers['path_to_executable_key'], env_vars, silent_keys)
     # Print the command to be issued to the command line for the next run
     if verbose:
-        print(string_of_benchmark_progress(nb_done + 1, nb_traced, nb_todo) +
+        print(string_of_benchmark_progress(nb_done_this_batch + 1, nb_todo_this_batch) +
               string_of_benchmark_run(next_run, show_env_args = True))
     # Do the next run
     current_child = run_benchmark(string_of_benchmark_run(next_run),
@@ -299,10 +297,16 @@ def step_benchmark_run(benchmark_1,
 # later: save benchmark runs incrementally, based on some client specification
 def step_benchmark(benchmark_1, done_peek_keys = []):
     benchmark_2 = seed_benchmark(benchmark_1)
+    nb_done_this_batch = 0
     nb_todo = nb_todo_in_benchmark(benchmark_2)
+    nb_todo_this_batch = nb_todo
     while nb_todo > 0:
-        benchmark_2 = step_benchmark_run(benchmark_2, done_peek_keys = done_peek_keys)
+        benchmark_2 = step_benchmark_run(benchmark_2,
+                                         nb_done_this_batch = nb_done_this_batch,
+                                         nb_todo_this_batch = nb_todo_this_batch,
+                                         done_peek_keys = done_peek_keys)
         nb_todo = nb_todo_in_benchmark(benchmark_2)
+        nb_done_this_batch += 1
     return benchmark_2
 
 def serial_merge_benchmarks(b1, b2):
