@@ -80,7 +80,6 @@ auto gen_near_perfect_tree(size_t height, Scheduler sched=Scheduler()) -> node* 
       j++;
     }
   }
-  printf("gen\n");
   return pt;
 }
 

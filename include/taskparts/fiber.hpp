@@ -13,7 +13,7 @@ namespace taskparts {
 
 template <typename Scheduler=minimal_scheduler<>>
 class fiber : public minimal_fiber<Scheduler> {
-protected:
+public:
 
   alignas(TASKPARTS_CACHE_LINE_SZB)
   std::atomic<std::size_t> incounter;
@@ -24,8 +24,6 @@ protected:
   auto schedule() {
     Scheduler::schedule(this);
   }
-
-public:
 
   fiber(Scheduler _sched=Scheduler())
     : minimal_fiber<Scheduler>(), incounter(1), outedge(nullptr) { }

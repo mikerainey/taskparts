@@ -24,7 +24,7 @@ public:
 extern
 void join(task*);
 
-extern
+volatile extern
 bool heartbeat;
 
 extern
@@ -32,9 +32,6 @@ tpalrts_prml sum_tree_heartbeat_handler(tpalrts_prml);
 
 void sum_heartbeat(node* n, std::deque<vhbkont>& k, tpalrts_prml prml) {
   while (true) {
-    if (heartbeat) { // promotion-ready program point
-      prml = sum_tree_heartbeat_handler(prml);
-    }
     if (n == nullptr) {
       int s = 0;
       while (true) {
@@ -52,6 +49,7 @@ void sum_heartbeat(node* n, std::deque<vhbkont>& k, tpalrts_prml prml) {
 	  k.pop_back();
 	} else if (f.tag == K3) {
 	  answer = s;
+	  join(f.u.k3.tk);
 	  return;
 	} else if (f.tag == K4 || f.tag == K5) {
 	  auto i = (f.tag == K4) ? 0 : 1;

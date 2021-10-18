@@ -12,10 +12,6 @@
 .type  _Z25tpalrts_prmlist_push_back12tpalrts_prmlP17tpalrts_prml_node, @function
 .globl  _Z25tpalrts_prmlist_push_back12tpalrts_prmlP17tpalrts_prml_node_rf
 .type  _Z25tpalrts_prmlist_push_back12tpalrts_prmlP17tpalrts_prml_node_rf, @function
-.globl  _ZNSt5dequeI7vhbkontSaIS0_EE17_M_reallocate_mapEmb
-.type  _ZNSt5dequeI7vhbkontSaIS0_EE17_M_reallocate_mapEmb, @function
-.globl  _ZNSt5dequeI7vhbkontSaIS0_EE17_M_reallocate_mapEmb_rf
-.type  _ZNSt5dequeI7vhbkontSaIS0_EE17_M_reallocate_mapEmb_rf, @function
 .globl  str0
 .type  str0, @function
 .globl  str0_rf
@@ -1372,1226 +1368,753 @@
 .type  str338, @function
 .globl  str338_rf
 .type  str338_rf, @function
-.globl  str339
-.type  str339, @function
-.globl  str339_rf
-.type  str339_rf, @function
-.globl  str340
-.type  str340, @function
-.globl  str340_rf
-.type  str340_rf, @function
-.globl  str341
-.type  str341, @function
-.globl  str341_rf
-.type  str341_rf, @function
-.globl  str342
-.type  str342, @function
-.globl  str342_rf
-.type  str342_rf, @function
-.globl  str343
-.type  str343, @function
-.globl  str343_rf
-.type  str343_rf, @function
-.globl  str344
-.type  str344, @function
-.globl  str344_rf
-.type  str344_rf, @function
-.globl  str345
-.type  str345, @function
-.globl  str345_rf
-.type  str345_rf, @function
-.globl  str346
-.type  str346, @function
-.globl  str346_rf
-.type  str346_rf, @function
-.globl  str347
-.type  str347, @function
-.globl  str347_rf
-.type  str347_rf, @function
-.globl  str348
-.type  str348, @function
-.globl  str348_rf
-.type  str348_rf, @function
-.globl  str349
-.type  str349, @function
-.globl  str349_rf
-.type  str349_rf, @function
-.globl  str350
-.type  str350, @function
-.globl  str350_rf
-.type  str350_rf, @function
-.globl  str351
-.type  str351, @function
-.globl  str351_rf
-.type  str351_rf, @function
-.globl  str352
-.type  str352, @function
-.globl  str352_rf
-.type  str352_rf, @function
-.globl  str353
-.type  str353, @function
-.globl  str353_rf
-.type  str353_rf, @function
-.globl  str354
-.type  str354, @function
-.globl  str354_rf
-.type  str354_rf, @function
-.globl  str355
-.type  str355, @function
-.globl  str355_rf
-.type  str355_rf, @function
-.globl  str356
-.type  str356, @function
-.globl  str356_rf
-.type  str356_rf, @function
-.globl  str357
-.type  str357, @function
-.globl  str357_rf
-.type  str357_rf, @function
-.globl  str358
-.type  str358, @function
-.globl  str358_rf
-.type  str358_rf, @function
-.globl  str359
-.type  str359, @function
-.globl  str359_rf
-.type  str359_rf, @function
-.globl  str360
-.type  str360, @function
-.globl  str360_rf
-.type  str360_rf, @function
-.globl  str361
-.type  str361, @function
-.globl  str361_rf
-.type  str361_rf, @function
-.globl  str362
-.type  str362, @function
-.globl  str362_rf
-.type  str362_rf, @function
-.globl  str363
-.type  str363, @function
-.globl  str363_rf
-.type  str363_rf, @function
-.globl  str364
-.type  str364, @function
-.globl  str364_rf
-.type  str364_rf, @function
-.globl  str365
-.type  str365, @function
-.globl  str365_rf
-.type  str365_rf, @function
-.globl  str366
-.type  str366, @function
-.globl  str366_rf
-.type  str366_rf, @function
-.globl  str367
-.type  str367, @function
-.globl  str367_rf
-.type  str367_rf, @function
-.globl  str368
-.type  str368, @function
-.globl  str368_rf
-.type  str368_rf, @function
-.globl  str369
-.type  str369, @function
-.globl  str369_rf
-.type  str369_rf, @function
-.globl  str370
-.type  str370, @function
-.globl  str370_rf
-.type  str370_rf, @function
-.globl  str371
-.type  str371, @function
-.globl  str371_rf
-.type  str371_rf, @function
-.globl  str372
-.type  str372, @function
-.globl  str372_rf
-.type  str372_rf, @function
-.globl  str373
-.type  str373, @function
-.globl  str373_rf
-.type  str373_rf, @function
-.globl  str374
-.type  str374, @function
-.globl  str374_rf
-.type  str374_rf, @function
-.globl  str375
-.type  str375, @function
-.globl  str375_rf
-.type  str375_rf, @function
-.globl  str376
-.type  str376, @function
-.globl  str376_rf
-.type  str376_rf, @function
-.globl  str377
-.type  str377, @function
-.globl  str377_rf
-.type  str377_rf, @function
-.globl  str378
-.type  str378, @function
-.globl  str378_rf
-.type  str378_rf, @function
-.globl  str379
-.type  str379, @function
-.globl  str379_rf
-.type  str379_rf, @function
-.globl  str380
-.type  str380, @function
-.globl  str380_rf
-.type  str380_rf, @function
-.globl  str381
-.type  str381, @function
-.globl  str381_rf
-.type  str381_rf, @function
-.globl  str382
-.type  str382, @function
-.globl  str382_rf
-.type  str382_rf, @function
-.globl  str383
-.type  str383, @function
-.globl  str383_rf
-.type  str383_rf, @function
-.globl  str384
-.type  str384, @function
-.globl  str384_rf
-.type  str384_rf, @function
-.globl  str385
-.type  str385, @function
-.globl  str385_rf
-.type  str385_rf, @function
-.globl  str386
-.type  str386, @function
-.globl  str386_rf
-.type  str386_rf, @function
-.globl  str387
-.type  str387, @function
-.globl  str387_rf
-.type  str387_rf, @function
-.globl  str388
-.type  str388, @function
-.globl  str388_rf
-.type  str388_rf, @function
-.globl  str389
-.type  str389, @function
-.globl  str389_rf
-.type  str389_rf, @function
-.globl  str390
-.type  str390, @function
-.globl  str390_rf
-.type  str390_rf, @function
-.globl  str391
-.type  str391, @function
-.globl  str391_rf
-.type  str391_rf, @function
-.globl  str392
-.type  str392, @function
-.globl  str392_rf
-.type  str392_rf, @function
-.globl  str393
-.type  str393, @function
-.globl  str393_rf
-.type  str393_rf, @function
-.globl  str394
-.type  str394, @function
-.globl  str394_rf
-.type  str394_rf, @function
-.globl  str395
-.type  str395, @function
-.globl  str395_rf
-.type  str395_rf, @function
-.globl  str396
-.type  str396, @function
-.globl  str396_rf
-.type  str396_rf, @function
-.globl  str397
-.type  str397, @function
-.globl  str397_rf
-.type  str397_rf, @function
-.globl  str398
-.type  str398, @function
-.globl  str398_rf
-.type  str398_rf, @function
-.globl  str399
-.type  str399, @function
-.globl  str399_rf
-.type  str399_rf, @function
-.globl  str400
-.type  str400, @function
-.globl  str400_rf
-.type  str400_rf, @function
-.globl  str401
-.type  str401, @function
-.globl  str401_rf
-.type  str401_rf, @function
-.globl  str402
-.type  str402, @function
-.globl  str402_rf
-.type  str402_rf, @function
-.globl  str403
-.type  str403, @function
-.globl  str403_rf
-.type  str403_rf, @function
-.globl  str404
-.type  str404, @function
-.globl  str404_rf
-.type  str404_rf, @function
-.globl  str405
-.type  str405, @function
-.globl  str405_rf
-.type  str405_rf, @function
-.globl  str406
-.type  str406, @function
-.globl  str406_rf
-.type  str406_rf, @function
-.globl  str407
-.type  str407, @function
-.globl  str407_rf
-.type  str407_rf, @function
-.globl  str408
-.type  str408, @function
-.globl  str408_rf
-.type  str408_rf, @function
-.globl  str409
-.type  str409, @function
-.globl  str409_rf
-.type  str409_rf, @function
-.globl  str410
-.type  str410, @function
-.globl  str410_rf
-.type  str410_rf, @function
-.globl  str411
-.type  str411, @function
-.globl  str411_rf
-.type  str411_rf, @function
-.globl  str412
-.type  str412, @function
-.globl  str412_rf
-.type  str412_rf, @function
-.globl  str413
-.type  str413, @function
-.globl  str413_rf
-.type  str413_rf, @function
-.globl  str414
-.type  str414, @function
-.globl  str414_rf
-.type  str414_rf, @function
-.globl  str415
-.type  str415, @function
-.globl  str415_rf
-.type  str415_rf, @function
-str0:	.text
-str1:	.file	"sum_tree.tpal_orig.cpp"
-str2:	.globl	_Z25tpalrts_prmlist_push_back12tpalrts_prmlP17tpalrts_prml_node
-str3:	.p2align	4, 0x90
-str4:	.type	_Z25tpalrts_prmlist_push_back12tpalrts_prmlP17tpalrts_prml_node,@function
+str0:	.file	"sum_tree.tpal_orig.cpp"
+str1:	.text
+str2:	.p2align 4,,15
+str3:	.globl	_Z25tpalrts_prmlist_push_back12tpalrts_prmlP17tpalrts_prml_node
+str4:	.type	_Z25tpalrts_prmlist_push_back12tpalrts_prmlP17tpalrts_prml_node, @function
 _Z25tpalrts_prmlist_push_back12tpalrts_prmlP17tpalrts_prml_node:
-str5:	testq	%rsi, %rsi
-str6:	je	.LBB0_2
-str7:	movq	%rdx, 8(%rsi)
-.LBB0_2:
-str8:	testq	%rdi, %rdi
-str9:	cmoveq	%rdx, %rdi
+.LFB756:
+str5:	.cfi_startproc
+str6:	testq	%rsi, %rsi
+str7:	je	.L2
+str8:	movq	%rdx, 8(%rsi)
+.L2:
+str9:	testq	%rdi, %rdi
 str10:	movq	%rdi, %rax
-str11:	retq
-.Lfunc_end0:
-str12:	.size	_Z25tpalrts_prmlist_push_back12tpalrts_prmlP17tpalrts_prml_node, .Lfunc_end0-_Z25tpalrts_prmlist_push_back12tpalrts_prmlP17tpalrts_prml_node
-str13:
-str14:	.globl	_Z24tpalrts_prmlist_pop_back12tpalrts_prml
-str15:	.p2align	4, 0x90
-str16:	.type	_Z24tpalrts_prmlist_pop_back12tpalrts_prml,@function
+str11:	cmove	%rdx, %rax
+str12:	ret
+str13:	.cfi_endproc
+.LFE756:
+str14:	.size	_Z25tpalrts_prmlist_push_back12tpalrts_prmlP17tpalrts_prml_node, .-_Z25tpalrts_prmlist_push_back12tpalrts_prmlP17tpalrts_prml_node
+str15:	.p2align 4,,15
+str16:	.globl	_Z24tpalrts_prmlist_pop_back12tpalrts_prml
+str17:	.type	_Z24tpalrts_prmlist_pop_back12tpalrts_prml, @function
 _Z24tpalrts_prmlist_pop_back12tpalrts_prml:
-str17:	movq	(%rsi), %rdx
-str18:	testq	%rdx, %rdx
-str19:	je	.LBB1_1
-str20:	movq	%rdi, %rax
-str21:	movq	$0, 8(%rdx)
-str22:	movq	$0, (%rsi)
-str23:	retq
-.LBB1_1:
-str24:	xorl	%edi, %edi
-str25:	movq	%rdi, %rax
-str26:	retq
-.Lfunc_end1:
-str27:	.size	_Z24tpalrts_prmlist_pop_back12tpalrts_prml, .Lfunc_end1-_Z24tpalrts_prmlist_pop_back12tpalrts_prml
-str28:
-str29:	.globl	_Z13sum_heartbeatP4nodeRSt5dequeI7vhbkontSaIS2_EE12tpalrts_prml
-str30:	.p2align	4, 0x90
-str31:	.type	_Z13sum_heartbeatP4nodeRSt5dequeI7vhbkontSaIS2_EE12tpalrts_prml,@function
+.LFB757:
+str18:	.cfi_startproc
+str19:	movq	(%rsi), %rdx
+str20:	testq	%rdx, %rdx
+str21:	je	.L10
+str22:	movq	$0, 8(%rdx)
+str23:	movq	%rdi, %rax
+str24:	movq	$0, (%rsi)
+str25:	ret
+str26:	.p2align 4,,15
+.L10:
+str27:	xorl	%eax, %eax
+str28:	ret
+str29:	.cfi_endproc
+.LFE757:
+str30:	.size	_Z24tpalrts_prmlist_pop_back12tpalrts_prml, .-_Z24tpalrts_prmlist_pop_back12tpalrts_prml
+str31:	.p2align 4,,15
+str32:	.globl	_Z13sum_heartbeatP4nodeRSt5dequeI7vhbkontSaIS2_EE12tpalrts_prml
+str33:	.type	_Z13sum_heartbeatP4nodeRSt5dequeI7vhbkontSaIS2_EE12tpalrts_prml, @function
 _Z13sum_heartbeatP4nodeRSt5dequeI7vhbkontSaIS2_EE12tpalrts_prml:
-str32:	.cfi_startproc
-str33:	pushq	%rbp
-str34:	.cfi_def_cfa_offset 16
+.LFB767:
+str34:	.cfi_startproc
 str35:	pushq	%r15
-str36:	.cfi_def_cfa_offset 24
-str37:	pushq	%r14
-str38:	.cfi_def_cfa_offset 32
-str39:	pushq	%r13
-str40:	.cfi_def_cfa_offset 40
-str41:	pushq	%r12
-str42:	.cfi_def_cfa_offset 48
-str43:	pushq	%rbx
-str44:	.cfi_def_cfa_offset 56
-str45:	subq	$40, %rsp
-str46:	.cfi_def_cfa_offset 96
-str47:	.cfi_offset %rbx, -56
-str48:	.cfi_offset %r12, -48
-str49:	.cfi_offset %r13, -40
-str50:	.cfi_offset %r14, -32
-str51:	.cfi_offset %r15, -24
-str52:	.cfi_offset %rbp, -16
-str53:	nop
-str54:	movq	%rcx, %rax
-str55:	movq	%rdx, %r14
+str36:	.cfi_def_cfa_offset 16
+str37:	.cfi_offset 15, -16
+str38:	pushq	%r14
+str39:	.cfi_def_cfa_offset 24
+str40:	.cfi_offset 14, -24
+str41:	movq	%rdx, %r15
+str42:	movq	%rcx, %r14
+str43:	pushq	%r13
+str44:	.cfi_def_cfa_offset 32
+str45:	.cfi_offset 13, -32
+str46:	pushq	%r12
+str47:	.cfi_def_cfa_offset 40
+str48:	.cfi_offset 12, -40
+str49:	movq	%rdi, %r12
+str50:	pushq	%rbp
+str51:	.cfi_def_cfa_offset 48
+str52:	.cfi_offset 6, -48
+str53:	pushq	%rbx
+str54:	.cfi_def_cfa_offset 56
+str55:	.cfi_offset 3, -56
 str56:	movq	%rsi, %rbx
-str57:	movq	%rdi, %r12
-str58:	movl	$512, %ebp
-str59:	nop
-str60:	nop
-str61:	jmp	.LBB2_2
-str62:	.p2align	4, 0x90
-.LBB2_32:
-str63:	movq	8(%r12), %r12
-str64:	testq	%r14, %r14
-str65:	cmoveq	%rax, %r14
-str66:	cmpb	$0, (%r13)
-str67:	je	.LBB2_2
-.LBB2_3:
-str68:	movq	%r14, %rdi
-str69:	movq	%rax, %rsi
-str70:	callq	_Z26sum_tree_heartbeat_handler12tpalrts_prml@PLT
-str71:	movq	%rax, %r14
-str72:	movq	%rdx, %r15
-str73:	testq	%r12, %r12
-str74:	je	.LBB2_5
-.LBB2_23:
-str75:	movq	64(%rbx), %rax
-str76:	movq	48(%rbx), %rcx
-str77:	addq	$-32, %rax
-str78:	cmpq	%rax, %rcx
-str79:	je	.LBB2_24
-str80:	movl	$0, (%rcx)
-str81:	movq	%r15, 8(%rcx)
-str82:	movq	$0, 16(%rcx)
-str83:	movq	%r12, 24(%rcx)
-str84:	movq	48(%rbx), %rax
-str85:	addq	$32, %rax
-str86:	movq	%rax, 48(%rbx)
-str87:	cmpq	56(%rbx), %rax
-str88:	je	.LBB2_29
-str89:	addq	$-24, %rax
-str90:	testq	%r15, %r15
-str91:	jne	.LBB2_31
-str92:	jmp	.LBB2_32
-str93:	.p2align	4, 0x90
-.LBB2_24:
-str94:	movq	72(%rbx), %rax
-str95:	movq	32(%rbx), %rsi
-str96:	subq	56(%rbx), %rcx
-str97:	subq	16(%rbx), %rsi
-str98:	sarq	$5, %rcx
-str99:	movq	%rax, %rdx
-str100:	subq	40(%rbx), %rdx
-str101:	sarq	$5, %rsi
-str102:	leaq	(%rcx,%rdx,2), %rcx
-str103:	movabsq	$288230376151711759, %rdx
-str104:	addq	%rcx, %rsi
-str105:	cmpq	%rdx, %rsi
-str106:	je	.LBB2_33
-str107:	movq	8(%rbx), %rcx
-str108:	subq	(%rbx), %rax
-str109:	sarq	$3, %rax
-str110:	subq	%rax, %rcx
-str111:	cmpq	$1, %rcx
-str112:	ja	.LBB2_27
-str113:	movl	$1, %esi
-str114:	xorl	%edx, %edx
-str115:	movq	%rbx, %rdi
-str116:	callq	_ZNSt5dequeI7vhbkontSaIS0_EE17_M_reallocate_mapEmb@PLT
-.LBB2_27:
-str117:	movl	$512, %edi
-str118:	callq	_Znwm@PLT
-str119:	movq	72(%rbx), %rcx
-str120:	movq	%rax, 8(%rcx)
-str121:	movq	48(%rbx), %rax
-str122:	movl	$0, (%rax)
-str123:	movq	%r15, 8(%rax)
-str124:	movq	$0, 16(%rax)
-str125:	movq	%r12, 24(%rax)
-str126:	movq	72(%rbx), %rax
-str127:	leaq	8(%rax), %rcx
-str128:	movq	%rcx, 72(%rbx)
-str129:	movq	8(%rax), %rax
-str130:	leaq	512(%rax), %rcx
-str131:	movq	%rax, 56(%rbx)
-str132:	movq	%rcx, 64(%rbx)
-str133:	movq	%rax, 48(%rbx)
-.LBB2_29:
-str134:	movq	72(%rbx), %rax
-str135:	movq	-8(%rax), %rax
-str136:	addq	%rbp, %rax
-str137:	addq	$-24, %rax
-str138:	testq	%r15, %r15
-str139:	je	.LBB2_32
-.LBB2_31:
-str140:	movq	%rax, 8(%r15)
-str141:	jmp	.LBB2_32
-str142:	.p2align	4, 0x90
-.LBB2_2:
-str143:	movq	%rax, %r15
-str144:	testq	%r12, %r12
-str145:	jne	.LBB2_23
-.LBB2_5:
-str146:	leaq	.LJTI2_0(%rip), %r12
-str147:	movl	$0, 12(%rsp)
-str148:	jmp	.LBB2_6
-.LBB2_15:
-str149:	addq	$-32, %rdi
-str150:	movq	%rdi, 48(%rbx)
-str151:	.p2align	4, 0x90
-.LBB2_6:
-str152:	cmpb	$0, (%r13)
-str153:	je	.LBB2_8
-str154:	movq	%r14, %rdi
-str155:	movq	%r15, %rsi
-str156:	callq	_Z26sum_tree_heartbeat_handler12tpalrts_prml@PLT
-str157:	movq	%rax, %r14
-str158:	movq	%rdx, %r15
-.LBB2_8:
-str159:	movq	48(%rbx), %rdi
-str160:	movq	56(%rbx), %rax
-str161:	movq	%rdi, %rcx
-str162:	cmpq	%rax, %rdi
-str163:	je	.LBB2_9
-str164:	movl	-32(%rcx), %edx
-str165:	cmpq	$4, %rdx
-str166:	ja	.LBB2_6
-.LBB2_11:
-str167:	movslq	(%r12,%rdx,4), %rsi
-str168:	addq	%r12, %rsi
-str169:	jmpq	*%rsi
-.LBB2_14:
-str170:	movl	12(%rsp), %edx
-str171:	addl	-24(%rcx), %edx
-str172:	movq	-16(%rcx), %rcx
-str173:	addl	(%rcx), %edx
-str174:	cmpq	%rax, %rdi
-str175:	movl	%edx, 12(%rsp)
-str176:	jne	.LBB2_15
-str177:	callq	_ZdlPv@PLT
-str178:	movq	72(%rbx), %rax
-str179:	leaq	-8(%rax), %rcx
-str180:	movq	%rcx, 72(%rbx)
-str181:	movq	-8(%rax), %rax
-str182:	movq	%rax, 56(%rbx)
-str183:	leaq	512(%rax), %rcx
-str184:	addq	$480, %rax
-str185:	movq	%rcx, 64(%rbx)
-str186:	movq	%rax, 48(%rbx)
-str187:	jmp	.LBB2_6
-str188:	.p2align	4, 0x90
-.LBB2_9:
-str189:	movq	72(%rbx), %rcx
-str190:	movq	-8(%rcx), %rcx
-str191:	addq	%rbp, %rcx
-str192:	movl	-32(%rcx), %edx
-str193:	cmpq	$4, %rdx
-str194:	ja	.LBB2_6
-str195:	jmp	.LBB2_11
-.LBB2_12:
-str196:	movq	(%r15), %rax
-str197:	testq	%rax, %rax
-str198:	je	.LBB2_13
-str199:	movq	$0, 8(%rax)
-str200:	movq	$0, (%r15)
-str201:	jmp	.LBB2_22
-.LBB2_13:
-str202:	xorl	%r14d, %r14d
-.LBB2_22:
-str203:	movq	-8(%rcx), %rdx
-str204:	movl	12(%rsp), %esi
-str205:	movq	16(%rdx), %r12
-str206:	movl	$1, -32(%rcx)
-str207:	movl	%esi, -24(%rcx)
-str208:	movq	%rdx, -16(%rcx)
-str209:	cmpb	$0, (%r13)
-str210:	jne	.LBB2_3
-str211:	jmp	.LBB2_2
-.LBB2_18:
-str212:	xorl	%eax, %eax
-str213:	cmpl	$3, %edx
-str214:	movq	-24(%rcx), %rdx
-str215:	movl	12(%rsp), %esi
-str216:	setne	%al
-str217:	movl	%esi, (%rdx,%rax,4)
-str218:	movq	-16(%rcx), %rdi
-str219:	jne	.LBB2_20
-str220:	movq	-8(%rcx), %rax
-str221:	vmovups	(%rax), %xmm0
-str222:	vmovaps	%xmm0, 16(%rsp)
-str223:	vmovups	(%rbx), %ymm2
-str224:	vmovups	32(%rbx), %ymm3
-str225:	vmovups	48(%rbx), %ymm4
-str226:	vmovups	16(%rax), %ymm0
-str227:	vmovups	48(%rax), %ymm1
-str228:	vmovups	%ymm3, 32(%rax)
-str229:	vmovups	%ymm4, 48(%rax)
-str230:	vmovups	%ymm2, (%rax)
-str231:	vmovaps	16(%rsp), %xmm2
-str232:	vmovups	%xmm2, (%rbx)
-str233:	vmovups	%ymm0, 16(%rbx)
-str234:	vmovups	%ymm1, 48(%rbx)
-.LBB2_20:
-str235:	addq	$40, %rsp
-str236:	.cfi_def_cfa_offset 56
-str237:	popq	%rbx
-str238:	.cfi_def_cfa_offset 48
-str239:	popq	%r12
-str240:	.cfi_def_cfa_offset 40
-str241:	popq	%r13
-str242:	.cfi_def_cfa_offset 32
-str243:	popq	%r14
-str244:	.cfi_def_cfa_offset 24
-str245:	popq	%r15
-str246:	.cfi_def_cfa_offset 16
-str247:	popq	%rbp
-str248:	.cfi_def_cfa_offset 8
-str249:	vzeroupper
+str57:	subq	$24, %rsp
+str58:	.cfi_def_cfa_offset 80
+.L13:
+str59:	testq	%r12, %r12
+str60:	je	.L43
+.L41:
+str61:	movq	64(%rbx), %rax
+str62:	movq	48(%rbx), %rdx
+str63:	movq	72(%rbx), %r13
+str64:	subq	$32, %rax
+str65:	cmpq	%rax, %rdx
+str66:	je	.L25
+str67:	movl	$0, (%rdx)
+str68:	movq	%r14, 8(%rdx)
+str69:	addq	$32, %rdx
+str70:	movq	$0, -16(%rdx)
+str71:	movq	%r12, -8(%rdx)
+str72:	movq	%rdx, 48(%rbx)
+str73:	cmpq	56(%rbx), %rdx
+str74:	je	.L26
+.L34:
+str75:	movq	%r15, %rdi
+str76:	movq	%r14, %rsi
+str77:	subq	$24, %rdx
+str78:	call	_Z25tpalrts_prmlist_push_back12tpalrts_prmlP17tpalrts_prml_node@PLT
+str79:	movq	8(%r12), %r12
+str80:	movq	%rax, %r15
+str81:	movq	%rdx, %r14
+str82:	testq	%r12, %r12
+str83:	jne	.L41
+.L43:
+str84:	nop
+str85:	xorl	%ebp, %ebp
+str86:	.p2align 4,,15
+.L14:
+str87:	nop
+str88:	nop
+str89:	nop
+str90:	movq	48(%rbx), %rdi
+str91:	movq	56(%rbx), %rdx
+str92:	movq	%rdi, %r13
+str93:	cmpq	%rdx, %rdi
+str94:	je	.L45
+.L17:
+str95:	movl	-32(%r13), %eax
+str96:	testl	%eax, %eax
+str97:	je	.L46
+.L18:
+str98:	cmpl	$1, %eax
+str99:	je	.L47
+str100:	cmpl	$2, %eax
+str101:	je	.L48
+str102:	leal	-3(%rax), %edx
+str103:	cmpl	$1, %edx
+str104:	ja	.L14
+str105:	movq	-24(%r13), %rdx
+str106:	xorl	%ecx, %ecx
+str107:	cmpl	$3, %eax
+str108:	setne	%cl
+str109:	movl	%ebp, (%rdx,%rcx,4)
+str110:	movq	-16(%r13), %rdi
+str111:	jne	.L24
+str112:	vmovups	16(%rbx), %xmm4
+str113:	movq	-8(%r13), %rax
+str114:	movq	16(%rax), %r8
+str115:	movq	24(%rax), %rsi
+str116:	movq	32(%rax), %rcx
+str117:	movq	40(%rax), %rdx
+str118:	vmovups	%xmm4, 16(%rax)
+str119:	vmovups	32(%rbx), %xmm5
+str120:	vmovups	%xmm5, 32(%rax)
+str121:	movq	%r8, 16(%rbx)
+str122:	movq	%rsi, 24(%rbx)
+str123:	movq	%rcx, 32(%rbx)
+str124:	movq	%rdx, 40(%rbx)
+str125:	vmovups	48(%rbx), %xmm6
+str126:	movq	48(%rax), %r8
+str127:	movq	56(%rax), %rsi
+str128:	movq	64(%rax), %rcx
+str129:	movq	72(%rax), %rdx
+str130:	vmovups	%xmm6, 48(%rax)
+str131:	vmovups	64(%rbx), %xmm7
+str132:	vmovups	%xmm7, 64(%rax)
+str133:	movq	%rcx, 64(%rbx)
+str134:	movq	(%rbx), %rcx
+str135:	movq	%r8, 48(%rbx)
+str136:	movq	%rsi, 56(%rbx)
+str137:	movq	%rdx, 72(%rbx)
+str138:	movq	(%rax), %rdx
+str139:	movq	%rcx, (%rax)
+str140:	movq	8(%rbx), %rcx
+str141:	movq	%rdx, (%rbx)
+str142:	movq	8(%rax), %rdx
+str143:	movq	%rcx, 8(%rax)
+str144:	movq	%rdx, 8(%rbx)
+str145:	jmp	.L24
+str146:	.p2align 4,,15
+.L44:
+str147:	movq	%r15, %rdi
+str148:	movq	%r14, %rsi
+str149:	call	_Z26sum_tree_heartbeat_handler12tpalrts_prml@PLT
+str150:	movq	48(%rbx), %rdi
+str151:	movq	%rdx, %r14
+str152:	movq	56(%rbx), %rdx
+str153:	movq	%rax, %r15
+str154:	movq	%rdi, %r13
+str155:	cmpq	%rdx, %rdi
+str156:	jne	.L17
+.L45:
+str157:	movq	72(%rbx), %rax
+str158:	movq	-8(%rax), %r13
+str159:	addq	$512, %r13
+str160:	movl	-32(%r13), %eax
+str161:	testl	%eax, %eax
+str162:	jne	.L18
+.L46:
+str163:	movq	%r15, %rdi
+str164:	movq	%r14, %rsi
+str165:	call	_Z24tpalrts_prmlist_pop_back12tpalrts_prml@PLT
+str166:	movq	%rax, %r15
+str167:	movq	-8(%r13), %rax
+str168:	movq	%rdx, %r14
+str169:	movq	16(%rax), %r12
+str170:	movl	$1, -32(%r13)
+str171:	movl	%ebp, -24(%r13)
+str172:	movq	%rax, -16(%r13)
+str173:	jmp	.L13
+str174:	.p2align 4,,15
+.L47:
+str175:	movq	-16(%r13), %rax
+str176:	addl	-24(%r13), %ebp
+str177:	addl	(%rax), %ebp
+str178:	cmpq	%rdx, %rdi
+str179:	je	.L21
+str180:	subq	$32, %rdi
+str181:	movq	%rdi, 48(%rbx)
+str182:	jmp	.L14
+str183:	.p2align 4,,15
+.L25:
+str184:	movq	(%rbx), %rdi
+str185:	movq	8(%rbx), %rdx
+str186:	movq	%r13, %rax
+str187:	subq	%rdi, %rax
+str188:	movq	%rdx, %rcx
+str189:	sarq	$3, %rax
+str190:	subq	%rax, %rcx
+str191:	cmpq	$1, %rcx
+str192:	jbe	.L49
+.L28:
+str193:	movl	$512, %edi
+str194:	call	_Znwm@PLT
+str195:	movq	%rax, 8(%r13)
+str196:	movq	48(%rbx), %rax
+str197:	movq	%r14, 8(%rax)
+str198:	movl	$0, (%rax)
+str199:	movq	$0, 16(%rax)
+str200:	movq	%r12, 24(%rax)
+str201:	movq	72(%rbx), %rax
+str202:	leaq	8(%rax), %r13
+str203:	movq	8(%rax), %rax
+str204:	movq	%rax, (%rsp)
+str205:	addq	$512, %rax
+str206:	vmovddup	(%rsp), %xmm0
+str207:	movq	%rax, (%rsp)
+str208:	vmovq	(%rsp), %xmm3
+str209:	vmovups	%xmm0, 48(%rbx)
+str210:	vpinsrq	$1, %r13, %xmm3, %xmm0
+str211:	vmovups	%xmm0, 64(%rbx)
+.L26:
+str212:	movq	-8(%r13), %rdx
+str213:	addq	$512, %rdx
+str214:	jmp	.L34
+str215:	.p2align 4,,15
+.L21:
+str216:	call	_ZdlPv@PLT
+str217:	movq	72(%rbx), %rax
+str218:	movq	-8(%rax), %rdx
+str219:	subq	$8, %rax
+str220:	leaq	480(%rdx), %rcx
+str221:	movq	%rcx, (%rsp)
+str222:	leaq	512(%rdx), %rcx
+str223:	vmovq	(%rsp), %xmm1
+str224:	movq	%rcx, (%rsp)
+str225:	vpinsrq	$1, %rdx, %xmm1, %xmm0
+str226:	vmovups	%xmm0, 48(%rbx)
+str227:	vmovq	(%rsp), %xmm2
+str228:	vpinsrq	$1, %rax, %xmm2, %xmm0
+str229:	vmovups	%xmm0, 64(%rbx)
+str230:	jmp	.L14
+str231:	.p2align 4,,15
+.L48:
+str232:	movq	answer@GOTPCREL(%rip), %rax
+str233:	movq	-24(%r13), %rdi
+str234:	movl	%ebp, (%rax)
+.L24:
+str235:	addq	$24, %rsp
+str236:	.cfi_remember_state
+str237:	.cfi_def_cfa_offset 56
+str238:	popq	%rbx
+str239:	.cfi_def_cfa_offset 48
+str240:	popq	%rbp
+str241:	.cfi_def_cfa_offset 40
+str242:	popq	%r12
+str243:	.cfi_def_cfa_offset 32
+str244:	popq	%r13
+str245:	.cfi_def_cfa_offset 24
+str246:	popq	%r14
+str247:	.cfi_def_cfa_offset 16
+str248:	popq	%r15
+str249:	.cfi_def_cfa_offset 8
 str250:	jmp	_Z4joinP4task@PLT
-.LBB2_17:
-str251:	.cfi_def_cfa_offset 96
-str252:	movq	answer@GOTPCREL(%rip), %rax
-str253:	movl	12(%rsp), %ecx
-str254:	movl	%ecx, (%rax)
-str255:	addq	$40, %rsp
-str256:	.cfi_def_cfa_offset 56
-str257:	popq	%rbx
-str258:	.cfi_def_cfa_offset 48
-str259:	popq	%r12
-str260:	.cfi_def_cfa_offset 40
-str261:	popq	%r13
-str262:	.cfi_def_cfa_offset 32
-str263:	popq	%r14
-str264:	.cfi_def_cfa_offset 24
-str265:	popq	%r15
-str266:	.cfi_def_cfa_offset 16
-str267:	popq	%rbp
-str268:	.cfi_def_cfa_offset 8
-str269:	retq
-.LBB2_33:
-str270:	.cfi_def_cfa_offset 96
-str271:	leaq	.L.str(%rip), %rdi
-str272:	callq	_ZSt20__throw_length_errorPKc@PLT
-.Lfunc_end2:
-str273:	.size	_Z13sum_heartbeatP4nodeRSt5dequeI7vhbkontSaIS2_EE12tpalrts_prml, .Lfunc_end2-_Z13sum_heartbeatP4nodeRSt5dequeI7vhbkontSaIS2_EE12tpalrts_prml
-str274:	.cfi_endproc
-str275:	.section	.rodata,"a",@progbits
-str276:	.p2align	2
-.LJTI2_0:
-str277:	.long	.LBB2_12-.LJTI2_0
-str278:	.long	.LBB2_14-.LJTI2_0
-str279:	.long	.LBB2_17-.LJTI2_0
-str280:	.long	.LBB2_18-.LJTI2_0
-str281:	.long	.LBB2_18-.LJTI2_0
-str282:
-str283:	.section	.text._ZNSt5dequeI7vhbkontSaIS0_EE17_M_reallocate_mapEmb,"axG",@progbits,_ZNSt5dequeI7vhbkontSaIS0_EE17_M_reallocate_mapEmb,comdat
-str284:	.weak	_ZNSt5dequeI7vhbkontSaIS0_EE17_M_reallocate_mapEmb
-str285:	.p2align	4, 0x90
-str286:	.type	_ZNSt5dequeI7vhbkontSaIS0_EE17_M_reallocate_mapEmb,@function
-_ZNSt5dequeI7vhbkontSaIS0_EE17_M_reallocate_mapEmb:
-str287:	.cfi_startproc
-str288:	pushq	%rbp
-str289:	.cfi_def_cfa_offset 16
-str290:	pushq	%r15
-str291:	.cfi_def_cfa_offset 24
-str292:	pushq	%r14
-str293:	.cfi_def_cfa_offset 32
-str294:	pushq	%r13
-str295:	.cfi_def_cfa_offset 40
-str296:	pushq	%r12
-str297:	.cfi_def_cfa_offset 48
-str298:	pushq	%rbx
-str299:	.cfi_def_cfa_offset 56
-str300:	pushq	%rax
-str301:	.cfi_def_cfa_offset 64
-str302:	.cfi_offset %rbx, -56
-str303:	.cfi_offset %r12, -48
-str304:	.cfi_offset %r13, -40
-str305:	.cfi_offset %r14, -32
-str306:	.cfi_offset %r15, -24
-str307:	.cfi_offset %rbp, -16
-str308:	movl	%edx, %r12d
-str309:	movq	72(%rdi), %rdx
-str310:	movq	%rsi, %r14
-str311:	movq	40(%rdi), %rsi
-str312:	movq	8(%rdi), %rax
-str313:	movq	%rdi, %rbx
-str314:	movq	%rdx, %rbp
-str315:	subq	%rsi, %rbp
-str316:	sarq	$3, %rbp
-str317:	leaq	1(%rbp,%r14), %r15
-str318:	leaq	(%r15,%r15), %rcx
-str319:	cmpq	%rcx, %rax
-str320:	jbe	.LBB3_4
-str321:	subq	%r15, %rax
-str322:	movabsq	$4611686018427387902, %rcx
-str323:	andq	%rax, %rcx
-str324:	xorl	%eax, %eax
-str325:	shlq	$2, %rcx
-str326:	addq	(%rbx), %rcx
-str327:	testb	%r12b, %r12b
-str328:	cmovneq	%r14, %rax
-str329:	addq	$8, %rdx
-str330:	subq	%rsi, %rdx
-str331:	leaq	(%rcx,%rax,8), %r14
-str332:	cmpq	%rsi, %r14
-str333:	jae	.LBB3_8
-str334:	testq	%rdx, %rdx
-str335:	je	.LBB3_11
-str336:	movq	%r14, %rdi
-str337:	jmp	.LBB3_10
-.LBB3_4:
-str338:	cmpq	%r14, %rax
-str339:	movq	%rax, %rcx
-str340:	cmovbq	%r14, %rcx
-str341:	leaq	2(%rax,%rcx), %r13
-str342:	movq	%r13, %rax
-str343:	shrq	$60, %rax
-str344:	jne	.LBB3_12
-str345:	leaq	(,%r13,8), %rdi
-str346:	callq	_Znwm@PLT
-str347:	movq	%r13, %rdx
-str348:	movabsq	$4611686018427387902, %rcx
-str349:	movq	40(%rbx), %rsi
-str350:	subq	%r15, %rdx
-str351:	movq	%rax, %r15
-str352:	andq	%rdx, %rcx
-str353:	movq	72(%rbx), %rdx
-str354:	leaq	(%rax,%rcx,4), %rax
-str355:	xorl	%ecx, %ecx
-str356:	testb	%r12b, %r12b
-str357:	cmovneq	%r14, %rcx
-str358:	leaq	(%rax,%rcx,8), %r14
-str359:	addq	$8, %rdx
-str360:	subq	%rsi, %rdx
-str361:	je	.LBB3_7
-str362:	movq	%r14, %rdi
-str363:	callq	memmove@PLT
-.LBB3_7:
-str364:	movq	(%rbx), %rdi
-str365:	callq	_ZdlPv@PLT
-str366:	movq	%r15, (%rbx)
-str367:	movq	%r13, 8(%rbx)
-str368:	jmp	.LBB3_11
-.LBB3_8:
-str369:	testq	%rdx, %rdx
-str370:	je	.LBB3_11
-str371:	leaq	1(%rbp), %rax
-str372:	leaq	(%r14,%rax,8), %rdi
-str373:	subq	%rdx, %rdi
-.LBB3_10:
-str374:	callq	memmove@PLT
-.LBB3_11:
-str375:	movq	%r14, 40(%rbx)
-str376:	leaq	(%r14,%rbp,8), %rcx
-str377:	movq	(%r14), %rax
-str378:	movq	%rax, 24(%rbx)
-str379:	addq	$512, %rax
-str380:	movq	%rax, 32(%rbx)
-str381:	movq	%rcx, 72(%rbx)
-str382:	movq	(%r14,%rbp,8), %rax
-str383:	movq	%rax, 56(%rbx)
-str384:	addq	$512, %rax
-str385:	movq	%rax, 64(%rbx)
-str386:	addq	$8, %rsp
-str387:	.cfi_def_cfa_offset 56
-str388:	popq	%rbx
-str389:	.cfi_def_cfa_offset 48
-str390:	popq	%r12
-str391:	.cfi_def_cfa_offset 40
-str392:	popq	%r13
-str393:	.cfi_def_cfa_offset 32
-str394:	popq	%r14
-str395:	.cfi_def_cfa_offset 24
-str396:	popq	%r15
-str397:	.cfi_def_cfa_offset 16
-str398:	popq	%rbp
-str399:	.cfi_def_cfa_offset 8
-str400:	retq
-.LBB3_12:
-str401:	.cfi_def_cfa_offset 64
-str402:	callq	_ZSt17__throw_bad_allocv@PLT
-.Lfunc_end3:
-str403:	.size	_ZNSt5dequeI7vhbkontSaIS0_EE17_M_reallocate_mapEmb, .Lfunc_end3-_ZNSt5dequeI7vhbkontSaIS0_EE17_M_reallocate_mapEmb
-str404:	.cfi_endproc
-str405:
-str406:	.type	.L.str,@object
-str407:	.section	.rodata.str1.1,"aMS",@progbits,1
-.L.str:
-str408:	.asciz	"cannot create std::deque larger than max_size()"
-str409:	.size	.L.str, 48
-str410:
-str411:
-str412:	.ident	"clang version 7.1.0 (tags/RELEASE_710/final)"
-str413:	nop
-str414:	nop
-str415: nop
-	
+.L49:
+str251:	.cfi_restore_state
+str252:	movq	40(%rbx), %rsi
+str253:	movq	%r13, %rax
+str254:	subq	%rsi, %rax
+str255:	sarq	$3, %rax
+str256:	leaq	2(%rax), %rcx
+str257:	leaq	1(%rax), %rbp
+str258:	leaq	(%rcx,%rcx), %rax
+str259:	cmpq	%rax, %rdx
+str260:	jbe	.L29
+str261:	subq	%rcx, %rdx
+str262:	addq	$8, %r13
+str263:	salq	$3, %rbp
+str264:	movq	%rdx, %rax
+str265:	movq	%r13, %rdx
+str266:	shrq	%rax
+str267:	subq	%rsi, %rdx
+str268:	leaq	(%rdi,%rax,8), %rcx
+str269:	cmpq	%rcx, %rsi
+str270:	jbe	.L30
+str271:	cmpq	%r13, %rsi
+str272:	je	.L31
+str273:	movq	%rcx, %rdi
+str274:	call	memmove@PLT
+str275:	movq	%rax, %rcx
+str276:	jmp	.L31
+.L29:
+str277:	testq	%rdx, %rdx
+str278:	jne	.L50
+str279:	movl	$3, %r13d
+.L32:
+str280:	leaq	0(,%r13,8), %rdi
+str281:	movq	%rcx, (%rsp)
+str282:	call	_Znwm@PLT
+str283:	movq	(%rsp), %rcx
+str284:	movq	%rax, %r9
+str285:	movq	%r13, %rax
+str286:	movq	40(%rbx), %rsi
+str287:	subq	%rcx, %rax
+str288:	shrq	%rax
+str289:	leaq	(%r9,%rax,8), %rcx
+str290:	movq	72(%rbx), %rax
+str291:	leaq	8(%rax), %rdx
+str292:	cmpq	%rsi, %rdx
+str293:	je	.L33
+str294:	movq	%rcx, %rdi
+str295:	subq	%rsi, %rdx
+str296:	movq	%r9, (%rsp)
+str297:	call	memmove@PLT
+str298:	movq	(%rsp), %r9
+str299:	movq	%rax, %rcx
+.L33:
+str300:	movq	(%rbx), %rdi
+str301:	movq	%r9, 8(%rsp)
+str302:	movq	%rcx, (%rsp)
+str303:	salq	$3, %rbp
+str304:	call	_ZdlPv@PLT
+str305:	movq	8(%rsp), %r9
+str306:	movq	%r13, 8(%rbx)
+str307:	movq	(%rsp), %rcx
+str308:	movq	%r9, (%rbx)
+.L31:
+str309:	movq	(%rcx), %rax
+str310:	leaq	-8(%rcx,%rbp), %r13
+str311:	movq	%rcx, 40(%rbx)
+str312:	movq	%r13, 72(%rbx)
+str313:	movq	%rax, 24(%rbx)
+str314:	addq	$512, %rax
+str315:	movq	%rax, 32(%rbx)
+str316:	movq	0(%r13), %rax
+str317:	movq	%rax, 56(%rbx)
+str318:	addq	$512, %rax
+str319:	movq	%rax, 64(%rbx)
+str320:	jmp	.L28
+.L30:
+str321:	cmpq	%r13, %rsi
+str322:	je	.L31
+str323:	movq	%rbp, %rdi
+str324:	movq	%rcx, (%rsp)
+str325:	subq	%rdx, %rdi
+str326:	addq	%rcx, %rdi
+str327:	call	memmove@PLT
+str328:	movq	(%rsp), %rcx
+str329:	jmp	.L31
+.L50:
+str330:	leaq	2(%rdx,%rdx), %r13
+str331:	movabsq	$2305843009213693951, %rax
+str332:	cmpq	%rax, %r13
+str333:	jbe	.L32
+str334:	call	_ZSt17__throw_bad_allocv@PLT
+str335:	.cfi_endproc
+.LFE767:
+str336:	.size	_Z13sum_heartbeatP4nodeRSt5dequeI7vhbkontSaIS2_EE12tpalrts_prml, .-_Z13sum_heartbeatP4nodeRSt5dequeI7vhbkontSaIS2_EE12tpalrts_prml
+str337:	.ident	"GCC: (GNU) 7.5.0"
+str338:	nop
 
-str0_rf:	.text
-str1_rf:	.file	"sum_tree.tpal_orig.cpp"
-str2_rf:	.globl	_Z25tpalrts_prmlist_push_back12tpalrts_prmlP17tpalrts_prml_node_rf
-str3_rf:	.p2align	4, 0x90
-str4_rf:	.type	_Z25tpalrts_prmlist_push_back12tpalrts_prmlP17tpalrts_prml_node_rf,@function
+str0_rf:	.file	"sum_tree.tpal_orig.cpp"
+str1_rf:	.text
+str2_rf:	.p2align 4,,15
+str3_rf:	.globl	_Z25tpalrts_prmlist_push_back12tpalrts_prmlP17tpalrts_prml_node_rf
+str4_rf:	.type	_Z25tpalrts_prmlist_push_back12tpalrts_prmlP17tpalrts_prml_node_rf, @function
 _Z25tpalrts_prmlist_push_back12tpalrts_prmlP17tpalrts_prml_node_rf:
-str5_rf:	testq	%rsi, %rsi
-str6_rf:	je	.LBB0_2_rf
-str7_rf:	movq	%rdx, 8(%rsi)
-.LBB0_2_rf:
-str8_rf:	testq	%rdi, %rdi
-str9_rf:	cmoveq	%rdx, %rdi
+.LFB756_rf:
+str5_rf:	.cfi_startproc
+str6_rf:	testq	%rsi, %rsi
+str7_rf:	je	.L2_rf
+str8_rf:	movq	%rdx, 8(%rsi)
+.L2_rf:
+str9_rf:	testq	%rdi, %rdi
 str10_rf:	movq	%rdi, %rax
-str11_rf:	retq
-.Lfunc_end0_rf:
-str12_rf:	.size	_Z25tpalrts_prmlist_push_back12tpalrts_prmlP17tpalrts_prml_node_rf, .Lfunc_end0-_Z25tpalrts_prmlist_push_back12tpalrts_prmlP17tpalrts_prml_node
-str13_rf:
-str14_rf:	.globl	_Z24tpalrts_prmlist_pop_back12tpalrts_prml_rf
-str15_rf:	.p2align	4, 0x90
-str16_rf:	.type	_Z24tpalrts_prmlist_pop_back12tpalrts_prml_rf,@function
+str11_rf:	cmove	%rdx, %rax
+str12_rf:	ret
+str13_rf:	.cfi_endproc
+.LFE756_rf:
+str14_rf:	.size	_Z25tpalrts_prmlist_push_back12tpalrts_prmlP17tpalrts_prml_node_rf, .-_Z25tpalrts_prmlist_push_back12tpalrts_prmlP17tpalrts_prml_node
+str15_rf:	.p2align 4,,15
+str16_rf:	.globl	_Z24tpalrts_prmlist_pop_back12tpalrts_prml_rf
+str17_rf:	.type	_Z24tpalrts_prmlist_pop_back12tpalrts_prml_rf, @function
 _Z24tpalrts_prmlist_pop_back12tpalrts_prml_rf:
-str17_rf:	movq	(%rsi), %rdx
-str18_rf:	testq	%rdx, %rdx
-str19_rf:	je	.LBB1_1_rf
-str20_rf:	movq	%rdi, %rax
-str21_rf:	movq	$0, 8(%rdx)
-str22_rf:	movq	$0, (%rsi)
-str23_rf:	retq
-.LBB1_1_rf:
-str24_rf:	xorl	%edi, %edi
-str25_rf:	movq	%rdi, %rax
-str26_rf:	retq
-.Lfunc_end1_rf:
-str27_rf:	.size	_Z24tpalrts_prmlist_pop_back12tpalrts_prml_rf, .Lfunc_end1-_Z24tpalrts_prmlist_pop_back12tpalrts_prml
-str28_rf:
-str29_rf:	.globl	_Z13sum_heartbeatP4nodeRSt5dequeI7vhbkontSaIS2_EE12tpalrts_prml_rf
-str30_rf:	.p2align	4, 0x90
-str31_rf:	.type	_Z13sum_heartbeatP4nodeRSt5dequeI7vhbkontSaIS2_EE12tpalrts_prml_rf,@function
+.LFB757_rf:
+str18_rf:	.cfi_startproc
+str19_rf:	movq	(%rsi), %rdx
+str20_rf:	testq	%rdx, %rdx
+str21_rf:	je	.L10_rf
+str22_rf:	movq	$0, 8(%rdx)
+str23_rf:	movq	%rdi, %rax
+str24_rf:	movq	$0, (%rsi)
+str25_rf:	ret
+str26_rf:	.p2align 4,,15
+.L10_rf:
+str27_rf:	xorl	%eax, %eax
+str28_rf:	ret
+str29_rf:	.cfi_endproc
+.LFE757_rf:
+str30_rf:	.size	_Z24tpalrts_prmlist_pop_back12tpalrts_prml_rf, .-_Z24tpalrts_prmlist_pop_back12tpalrts_prml
+str31_rf:	.p2align 4,,15
+str32_rf:	.globl	_Z13sum_heartbeatP4nodeRSt5dequeI7vhbkontSaIS2_EE12tpalrts_prml_rf
+str33_rf:	.type	_Z13sum_heartbeatP4nodeRSt5dequeI7vhbkontSaIS2_EE12tpalrts_prml_rf, @function
 _Z13sum_heartbeatP4nodeRSt5dequeI7vhbkontSaIS2_EE12tpalrts_prml_rf:
-str32_rf:	.cfi_startproc
-str33_rf:	pushq	%rbp
-str34_rf:	.cfi_def_cfa_offset 16
+.LFB767_rf:
+str34_rf:	.cfi_startproc
 str35_rf:	pushq	%r15
-str36_rf:	.cfi_def_cfa_offset 24
-str37_rf:	pushq	%r14
-str38_rf:	.cfi_def_cfa_offset 32
-str39_rf:	pushq	%r13
-str40_rf:	.cfi_def_cfa_offset 40
-str41_rf:	pushq	%r12
-str42_rf:	.cfi_def_cfa_offset 48
-str43_rf:	pushq	%rbx
-str44_rf:	.cfi_def_cfa_offset 56
-str45_rf:	subq	$40, %rsp
-str46_rf:	.cfi_def_cfa_offset 96
-str47_rf:	.cfi_offset %rbx, -56
-str48_rf:	.cfi_offset %r12, -48
-str49_rf:	.cfi_offset %r13, -40
-str50_rf:	.cfi_offset %r14, -32
-str51_rf:	.cfi_offset %r15, -24
-str52_rf:	.cfi_offset %rbp, -16
-str53_rf:	nop
-str54_rf:	movq	%rcx, %rax
-str55_rf:	movq	%rdx, %r14
+str36_rf:	.cfi_def_cfa_offset 16
+str37_rf:	.cfi_offset 15, -16
+str38_rf:	pushq	%r14
+str39_rf:	.cfi_def_cfa_offset 24
+str40_rf:	.cfi_offset 14, -24
+str41_rf:	movq	%rdx, %r15
+str42_rf:	movq	%rcx, %r14
+str43_rf:	pushq	%r13
+str44_rf:	.cfi_def_cfa_offset 32
+str45_rf:	.cfi_offset 13, -32
+str46_rf:	pushq	%r12
+str47_rf:	.cfi_def_cfa_offset 40
+str48_rf:	.cfi_offset 12, -40
+str49_rf:	movq	%rdi, %r12
+str50_rf:	pushq	%rbp
+str51_rf:	.cfi_def_cfa_offset 48
+str52_rf:	.cfi_offset 6, -48
+str53_rf:	pushq	%rbx
+str54_rf:	.cfi_def_cfa_offset 56
+str55_rf:	.cfi_offset 3, -56
 str56_rf:	movq	%rsi, %rbx
-str57_rf:	movq	%rdi, %r12
-str58_rf:	movl	$512, %ebp
-str59_rf:	nop
-str60_rf:	jmp	.LBB2_3
-str61_rf:	jmp	.LBB2_2_rf
-str62_rf:	.p2align	4, 0x90
-.LBB2_32_rf:
-str63_rf:	movq	8(%r12), %r12
-str64_rf:	testq	%r14, %r14
-str65_rf:	cmoveq	%rax, %r14
-str66_rf:	cmpb	$0, (%r13)
-str67_rf:	je	.LBB2_2_rf
-.LBB2_3_rf:
-str68_rf:	movq	%r14, %rdi
-str69_rf:	movq	%rax, %rsi
-str70_rf:	callq	_Z26sum_tree_heartbeat_handler12tpalrts_prml@PLT
-str71_rf:	movq	%rax, %r14
-str72_rf:	movq	%rdx, %r15
-str73_rf:	testq	%r12, %r12
-str74_rf:	je	.LBB2_5_rf
-.LBB2_23_rf:
-str75_rf:	movq	64(%rbx), %rax
-str76_rf:	movq	48(%rbx), %rcx
-str77_rf:	addq	$-32, %rax
-str78_rf:	cmpq	%rax, %rcx
-str79_rf:	je	.LBB2_24_rf
-str80_rf:	movl	$0, (%rcx)
-str81_rf:	movq	%r15, 8(%rcx)
-str82_rf:	movq	$0, 16(%rcx)
-str83_rf:	movq	%r12, 24(%rcx)
-str84_rf:	movq	48(%rbx), %rax
-str85_rf:	addq	$32, %rax
-str86_rf:	movq	%rax, 48(%rbx)
-str87_rf:	cmpq	56(%rbx), %rax
-str88_rf:	je	.LBB2_29_rf
-str89_rf:	addq	$-24, %rax
-str90_rf:	testq	%r15, %r15
-str91_rf:	jne	.LBB2_31_rf
-str92_rf:	jmp	.LBB2_32_rf
-str93_rf:	.p2align	4, 0x90
-.LBB2_24_rf:
-str94_rf:	movq	72(%rbx), %rax
-str95_rf:	movq	32(%rbx), %rsi
-str96_rf:	subq	56(%rbx), %rcx
-str97_rf:	subq	16(%rbx), %rsi
-str98_rf:	sarq	$5, %rcx
-str99_rf:	movq	%rax, %rdx
-str100_rf:	subq	40(%rbx), %rdx
-str101_rf:	sarq	$5, %rsi
-str102_rf:	leaq	(%rcx,%rdx,2), %rcx
-str103_rf:	movabsq	$288230376151711759, %rdx
-str104_rf:	addq	%rcx, %rsi
-str105_rf:	cmpq	%rdx, %rsi
-str106_rf:	je	.LBB2_33_rf
-str107_rf:	movq	8(%rbx), %rcx
-str108_rf:	subq	(%rbx), %rax
-str109_rf:	sarq	$3, %rax
-str110_rf:	subq	%rax, %rcx
-str111_rf:	cmpq	$1, %rcx
-str112_rf:	ja	.LBB2_27_rf
-str113_rf:	movl	$1, %esi
-str114_rf:	xorl	%edx, %edx
-str115_rf:	movq	%rbx, %rdi
-str116_rf:	callq	_ZNSt5dequeI7vhbkontSaIS0_EE17_M_reallocate_mapEmb@PLT
-.LBB2_27_rf:
-str117_rf:	movl	$512, %edi
-str118_rf:	callq	_Znwm@PLT
-str119_rf:	movq	72(%rbx), %rcx
-str120_rf:	movq	%rax, 8(%rcx)
-str121_rf:	movq	48(%rbx), %rax
-str122_rf:	movl	$0, (%rax)
-str123_rf:	movq	%r15, 8(%rax)
-str124_rf:	movq	$0, 16(%rax)
-str125_rf:	movq	%r12, 24(%rax)
-str126_rf:	movq	72(%rbx), %rax
-str127_rf:	leaq	8(%rax), %rcx
-str128_rf:	movq	%rcx, 72(%rbx)
-str129_rf:	movq	8(%rax), %rax
-str130_rf:	leaq	512(%rax), %rcx
-str131_rf:	movq	%rax, 56(%rbx)
-str132_rf:	movq	%rcx, 64(%rbx)
-str133_rf:	movq	%rax, 48(%rbx)
-.LBB2_29_rf:
-str134_rf:	movq	72(%rbx), %rax
-str135_rf:	movq	-8(%rax), %rax
-str136_rf:	addq	%rbp, %rax
-str137_rf:	addq	$-24, %rax
-str138_rf:	testq	%r15, %r15
-str139_rf:	je	.LBB2_32_rf
-.LBB2_31_rf:
-str140_rf:	movq	%rax, 8(%r15)
-str141_rf:	jmp	.LBB2_32_rf
-str142_rf:	.p2align	4, 0x90
-.LBB2_2_rf:
-str143_rf:	movq	%rax, %r15
-str144_rf:	testq	%r12, %r12
-str145_rf:	jne	.LBB2_23_rf
-.LBB2_5_rf:
-str146_rf:	leaq	.LJTI2_0_rf(%rip), %r12
-str147_rf:	movl	$0, 12(%rsp)
-str148_rf:	jmp	.LBB2_6_rf
-.LBB2_15_rf:
-str149_rf:	addq	$-32, %rdi
-str150_rf:	movq	%rdi, 48(%rbx)
-str151_rf:	.p2align	4, 0x90
-.LBB2_6_rf:
-str152_rf:	cmpb	$0, (%r13)
-str153_rf:	je	.LBB2_8_rf
-str154_rf:	movq	%r14, %rdi
-str155_rf:	movq	%r15, %rsi
-str156_rf:	callq	_Z26sum_tree_heartbeat_handler12tpalrts_prml@PLT
-str157_rf:	movq	%rax, %r14
-str158_rf:	movq	%rdx, %r15
-.LBB2_8_rf:
-str159_rf:	movq	48(%rbx), %rdi
-str160_rf:	movq	56(%rbx), %rax
-str161_rf:	movq	%rdi, %rcx
-str162_rf:	cmpq	%rax, %rdi
-str163_rf:	je	.LBB2_9_rf
-str164_rf:	movl	-32(%rcx), %edx
-str165_rf:	cmpq	$4, %rdx
-str166_rf:	ja	.LBB2_6_rf
-.LBB2_11_rf:
-str167_rf:	movslq	(%r12,%rdx,4), %rsi
-str168_rf:	addq	%r12, %rsi
-str169_rf:	jmpq	*%rsi
-.LBB2_14_rf:
-str170_rf:	movl	12(%rsp), %edx
-str171_rf:	addl	-24(%rcx), %edx
-str172_rf:	movq	-16(%rcx), %rcx
-str173_rf:	addl	(%rcx), %edx
-str174_rf:	cmpq	%rax, %rdi
-str175_rf:	movl	%edx, 12(%rsp)
-str176_rf:	jne	.LBB2_15_rf
-str177_rf:	callq	_ZdlPv@PLT
-str178_rf:	movq	72(%rbx), %rax
-str179_rf:	leaq	-8(%rax), %rcx
-str180_rf:	movq	%rcx, 72(%rbx)
-str181_rf:	movq	-8(%rax), %rax
-str182_rf:	movq	%rax, 56(%rbx)
-str183_rf:	leaq	512(%rax), %rcx
-str184_rf:	addq	$480, %rax
-str185_rf:	movq	%rcx, 64(%rbx)
-str186_rf:	movq	%rax, 48(%rbx)
-str187_rf:	jmp	.LBB2_6_rf
-str188_rf:	.p2align	4, 0x90
-.LBB2_9_rf:
-str189_rf:	movq	72(%rbx), %rcx
-str190_rf:	movq	-8(%rcx), %rcx
-str191_rf:	addq	%rbp, %rcx
-str192_rf:	movl	-32(%rcx), %edx
-str193_rf:	cmpq	$4, %rdx
-str194_rf:	ja	.LBB2_6_rf
-str195_rf:	jmp	.LBB2_11_rf
-.LBB2_12_rf:
-str196_rf:	movq	(%r15), %rax
-str197_rf:	testq	%rax, %rax
-str198_rf:	je	.LBB2_13_rf
-str199_rf:	movq	$0, 8(%rax)
-str200_rf:	movq	$0, (%r15)
-str201_rf:	jmp	.LBB2_22_rf
-.LBB2_13_rf:
-str202_rf:	xorl	%r14d, %r14d
-.LBB2_22_rf:
-str203_rf:	movq	-8(%rcx), %rdx
-str204_rf:	movl	12(%rsp), %esi
-str205_rf:	movq	16(%rdx), %r12
-str206_rf:	movl	$1, -32(%rcx)
-str207_rf:	movl	%esi, -24(%rcx)
-str208_rf:	movq	%rdx, -16(%rcx)
-str209_rf:	cmpb	$0, (%r13)
-str210_rf:	jne	.LBB2_3_rf
-str211_rf:	jmp	.LBB2_2_rf
-.LBB2_18_rf:
-str212_rf:	xorl	%eax, %eax
-str213_rf:	cmpl	$3, %edx
-str214_rf:	movq	-24(%rcx), %rdx
-str215_rf:	movl	12(%rsp), %esi
-str216_rf:	setne	%al
-str217_rf:	movl	%esi, (%rdx,%rax,4)
-str218_rf:	movq	-16(%rcx), %rdi
-str219_rf:	jne	.LBB2_20_rf
-str220_rf:	movq	-8(%rcx), %rax
-str221_rf:	vmovups	(%rax), %xmm0
-str222_rf:	vmovaps	%xmm0, 16(%rsp)
-str223_rf:	vmovups	(%rbx), %ymm2
-str224_rf:	vmovups	32(%rbx), %ymm3
-str225_rf:	vmovups	48(%rbx), %ymm4
-str226_rf:	vmovups	16(%rax), %ymm0
-str227_rf:	vmovups	48(%rax), %ymm1
-str228_rf:	vmovups	%ymm3, 32(%rax)
-str229_rf:	vmovups	%ymm4, 48(%rax)
-str230_rf:	vmovups	%ymm2, (%rax)
-str231_rf:	vmovaps	16(%rsp), %xmm2
-str232_rf:	vmovups	%xmm2, (%rbx)
-str233_rf:	vmovups	%ymm0, 16(%rbx)
-str234_rf:	vmovups	%ymm1, 48(%rbx)
-.LBB2_20_rf:
-str235_rf:	addq	$40, %rsp
-str236_rf:	.cfi_def_cfa_offset 56
-str237_rf:	popq	%rbx
-str238_rf:	.cfi_def_cfa_offset 48
-str239_rf:	popq	%r12
-str240_rf:	.cfi_def_cfa_offset 40
-str241_rf:	popq	%r13
-str242_rf:	.cfi_def_cfa_offset 32
-str243_rf:	popq	%r14
-str244_rf:	.cfi_def_cfa_offset 24
-str245_rf:	popq	%r15
-str246_rf:	.cfi_def_cfa_offset 16
-str247_rf:	popq	%rbp
-str248_rf:	.cfi_def_cfa_offset 8
-str249_rf:	vzeroupper
+str57_rf:	subq	$24, %rsp
+str58_rf:	.cfi_def_cfa_offset 80
+.L13_rf:
+str59_rf:	testq	%r12, %r12
+str60_rf:	je	.L43_rf
+.L41_rf:
+str61_rf:	movq	64(%rbx), %rax
+str62_rf:	movq	48(%rbx), %rdx
+str63_rf:	movq	72(%rbx), %r13
+str64_rf:	subq	$32, %rax
+str65_rf:	cmpq	%rax, %rdx
+str66_rf:	je	.L25_rf
+str67_rf:	movl	$0, (%rdx)
+str68_rf:	movq	%r14, 8(%rdx)
+str69_rf:	addq	$32, %rdx
+str70_rf:	movq	$0, -16(%rdx)
+str71_rf:	movq	%r12, -8(%rdx)
+str72_rf:	movq	%rdx, 48(%rbx)
+str73_rf:	cmpq	56(%rbx), %rdx
+str74_rf:	je	.L26_rf
+.L34_rf:
+str75_rf:	movq	%r15, %rdi
+str76_rf:	movq	%r14, %rsi
+str77_rf:	subq	$24, %rdx
+str78_rf:	call	_Z25tpalrts_prmlist_push_back12tpalrts_prmlP17tpalrts_prml_node@PLT
+str79_rf:	movq	8(%r12), %r12
+str80_rf:	movq	%rax, %r15
+str81_rf:	movq	%rdx, %r14
+str82_rf:	testq	%r12, %r12
+str83_rf:	jne	.L41_rf
+.L43_rf:
+str84_rf:	nop
+str85_rf:	xorl	%ebp, %ebp
+str86_rf:	.p2align 4,,15
+.L14_rf:
+str87_rf:	nop
+str88_rf:	nop
+str89_rf:	jmp	.L44
+str90_rf:	movq	48(%rbx), %rdi
+str91_rf:	movq	56(%rbx), %rdx
+str92_rf:	movq	%rdi, %r13
+str93_rf:	cmpq	%rdx, %rdi
+str94_rf:	je	.L45_rf
+.L17_rf:
+str95_rf:	movl	-32(%r13), %eax
+str96_rf:	testl	%eax, %eax
+str97_rf:	je	.L46_rf
+.L18_rf:
+str98_rf:	cmpl	$1, %eax
+str99_rf:	je	.L47_rf
+str100_rf:	cmpl	$2, %eax
+str101_rf:	je	.L48_rf
+str102_rf:	leal	-3(%rax), %edx
+str103_rf:	cmpl	$1, %edx
+str104_rf:	ja	.L14_rf
+str105_rf:	movq	-24(%r13), %rdx
+str106_rf:	xorl	%ecx, %ecx
+str107_rf:	cmpl	$3, %eax
+str108_rf:	setne	%cl
+str109_rf:	movl	%ebp, (%rdx,%rcx,4)
+str110_rf:	movq	-16(%r13), %rdi
+str111_rf:	jne	.L24_rf
+str112_rf:	vmovups	16(%rbx), %xmm4
+str113_rf:	movq	-8(%r13), %rax
+str114_rf:	movq	16(%rax), %r8
+str115_rf:	movq	24(%rax), %rsi
+str116_rf:	movq	32(%rax), %rcx
+str117_rf:	movq	40(%rax), %rdx
+str118_rf:	vmovups	%xmm4, 16(%rax)
+str119_rf:	vmovups	32(%rbx), %xmm5
+str120_rf:	vmovups	%xmm5, 32(%rax)
+str121_rf:	movq	%r8, 16(%rbx)
+str122_rf:	movq	%rsi, 24(%rbx)
+str123_rf:	movq	%rcx, 32(%rbx)
+str124_rf:	movq	%rdx, 40(%rbx)
+str125_rf:	vmovups	48(%rbx), %xmm6
+str126_rf:	movq	48(%rax), %r8
+str127_rf:	movq	56(%rax), %rsi
+str128_rf:	movq	64(%rax), %rcx
+str129_rf:	movq	72(%rax), %rdx
+str130_rf:	vmovups	%xmm6, 48(%rax)
+str131_rf:	vmovups	64(%rbx), %xmm7
+str132_rf:	vmovups	%xmm7, 64(%rax)
+str133_rf:	movq	%rcx, 64(%rbx)
+str134_rf:	movq	(%rbx), %rcx
+str135_rf:	movq	%r8, 48(%rbx)
+str136_rf:	movq	%rsi, 56(%rbx)
+str137_rf:	movq	%rdx, 72(%rbx)
+str138_rf:	movq	(%rax), %rdx
+str139_rf:	movq	%rcx, (%rax)
+str140_rf:	movq	8(%rbx), %rcx
+str141_rf:	movq	%rdx, (%rbx)
+str142_rf:	movq	8(%rax), %rdx
+str143_rf:	movq	%rcx, 8(%rax)
+str144_rf:	movq	%rdx, 8(%rbx)
+str145_rf:	jmp	.L24_rf
+str146_rf:	.p2align 4,,15
+.L44_rf:
+str147_rf:	movq	%r15, %rdi
+str148_rf:	movq	%r14, %rsi
+str149_rf:	call	_Z26sum_tree_heartbeat_handler12tpalrts_prml@PLT
+str150_rf:	movq	48(%rbx), %rdi
+str151_rf:	movq	%rdx, %r14
+str152_rf:	movq	56(%rbx), %rdx
+str153_rf:	movq	%rax, %r15
+str154_rf:	movq	%rdi, %r13
+str155_rf:	cmpq	%rdx, %rdi
+str156_rf:	jne	.L17_rf
+.L45_rf:
+str157_rf:	movq	72(%rbx), %rax
+str158_rf:	movq	-8(%rax), %r13
+str159_rf:	addq	$512, %r13
+str160_rf:	movl	-32(%r13), %eax
+str161_rf:	testl	%eax, %eax
+str162_rf:	jne	.L18_rf
+.L46_rf:
+str163_rf:	movq	%r15, %rdi
+str164_rf:	movq	%r14, %rsi
+str165_rf:	call	_Z24tpalrts_prmlist_pop_back12tpalrts_prml@PLT
+str166_rf:	movq	%rax, %r15
+str167_rf:	movq	-8(%r13), %rax
+str168_rf:	movq	%rdx, %r14
+str169_rf:	movq	16(%rax), %r12
+str170_rf:	movl	$1, -32(%r13)
+str171_rf:	movl	%ebp, -24(%r13)
+str172_rf:	movq	%rax, -16(%r13)
+str173_rf:	jmp	.L13_rf
+str174_rf:	.p2align 4,,15
+.L47_rf:
+str175_rf:	movq	-16(%r13), %rax
+str176_rf:	addl	-24(%r13), %ebp
+str177_rf:	addl	(%rax), %ebp
+str178_rf:	cmpq	%rdx, %rdi
+str179_rf:	je	.L21_rf
+str180_rf:	subq	$32, %rdi
+str181_rf:	movq	%rdi, 48(%rbx)
+str182_rf:	jmp	.L14_rf
+str183_rf:	.p2align 4,,15
+.L25_rf:
+str184_rf:	movq	(%rbx), %rdi
+str185_rf:	movq	8(%rbx), %rdx
+str186_rf:	movq	%r13, %rax
+str187_rf:	subq	%rdi, %rax
+str188_rf:	movq	%rdx, %rcx
+str189_rf:	sarq	$3, %rax
+str190_rf:	subq	%rax, %rcx
+str191_rf:	cmpq	$1, %rcx
+str192_rf:	jbe	.L49_rf
+.L28_rf:
+str193_rf:	movl	$512, %edi
+str194_rf:	call	_Znwm@PLT
+str195_rf:	movq	%rax, 8(%r13)
+str196_rf:	movq	48(%rbx), %rax
+str197_rf:	movq	%r14, 8(%rax)
+str198_rf:	movl	$0, (%rax)
+str199_rf:	movq	$0, 16(%rax)
+str200_rf:	movq	%r12, 24(%rax)
+str201_rf:	movq	72(%rbx), %rax
+str202_rf:	leaq	8(%rax), %r13
+str203_rf:	movq	8(%rax), %rax
+str204_rf:	movq	%rax, (%rsp)
+str205_rf:	addq	$512, %rax
+str206_rf:	vmovddup	(%rsp), %xmm0
+str207_rf:	movq	%rax, (%rsp)
+str208_rf:	vmovq	(%rsp), %xmm3
+str209_rf:	vmovups	%xmm0, 48(%rbx)
+str210_rf:	vpinsrq	$1, %r13, %xmm3, %xmm0
+str211_rf:	vmovups	%xmm0, 64(%rbx)
+.L26_rf:
+str212_rf:	movq	-8(%r13), %rdx
+str213_rf:	addq	$512, %rdx
+str214_rf:	jmp	.L34_rf
+str215_rf:	.p2align 4,,15
+.L21_rf:
+str216_rf:	call	_ZdlPv@PLT
+str217_rf:	movq	72(%rbx), %rax
+str218_rf:	movq	-8(%rax), %rdx
+str219_rf:	subq	$8, %rax
+str220_rf:	leaq	480(%rdx), %rcx
+str221_rf:	movq	%rcx, (%rsp)
+str222_rf:	leaq	512(%rdx), %rcx
+str223_rf:	vmovq	(%rsp), %xmm1
+str224_rf:	movq	%rcx, (%rsp)
+str225_rf:	vpinsrq	$1, %rdx, %xmm1, %xmm0
+str226_rf:	vmovups	%xmm0, 48(%rbx)
+str227_rf:	vmovq	(%rsp), %xmm2
+str228_rf:	vpinsrq	$1, %rax, %xmm2, %xmm0
+str229_rf:	vmovups	%xmm0, 64(%rbx)
+str230_rf:	jmp	.L14_rf
+str231_rf:	.p2align 4,,15
+.L48_rf:
+str232_rf:	movq	answer@GOTPCREL(%rip), %rax
+str233_rf:	movq	-24(%r13), %rdi
+str234_rf:	movl	%ebp, (%rax)
+.L24_rf:
+str235_rf:	addq	$24, %rsp
+str236_rf:	.cfi_remember_state
+str237_rf:	.cfi_def_cfa_offset 56
+str238_rf:	popq	%rbx
+str239_rf:	.cfi_def_cfa_offset 48
+str240_rf:	popq	%rbp
+str241_rf:	.cfi_def_cfa_offset 40
+str242_rf:	popq	%r12
+str243_rf:	.cfi_def_cfa_offset 32
+str244_rf:	popq	%r13
+str245_rf:	.cfi_def_cfa_offset 24
+str246_rf:	popq	%r14
+str247_rf:	.cfi_def_cfa_offset 16
+str248_rf:	popq	%r15
+str249_rf:	.cfi_def_cfa_offset 8
 str250_rf:	jmp	_Z4joinP4task@PLT
-.LBB2_17_rf:
-str251_rf:	.cfi_def_cfa_offset 96
-str252_rf:	movq	answer@GOTPCREL(%rip), %rax
-str253_rf:	movl	12(%rsp), %ecx
-str254_rf:	movl	%ecx, (%rax)
-str255_rf:	addq	$40, %rsp
-str256_rf:	.cfi_def_cfa_offset 56
-str257_rf:	popq	%rbx
-str258_rf:	.cfi_def_cfa_offset 48
-str259_rf:	popq	%r12
-str260_rf:	.cfi_def_cfa_offset 40
-str261_rf:	popq	%r13
-str262_rf:	.cfi_def_cfa_offset 32
-str263_rf:	popq	%r14
-str264_rf:	.cfi_def_cfa_offset 24
-str265_rf:	popq	%r15
-str266_rf:	.cfi_def_cfa_offset 16
-str267_rf:	popq	%rbp
-str268_rf:	.cfi_def_cfa_offset 8
-str269_rf:	retq
-.LBB2_33_rf:
-str270_rf:	.cfi_def_cfa_offset 96
-str271_rf:	leaq	.L.str_rf(%rip), %rdi
-str272_rf:	callq	_ZSt20__throw_length_errorPKc@PLT
-.Lfunc_end2_rf:
-str273_rf:	.size	_Z13sum_heartbeatP4nodeRSt5dequeI7vhbkontSaIS2_EE12tpalrts_prml_rf, .Lfunc_end2-_Z13sum_heartbeatP4nodeRSt5dequeI7vhbkontSaIS2_EE12tpalrts_prml
-str274_rf:	.cfi_endproc
-str275_rf:	.section	.rodata,"a",@progbits
-str276_rf:	.p2align	2
-.LJTI2_0_rf:
-str277_rf:	.long	.LBB2_12-.LJTI2_0
-str278_rf:	.long	.LBB2_14-.LJTI2_0
-str279_rf:	.long	.LBB2_17-.LJTI2_0
-str280_rf:	.long	.LBB2_18-.LJTI2_0
-str281_rf:	.long	.LBB2_18-.LJTI2_0
-str282_rf:
-str283_rf:	.section	.text._ZNSt5dequeI7vhbkontSaIS0_EE17_M_reallocate_mapEmb,"axG",@progbits,_ZNSt5dequeI7vhbkontSaIS0_EE17_M_reallocate_mapEmb_rf,comdat
-str284_rf:	.weak	_ZNSt5dequeI7vhbkontSaIS0_EE17_M_reallocate_mapEmb_rf
-str285_rf:	.p2align	4, 0x90
-str286_rf:	.type	_ZNSt5dequeI7vhbkontSaIS0_EE17_M_reallocate_mapEmb_rf,@function
-_ZNSt5dequeI7vhbkontSaIS0_EE17_M_reallocate_mapEmb_rf:
-str287_rf:	.cfi_startproc
-str288_rf:	pushq	%rbp
-str289_rf:	.cfi_def_cfa_offset 16
-str290_rf:	pushq	%r15
-str291_rf:	.cfi_def_cfa_offset 24
-str292_rf:	pushq	%r14
-str293_rf:	.cfi_def_cfa_offset 32
-str294_rf:	pushq	%r13
-str295_rf:	.cfi_def_cfa_offset 40
-str296_rf:	pushq	%r12
-str297_rf:	.cfi_def_cfa_offset 48
-str298_rf:	pushq	%rbx
-str299_rf:	.cfi_def_cfa_offset 56
-str300_rf:	pushq	%rax
-str301_rf:	.cfi_def_cfa_offset 64
-str302_rf:	.cfi_offset %rbx, -56
-str303_rf:	.cfi_offset %r12, -48
-str304_rf:	.cfi_offset %r13, -40
-str305_rf:	.cfi_offset %r14, -32
-str306_rf:	.cfi_offset %r15, -24
-str307_rf:	.cfi_offset %rbp, -16
-str308_rf:	movl	%edx, %r12d
-str309_rf:	movq	72(%rdi), %rdx
-str310_rf:	movq	%rsi, %r14
-str311_rf:	movq	40(%rdi), %rsi
-str312_rf:	movq	8(%rdi), %rax
-str313_rf:	movq	%rdi, %rbx
-str314_rf:	movq	%rdx, %rbp
-str315_rf:	subq	%rsi, %rbp
-str316_rf:	sarq	$3, %rbp
-str317_rf:	leaq	1(%rbp,%r14), %r15
-str318_rf:	leaq	(%r15,%r15), %rcx
-str319_rf:	cmpq	%rcx, %rax
-str320_rf:	jbe	.LBB3_4_rf
-str321_rf:	subq	%r15, %rax
-str322_rf:	movabsq	$4611686018427387902, %rcx
-str323_rf:	andq	%rax, %rcx
-str324_rf:	xorl	%eax, %eax
-str325_rf:	shlq	$2, %rcx
-str326_rf:	addq	(%rbx), %rcx
-str327_rf:	testb	%r12b, %r12b
-str328_rf:	cmovneq	%r14, %rax
-str329_rf:	addq	$8, %rdx
-str330_rf:	subq	%rsi, %rdx
-str331_rf:	leaq	(%rcx,%rax,8), %r14
-str332_rf:	cmpq	%rsi, %r14
-str333_rf:	jae	.LBB3_8_rf
-str334_rf:	testq	%rdx, %rdx
-str335_rf:	je	.LBB3_11_rf
-str336_rf:	movq	%r14, %rdi
-str337_rf:	jmp	.LBB3_10_rf
-.LBB3_4_rf:
-str338_rf:	cmpq	%r14, %rax
-str339_rf:	movq	%rax, %rcx
-str340_rf:	cmovbq	%r14, %rcx
-str341_rf:	leaq	2(%rax,%rcx), %r13
-str342_rf:	movq	%r13, %rax
-str343_rf:	shrq	$60, %rax
-str344_rf:	jne	.LBB3_12_rf
-str345_rf:	leaq	(,%r13,8), %rdi
-str346_rf:	callq	_Znwm@PLT
-str347_rf:	movq	%r13, %rdx
-str348_rf:	movabsq	$4611686018427387902, %rcx
-str349_rf:	movq	40(%rbx), %rsi
-str350_rf:	subq	%r15, %rdx
-str351_rf:	movq	%rax, %r15
-str352_rf:	andq	%rdx, %rcx
-str353_rf:	movq	72(%rbx), %rdx
-str354_rf:	leaq	(%rax,%rcx,4), %rax
-str355_rf:	xorl	%ecx, %ecx
-str356_rf:	testb	%r12b, %r12b
-str357_rf:	cmovneq	%r14, %rcx
-str358_rf:	leaq	(%rax,%rcx,8), %r14
-str359_rf:	addq	$8, %rdx
-str360_rf:	subq	%rsi, %rdx
-str361_rf:	je	.LBB3_7_rf
-str362_rf:	movq	%r14, %rdi
-str363_rf:	callq	memmove@PLT
-.LBB3_7_rf:
-str364_rf:	movq	(%rbx), %rdi
-str365_rf:	callq	_ZdlPv@PLT
-str366_rf:	movq	%r15, (%rbx)
-str367_rf:	movq	%r13, 8(%rbx)
-str368_rf:	jmp	.LBB3_11_rf
-.LBB3_8_rf:
-str369_rf:	testq	%rdx, %rdx
-str370_rf:	je	.LBB3_11_rf
-str371_rf:	leaq	1(%rbp), %rax
-str372_rf:	leaq	(%r14,%rax,8), %rdi
-str373_rf:	subq	%rdx, %rdi
-.LBB3_10_rf:
-str374_rf:	callq	memmove@PLT
-.LBB3_11_rf:
-str375_rf:	movq	%r14, 40(%rbx)
-str376_rf:	leaq	(%r14,%rbp,8), %rcx
-str377_rf:	movq	(%r14), %rax
-str378_rf:	movq	%rax, 24(%rbx)
-str379_rf:	addq	$512, %rax
-str380_rf:	movq	%rax, 32(%rbx)
-str381_rf:	movq	%rcx, 72(%rbx)
-str382_rf:	movq	(%r14,%rbp,8), %rax
-str383_rf:	movq	%rax, 56(%rbx)
-str384_rf:	addq	$512, %rax
-str385_rf:	movq	%rax, 64(%rbx)
-str386_rf:	addq	$8, %rsp
-str387_rf:	.cfi_def_cfa_offset 56
-str388_rf:	popq	%rbx
-str389_rf:	.cfi_def_cfa_offset 48
-str390_rf:	popq	%r12
-str391_rf:	.cfi_def_cfa_offset 40
-str392_rf:	popq	%r13
-str393_rf:	.cfi_def_cfa_offset 32
-str394_rf:	popq	%r14
-str395_rf:	.cfi_def_cfa_offset 24
-str396_rf:	popq	%r15
-str397_rf:	.cfi_def_cfa_offset 16
-str398_rf:	popq	%rbp
-str399_rf:	.cfi_def_cfa_offset 8
-str400_rf:	retq
-.LBB3_12_rf:
-str401_rf:	.cfi_def_cfa_offset 64
-str402_rf:	callq	_ZSt17__throw_bad_allocv@PLT
-.Lfunc_end3_rf:
-str403_rf:	.size	_ZNSt5dequeI7vhbkontSaIS0_EE17_M_reallocate_mapEmb_rf, .Lfunc_end3-_ZNSt5dequeI7vhbkontSaIS0_EE17_M_reallocate_mapEmb
-str404_rf:	.cfi_endproc
-str405_rf:
-str406_rf:	.type	.L.str_rf,@object
-str407_rf:	.section	.rodata.str1.1,"aMS",@progbits,1
-.L.str_rf:
-str408_rf:	.asciz	"cannot create std::deque larger than max_size()"
-str409_rf:	.size	.L.str_rf, 48
-str410_rf:
-str411_rf:
-str412_rf:	.ident	"clang version 7.1.0 (tags/RELEASE_710/final)"
-str413_rf:	nop
-str414_rf:	nop
-str415_rf:	nop
+.L49_rf:
+str251_rf:	.cfi_restore_state
+str252_rf:	movq	40(%rbx), %rsi
+str253_rf:	movq	%r13, %rax
+str254_rf:	subq	%rsi, %rax
+str255_rf:	sarq	$3, %rax
+str256_rf:	leaq	2(%rax), %rcx
+str257_rf:	leaq	1(%rax), %rbp
+str258_rf:	leaq	(%rcx,%rcx), %rax
+str259_rf:	cmpq	%rax, %rdx
+str260_rf:	jbe	.L29_rf
+str261_rf:	subq	%rcx, %rdx
+str262_rf:	addq	$8, %r13
+str263_rf:	salq	$3, %rbp
+str264_rf:	movq	%rdx, %rax
+str265_rf:	movq	%r13, %rdx
+str266_rf:	shrq	%rax
+str267_rf:	subq	%rsi, %rdx
+str268_rf:	leaq	(%rdi,%rax,8), %rcx
+str269_rf:	cmpq	%rcx, %rsi
+str270_rf:	jbe	.L30_rf
+str271_rf:	cmpq	%r13, %rsi
+str272_rf:	je	.L31_rf
+str273_rf:	movq	%rcx, %rdi
+str274_rf:	call	memmove@PLT
+str275_rf:	movq	%rax, %rcx
+str276_rf:	jmp	.L31_rf
+.L29_rf:
+str277_rf:	testq	%rdx, %rdx
+str278_rf:	jne	.L50_rf
+str279_rf:	movl	$3, %r13d
+.L32_rf:
+str280_rf:	leaq	0(,%r13,8), %rdi
+str281_rf:	movq	%rcx, (%rsp)
+str282_rf:	call	_Znwm@PLT
+str283_rf:	movq	(%rsp), %rcx
+str284_rf:	movq	%rax, %r9
+str285_rf:	movq	%r13, %rax
+str286_rf:	movq	40(%rbx), %rsi
+str287_rf:	subq	%rcx, %rax
+str288_rf:	shrq	%rax
+str289_rf:	leaq	(%r9,%rax,8), %rcx
+str290_rf:	movq	72(%rbx), %rax
+str291_rf:	leaq	8(%rax), %rdx
+str292_rf:	cmpq	%rsi, %rdx
+str293_rf:	je	.L33_rf
+str294_rf:	movq	%rcx, %rdi
+str295_rf:	subq	%rsi, %rdx
+str296_rf:	movq	%r9, (%rsp)
+str297_rf:	call	memmove@PLT
+str298_rf:	movq	(%rsp), %r9
+str299_rf:	movq	%rax, %rcx
+.L33_rf:
+str300_rf:	movq	(%rbx), %rdi
+str301_rf:	movq	%r9, 8(%rsp)
+str302_rf:	movq	%rcx, (%rsp)
+str303_rf:	salq	$3, %rbp
+str304_rf:	call	_ZdlPv@PLT
+str305_rf:	movq	8(%rsp), %r9
+str306_rf:	movq	%r13, 8(%rbx)
+str307_rf:	movq	(%rsp), %rcx
+str308_rf:	movq	%r9, (%rbx)
+.L31_rf:
+str309_rf:	movq	(%rcx), %rax
+str310_rf:	leaq	-8(%rcx,%rbp), %r13
+str311_rf:	movq	%rcx, 40(%rbx)
+str312_rf:	movq	%r13, 72(%rbx)
+str313_rf:	movq	%rax, 24(%rbx)
+str314_rf:	addq	$512, %rax
+str315_rf:	movq	%rax, 32(%rbx)
+str316_rf:	movq	0(%r13), %rax
+str317_rf:	movq	%rax, 56(%rbx)
+str318_rf:	addq	$512, %rax
+str319_rf:	movq	%rax, 64(%rbx)
+str320_rf:	jmp	.L28_rf
+.L30_rf:
+str321_rf:	cmpq	%r13, %rsi
+str322_rf:	je	.L31_rf
+str323_rf:	movq	%rbp, %rdi
+str324_rf:	movq	%rcx, (%rsp)
+str325_rf:	subq	%rdx, %rdi
+str326_rf:	addq	%rcx, %rdi
+str327_rf:	call	memmove@PLT
+str328_rf:	movq	(%rsp), %rcx
+str329_rf:	jmp	.L31_rf
+.L50_rf:
+str330_rf:	leaq	2(%rdx,%rdx), %r13
+str331_rf:	movabsq	$2305843009213693951, %rax
+str332_rf:	cmpq	%rax, %r13
+str333_rf:	jbe	.L32_rf
+str334_rf:	call	_ZSt17__throw_bad_allocv@PLT
+str335_rf:	.cfi_endproc
+.LFE767_rf:
+str336_rf:	.size	_Z13sum_heartbeatP4nodeRSt5dequeI7vhbkontSaIS2_EE12tpalrts_prml_rf, .-_Z13sum_heartbeatP4nodeRSt5dequeI7vhbkontSaIS2_EE12tpalrts_prml
+str337_rf:	.ident	"GCC: (GNU) 7.5.0"
+str338_rf:	nop
 
