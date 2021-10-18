@@ -1,6 +1,7 @@
 from plot import *
 from parameter import *
 from benchmark import *
+from table import mk_table
 
 # Experiment configuration
 # ========================
@@ -90,7 +91,6 @@ bench = mk_benchmark(expr, modifiers = modifiers)
 
 print('Runs to be invoked:')
 print(string_of_benchmark_runs(bench))
-print('---\n')
 
 # bench_2 = step_benchmark(bench, done_peek_keys = ['exectime'])
 # add_benchmark_to_results_repository(bench_2)
@@ -105,28 +105,15 @@ def mk_num_workers(n):
 
 mk_benchmarks = mk_append_sequence([ mk_parameter(benchmark_key, b) for b in benchmarks ])
 
-from tabulate import *
-
-table = []
 columns = [mode_taskparts, mode_elastic, mode_cilk]
-metric = 'exectime'
-for b in [mk_expr_of_row(r) for r in rows_of(mk_benchmarks)]:
-    print('===')
-    ppj(b)
-    mk_r = eval(mk_take_kvp(all_results, mk_cross(b, mk_num_workers(max_num_workers))))
-    cols = []
-    for m in [mk_expr_of_row(r) for r in rows_of(mk_parameters(mode_key, columns))]:
-        print('---')
-        ppj(m)
-        cc = collapse_rows(rows_of(mk_take_kvp(mk_r, m)))
-        m = mean(val_of_key_in_row(cc, metric))
-        print(m)
-        cols += [m]
-    table += [ ([ val_of_key_in_row(rows_of(b)[0], benchmark_key) ] + cols) ]
-    print('')
-
-headers = ['benchmark'] + columns
-print(tabulate(table, headers, floatfmt=".3f", colalign=('right', 'decimal',)))
+print(mk_table(mk_take_kvp(all_results, mk_num_workers(max_num_workers)),
+               mk_benchmarks,
+               mk_parameters(mode_key, columns),
+               gen_row_str = lambda mk_row:
+               val_of_key_in_row(rows_of(mk_row)[0], benchmark_key),
+               gen_cell_str = lambda mk_row, mk_col, row:
+               mean(val_of_key_in_row(row, 'exectime')),
+               column_titles = columns))
 
 # Speedup curves
 # ==============
