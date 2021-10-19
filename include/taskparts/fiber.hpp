@@ -28,10 +28,13 @@ public:
   fiber(Scheduler _sched=Scheduler())
     : minimal_fiber<Scheduler>(), incounter(1), outedge(nullptr) { }
 
+  // later: remove the ifdef after correcting the bootstrapping of tpal programs, e.g., sum_tree
+#ifndef TASKPARTS_TPALRTS
   virtual
   ~fiber() {
     assert(outedge == nullptr);
-  } 
+  }
+#endif
 
   virtual
   fiber_status_type run() = 0;
@@ -186,14 +189,14 @@ public:
     }
     case reset_pause0: {
       while (true) {
-	if (! worker_first) {
-	  global_reset();
-	  worker_reset();
-	}
 	if (nb_workers_paused->load() + 1 == perworker::nb_workers()) {
+	  // all other workers are busy waiting in the loop above
 	  if (worker_first) {
 	    worker_reset();
 	    global_reset();
+	  } else {
+	    global_reset();
+	    worker_reset();
 	  }
 	  (*nb_workers_finished)++;
 	  trampoline = reset_wait_for_all;
