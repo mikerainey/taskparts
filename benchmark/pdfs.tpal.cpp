@@ -43,6 +43,7 @@ void loop(const Graph& g, frontier_type& _frontier, parlay::sequence<std::atomic
   while (f > 0) {
     if ((f > split_cutoff)
 	|| ((nb_since_last_split > split_cutoff) && (f > 1))) {
+      TASKPARTS_LOG_PPT(taskparts::bench_logging, 0);
       frontier_type frontier1, frontier2;
       frontier1.set_graph(graph_alias(g));
       frontier2.set_graph(graph_alias(g));
@@ -54,6 +55,7 @@ void loop(const Graph& g, frontier_type& _frontier, parlay::sequence<std::atomic
       }, [&] {
 	loop(g, frontier2, visited);
       }, [&] { }, taskparts::bench_scheduler());
+      TASKPARTS_LOG_PPT(taskparts::bench_logging, 0);
     }
     nb_since_last_split +=    
       frontier.for_at_most_nb_outedges(poll_cutoff, [&] (vertexId other_vertex) {
@@ -70,8 +72,10 @@ auto PDFS(vertexId source, const Graph& g) -> parlay::sequence<std::atomic<int>>
   frontier0.set_graph(graph_alias(g));
   frontier0.push_vertex_back(source);
   parlay::sequence<std::atomic<int>> visited(g.numVertices());
+  TASKPARTS_LOG_PPT(taskparts::bench_logging, 0);
   visited[source].store(1);
   loop(g, frontier0, visited);
+  TASKPARTS_LOG_PPT(taskparts::bench_logging, 0);
   return visited;
 }
 
