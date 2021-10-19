@@ -238,11 +238,6 @@ public:
           i--;
           target = random_other_worker(nb_workers, my_id);
         } while (i > 0);
-        if (current == nullptr) {
-          elastic_type::try_to_sleep(target);
-        } else {
-          elastic_type::wake_children();
-        }
         if (termination_barrier.is_terminated() || should_terminate) {
           //fprintf(stderr, "[%ld] Attempting to terminate.\n", perworker::my_id());
           assert(current == nullptr);
@@ -252,7 +247,12 @@ public:
           Logging::log_event(exit_wait);
           return scheduler_status_finish;
         }
-      }
+	if (current == nullptr) {
+          elastic_type::try_to_sleep(target);
+        } else {
+          elastic_type::wake_children();
+        }
+       }
       assert(current != nullptr);
       buffers.mine().push_back(current);
       Stats::on_exit_acquire();
