@@ -239,13 +239,13 @@ public:
   // Compacted for cache friendly-ness
   struct fields {
     // Rng seed
-    hash_value_type rng;
+    hash_value_type rng __attribute__ ((aligned (TASKPARTS_CACHE_LINE_SZB)));
     // Processor status words
-    std::atomic<status_t> status;
+    std::atomic<status_t> status __attribute__ ((aligned (TASKPARTS_CACHE_LINE_SZB)));
     // Spinlocks for concurrency control
-    spinlock lock;
+    spinlock lock __attribute__ ((aligned (TASKPARTS_CACHE_LINE_SZB)));
     // Semaphore for putting processors to sleep;
-    semaphore sem;
+    semaphore sem __attribute__ ((aligned (TASKPARTS_CACHE_LINE_SZB)));
   };
 
   static perworker::array<fields> field;
@@ -327,20 +327,20 @@ public:
   }
 
   static
-  size_t random_other_worker(size_t& nb_sa, size_t nb_workers, size_t my_id) {
-      assert(nb_workers != 1);
-      assert(status[my_id].load() == status_t::Stealing);
-      size_t id;
-      do {
-        id = (size_t)((hash(my_id) + hash(nb_sa)) % (nb_workers - 1));
-        if (id >= my_id) {
-          id++;
-        }
-        nb_sa++;
-        // fprintf(stderr, "[%ld] Stealing: Attempting %ld. \n", my_id, id);
-      } while(status[id].load() == status_t::Sleeping);
-      //fprintf(stderr, "[%ld] Stealing: Chosen %ld. \n", my_id, id);
-      return id;
+  auto random_other_worker(size_t& nb_sa, size_t nb_workers, size_t my_id) -> size_t {
+    assert(nb_workers != 1);
+    assert(status[my_id].load() == status_t::Stealing);
+    size_t id;
+    do {
+      id = (size_t)((hash(my_id) + hash(nb_sa)) % (nb_workers - 1));
+      if (id >= my_id) {
+	id++;
+      }
+      nb_sa++;
+      // fprintf(stderr, "[%ld] Stealing: Attempting %ld. \n", my_id, id);
+    } while(status[id].load() == status_t::Sleeping);
+    //fprintf(stderr, "[%ld] Stealing: Chosen %ld. \n", my_id, id);
+    return id;
   }
 
   static 
@@ -383,7 +383,7 @@ public:
         crs::remove(p);
 	Stats::on_exit_acquire();
 	Logging::log_enter_sleep(p, 0l, 0l);	
-	Stats::on_enter_sleep(); 
+	Stats::on_enter_sleep();
         sem[p].wait();
 	Stats::on_exit_sleep(); 
 	Logging::log_event(exit_sleep);
