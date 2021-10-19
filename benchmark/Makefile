@@ -6,7 +6,6 @@ TASKPARTS_PATH?=../
 # Other parameters (all nil by default):
 #   HWLOC_INCLUDE_PREFIX           include directives for hwloc (optionally empty)
 #   HWLOC_LIBRARY_PREFIX           linker directives for hwloc (optionally empty)
-#   TASKPARTS_ELASTIC_PREFIX       build configuration for elastic work stealing
 #   PARLAYLIB_INCLUDE_PREFIX       include directives needed for parlay
 #   PARLAYLIB_SERIAL_PREFIX        include directives needed for parlay
 #   PBBSBENCH_INCLUDE_PREFIX       include directives needed for pbbs
@@ -61,8 +60,7 @@ COMMON_COMPILE_PREFIX=\
 	-m64 \
 	-fno-stack-protector \
 	-DTASKPARTS_POSIX \
-	-DTASKPARTS_X64 \
-	$(TASKPARTS_ELASTIC_PREFIX)
+	-DTASKPARTS_X64
 
 OPT_COMPILE_PREFIX=\
 	$(COMMON_COMPILE_PREFIX) \
@@ -145,32 +143,61 @@ SERIAL_PREFIX=-DTASKPARTS_SERIAL -DTASKPARTS_SERIAL_ELISION $(PARLAYLIB_SERIAL_P
 # Binaries for elastic scheduling
 # -------------------------------
 
-%.elastic.opt: %.cpp $(INCLUDE_FILES) install_folder
-	$(CXX) $(OPT_PREFIX) -DTASKPARTS_ELASTIC -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
-%.elastic.sta: %.cpp $(INCLUDE_FILES) install_folder
-	$(CXX) $(STA_PREFIX) -DTASKPARTS_ELASTIC -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
-%.elastic.log: %.cpp $(INCLUDE_FILES) install_folder
-	$(CXX) $(LOG_PREFIX) -DTASKPARTS_ELASTIC -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
-%.elastic.dbg: %.cpp $(INCLUDE_FILES) install_folder
-	$(CXX) $(DBG_PREFIX) -DTASKPARTS_ELASTIC -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+%.elastic_lifeline.opt: %.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(OPT_PREFIX) -DTASKPARTS_ELASTIC_LIFELINE -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+%.elastic_lifeline.sta: %.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(STA_PREFIX) -DTASKPARTS_ELASTIC_LIFELINE -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+%.elastic_lifeline.log: %.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(LOG_PREFIX) -DTASKPARTS_ELASTIC_LIFELINE -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+%.elastic_lifeline.dbg: %.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(DBG_PREFIX) -DTASKPARTS_ELASTIC_LIFELINE -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
 
-%.elastic_elision.opt: %.cpp $(INCLUDE_FILES) install_folder
-	$(CXX) $(OPT_PREFIX) -DTASKPARTS_ELASTIC -DTASKPARTS_SERIAL_ELISION -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
-%.elastic_elision.sta: %.cpp $(INCLUDE_FILES) install_folder
-	$(CXX) $(STA_PREFIX) -DTASKPARTS_ELASTIC -DTASKPARTS_SERIAL_ELISION -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
-%.elastic_elision.log: %.cpp $(INCLUDE_FILES) install_folder
-	$(CXX) $(LOG_PREFIX) -DTASKPARTS_ELASTIC -DTASKPARTS_SERIAL_ELISION -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
-%.elastic_elision.dbg: %.cpp $(INCLUDE_FILES) install_folder
-	$(CXX) $(DBG_PREFIX) -DTASKPARTS_ELASTIC -DTASKPARTS_SERIAL_ELISION -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+%.elastic_lifeline_elision.opt: %.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(OPT_PREFIX) -DTASKPARTS_ELASTIC_LIFELINE -DTASKPARTS_SERIAL_ELISION -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+%.elastic_lifeline_elision.sta: %.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(STA_PREFIX) -DTASKPARTS_ELASTIC_LIFELINE -DTASKPARTS_SERIAL_ELISION -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+%.elastic_lifeline_elision.log: %.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(LOG_PREFIX) -DTASKPARTS_ELASTIC_LIFELINE -DTASKPARTS_SERIAL_ELISION -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+%.elastic_lifeline_elision.dbg: %.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(DBG_PREFIX) -DTASKPARTS_ELASTIC_LIFELINE -DTASKPARTS_SERIAL_ELISION -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
 
-%.elastic_tpal.opt: %.tpal.cpp $(INCLUDE_FILES) install_folder
-	$(CXX) $(OPT_PREFIX) -DTASKPARTS_ELASTIC -DTASKPARTS_TPALRTS $(basename $<)_manual.s -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
-%.elastic_tpal.sta: %.tpal.cpp $(INCLUDE_FILES) install_folder
-	$(CXX) $(STA_PREFIX) -DTASKPARTS_ELASTIC -DTASKPARTS_TPALRTS $(basename $<)_manual.s -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
-%.elastic_tpal.log: %.tpal.cpp $(INCLUDE_FILES) install_folder
-	$(CXX) $(LOG_PREFIX) -DTASKPARTS_ELASTIC -DTASKPARTS_TPALRTS $(basename $<)_manual.s -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
-%.elastic_tpal.dbg: %.tpal.cpp $(INCLUDE_FILES) install_folder
-	$(CXX) $(DBG_PREFIX) -DTASKPARTS_ELASTIC -DTASKPARTS_TPALRTS $(basename $<)_manual.s -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+%.elastic_lifeline_tpal.opt: %.tpal.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(OPT_PREFIX) -DTASKPARTS_ELASTIC_LIFELINE -DTASKPARTS_TPALRTS $(basename $<)_manual.s -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+%.elastic_lifeline_tpal.sta: %.tpal.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(STA_PREFIX) -DTASKPARTS_ELASTIC_LIFELINE -DTASKPARTS_TPALRTS $(basename $<)_manual.s -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+%.elastic_lifeline_tpal.log: %.tpal.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(LOG_PREFIX) -DTASKPARTS_ELASTIC_LIFELINE -DTASKPARTS_TPALRTS $(basename $<)_manual.s -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+%.elastic_lifeline_tpal.dbg: %.tpal.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(DBG_PREFIX) -DTASKPARTS_ELASTIC_LIFELINE -DTASKPARTS_TPALRTS $(basename $<)_manual.s -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+
+
+
+%.elastic_flat.opt: %.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(OPT_PREFIX) -DTASKPARTS_ELASTIC_FLAT -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+%.elastic_flat.sta: %.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(STA_PREFIX) -DTASKPARTS_ELASTIC_FLAT -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+%.elastic_flat.log: %.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(LOG_PREFIX) -DTASKPARTS_ELASTIC_FLAT -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+%.elastic_flat.dbg: %.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(DBG_PREFIX) -DTASKPARTS_ELASTIC_FLAT -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+
+%.elastic_flat_elision.opt: %.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(OPT_PREFIX) -DTASKPARTS_ELASTIC_FLAT -DTASKPARTS_SERIAL_ELISION -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+%.elastic_flat_elision.sta: %.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(STA_PREFIX) -DTASKPARTS_ELASTIC_FLAT -DTASKPARTS_SERIAL_ELISION -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+%.elastic_flat_elision.log: %.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(LOG_PREFIX) -DTASKPARTS_ELASTIC_FLAT -DTASKPARTS_SERIAL_ELISION -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+%.elastic_flat_elision.dbg: %.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(DBG_PREFIX) -DTASKPARTS_ELASTIC_FLAT -DTASKPARTS_SERIAL_ELISION -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+
+%.elastic_flat_tpal.opt: %.tpal.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(OPT_PREFIX) -DTASKPARTS_ELASTIC_FLAT -DTASKPARTS_TPALRTS $(basename $<)_manual.s -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+%.elastic_flat_tpal.sta: %.tpal.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(STA_PREFIX) -DTASKPARTS_ELASTIC_FLAT -DTASKPARTS_TPALRTS $(basename $<)_manual.s -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+%.elastic_flat_tpal.log: %.tpal.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(LOG_PREFIX) -DTASKPARTS_ELASTIC_FLAT -DTASKPARTS_TPALRTS $(basename $<)_manual.s -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+%.elastic_flat_tpal.dbg: %.tpal.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(DBG_PREFIX) -DTASKPARTS_ELASTIC_FLAT -DTASKPARTS_TPALRTS $(basename $<)_manual.s -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
 
 # Binaries for Cilk
 # -----------------
@@ -215,10 +242,15 @@ all_taskparts_sta: $(BENCHMARKS:%=%.sta)
 all_taskparts_log: $(BENCHMARKS:%=%.log)
 all_taskparts_dbg: $(BENCHMARKS:%=%.dbg)
 
-all_elastic_opt: $(BENCHMARKS:%=%.elastic.opt) $(BENCHMARKS:%=%.elastic_elision.opt)
-all_elastic_sta: $(BENCHMARKS:%=%.elastic.sta) $(BENCHMARKS:%=%.elastic_elision.sta)
-all_elastic_log: $(BENCHMARKS:%=%.elastic.log) $(BENCHMARKS:%=%.elastic_elision.log)
-all_elastic_dbg: $(BENCHMARKS:%=%.elastic.dbg) $(BENCHMARKS:%=%.elastic_elision.dbg)
+all_elastic_lifeline_opt: $(BENCHMARKS:%=%.elastic_lifeline.opt) $(BENCHMARKS:%=%.elastic_lifeline_elision.opt)
+all_elastic_lifeline_sta: $(BENCHMARKS:%=%.elastic_lifeline.sta) $(BENCHMARKS:%=%.elastic_lifeline_elision.sta)
+all_elastic_lifeline_log: $(BENCHMARKS:%=%.elastic_lifeline.log) $(BENCHMARKS:%=%.elastic_lifeline_elision.log)
+all_elastic_lifeline_dbg: $(BENCHMARKS:%=%.elastic_lifeline.dbg) $(BENCHMARKS:%=%.elastic_lifeline_elision.dbg)
+
+all_elastic_flat_opt: $(BENCHMARKS:%=%.elastic_flat.opt) $(BENCHMARKS:%=%.elastic_flat_elision.opt)
+all_elastic_flat_sta: $(BENCHMARKS:%=%.elastic_flat.sta) $(BENCHMARKS:%=%.elastic_flat_elision.sta)
+all_elastic_flat_log: $(BENCHMARKS:%=%.elastic_flat.log) $(BENCHMARKS:%=%.elastic_flat_elision.log)
+all_elastic_flat_dbg: $(BENCHMARKS:%=%.elastic_flat.dbg) $(BENCHMARKS:%=%.elastic_flat_elision.dbg)
 
 all_cilk_opt: $(BENCHMARKS:%=%.cilk.opt)
 all_cilk_sta: $(BENCHMARKS:%=%.cilk.sta)

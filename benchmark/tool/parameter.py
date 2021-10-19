@@ -185,6 +185,10 @@ def collapse_rows(rs):
         ts = merge_list_of_tuples(ts, mk_tuples_of_row(r))
     return dictionary_to_row(mk_dictionary_of_tuples(ts))
 
+def genfunc_expr_by_row(e):
+    for r in rows_of(e):
+        yield mk_expr_of_row(r)
+
 # Evaluation
 # ==========
 

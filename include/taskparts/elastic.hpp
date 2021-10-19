@@ -2,11 +2,14 @@
 
 #include <assert.h>
 
+#include <optional>
+
 #include "perworker.hpp"
 #include "atomic.hpp"
 #include "hash.hpp"
 #if defined(TASKPARTS_POSIX)
 #include "posix/semaphore.hpp"
+#include "posix/spinlock.hpp"
 #elif defined (TASKPARTS_NAUTILUS)
 #include "nautilus/semaphore.hpp"
 #else
@@ -128,6 +131,8 @@ template <typename Stats, typename Logging, typename Semaphore=semaphore>
 class elastic {
 public:
 
+  static constexpr bool override_rand_worker = false;
+
   // Grouping fields for elastic scheduling together for potentiallly
   // better cache behavior and easier initialization.
   using elastic_fields_type = struct elastic_fields_struct {
@@ -219,5 +224,206 @@ public:
 
 template <typename Stats, typename Logging, typename Semaphore>
 perworker::array<typename elastic<Stats,Logging,Semaphore>::elastic_fields_type> elastic<Stats,Logging,Semaphore>::fields;
+
+// Elsatic WS without Lifelines 
+template <typename Stats, typename Logging, typename semaphore=semaphore, typename spinlock=spinlock>
+class elastic_flat {
+public:
+  static constexpr bool override_rand_worker = true;
+
+  // Processor status
+  enum class status_t {
+    Working, Stealing, Sleeping
+  };
+
+  // Compacted for cache friendly-ness
+  struct fields {
+    // Rng seed
+    hash_value_type rng;
+    // Processor status words
+    std::atomic<status_t> status;
+    // Spinlocks for concurrency control
+    spinlock lock;
+    // Semaphore for putting processors to sleep;
+    semaphore sem;
+  };
+
+  static perworker::array<fields> field;
+
+  static constexpr struct status_proxy {
+    auto& operator[](size_t i) const { return field[i].status; }
+  } status{};
+  static constexpr struct rng_proxy {
+    auto& operator[](size_t i) const { return field[i].rng; }
+  } rng{};
+  static constexpr struct lock_proxy {
+    auto& operator[](size_t i) const { return field[i].lock; }
+  } lock{};
+  static constexpr struct sem_proxy    {
+    auto& operator[](size_t i) const { return field[i].sem; }
+  } sem{};
+
+  // concurrent random set for tracking awake processors
+  class crs {
+  public:
+
+    // Init, Add and Remove are dummy methods as it is backed by status words
+    static 
+    void initialize() { }
+
+    static
+    void add(size_t p) { }
+
+    static
+    void remove(size_t p) { }
+
+    static
+    size_t sample(size_t& nb_sa, size_t nb_workers, size_t my_id) {
+      assert(nb_workers != 1);
+      auto id = (size_t)((hash(my_id) + hash(nb_sa)) % (nb_workers - 1));
+      if (id >= my_id) {
+        id++;
+      }
+      nb_sa++;
+      return id;
+    }
+  };
+
+  // worker pool for tracking asleep processors
+  class pool {
+  public:
+    // Init/Add is dummy it is backed by status words
+    static 
+    void initialize() { }
+
+    static
+    void add(size_t p) { }
+
+    static
+    std::optional<size_t> choose() {
+      auto size = field.size();
+      auto p = perworker::my_id();
+      // No need to wake up one's self
+      for (size_t i = 1u; i < size; ++i){
+        auto v = (i + p) % size;
+        auto expected = status_t::Sleeping;
+        if (status[v].load() == expected) {
+          if (status[v].compare_exchange_strong(expected, status_t::Stealing)) {
+            return v; 
+          }
+        }
+      }
+      return std::nullopt;
+    }
+  };
+
+  static
+  auto initialize() {
+    assert(status[0].is_lock_free());
+    // Semaphore and spinlocks are initialized on construction
+    for (size_t i = 0; i < field.size(); ++i) {
+      status[i].store(status_t::Working);
+    }
+  }
+
+  static
+  size_t random_other_worker(size_t& nb_sa, size_t nb_workers, size_t my_id) {
+      assert(nb_workers != 1);
+      assert(status[my_id].load() == status_t::Stealing);
+      size_t id;
+      do {
+        id = (size_t)((hash(my_id) + hash(nb_sa)) % (nb_workers - 1));
+        if (id >= my_id) {
+          id++;
+        }
+        nb_sa++;
+        // fprintf(stderr, "[%ld] Stealing: Attempting %ld. \n", my_id, id);
+      } while(status[id].load() == status_t::Sleeping);
+      //fprintf(stderr, "[%ld] Stealing: Chosen %ld. \n", my_id, id);
+      return id;
+  }
+
+  static 
+  bool lock2(size_t l1, size_t l2) {
+    assert(l1 != l2);
+    auto [low, high] = l1 < l2 ? std::pair{l1, l2} : std::pair{l2, l1};
+    auto& l_lock = lock[low];
+    auto& h_lock = lock[high];
+    if (l_lock.try_lock()) {
+      if (h_lock.try_lock()) {
+        // Both locks went through
+        return true;
+      } else {
+        // High lock failed, bail out
+        l_lock.unlock();
+        return false;
+      }
+    } else {
+      return false;
+    }
+  }
+
+  static
+  void unlock2(size_t l1, size_t l2) {
+    lock[l1].unlock();
+    lock[l2].unlock();
+  }
+
+  // This is called when a steal attempt failed
+  static
+  auto try_to_sleep(size_t v) {
+    auto p = perworker::my_id();
+    //fprintf(stderr, "[%ld] Try to sleep %ld.\n", p, v);
+    if (lock2(v, p)) {
+      if (status[v].load() == status_t::Stealing) {
+        status[p].store(status_t::Sleeping);
+        //fprintf(stderr, "[%ld] Sleeping on %ld.\n", p, v);
+        pool::add(p);
+        unlock2(v, p);
+        crs::remove(p);
+	Stats::on_exit_acquire();
+	Logging::log_enter_sleep(p, 0l, 0l);	
+	Stats::on_enter_sleep(); 
+        sem[p].wait();
+	Stats::on_exit_sleep(); 
+	Logging::log_event(exit_sleep);
+	Stats::on_enter_acquire();
+        status[p].store(status_t::Stealing);
+        //fprintf(stderr, "[%ld] Stealing: Woken up.\n", p);
+        crs::add(p);
+      } else {
+        unlock2(v, p);
+      }
+    }
+  }
+
+  // This is called when a steal attempt succeeded
+  static
+  auto wake_children() {
+    auto p = perworker::my_id();
+    lock[p].lock(); // This have to go through
+    status[p].store(status_t::Working);
+    //fprintf(stderr, "[%ld] Working: Waking up other procs. \n", p);
+    lock[p].unlock();
+    auto w = pool::choose();
+    if (w) {
+      Logging::log_wake_child(*w);
+      sem[*w].post();
+      //fprintf(stderr, "[%ld] Working: Waking up %ld. \n", p, *w);
+    }
+  }
+
+  // This is called once every time processor start to acquire work
+  static
+  auto accept_lifelines() {
+    auto p = perworker::my_id();
+    status[p].store(status_t::Stealing);
+    //fprintf(stderr, "[%ld] Stealing: Attempting to acquire work.\n", p);
+  }
+};
+
+template <typename Stats, typename Logging, typename Semaphore, typename Spinlock>
+perworker::array<typename elastic_flat<Stats,Logging,Semaphore,Spinlock>::fields> 
+elastic_flat<Stats,Logging,Semaphore,Spinlock>::field;
 
 } // end namespace

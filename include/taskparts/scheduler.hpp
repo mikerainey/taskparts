@@ -218,6 +218,9 @@ template <typename Stats=minimal_stats, typename Logging=minimal_logging>
 class minimal_elastic {
 public:
 
+  static constexpr
+  bool override_rand_worker = false;
+
   static
   auto wake_children() { }
 

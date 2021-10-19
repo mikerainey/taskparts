@@ -37,7 +37,11 @@ auto benchmark_nativeforkjoin(const Benchmark& benchmark,
   if (const auto env_p = std::getenv("TASKPARTS_BENCHMARK_NUM_REPEAT")) {
     repeat = std::stoi(env_p);
   }
+#ifdef NDEBUG
   double warmup_secs = 3.0;
+#else
+  double warmup_secs = 0.0;
+#endif
   if (const auto env_p = std::getenv("TASKPARTS_BENCHMARK_WARMUP_SECS")) {
     warmup_secs = (double)std::stoi(env_p);
   }

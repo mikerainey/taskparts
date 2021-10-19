@@ -2,7 +2,7 @@
 #include "integrate.hpp"
 
 int main() {
-  size_t n = taskparts::cmdline::parse_or_default_long("n", 100000000);
+  size_t n = taskparts::cmdline::parse_or_default_long("n", 1000000000);
   auto f = [&] (double q) -> double {
     return pow(q, 2);
   };

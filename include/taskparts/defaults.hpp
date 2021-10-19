@@ -60,9 +60,12 @@ using bench_logging = logging_base<true>;
 using bench_logging = logging_base<false>;
 #endif
 
-#ifdef TASKPARTS_ELASTIC
+#if defined(TASKPARTS_ELASTIC_LIFELINE)
 template <typename Stats, typename Logging>
 using bench_elastic = elastic<Stats, Logging>;
+#elif defined(TASKPARTS_ELASTIC_FLAT)
+template <typename Stats, typename Logging>
+using bench_elastic = elastic_flat<Stats, Logging>;
 #else
 template <typename Stats, typename Logging>
 using bench_elastic = minimal_elastic<Stats, Logging>;

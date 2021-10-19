@@ -196,11 +196,16 @@ public:
     auto random_other_worker = [&] (size_t nb_workers, size_t my_id) -> size_t {
       assert(nb_workers != 1);
       auto& nb_sa = nb_steal_attempts_so_far[my_id];
-      auto id = (size_t)((hash(my_id) + hash(nb_sa)) % (nb_workers - 1));
-      if (id >= my_id) {
-        id++;
+      size_t id;
+      if constexpr (elastic_type::override_rand_worker) {
+        id = elastic_type::random_other_worker(nb_sa, nb_workers, my_id);
+      } else {
+        id = (size_t)((hash(my_id) + hash(nb_sa)) % (nb_workers - 1));
+        if (id >= my_id) {
+          id++;
+        }
+        nb_sa++;
       }
-      nb_sa++;
       assert(id != my_id);
       assert(id >= 0 && id < nb_workers);
       return id;
@@ -222,14 +227,14 @@ public:
         auto i = nb_steal_attempts;
         auto target = random_other_worker(nb_workers, my_id);
         do {
-	  termination_barrier.set_active(true);
-	  current = deques[target].steal();
-	  if (current == nullptr) {
-	    termination_barrier.set_active(false);
-	  } else {
-	    Stats::increment(Stats::configuration_type::nb_steals);
-	    break;
-	  }
+          termination_barrier.set_active(true);
+          current = deques[target].steal();
+          if (current == nullptr) {
+            termination_barrier.set_active(false);
+          } else {
+            Stats::increment(Stats::configuration_type::nb_steals);
+            break;
+          }
           i--;
           target = random_other_worker(nb_workers, my_id);
         } while (i > 0);
@@ -239,6 +244,7 @@ public:
           elastic_type::wake_children();
         }
         if (termination_barrier.is_terminated() || should_terminate) {
+          //fprintf(stderr, "[%ld] Attempting to terminate.\n", perworker::my_id());
           assert(current == nullptr);
           Logging::log_event(worker_exit);
           elastic_type::wake_children();
@@ -251,6 +257,7 @@ public:
       buffers.mine().push_back(current);
       Stats::on_exit_acquire();
       Logging::log_event(exit_wait);
+      //fprintf(stderr, "[%ld] Exit acquire.\n", perworker::my_id());
       return scheduler_status_active;
     };
 
@@ -275,6 +282,7 @@ public:
               assert(s == fiber_status_exit_launch);
               current->finish();
               status = scheduler_status_finish;
+              //fprintf(stderr, "[%ld] Initiate teardown.\n", perworker::my_id());
               Logging::log_event(initiate_teardown);
               should_terminate = true;
             }
