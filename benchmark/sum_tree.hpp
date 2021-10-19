@@ -53,10 +53,10 @@ auto gen_perfect_tree(size_t height, Scheduler sched=Scheduler()) -> node* {
 }
 
 template <typename Scheduler=taskparts::minimal_scheduler<>>
-auto gen_near_perfect_tree(size_t height, Scheduler sched=Scheduler()) -> node* {
+auto gen_imperfect_tree(size_t height, Scheduler sched=Scheduler()) -> node* {
   auto pt = gen_perfect_tree(height, sched);
   size_t nb_nodes = nb_nodes_of_height(height);
-  size_t nb_spine_nodes = taskparts::cmdline::parse_or_default_long("nb_spine_nodes", 1<<10);
+  size_t nb_spine_nodes = taskparts::cmdline::parse_or_default_long("nb_spine_nodes", 5000000);
   node* spine_tree = new node[nb_spine_nodes];
   n1 = spine_tree;
   taskparts::parallel_for(0, nb_spine_nodes, [&] (size_t i) {
@@ -65,7 +65,7 @@ auto gen_near_perfect_tree(size_t height, Scheduler sched=Scheduler()) -> node* 
     }
     spine_tree[i].left = &spine_tree[i + 1];
   }, taskparts::dflt_parallel_for_cost_fn, sched);
-  size_t nb_imperfections = taskparts::cmdline::parse_or_default_long("nb_imperfections", 10000);;
+  size_t nb_imperfections = taskparts::cmdline::parse_or_default_long("nb_imperfections", 5);;
   for (size_t i = 0; i < nb_imperfections; i++) {
     node* s = pt;
     size_t j = 0;
@@ -85,13 +85,15 @@ auto gen_near_perfect_tree(size_t height, Scheduler sched=Scheduler()) -> node* 
 
 template<typename Sched>
 auto gen_input(Sched sched) {
-  int h = taskparts::cmdline::parse_or_default_int("h", 28);
+  int h = 0;
   taskparts::cmdline::dispatcher d;
   d.add("perfect", [&] {
+    h = taskparts::cmdline::parse_or_default_int("height", 28);
     n0 = gen_perfect_tree(h, sched);
   });
-  d.add("near_perfect", [&] {
-    n0 = gen_near_perfect_tree(h, sched);
+  d.add("imperfect", [&] {
+    h = taskparts::cmdline::parse_or_default_int("height", 27);
+    n0 = gen_imperfect_tree(h, sched);
   });
   d.dispatch_or_default("input_tree", "perfect");
 }
