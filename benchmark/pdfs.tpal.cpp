@@ -24,8 +24,9 @@ public:
 
 bool try_to_mark(parlay::sequence<std::atomic<int>>& visited, vertexId target) {
   int orig = 0;
-  if (! visited[target].compare_exchange_strong(orig, 1))
+  if (! visited[target].compare_exchange_strong(orig, 1)) {
     return false;
+  }
   return true;
 }
 
@@ -40,8 +41,8 @@ void loop(const Graph& g, frontier_type& _frontier, parlay::sequence<std::atomic
   size_t nb_since_last_split = 0;
   size_t f = frontier.nb_outedges();
   while (f > 0) {
-    if (f > split_cutoff 
-	|| (nb_since_last_split > split_cutoff && f > 1)) {
+    if ((f > split_cutoff)
+	|| ((nb_since_last_split > split_cutoff) && (f > 1))) {
       frontier_type frontier1, frontier2;
       frontier1.set_graph(graph_alias(g));
       frontier2.set_graph(graph_alias(g));
@@ -56,8 +57,9 @@ void loop(const Graph& g, frontier_type& _frontier, parlay::sequence<std::atomic
     }
     nb_since_last_split +=    
       frontier.for_at_most_nb_outedges(poll_cutoff, [&] (vertexId other_vertex) {
-	if (try_to_mark(visited, other_vertex))
+	if (try_to_mark(visited, other_vertex)) {
 	  frontier.push_vertex_back(other_vertex);
+	}
       });
     f = frontier.nb_outedges();
   }
