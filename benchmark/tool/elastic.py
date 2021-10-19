@@ -3,6 +3,12 @@ from parameter import *
 from benchmark import *
 from table import mk_table
 
+# Notes
+# =====
+
+# For more general-purpose table generation:
+# https://pandas.pydata.org/docs/user_guide/style.html
+
 # Experiment configuration
 # ========================
 
