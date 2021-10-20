@@ -260,3 +260,5 @@ all_serial_sta: $(BENCHMARKS:%=%.serial.sta)
 
 all_opt: all_taskparts_opt all_cilk_opt all_serial_opt
 all_sta: all_taskparts_sta all_cilk_sta all_serial_sta
+
+all_elastic: all_opt all_sta all_elastic_lifeline_opt all_elastic_lifeline_sta all_elastic_flat_opt all_elastic_flat_sta 
