@@ -4,6 +4,7 @@ from benchmark import *
 from table import mk_table
 import itertools
 import subprocess
+import tabulate
 
 # Notes
 # =====
@@ -42,10 +43,12 @@ def mk_taskparts_num_workers(n):
 ## Schedulers
 ## ----------
 
+# later: introduce elastic + sleep by spinning?
+# later: introduce elastic + real concurrent random set?
+
 scheduler_key = 'scheduler'
 
 scheduler_serial = 'serial'
-scheduler_elastic_elision = 'elastic_elision'
 scheduler_elastic_lifeline = 'elastic_lifeline'
 scheduler_elastic_flat = 'elastic_flat'
 scheduler_taskparts = 'taskparts'
@@ -60,6 +63,14 @@ other_schedulers = [
 ]
 parallel_schedulers = taskparts_schedulers + other_schedulers
 
+scheduler_descriptions = {
+    scheduler_serial: 'serial',
+    scheduler_elastic_lifeline: 'elastic (lifelines)',
+    scheduler_elastic_flat: 'elastic (no lifelines)',
+    scheduler_taskparts: 'taskparts (chase lev work stealing / no elastic)',
+    scheduler_cilk: 'cilk',
+}
+
 def mk_scheduler(m):
     return mk_parameter(scheduler_key, m)
 
@@ -69,18 +80,21 @@ def mk_scheduler(m):
 benchmark_key = 'benchmark'
 path_to_executable_key = 'path_to_executable'
 
-benchmarks = [
-    'wc',
-    'mcss',
-    'samplesort',
-    'suffixarray',
-    'quickhull',
-    #'bfs',
-    # 'fib',
-    # 'integrate',
-    # 'primes',
-    # 'removeduplicates'
-]
+benchmark_descriptions = {
+    'wc': 'word count',
+    'mcss': 'maximum contiguous subsequence sum',
+    'samplesort': 'sample sort',
+    'suffixarray': 'suffix array',
+    'quickhull': 'convex hull',
+    'integrate': 'integration',
+    'primes': 'prime number enumeration',
+    'removeduplicates': 'remove duplicates'
+}
+
+takes = ['wc', 'mcss']
+drops = []
+
+benchmarks = [ b for b in benchmark_descriptions if b in takes and not(b in drops)  ]
 
 benchmark_path = '../'
 benchmark_bin_path = './bin/'
@@ -155,67 +169,6 @@ print('---------------\n')
 all_results = eval(read_head_from_benchmark_repository()['done'])
 print('')
 
-# Tables
-# ======
-
-mk_benchmarks = mk_append_sequence([ mk_parameter(benchmark_key, b) for b in benchmarks ])
-
-table_md_file = 'report.md'
-table_pdf_file = 'report.pdf'
-
-def mk_basic_table(results, result_key, columns):
-    t = mk_table(results,
-                 mk_benchmarks,
-                 mk_parameters(scheduler_key, columns),
-                 gen_row_str = lambda mk_row:
-                 val_of_key_in_row(rows_of(mk_row)[0], benchmark_key),
-                 gen_cell_str = lambda mk_row, mk_col, row:
-                 mean(val_of_key_in_row(row, result_key)),
-                 column_titles = columns) + '\n'
-    return t
-
-with open(table_md_file, 'w') as f:
-
-    print('# Elastic scheduling benchmark report\n', file=f)
-    print('Max number of worker threads $P$ = ' + str(max_num_workers) + '\n', file=f)
-
-    results_at_scale = mk_take_kvp(all_results, mk_taskparts_num_workers(max_num_workers))
-    
-    print('## Raw data of runs at scale\n', file=f)
-    print('### Wall-clock time\n', file=f)
-    print(mk_basic_table(results_at_scale, taskparts_exectime_key, parallel_schedulers),
-          file=f)
-    print('### Usertime\n', file=f)
-    print(mk_basic_table(results_at_scale, taskparts_usertime_key, parallel_schedulers),
-          file=f)
-    print('### Utilization\n', file=f)
-    print(mk_basic_table(results_at_scale, taskparts_utilization_key, parallel_schedulers),
-          file=f)
-    print('### Total time\n', file=f)
-    print(mk_basic_table(results_at_scale, taskparts_total_time_key, parallel_schedulers),
-          file=f)
-    print('### Total work time\n', file=f)
-    print(mk_basic_table(results_at_scale, taskparts_total_work_time_key, parallel_schedulers),
-          file=f)
-    print('### Total idle time\n', file=f)
-    print(mk_basic_table(results_at_scale, taskparts_total_idle_time_key, parallel_schedulers),
-          file=f)
-    print('### Total sleep time\n', file=f)
-    print(mk_basic_table(results_at_scale, taskparts_total_sleep_time_key, taskparts_schedulers),
-          file=f)
-    print('### Number of steals\n', file=f)
-    print(mk_basic_table(results_at_scale, taskparts_nb_steals_key, parallel_schedulers),
-          file=f)
-
-    f.close()
-
-process = subprocess.Popen(['pandoc', table_md_file, '-o', table_pdf_file],
-                           stdout=subprocess.PIPE, 
-                           stderr=subprocess.PIPE)
-stdout, stderr = process.communicate()
-
-print('Generated result tables in ' + table_pdf_file)
-    
 # Speedup curves
 # ==============
 
@@ -240,8 +193,9 @@ def generate_speedup_plots():
                              curves_expr = all_curves)
     for plot in plots:
         output_plot(plot)
+    return plots
 
-#generate_speedup_plots()
+speedup_plots = generate_speedup_plots()
 
 # Plots for other measures
 # ========================
@@ -269,6 +223,7 @@ def generate_basic_plots(get_y_val, y_label, curves_expr):
                      opt_args = opt_plot_args)
     for plot in plots:
         output_plot(plot)
+    return plots
 
 # generate_basic_plots(mk_get_y_val(taskparts_exectime_key), 'run time (s)', all_curves)
 # generate_basic_plots(mk_get_y_val('usertime'), 'user time (s)', all_curves)
@@ -280,7 +235,91 @@ def get_percent_of_one_to_another(x_key, x_val, y_expr, y_key, ref_key):
     tt = mean(select_from_expr_by_key(y_expr, ref_key))
     return (st / tt) * 100.0
     
-# generate_basic_plots(
-#     lambda x_key, x_val, y_expr: get_percent_of_one_to_another(x_key, x_val, y_expr, 'total_sleep_time', 'total_time'),
-#     'percent of total time spent sleeping',
-#     mk_scheduler(scheduler_elastic_flat))
+pct_sleeping_plots = generate_basic_plots(
+    lambda x_key, x_val, y_expr: get_percent_of_one_to_another(x_key, x_val, y_expr, 'total_sleep_time', 'total_time'),
+    'percent-of-total-time-spent-sleeping',
+    mk_scheduler(scheduler_elastic_flat))
+
+# Markdown/PDF global report
+# ==========================
+
+mk_benchmarks = mk_append_sequence([ mk_parameter(benchmark_key, b) for b in benchmarks ])
+
+table_md_file = 'report.md'
+table_pdf_file = 'report.pdf'
+
+def mk_basic_table(results, result_key, columns):
+    t = mk_table(results,
+                 mk_benchmarks,
+                 mk_parameters(scheduler_key, columns),
+                 gen_row_str = lambda mk_row:
+                 val_of_key_in_row(rows_of(mk_row)[0], benchmark_key),
+                 gen_cell_str = lambda mk_row, mk_col, row:
+                 mean(val_of_key_in_row(row, result_key)),
+                 column_titles = columns) + '\n'
+    return t
+
+with open(table_md_file, 'w') as f:
+
+    print('# Elastic scheduling benchmark report\n', file=f)
+    print('Max number of worker threads $P$ = ' + str(max_num_workers) + '\n', file=f)
+    print('All times are in seconds\n', file=f)
+
+    print('## Scheduler descriptions\n', file=f)
+    print(tabulate.tabulate([[k, scheduler_descriptions[k]] for k in scheduler_descriptions],
+                            ['scheduler', 'description']) + '\n', file=f)
+
+    print('## Benchmark descriptions\n', file=f)
+    print(tabulate.tabulate([[k, benchmark_descriptions[k]] for k in benchmark_descriptions],
+                            ['benchmark', 'description']) + '\n', file=f)
+
+    results_at_scale = mk_take_kvp(all_results, mk_taskparts_num_workers(max_num_workers))
+    
+    print('## Raw data of runs at scale\n', file=f)
+    print('### Wall-clock time\n', file=f)
+    print(mk_basic_table(results_at_scale, taskparts_exectime_key, parallel_schedulers),
+          file=f)
+    print('### Total time\n', file=f)
+    print(mk_basic_table(results_at_scale, taskparts_total_time_key, parallel_schedulers),
+          file=f)
+    print('### Total work time\n', file=f)
+    print(mk_basic_table(results_at_scale, taskparts_total_work_time_key, parallel_schedulers),
+          file=f)
+    print('### Total idle time\n', file=f)
+    print(mk_basic_table(results_at_scale, taskparts_total_idle_time_key, parallel_schedulers),
+          file=f)
+    print('### Total sleep time\n', file=f)
+    print(mk_basic_table(results_at_scale, taskparts_total_sleep_time_key, taskparts_schedulers),
+          file=f)
+    
+    print('### Usertime\n', file=f)
+    print(mk_basic_table(results_at_scale, taskparts_usertime_key, parallel_schedulers),
+          file=f)
+    print('### System time\n', file=f)
+    print(mk_basic_table(results_at_scale, taskparts_systime_key, parallel_schedulers),
+          file=f)
+    print('### Utilization\n', file=f)
+    print(mk_basic_table(results_at_scale, taskparts_utilization_key, parallel_schedulers),
+          file=f)
+    print('### Number of steals\n', file=f)
+    print(mk_basic_table(results_at_scale, taskparts_nb_steals_key, parallel_schedulers),
+          file=f)
+
+    print('### Speedup plots\n', file=f)
+    for plot in speedup_plots:
+        plot_pdf_path = plot['plot']['default_outfile_pdf_name'] + '.pdf'
+        print('![](' + plot_pdf_path + '){ width=100% }\n', file=f)
+
+    print('### Percent of time spent sleeping\n', file=f)
+    for plot in pct_sleeping_plots:
+        plot_pdf_path = plot['plot']['default_outfile_pdf_name'] + '.pdf'
+        print('![](' + plot_pdf_path + '){ width=100% }\n', file=f)
+
+    f.close()
+
+process = subprocess.Popen(['pandoc', table_md_file, '-o', table_pdf_file],
+                           stdout=subprocess.PIPE, 
+                           stderr=subprocess.PIPE)
+stdout, stderr = process.communicate()
+
+print('Generated result tables in ' + table_pdf_file)

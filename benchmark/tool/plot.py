@@ -124,6 +124,7 @@ def output_plot(plot, markers = default_markers, show_as_popup = False):
     if 'ylim' in plotd:
         plt.ylim(plotd['ylim'])
     plt.legend()
+    plt.grid()
     if show_as_popup:
         plt.show()
         return
