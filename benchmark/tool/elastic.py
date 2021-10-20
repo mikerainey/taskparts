@@ -2,6 +2,7 @@ from plot import *
 from parameter import *
 from benchmark import *
 from table import mk_table
+import itertools
 
 # Notes
 # =====
@@ -9,8 +10,46 @@ from table import mk_table
 # For more general-purpose table generation:
 # https://pandas.pydata.org/docs/user_guide/style.html
 
+# Taskparts configuration
+# =======================
+
+taskparts_benchmark_num_repeat_key = 'TASKPARTS_BENCHMARK_NUM_REPEAT'
+taskparts_outfile_key = 'TASKPARTS_STATS_OUTFILE'
+taskparts_num_workers_key = 'TASKPARTS_NUM_WORKERS'
+
+def mk_taskparts_num_repeat(n):
+    return mk_parameter(taskparts_benchmark_num_repeat_key, n)
+
+def mk_taskparts_num_workers(n):
+    return mk_parameter(taskparts_num_workers_key, n)
+
 # Experiment configuration
 # ========================
+
+## Schedulers
+## ----------
+
+scheduler_key = 'scheduler'
+
+scheduler_serial = 'serial'
+scheduler_elastic_elision = 'elastic_elision'
+scheduler_elastic_flat = 'elastic_flat'
+scheduler_taskparts = 'taskparts'
+scheduler_cilk = 'cilk'
+schedulers = [
+    scheduler_elastic_flat,
+    scheduler_taskparts,
+    scheduler_cilk
+]
+
+def mk_scheduler(m):
+    return mk_parameter(scheduler_key, m)
+
+## Benchmarks
+## ----------
+
+benchmark_key = 'benchmark'
+path_to_executable_key = 'path_to_executable'
 
 benchmarks = [
     'wc',
@@ -25,55 +64,41 @@ benchmarks = [
     # 'removeduplicates'
 ]
 
-path_to_executable_key = 'path_to_executable'
-taskparts_outfile_key = 'TASKPARTS_STATS_OUTFILE'
-taskparts_num_workers_key = 'TASKPARTS_NUM_WORKERS'
-taskparts_benchmark_num_repeat_key = 'TASKPARTS_BENCHMARK_NUM_REPEAT'
-mode_key = 'mode'
-benchmark_key = 'benchmark'
+benchmark_bin_path = '../bin/'
 
-mode_serial = 'serial'
-mode_elastic_elision = 'elastic_elision'
-mode_elastic = 'elastic'
-mode_taskparts = 'taskparts'
-mode_cilk = 'cilk'
+def binpath_of_basename(basename, scheduler = scheduler_taskparts, ext = 'sta'):
+    if scheduler != 'taskparts':
+        basename = basename + '.' + scheduler
+    return './' + basename + '.' + ext
 
-benchmark_bin_path = './bin/'
+def mk_binpath(basename, scheduler = scheduler_taskparts, ext = 'sta'):
+    bp = binpath_of_basename(basename, scheduler, ext)
+    return mk_parameter(path_to_executable_key, bp)
 
-def benchname(basename, mode = mode_taskparts, ext = 'sta'):
-    if mode != 'taskparts':
-        basename = basename + '.' + mode
-    return benchmark_bin_path + basename + '.' + ext
+def mk_benchmark_cmd(b, scheduler = scheduler_taskparts):
+    return mk_cross(mk_binpath(b, scheduler),
+                    mk_parameter(benchmark_key, b))
 
-def mk_mode(m):
-    return mk_parameter(mode_key, m)
+def cross_product(xs, ys):
+    return list(itertools.product(xs, ys))
 
-def mk_num_repeat(n):
-    return mk_parameter(taskparts_benchmark_num_repeat_key, n)
-
-def mk_elastic_benchmark(basename, mode = mode_taskparts, ext = 'sta'):
-    e = mk_cross(mk_parameter(path_to_executable_key,
-                              benchname(basename, mode, ext)),
-                 mk_parameter(benchmark_key, basename))
-    return mk_cross(e, mk_mode(mode))
-
-def mk_parallel_runs(mode):
-    mk_benchmarks = [mk_elastic_benchmark(b, mode = mode) for b in benchmarks]
-    return mk_cross(mk_cross(mk_append_sequence(mk_benchmarks), mk_num_workers),
-                    mk_num_repeat(3))
+commands_serial = mk_append_sequence([mk_benchmark_cmd(b, s)
+                                      for b, s in cross_product(benchmarks, [scheduler_serial])])
 
 max_num_workers = 15
-workers = range(1, max_num_workers + 1, 7)
-x_vals = workers
-mk_num_workers = mk_parameters(taskparts_num_workers_key, workers)
-    
-mk_serial = mk_append_sequence([mk_elastic_benchmark(b, mode = mode_serial) for b in benchmarks])
-#mk_elastic_elision = mk_append_sequence([mk_elastic_benchmark(b, mode = mode_elastic_elision) for b in benchmarks])
-mk_taskparts = mk_parallel_runs(mode_taskparts)
-mk_elastic = mk_parallel_runs(mode_elastic)
-mk_cilk = mk_parallel_runs(mode_cilk)
+workers_step = 7
+workers = range(1, max_num_workers + 1, workers_step)
+num_repeat = 4
 
-expr = mk_append_sequence([mk_serial, mk_elastic, mk_taskparts, mk_cilk])
+commands_parallel = mk_cross_sequence([mk_append_sequence([mk_benchmark_cmd(b, s)
+                                                           for b, s in cross_product(benchmarks, schedulers)]),
+                                       mk_parameters(taskparts_num_workers_key, workers),
+                                       mk_taskparts_num_repeat(num_repeat)])
+
+commands = mk_append(commands_serial, commands_parallel)
+
+## Overall benchmark setup
+## -----------------------
 
 modifiers = {
     'path_to_executable_key': path_to_executable_key,
@@ -84,37 +109,39 @@ modifiers = {
         taskparts_benchmark_num_repeat_key
     ],
     'silent_keys': [
-        mode_key,
+        scheduler_key,
         benchmark_key
     ],
-    'cwd': '../'
+    'cwd': benchmark_bin_path
 }
+
+bench = mk_benchmark(commands, modifiers = modifiers)
+
+# Preview
+# =======
+
+print('Benchmark commands to be issued:')
+print('---------------')
+print(string_of_benchmark_runs(bench))
+print('---------------\n')
 
 # Benchmark invocation
 # ====================
 
-bench = mk_benchmark(expr, modifiers = modifiers)
-
-print('Runs to be invoked:')
-print(string_of_benchmark_runs(bench))
-
-# bench_2 = step_benchmark(bench, done_peek_keys = ['exectime'])
-# add_benchmark_to_results_repository(bench_2)
-
+# bench = step_benchmark(bench, done_peek_keys = ['exectime'])
+# add_benchmark_to_results_repository(bench)
 all_results = eval(read_head_from_benchmark_repository()['done'])
+print('')
 
 # Tables
 # ======
 
-def mk_num_workers(n):
-    return mk_parameter(taskparts_num_workers_key, n)
-
 mk_benchmarks = mk_append_sequence([ mk_parameter(benchmark_key, b) for b in benchmarks ])
 
-columns = [mode_taskparts, mode_elastic, mode_cilk]
-print(mk_table(mk_take_kvp(all_results, mk_num_workers(max_num_workers)),
+columns = [scheduler_taskparts, scheduler_elastic_flat, scheduler_cilk]
+print(mk_table(mk_take_kvp(all_results, mk_taskparts_num_workers(max_num_workers)),
                mk_benchmarks,
-               mk_parameters(mode_key, columns),
+               mk_parameters(scheduler_key, columns),
                gen_row_str = lambda mk_row:
                val_of_key_in_row(rows_of(mk_row)[0], benchmark_key),
                gen_cell_str = lambda mk_row, mk_col, row:
@@ -124,9 +151,11 @@ print(mk_table(mk_take_kvp(all_results, mk_num_workers(max_num_workers)),
 # Speedup curves
 # ==============
 
-all_curves = mk_append_sequence([mk_mode(mode_elastic),
-                                 mk_mode(mode_taskparts),
-                                 mk_mode(mode_cilk)])
+x_vals = workers
+
+all_curves = mk_append_sequence([mk_scheduler(scheduler_elastic_flat),
+                                 mk_scheduler(scheduler_taskparts),
+                                 mk_scheduler(scheduler_cilk)])
 
 def generate_speedup_plots():
     x_label = 'workers'
@@ -136,7 +165,7 @@ def generate_speedup_plots():
                              mk_parameters(benchmark_key, benchmarks),
                              max_num_workers = max_num_workers,
                              benchmark_key = benchmark_key,
-                             mk_serial_mode = mk_mode(mode_serial),
+                             mk_serial_mode = mk_scheduler(scheduler_serial),
                              x_key = taskparts_num_workers_key,
                              x_vals = x_vals,
                              y_key = y_key,
@@ -144,7 +173,7 @@ def generate_speedup_plots():
     for plot in plots:
         output_plot(plot)
 
-# generate_speedup_plots()
+generate_speedup_plots()
 
 # Plots for other measures
 # ========================
@@ -186,4 +215,4 @@ def get_percent_of_one_to_another(x_key, x_val, y_expr, y_key, ref_key):
 # generate_basic_plots(
 #     lambda x_key, x_val, y_expr: get_percent_of_one_to_another(x_key, x_val, y_expr, 'total_sleep_time', 'total_time'),
 #     'percent of total time spent sleeping',
-#     mk_mode(mode_elastic))
+#     mk_scheduler(scheduler_elastic_flat))

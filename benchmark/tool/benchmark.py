@@ -128,7 +128,7 @@ def string_of_benchmark_run(r,
 def string_of_benchmark_runs(b, show_run_numbers = True):
     sr = ''
     if 'cwd' in b['modifiers']:
-        sr += 'cd ' + b['modifiers']['cwd'] + '\n'
+        sr += '$ cd ' + b['modifiers']['cwd'] + ' # directory change as requested\n'
     b = seed_benchmark(b.copy())
     nb_todo = nb_todo_in_benchmark(b)
     nb_done_this_batch = 0
@@ -139,7 +139,9 @@ def string_of_benchmark_runs(b, show_run_numbers = True):
         silent_keys = modifiers['silent_keys'] if 'silent_keys' in modifiers else []
         next_run = mk_benchmark_run(next_row, modifiers['path_to_executable_key'], env_vars, silent_keys)
         pre = string_of_benchmark_progress(nb_done_this_batch + 1, nb_todo) if show_run_numbers else ''
-        sr += pre + string_of_benchmark_run(next_run, show_env_args = True, show_silent_args = True) + '\n'
+        sr += pre + string_of_benchmark_run(next_run, show_env_args = True, show_silent_args = True)
+        if nb_done_this_batch + 1 != nb_todo:
+            sr += '\n'
         nb_done_this_batch += 1
     return sr
 
