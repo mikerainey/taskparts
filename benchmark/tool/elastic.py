@@ -16,6 +16,7 @@ import subprocess
 
 taskparts_benchmark_num_repeat_key = 'TASKPARTS_BENCHMARK_NUM_REPEAT'
 taskparts_outfile_key = 'TASKPARTS_STATS_OUTFILE'
+taskparts_cilk_outfile_key = 'CILK_STATS_OUTFILE'
 taskparts_num_workers_key = 'TASKPARTS_NUM_WORKERS'
 taskparts_exectime_key = 'exectime'
 taskparts_usertime_key = 'usertime'
@@ -96,7 +97,7 @@ def mk_binpath(basename, scheduler = scheduler_taskparts, ext = 'sta'):
     return mk_parameter(path_to_executable_key, bp)
 
 def mk_benchmark_cmd(b, scheduler = scheduler_taskparts):
-    return mk_cross(mk_binpath(b, scheduler),
+    return mk_cross(mk_cross(mk_binpath(b, scheduler), mk_scheduler(scheduler)),
                     mk_parameter(benchmark_key, b))
 
 def cross_product(xs, ys):
@@ -117,11 +118,14 @@ commands = mk_append(commands_serial, commands_parallel)
 
 modifiers = {
     'path_to_executable_key': path_to_executable_key,
-    'outfile_keys': [taskparts_outfile_key],
+    'outfile_keys': [taskparts_outfile_key,
+#                     taskparts_cilk_outfile_key
+                     ],
     'env_vars': [
         taskparts_num_workers_key,
         taskparts_outfile_key,
-        taskparts_benchmark_num_repeat_key
+        taskparts_benchmark_num_repeat_key,
+#        taskparts_cilk_outfile_key
     ],
     'silent_keys': [
         scheduler_key,
@@ -181,14 +185,14 @@ with open(table_md_file, 'w') as f:
     print('### Usertime\n', file=f)
     print(mk_basic_table(results_at_scale, taskparts_usertime_key, parallel_schedulers),
           file=f)
-    print('### Total time\n', file=f)
-    print(mk_basic_table(results_at_scale, taskparts_total_time_key, taskparts_schedulers),
-          file=f)
-    print('### Total work time\n', file=f)
-    print(mk_basic_table(results_at_scale, taskparts_total_work_time_key, taskparts_schedulers),
-          file=f)
+    # print('### Total time\n', file=f)
+    # print(mk_basic_table(results_at_scale, taskparts_total_time_key, taskparts_schedulers),
+    #       file=f)
+    # print('### Total work time\n', file=f)
+    # print(mk_basic_table(results_at_scale, taskparts_total_work_time_key, taskparts_schedulers),
+    #       file=f)
     # print('### Number of steals\n', file=f)
-    # print(mk_basic_table(results_at_scale, taskparts_nb_steals_key, parallel_schedulers),
+    # print(mk_basic_table(results_at_scale, taskparts_nb_steals_key, taskparts_schedulers),
     #       file=f)
 
     f.close()
