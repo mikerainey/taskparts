@@ -10,7 +10,7 @@
 #include <common/graphIO.h>
 #include <common/sequenceIO.h>
 #ifndef PARLAY_SEQUENTIAL
-#include <breadthFirstSearch/backForwardBFS/BFS.C>
+#include <breadthFirstSearch/simpleBFS/BFS.C>
 #else
 #include <breadthFirstSearch/serialBFS/BFS.C>
 #endif
