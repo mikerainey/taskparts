@@ -46,10 +46,12 @@ scheduler_key = 'scheduler'
 
 scheduler_serial = 'serial'
 scheduler_elastic_elision = 'elastic_elision'
+scheduler_elastic_lifeline = 'elastic_lifeline'
 scheduler_elastic_flat = 'elastic_flat'
 scheduler_taskparts = 'taskparts'
 scheduler_cilk = 'cilk'
 taskparts_schedulers = [
+    scheduler_elastic_lifeline,
     scheduler_elastic_flat,
     scheduler_taskparts
 ]
@@ -70,27 +72,28 @@ path_to_executable_key = 'path_to_executable'
 benchmarks = [
     'wc',
     'mcss',
-    # 'bfs',
+    'samplesort',
+    'suffixarray',
+    'quickhull',
+    #'bfs',
     # 'fib',
     # 'integrate',
-    # 'samplesort',
-    # 'suffixarray',
     # 'primes',
-    # 'quickhull',
     # 'removeduplicates'
 ]
 
-benchmark_bin_path = '../bin/'
+benchmark_path = '../'
+benchmark_bin_path = './bin/'
 
 max_num_workers = 15
 workers_step = 7
 workers = range(1, max_num_workers + 1, workers_step)
-num_repeat = 4
+num_repeat = 2
 
 def binpath_of_basename(basename, scheduler = scheduler_taskparts, ext = 'sta'):
     if scheduler != 'taskparts':
         basename = basename + '.' + scheduler
-    return './' + basename + '.' + ext
+    return benchmark_bin_path + basename + '.' + ext
 
 def mk_binpath(basename, scheduler = scheduler_taskparts, ext = 'sta'):
     bp = binpath_of_basename(basename, scheduler, ext)
@@ -131,7 +134,7 @@ modifiers = {
         scheduler_key,
         benchmark_key
     ],
-    'cwd': benchmark_bin_path
+    'cwd': benchmark_path # cwd here because this is where the input data is stored
 }
 
 bench = mk_benchmark(commands, modifiers = modifiers)
@@ -147,8 +150,8 @@ print('---------------\n')
 # Benchmark invocation
 # ====================
 
-# bench = step_benchmark(bench, done_peek_keys = [taskparts_exectime_key])
-# add_benchmark_to_results_repository(bench)
+#bench = step_benchmark(bench, done_peek_keys = [taskparts_exectime_key])
+#add_benchmark_to_results_repository(bench)
 all_results = eval(read_head_from_benchmark_repository()['done'])
 print('')
 
@@ -197,11 +200,11 @@ with open(table_md_file, 'w') as f:
     print('### Total idle time\n', file=f)
     print(mk_basic_table(results_at_scale, taskparts_total_idle_time_key, parallel_schedulers),
           file=f)
+    print('### Total sleep time\n', file=f)
+    print(mk_basic_table(results_at_scale, taskparts_total_sleep_time_key, taskparts_schedulers),
+          file=f)
     print('### Number of steals\n', file=f)
     print(mk_basic_table(results_at_scale, taskparts_nb_steals_key, parallel_schedulers),
-          file=f)
-    print('### Total sleep time\n', file=f)
-    print(mk_basic_table(results_at_scale, taskparts_total_idle_time_key, taskparts_schedulers),
           file=f)
 
     f.close()
