@@ -12,5 +12,5 @@ let
 in
 
 pkgs.mkShell {
-  buildInputs = [ customPython ];
+  buildInputs = [ customPython pkgs.pandoc pkgs.texlive.combined.scheme-small ];
 }

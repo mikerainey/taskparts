@@ -3,6 +3,7 @@ from parameter import *
 from benchmark import *
 from table import mk_table
 import itertools
+import subprocess
 
 # Notes
 # =====
@@ -16,6 +17,17 @@ import itertools
 taskparts_benchmark_num_repeat_key = 'TASKPARTS_BENCHMARK_NUM_REPEAT'
 taskparts_outfile_key = 'TASKPARTS_STATS_OUTFILE'
 taskparts_num_workers_key = 'TASKPARTS_NUM_WORKERS'
+taskparts_exectime_key = 'exectime'
+taskparts_usertime_key = 'usertime'
+taskparts_systime_key = 'systime'
+taskparts_maxrss_key = 'maxrss'
+taskparts_total_time_key = 'total_time'
+taskparts_total_work_time_key = 'total_work_time'
+taskparts_total_idle_time_key = 'total_idle_time'
+taskparts_total_sleep_time_key = 'total_sleep_time'
+taskparts_utilization_key = 'utilization'
+taskparts_nb_fibers_key = 'nb_fibers'
+taskparts_nb_steals_key = 'nb_steals'
 
 def mk_taskparts_num_repeat(n):
     return mk_parameter(taskparts_benchmark_num_repeat_key, n)
@@ -36,11 +48,14 @@ scheduler_elastic_elision = 'elastic_elision'
 scheduler_elastic_flat = 'elastic_flat'
 scheduler_taskparts = 'taskparts'
 scheduler_cilk = 'cilk'
-schedulers = [
+taskparts_schedulers = [
     scheduler_elastic_flat,
-    scheduler_taskparts,
+    scheduler_taskparts
+]
+other_schedulers = [
     scheduler_cilk
 ]
+parallel_schedulers = taskparts_schedulers + other_schedulers
 
 def mk_scheduler(m):
     return mk_parameter(scheduler_key, m)
@@ -66,6 +81,11 @@ benchmarks = [
 
 benchmark_bin_path = '../bin/'
 
+max_num_workers = 15
+workers_step = 7
+workers = range(1, max_num_workers + 1, workers_step)
+num_repeat = 4
+
 def binpath_of_basename(basename, scheduler = scheduler_taskparts, ext = 'sta'):
     if scheduler != 'taskparts':
         basename = basename + '.' + scheduler
@@ -85,13 +105,8 @@ def cross_product(xs, ys):
 commands_serial = mk_append_sequence([mk_benchmark_cmd(b, s)
                                       for b, s in cross_product(benchmarks, [scheduler_serial])])
 
-max_num_workers = 15
-workers_step = 7
-workers = range(1, max_num_workers + 1, workers_step)
-num_repeat = 4
-
 commands_parallel = mk_cross_sequence([mk_append_sequence([mk_benchmark_cmd(b, s)
-                                                           for b, s in cross_product(benchmarks, schedulers)]),
+                                                           for b, s in cross_product(benchmarks, parallel_schedulers)]),
                                        mk_parameters(taskparts_num_workers_key, workers),
                                        mk_taskparts_num_repeat(num_repeat)])
 
@@ -128,7 +143,7 @@ print('---------------\n')
 # Benchmark invocation
 # ====================
 
-# bench = step_benchmark(bench, done_peek_keys = ['exectime'])
+# bench = step_benchmark(bench, done_peek_keys = [taskparts_exectime_key])
 # add_benchmark_to_results_repository(bench)
 all_results = eval(read_head_from_benchmark_repository()['done'])
 print('')
@@ -138,16 +153,53 @@ print('')
 
 mk_benchmarks = mk_append_sequence([ mk_parameter(benchmark_key, b) for b in benchmarks ])
 
-columns = [scheduler_taskparts, scheduler_elastic_flat, scheduler_cilk]
-print(mk_table(mk_take_kvp(all_results, mk_taskparts_num_workers(max_num_workers)),
-               mk_benchmarks,
-               mk_parameters(scheduler_key, columns),
-               gen_row_str = lambda mk_row:
-               val_of_key_in_row(rows_of(mk_row)[0], benchmark_key),
-               gen_cell_str = lambda mk_row, mk_col, row:
-               mean(val_of_key_in_row(row, 'exectime')),
-               column_titles = columns))
+table_md_file = 'report.md'
+table_pdf_file = 'report.pdf'
 
+def mk_basic_table(results, result_key, columns):
+    t = mk_table(results,
+                 mk_benchmarks,
+                 mk_parameters(scheduler_key, columns),
+                 gen_row_str = lambda mk_row:
+                 val_of_key_in_row(rows_of(mk_row)[0], benchmark_key),
+                 gen_cell_str = lambda mk_row, mk_col, row:
+                 mean(val_of_key_in_row(row, result_key)),
+                 column_titles = columns) + '\n'
+    return t
+
+with open(table_md_file, 'w') as f:
+
+    print('# Elastic scheduling benchmark report\n', file=f)
+    print('Max number of worker threads $P$ = ' + str(max_num_workers) + '\n', file=f)
+
+    results_at_scale = mk_take_kvp(all_results, mk_taskparts_num_workers(max_num_workers))
+    
+    print('## Raw data of runs at scale\n', file=f)
+    print('### Wall-clock time\n', file=f)
+    print(mk_basic_table(results_at_scale, taskparts_exectime_key, parallel_schedulers),
+          file=f)
+    print('### Usertime\n', file=f)
+    print(mk_basic_table(results_at_scale, taskparts_usertime_key, parallel_schedulers),
+          file=f)
+    print('### Total time\n', file=f)
+    print(mk_basic_table(results_at_scale, taskparts_total_time_key, taskparts_schedulers),
+          file=f)
+    print('### Total work time\n', file=f)
+    print(mk_basic_table(results_at_scale, taskparts_total_work_time_key, taskparts_schedulers),
+          file=f)
+    # print('### Number of steals\n', file=f)
+    # print(mk_basic_table(results_at_scale, taskparts_nb_steals_key, parallel_schedulers),
+    #       file=f)
+
+    f.close()
+
+process = subprocess.Popen(['pandoc', table_md_file, '-o', table_pdf_file],
+                           stdout=subprocess.PIPE, 
+                           stderr=subprocess.PIPE)
+stdout, stderr = process.communicate()
+
+print('Generated result tables in ' + table_pdf_file)
+    
 # Speedup curves
 # ==============
 
@@ -159,7 +211,7 @@ all_curves = mk_append_sequence([mk_scheduler(scheduler_elastic_flat),
 
 def generate_speedup_plots():
     x_label = 'workers'
-    y_key = 'exectime'
+    y_key = taskparts_exectime_key
     y_label = 'speedup'
     plots = mk_speedup_plots(all_results,
                              mk_parameters(benchmark_key, benchmarks),
@@ -173,7 +225,7 @@ def generate_speedup_plots():
     for plot in plots:
         output_plot(plot)
 
-generate_speedup_plots()
+#generate_speedup_plots()
 
 # Plots for other measures
 # ========================
@@ -202,7 +254,7 @@ def generate_basic_plots(get_y_val, y_label, curves_expr):
     for plot in plots:
         output_plot(plot)
 
-# generate_basic_plots(mk_get_y_val('exectime'), 'run time (s)', all_curves)
+# generate_basic_plots(mk_get_y_val(taskparts_exectime_key), 'run time (s)', all_curves)
 # generate_basic_plots(mk_get_y_val('usertime'), 'user time (s)', all_curves)
 # generate_basic_plots(mk_get_y_val('systime'), 'system time (s)', all_curves)
 # generate_basic_plots(mk_get_y_val('maxrss'), 'max resident size (kb)', all_curves)
