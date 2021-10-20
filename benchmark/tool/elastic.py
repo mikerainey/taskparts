@@ -119,13 +119,13 @@ commands = mk_append(commands_serial, commands_parallel)
 modifiers = {
     'path_to_executable_key': path_to_executable_key,
     'outfile_keys': [taskparts_outfile_key,
-#                     taskparts_cilk_outfile_key
+                     taskparts_cilk_outfile_key
                      ],
     'env_vars': [
         taskparts_num_workers_key,
         taskparts_outfile_key,
         taskparts_benchmark_num_repeat_key,
-#        taskparts_cilk_outfile_key
+        taskparts_cilk_outfile_key
     ],
     'silent_keys': [
         scheduler_key,
@@ -185,15 +185,24 @@ with open(table_md_file, 'w') as f:
     print('### Usertime\n', file=f)
     print(mk_basic_table(results_at_scale, taskparts_usertime_key, parallel_schedulers),
           file=f)
-    # print('### Total time\n', file=f)
-    # print(mk_basic_table(results_at_scale, taskparts_total_time_key, taskparts_schedulers),
-    #       file=f)
-    # print('### Total work time\n', file=f)
-    # print(mk_basic_table(results_at_scale, taskparts_total_work_time_key, taskparts_schedulers),
-    #       file=f)
-    # print('### Number of steals\n', file=f)
-    # print(mk_basic_table(results_at_scale, taskparts_nb_steals_key, taskparts_schedulers),
-    #       file=f)
+    print('### Utilization\n', file=f)
+    print(mk_basic_table(results_at_scale, taskparts_utilization_key, parallel_schedulers),
+          file=f)
+    print('### Total time\n', file=f)
+    print(mk_basic_table(results_at_scale, taskparts_total_time_key, parallel_schedulers),
+          file=f)
+    print('### Total work time\n', file=f)
+    print(mk_basic_table(results_at_scale, taskparts_total_work_time_key, parallel_schedulers),
+          file=f)
+    print('### Total idle time\n', file=f)
+    print(mk_basic_table(results_at_scale, taskparts_total_idle_time_key, parallel_schedulers),
+          file=f)
+    print('### Number of steals\n', file=f)
+    print(mk_basic_table(results_at_scale, taskparts_nb_steals_key, parallel_schedulers),
+          file=f)
+    print('### Total sleep time\n', file=f)
+    print(mk_basic_table(results_at_scale, taskparts_total_idle_time_key, taskparts_schedulers),
+          file=f)
 
     f.close()
 

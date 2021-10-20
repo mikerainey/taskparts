@@ -55,12 +55,7 @@ def mk_benchmark_run(row,
     }
 
 def mk_outfile_keys(outfiles):
-    e = mk_nil()
-    for r in outfiles:
-        e = mk_append(e, mk_parameter(r['key'], r['file_path']))
-    return e
-
-#    return mk_cross_sequence([mk_parameter(r['key'], r['file_path']) for r in outfiles])
+    return mk_cross_sequence([mk_parameter(r['key'], r['file_path']) for r in outfiles])
 
 def mk_benchmark(parameters,
                  modifiers = {
@@ -206,26 +201,14 @@ def collect_benchmark_run_outfiles(outfiles,
                                    parse_output_to_json = lambda x: x):
     results_expr = {'value': [ next_row ]}
     for of in outfiles:
-        j = json.load(parse_output_to_json(open(of['file_path'], 'r')))
-        open(of['file_path'], 'w').close()
-        os.unlink(of['file_path'])
+        file_path = of['file_path']
+        if os.stat(file_path).st_size == 0:
+            continue
+        j = json.load(parse_output_to_json(open(file_path, 'r')))
+        open(file_path, 'w').close()
+        os.unlink(file_path)
         results_expr = mk_cross(results_expr, {'value': [client_format_to_row(d) for d in j] })
     return results_expr
-
-# def collect_benchmark_run_outfiles(outfiles,
-#                                    next_row,
-#                                    client_format_to_row = lambda d: dictionary_to_row(d),
-#                                    parse_output_to_json = lambda x: x):
-#     results_expr = {'value': [ next_row ]}
-#     for of in outfiles:
-#         file_path = of['file_path']
-#         if os.stat(file_path).st_size == 0:
-#             continue
-#         j = json.load(parse_output_to_json(open(file_path, 'r')))
-#         open(file_path, 'w').close()
-#         os.unlink(file_path)
-#         results_expr = mk_cross(results_expr, {'value': [client_format_to_row(d) for d in j] })
-#     return results_expr
 
 # later: make it possible to capture output of benchmark via stdout?
 
