@@ -40,6 +40,8 @@ def mk_taskparts_num_workers(n):
 # Experiment configuration
 # ========================
 
+virtual_runs = True
+
 ## Schedulers
 ## ----------
 
@@ -67,8 +69,8 @@ scheduler_descriptions = {
     scheduler_serial: 'serial',
     scheduler_elastic_lifeline: 'elastic (lifelines)',
     scheduler_elastic_flat: 'elastic (no lifelines)',
-    scheduler_taskparts: 'taskparts (chase lev work stealing / no elastic)',
-    scheduler_cilk: 'cilk',
+    scheduler_taskparts: 'taskparts (Chase Lev work stealing / no elastic)',
+    scheduler_cilk: 'Cilk Plus (gcc7)',
 }
 
 def mk_scheduler(m):
@@ -91,7 +93,7 @@ benchmark_descriptions = {
     'removeduplicates': 'remove duplicates'
 }
 
-takes = ['wc', 'mcss']
+takes = ['wc', 'mcss'] # [b for b in benchmark_descriptions]
 drops = []
 
 benchmarks = [ b for b in benchmark_descriptions if b in takes and not(b in drops)  ]
@@ -164,8 +166,10 @@ print('---------------\n')
 # Benchmark invocation
 # ====================
 
-#bench = step_benchmark(bench, done_peek_keys = [taskparts_exectime_key])
-#add_benchmark_to_results_repository(bench)
+if not(virtual_runs):
+    bench = step_benchmark(bench, done_peek_keys = [taskparts_exectime_key])
+    add_benchmark_to_results_repository(bench)
+    
 all_results = eval(read_head_from_benchmark_repository()['done'])
 print('')
 
@@ -174,9 +178,7 @@ print('')
 
 x_vals = workers
 
-all_curves = mk_append_sequence([mk_scheduler(scheduler_elastic_flat),
-                                 mk_scheduler(scheduler_taskparts),
-                                 mk_scheduler(scheduler_cilk)])
+all_curves = mk_append_sequence([mk_scheduler(s) for s in parallel_schedulers])
 
 def generate_speedup_plots():
     x_label = 'workers'
@@ -207,12 +209,17 @@ def mk_get_y_val(y_key):
     get_y_val = lambda x_key, x_val, y_expr: mean(select_from_expr_by_key(y_expr, y_key))
     return get_y_val
 
-def generate_basic_plots(get_y_val, y_label, curves_expr):
+def generate_basic_plots(get_y_val, y_label, curves_expr,
+                         ylim = [], outfile_pdf_name = ''):
     x_label = 'workers'
     opt_plot_args = {
         'x_label': x_label,
         'xlim': [1, max_num_workers + 1]
     }
+    if ylim != []:
+        opt_plot_args['ylim'] = ylim
+    if outfile_pdf_name != '':
+        opt_plot_args['default_outfile_pdf_name'] = outfile_pdf_name + '.pdf'
     plots = mk_plots(all_results,
                      mk_parameters(benchmark_key, benchmarks),
                      x_key = taskparts_num_workers_key,
@@ -236,9 +243,12 @@ def get_percent_of_one_to_another(x_key, x_val, y_expr, y_key, ref_key):
     return (st / tt) * 100.0
     
 pct_sleeping_plots = generate_basic_plots(
-    lambda x_key, x_val, y_expr: get_percent_of_one_to_another(x_key, x_val, y_expr, 'total_sleep_time', 'total_time'),
+    lambda x_key, x_val, y_expr:
+    get_percent_of_one_to_another(x_key, x_val, y_expr, 'total_sleep_time', 'total_time'),
     'percent-of-total-time-spent-sleeping',
-    mk_scheduler(scheduler_elastic_flat))
+    mk_scheduler(scheduler_elastic_flat),
+    ylim = [0, 100],
+    outfile_pdf_name = 'percent of total time spent sleeping')
 
 # Markdown/PDF global report
 # ==========================
@@ -292,25 +302,28 @@ with open(table_md_file, 'w') as f:
     print(mk_basic_table(results_at_scale, taskparts_total_sleep_time_key, taskparts_schedulers),
           file=f)
     
-    print('### Usertime\n', file=f)
+    print('### User time\n', file=f)
     print(mk_basic_table(results_at_scale, taskparts_usertime_key, parallel_schedulers),
           file=f)
     print('### System time\n', file=f)
     print(mk_basic_table(results_at_scale, taskparts_systime_key, parallel_schedulers),
           file=f)
-    print('### Utilization\n', file=f)
+    print('### Utilization (percent of total time / 100)\n', file=f)
     print(mk_basic_table(results_at_scale, taskparts_utilization_key, parallel_schedulers),
           file=f)
     print('### Number of steals\n', file=f)
     print(mk_basic_table(results_at_scale, taskparts_nb_steals_key, parallel_schedulers),
           file=f)
+    print('### Maximum resident set size\n', file=f)
+    print(mk_basic_table(results_at_scale, taskparts_maxrss_key, parallel_schedulers),
+          file=f)
 
-    print('### Speedup plots\n', file=f)
+    print('## Speedup plots\n', file=f)
     for plot in speedup_plots:
         plot_pdf_path = plot['plot']['default_outfile_pdf_name'] + '.pdf'
         print('![](' + plot_pdf_path + '){ width=100% }\n', file=f)
 
-    print('### Percent of time spent sleeping\n', file=f)
+    print('## Percent of time spent sleeping\n', file=f)
     for plot in pct_sleeping_plots:
         plot_pdf_path = plot['plot']['default_outfile_pdf_name'] + '.pdf'
         print('![](' + plot_pdf_path + '){ width=100% }\n', file=f)
