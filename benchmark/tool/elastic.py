@@ -5,6 +5,7 @@ from table import mk_table
 import itertools
 import subprocess
 import tabulate
+from datetime import datetime
 
 # Notes
 # =====
@@ -40,13 +41,10 @@ def mk_taskparts_num_workers(n):
 # Experiment configuration
 # ========================
 
-virtual_runs = True
+virtual_runs = True # if True, do not run benchmarks
 
 ## Schedulers
 ## ----------
-
-# later: introduce elastic + sleep by spinning?
-# later: introduce elastic + real concurrent random set?
 
 scheduler_key = 'scheduler'
 
@@ -219,7 +217,7 @@ def generate_basic_plots(get_y_val, y_label, curves_expr,
     if ylim != []:
         opt_plot_args['ylim'] = ylim
     if outfile_pdf_name != '':
-        opt_plot_args['default_outfile_pdf_name'] = outfile_pdf_name + '.pdf'
+        opt_plot_args['default_outfile_pdf_name'] = outfile_pdf_name
     plots = mk_plots(all_results,
                      mk_parameters(benchmark_key, benchmarks),
                      x_key = taskparts_num_workers_key,
@@ -245,10 +243,10 @@ def get_percent_of_one_to_another(x_key, x_val, y_expr, y_key, ref_key):
 pct_sleeping_plots = generate_basic_plots(
     lambda x_key, x_val, y_expr:
     get_percent_of_one_to_another(x_key, x_val, y_expr, 'total_sleep_time', 'total_time'),
-    'percent-of-total-time-spent-sleeping',
+    'pct. of total time spent sleeping',
     mk_scheduler(scheduler_elastic_flat),
     ylim = [0, 100],
-    outfile_pdf_name = 'percent of total time spent sleeping')
+    outfile_pdf_name = 'percent-of-total-time-spent-sleeping')
 
 # Markdown/PDF global report
 # ==========================
@@ -271,9 +269,13 @@ def mk_basic_table(results, result_key, columns):
 
 with open(table_md_file, 'w') as f:
 
-    print('# Elastic scheduling benchmark report\n', file=f)
-    print('Max number of worker threads $P$ = ' + str(max_num_workers) + '\n', file=f)
-    print('All times are in seconds\n', file=f)
+    print('% Elastic scheduling benchmark report', file=f) # title
+    print('% Yue Yao, Sam Westrick, Mike Rainey, Umut Acar', file=f) # authors
+    print('% ' + datetime.now().ctime() + '\n', file=f) # date
+
+    print('# Preliminaries\n', file=f)
+    print('- max number of worker threads $P$ = ' + str(max_num_workers), file=f)
+    print('- all times are in seconds\n', file=f)
 
     print('## Scheduler descriptions\n', file=f)
     print(tabulate.tabulate([[k, scheduler_descriptions[k]] for k in scheduler_descriptions],
@@ -285,52 +287,60 @@ with open(table_md_file, 'w') as f:
 
     results_at_scale = mk_take_kvp(all_results, mk_taskparts_num_workers(max_num_workers))
     
-    print('## Raw data of runs at scale\n', file=f)
-    print('### Wall-clock time\n', file=f)
+    print('# Raw data of runs at scale\n', file=f)
+    print('## Wall-clock time\n', file=f)
     print(mk_basic_table(results_at_scale, taskparts_exectime_key, parallel_schedulers),
           file=f)
-    print('### Total time\n', file=f)
+    print('## Total time\n', file=f)
     print(mk_basic_table(results_at_scale, taskparts_total_time_key, parallel_schedulers),
           file=f)
-    print('### Total work time\n', file=f)
+    print('## Total work time\n', file=f)
     print(mk_basic_table(results_at_scale, taskparts_total_work_time_key, parallel_schedulers),
           file=f)
-    print('### Total idle time\n', file=f)
+    print('## Total idle time\n', file=f)
     print(mk_basic_table(results_at_scale, taskparts_total_idle_time_key, parallel_schedulers),
           file=f)
-    print('### Total sleep time\n', file=f)
+    print('## Total sleep time\n', file=f)
     print(mk_basic_table(results_at_scale, taskparts_total_sleep_time_key, taskparts_schedulers),
           file=f)
     
-    print('### User time\n', file=f)
+    print('## User time\n', file=f)
     print(mk_basic_table(results_at_scale, taskparts_usertime_key, parallel_schedulers),
           file=f)
-    print('### System time\n', file=f)
+    print('## System time\n', file=f)
     print(mk_basic_table(results_at_scale, taskparts_systime_key, parallel_schedulers),
           file=f)
-    print('### Utilization (percent of total time / 100)\n', file=f)
+    print('## Utilization (percent of total time / 100)\n', file=f)
     print(mk_basic_table(results_at_scale, taskparts_utilization_key, parallel_schedulers),
           file=f)
-    print('### Number of steals\n', file=f)
+    print('## Number of steals\n', file=f)
     print(mk_basic_table(results_at_scale, taskparts_nb_steals_key, parallel_schedulers),
           file=f)
-    print('### Maximum resident set size\n', file=f)
+    print('## Maximum resident set size\n', file=f)
     print(mk_basic_table(results_at_scale, taskparts_maxrss_key, parallel_schedulers),
           file=f)
 
-    print('## Speedup plots\n', file=f)
+    print('# Speedup plots\n', file=f)
     for plot in speedup_plots:
         plot_pdf_path = plot['plot']['default_outfile_pdf_name'] + '.pdf'
         print('![](' + plot_pdf_path + '){ width=100% }\n', file=f)
 
-    print('## Percent of time spent sleeping\n', file=f)
+    print('# Percent of time spent sleeping plots\n', file=f)
     for plot in pct_sleeping_plots:
         plot_pdf_path = plot['plot']['default_outfile_pdf_name'] + '.pdf'
         print('![](' + plot_pdf_path + '){ width=100% }\n', file=f)
 
+    print('# Notes/todos\n', file=f)
+    print('- deal with crashing bfs.cilk by setting warmup time to zero', file=f)
+    print('- generate challenge graphs/trees for pdfs/sum_tree resp.', file=f)
+    print('- implement trivial elastic policy, which resembles the algorithm used by the GHC GC', file=f)
+    print('- introduce elastic + sleep by spinning?', file=f)
+    print('- introduce elastic + real concurrent random set?', file=f)
+    print('- better plot titles', file=f)
+
     f.close()
 
-process = subprocess.Popen(['pandoc', table_md_file, '-o', table_pdf_file],
+process = subprocess.Popen(['pandoc', table_md_file, '-o', table_pdf_file, '--toc'],
                            stdout=subprocess.PIPE, 
                            stderr=subprocess.PIPE)
 stdout, stderr = process.communicate()

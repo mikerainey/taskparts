@@ -189,6 +189,8 @@ def genfunc_expr_by_row(e):
     for r in rows_of(e):
         yield mk_expr_of_row(r)
 
+# todo: write a function that generates a human-readable table summarizing all rows in a parameter value
+
 # Evaluation
 # ==========
 

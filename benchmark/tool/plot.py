@@ -51,15 +51,17 @@ def mk_plots(expr,
              opt_args = {}):
     plots_val = eval(plots_expr)
     plots = []
+    opt_args = opt_args.copy()
     for plot_row in plots_val['value']:
         plot_expr = {'value': [plot_row]}
-        opt_args = opt_args.copy()
+        opt_args_plot = opt_args.copy()
         plot_row_dict = row_to_dictionary(plot_row)
-        plot_row_str = ",".join("{}-{}".format(*i) for i in plot_row_dict.items())
-        opt_args['title'] = plot_row_str
-        opt_args['default_outfile_pdf_name'] = pathvalidate.sanitize_filename(y_label + '-' + plot_row_str)
+        plot_row_str = ",".join("{}={}".format(*i) for i in plot_row_dict.items())
+        opt_args_plot['title'] = plot_row_str
+        n = y_label + '-' + plot_row_str
+        opt_args_plot['default_outfile_pdf_name'] = pathvalidate.sanitize_filename(n.replace(' ', '-'))
         plots += [mk_plot(mk_take_kvp(expr, plot_expr),
-                          x_key, x_vals, get_y_val, y_label, curves_expr, opt_args)]
+                          x_key, x_vals, get_y_val, y_label, curves_expr, opt_args_plot)]
     return plots
 
 def mean(xs):
