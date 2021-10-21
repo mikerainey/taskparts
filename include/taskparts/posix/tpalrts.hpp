@@ -16,7 +16,7 @@
 namespace taskparts {
 
 /*---------------------------------------------------------------------*/
-/* Interrupt-based worker launch routine */
+/* Interrupt-based worker-launch routine */
 
 static
 perworker::array<pthread_t> pthreads;
@@ -168,6 +168,23 @@ std::mutex ping_thread_interrupt::ping_thread_lock;
 std::condition_variable ping_thread_interrupt::ping_thread_condition_variable;
 
 int ping_thread_interrupt::timerfd;
+
+/*---------------------------------------------------------------------*/
+/* Interrupt/polling hybrid configuration */
+
+class hardware_alarm_polling_worker {
+public:
+
+  static
+  perworker::array<int> nb_pending_heartbeats;
+};
+
+perworker::array<int> hardware_alarm_polling_worker::nb_pending_heartbeats;
+
+class hardware_alarm_polling_interrupt {
+public:
+
+};
 
 /*---------------------------------------------------------------------*/
 /* Pthread-direct interrupt configuration (Linux specific) */
