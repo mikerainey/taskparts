@@ -53,10 +53,9 @@ auto gen_perfect_tree(size_t height, Scheduler sched=Scheduler()) -> node* {
 }
 
 template <typename Scheduler=taskparts::minimal_scheduler<>>
-auto gen_imperfect_tree(size_t height, Scheduler sched=Scheduler()) -> node* {
+auto gen_imperfect_tree(size_t height, size_t nb_spine_nodes, Scheduler sched=Scheduler()) -> std::pair<node*, node*> {
   auto pt = gen_perfect_tree(height, sched);
   size_t nb_nodes = nb_nodes_of_height(height);
-  size_t nb_spine_nodes = taskparts::cmdline::parse_or_default_long("nb_spine_nodes", 5000000);
   node* spine_tree = new node[nb_spine_nodes];
   n1 = spine_tree;
   taskparts::parallel_for(0, nb_spine_nodes, [&] (size_t i) {
@@ -65,6 +64,7 @@ auto gen_imperfect_tree(size_t height, Scheduler sched=Scheduler()) -> node* {
     }
     spine_tree[i].left = &spine_tree[i + 1];
   }, taskparts::dflt_parallel_for_cost_fn, sched);
+  auto leaf = &spine_tree[nb_spine_nodes - 1];
   size_t nb_imperfections = taskparts::cmdline::parse_or_default_long("nb_imperfections", 5);;
   for (size_t i = 0; i < nb_imperfections; i++) {
     node* s = pt;
@@ -80,12 +80,26 @@ auto gen_imperfect_tree(size_t height, Scheduler sched=Scheduler()) -> node* {
       j++;
     }
   }
-  return pt;
+  return std::make_pair(pt, leaf);
+}
+
+template <typename Scheduler=taskparts::minimal_scheduler<>>
+auto gen_alternating_tree(size_t height, size_t nb_spine_nodes, size_t nb_alternations, Scheduler sched=Scheduler()) -> node* {
+  auto p = gen_imperfect_tree(height, nb_spine_nodes, sched);
+  auto n0 = p.first;
+  auto l0 = p.second;
+  for (size_t i = 0; i < nb_alternations; i++) {
+    auto _p = gen_imperfect_tree(height, nb_spine_nodes, sched);
+    l0->right = _p.first;
+    l0 = _p.second;
+  }
+  return n0;
 }
 
 template<typename Sched>
 auto gen_input(Sched sched) {
   int h = 0;
+  size_t nb_spine_nodes = taskparts::cmdline::parse_or_default_long("nb_spine_nodes", 5000000);
   taskparts::cmdline::dispatcher d;
   d.add("perfect", [&] {
     h = taskparts::cmdline::parse_or_default_int("height", 28);
@@ -93,7 +107,13 @@ auto gen_input(Sched sched) {
   });
   d.add("imperfect", [&] {
     h = taskparts::cmdline::parse_or_default_int("height", 27);
-    n0 = gen_imperfect_tree(h, sched);
+    auto _p = gen_imperfect_tree(h, nb_spine_nodes, sched);
+    n0 = _p.first;
+  });
+  d.add("alternating", [&] {
+    h = taskparts::cmdline::parse_or_default_int("height", 23);
+    size_t nb_alternations = taskparts::cmdline::parse_or_default_int("alternations", 2);
+    n0 = gen_alternating_tree(h, nb_spine_nodes, nb_alternations, sched);
   });
   d.dispatch_or_default("input_tree", "perfect");
 }
