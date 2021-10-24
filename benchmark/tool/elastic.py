@@ -91,7 +91,7 @@ benchmark_descriptions = {
     'removeduplicates': 'remove duplicates'
 }
 
-takes = ['wc', 'mcss'] # [b for b in benchmark_descriptions]
+takes = ['wc', 'mcss', 'samplesort', 'quickhull', 'primes', 'removeduplicates'] # [b for b in benchmark_descriptions]
 drops = []
 
 benchmarks = [ b for b in benchmark_descriptions if b in takes and not(b in drops)  ]
@@ -244,7 +244,8 @@ pct_sleeping_plots = generate_basic_plots(
     lambda x_key, x_val, y_expr:
     get_percent_of_one_to_another(x_key, x_val, y_expr, 'total_sleep_time', 'total_time'),
     'pct. of total time spent sleeping',
-    mk_scheduler(scheduler_elastic_flat),
+    mk_append(mk_scheduler(scheduler_elastic_flat),
+              mk_scheduler(scheduler_elastic_lifeline)),
     ylim = [0, 100],
     outfile_pdf_name = 'percent-of-total-time-spent-sleeping')
 
