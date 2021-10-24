@@ -150,8 +150,7 @@ public:
 
   using deque_type = chase_lev_deque<fiber_type>;
 
-  // warning: can overflow currently if size gets above 1k
-  using buffer_type = ringbuffer<fiber_type*>; // later: make it resizeable?
+  using buffer_type = ringbuffer<fiber_type*>;
 
   using elastic_type = Elastic<Stats, Logging>;
 
@@ -239,7 +238,6 @@ public:
           target = random_other_worker(nb_workers, my_id);
         } while (i > 0);
         if (termination_barrier.is_terminated() || should_terminate) {
-          //fprintf(stderr, "[%ld] Attempting to terminate.\n", perworker::my_id());
           assert(current == nullptr);
           Logging::log_event(worker_exit);
           elastic_type::wake_children();
@@ -254,10 +252,9 @@ public:
         }
        }
       assert(current != nullptr);
-      buffers.mine().push_back(current);
+      schedule(current);
       Stats::on_exit_acquire();
       Logging::log_event(exit_wait);
-      //fprintf(stderr, "[%ld] Exit acquire.\n", perworker::my_id());
       return scheduler_status_active;
     };
 
@@ -273,7 +270,7 @@ public:
           if (current != nullptr) {
             auto s = current->exec();
             if (s == fiber_status_continue) {
-              buffers.mine().push_back(current);
+	      schedule(current);
             } else if (s == fiber_status_pause) {
               // do nothing
             } else if (s == fiber_status_finish) {
@@ -282,7 +279,6 @@ public:
               assert(s == fiber_status_exit_launch);
               current->finish();
               status = scheduler_status_finish;
-              //fprintf(stderr, "[%ld] Initiate teardown.\n", perworker::my_id());
               Logging::log_event(initiate_teardown);
               should_terminate = true;
             }
@@ -327,12 +323,12 @@ public:
   static
   auto take() -> fiber_type* {
     auto& my_buffer = buffers.mine();
+    assert(my_buffer.empty());
     auto& my_deque = deques.mine();
     fiber_type* current = nullptr;
-    assert(my_buffer.empty());
     current = my_deque.pop();
     if (current != nullptr) {
-      my_buffer.push_back(current);
+      schedule(current);
     }
     return current;
   }
@@ -340,7 +336,13 @@ public:
   static
   auto schedule(fiber_type* f) {
     assert(f->is_ready());
-    buffers.mine().push_back(f); // todo: use resizeable buffer
+    auto& my_buffer = buffers.mine();
+    my_buffer.push_back(f);
+    if (my_buffer.full()) {
+      auto f2 = flush();
+      assert(f == f2);
+      my_buffer.push_back(f);
+    }
   }
 
   static
