@@ -21,10 +21,14 @@ namespace taskparts {
 static
 perworker::array<pthread_t> pthreads;
 
-template <typename Body, typename Initialize_worker, typename Destroy_worker>
-void launch_interrupt_worker_thread(size_t id, const Body& b,
+template <typename Body,
+	  typename Initialize_worker,
+	  typename Destroy_worker>
+void launch_interrupt_worker_thread(size_t id,
+				    const Body& b,
 				    const Initialize_worker& initialize_worker,
 				    const Destroy_worker& destroy_worker) {
+  // we need this exact initializer list to avoid a segfault
   auto b2 = [id, &b, &initialize_worker, &destroy_worker] {
     perworker::id::initialize_worker(id);
     pin_calling_worker();
@@ -87,9 +91,6 @@ class ping_thread_interrupt {
 public:
   
   static
-  int timerfd;
-  
-  static
   ping_thread_status_type ping_thread_status;
   
   static
@@ -127,7 +128,7 @@ public:
       unsigned int ns;
       unsigned int sec;
       struct itimerspec itval;
-      timerfd = timerfd_create(CLOCK_MONOTONIC, 0);
+      int timerfd = timerfd_create(CLOCK_MONOTONIC, 0);
       if (timerfd == -1) {
         taskparts_die("failed to properly initialize timerfd");
       }
@@ -166,8 +167,6 @@ ping_thread_status_type ping_thread_interrupt::ping_thread_status = ping_thread_
 std::mutex ping_thread_interrupt::ping_thread_lock;
 
 std::condition_variable ping_thread_interrupt::ping_thread_condition_variable;
-
-int ping_thread_interrupt::timerfd;
 
 /*---------------------------------------------------------------------*/
 /* Interrupt/polling hybrid configuration */
