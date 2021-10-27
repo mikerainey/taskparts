@@ -41,33 +41,6 @@ auto tpalrts_promote_via_nativefj(const F1& f1, const F2& f2, const Fj& fj, Sche
   cfb->status = fiber_status_finish;
   cfb->swap_with_scheduler();
 }
-  
-/* Interface for TPAL runtime 
- *   - assumptions: leaf loop (non nested), no reduction
- *   - return nonzero value if promotion happened, zero otherwise
- *   - indvar: loop induction variable, maxval: loop maximum value
- *   - ...
- *   int handler_for_fork2(int64_t indvar, int64_t maxval, 
- *                         void** livein, void(*f)(int64_t,int64_t,void**)) {
- *     ... here, we call a C++ function in the TPAL runtime
- *   }
- */
-
-int tpalrts_promote(int64_t indvar, int64_t maxval,
-		    void** livein,
-		    void(*f)(int64_t,int64_t,void**)) {
-  auto n = maxval - indvar;
-  if (n == 0) {
-    return 0;
-  }
-  int64_t mid = indvar + (n / 2);
-  tpalrts_promote_via_nativefj([&] {
-    f(indvar, mid, livein);
-  }, [&] {
-    f(mid, n, livein);
-  }, [&] { }, bench_scheduler());
-  return 1;
-}
 
 /*---------------------------------------------------------------------*/
 /* Promotion mark list */

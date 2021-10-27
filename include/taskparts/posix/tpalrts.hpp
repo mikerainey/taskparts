@@ -21,6 +21,15 @@ namespace taskparts {
 static
 perworker::array<pthread_t> pthreads;
 
+static
+ping_thread_status_type ping_thread_status = ping_thread_status_active;
+
+static
+std::mutex ping_thread_lock;
+
+static
+std::condition_variable ping_thread_condition_variable;
+
 template <typename Body,
 	  typename Initialize_worker,
 	  typename Destroy_worker>
@@ -45,6 +54,74 @@ void launch_interrupt_worker_thread(size_t id,
   t.detach();
 }
 
+auto dflt_signal_workers(size_t nb_workers) {
+  for (size_t i = 0; i < nb_workers; ++i) {
+    pthread_kill(pthreads[i], SIGUSR1);
+  }
+}
+
+auto initialize_signal_handler0() {
+  pthreads[0] = pthread_self();
+}
+
+template <typename Signal_workers = decltype(dflt_signal_workers)>
+auto launch_ping_thread0(size_t nb_workers,
+			 Signal_workers signal_workers = dflt_signal_workers) {
+  auto kappa_usec = get_kappa_usec();
+  auto pthreadsp = &pthreads;
+  auto statusp = &ping_thread_status;
+  auto ping_thread_lockp = &ping_thread_lock;
+  auto cvp = &ping_thread_condition_variable;
+  auto t = std::thread([=] {
+    perworker::array<pthread_t>& pthreads = *pthreadsp;
+    ping_thread_status_type& status = *statusp;
+    std::mutex& ping_thread_lock = *ping_thread_lockp;
+    std::condition_variable& cv = *cvp;
+    unsigned int ns;
+    unsigned int sec;
+    struct itimerspec itval;
+    int timerfd = timerfd_create(CLOCK_MONOTONIC, 0);
+    if (timerfd == -1) {
+      taskparts_die("failed to properly initialize timerfd");
+    }
+    {
+      auto one_million = 1000000;
+      sec = kappa_usec / one_million;
+      ns = (kappa_usec - (sec * one_million)) * 1000;
+      itval.it_interval.tv_sec = sec;
+      itval.it_interval.tv_nsec = ns;
+      itval.it_value.tv_sec = sec;
+      itval.it_value.tv_nsec = ns;
+    }
+    timerfd_settime(timerfd, 0, &itval, nullptr);
+    while (status == ping_thread_status_active) {
+      unsigned long long missed;
+      int ret = read(timerfd, &missed, sizeof(missed));
+      if (ret == -1) {
+	taskparts_die("read timer");
+	return;
+      }
+      signal_workers(nb_workers);
+    }
+    std::unique_lock<std::mutex> lk(ping_thread_lock);
+    status = ping_thread_status_exited;
+    cv.notify_all();
+  });
+  t.detach();
+}
+
+static
+auto wait_to_terminate_ping_thread0() {
+  std::unique_lock<std::mutex> lk(ping_thread_lock);
+  if (ping_thread_status == ping_thread_status_active) {
+    ping_thread_status = ping_thread_status_exit_launch;
+  }
+  auto f = [&] {
+    return ping_thread_status == ping_thread_status_exited;
+  };
+  ping_thread_condition_variable.wait(lk, f);
+}
+  
 /*---------------------------------------------------------------------*/
 /* Ping-thread scheduler configuration */
 
@@ -89,100 +166,78 @@ public:
 
 class ping_thread_interrupt {
 public:
-  
-  static
-  ping_thread_status_type ping_thread_status;
-  
-  static
-  std::mutex ping_thread_lock;
-  
-  static
-  std::condition_variable ping_thread_condition_variable;
 
   static
   void initialize_signal_handler() {
-    pthreads[0] = pthread_self();
+    initialize_signal_handler0();
   }
   
   static
   void wait_to_terminate_ping_thread() {
-    std::unique_lock<std::mutex> lk(ping_thread_lock);
-    if (ping_thread_status == ping_thread_status_active) {
-      ping_thread_status = ping_thread_status_exit_launch;
-    }
-    ping_thread_condition_variable.wait(lk, [&] { return ping_thread_status == ping_thread_status_exited; });
+    wait_to_terminate_ping_thread0();
   }
   
   static
   void launch_ping_thread(size_t nb_workers) {
-    auto kappa_usec = get_kappa_usec();
-    auto pthreadsp = &pthreads;
-    auto statusp = &ping_thread_status;
-    auto ping_thread_lockp = &ping_thread_lock;
-    auto cvp = &ping_thread_condition_variable;
-    auto t = std::thread([=] {
-      perworker::array<pthread_t>& pthreads = *pthreadsp;
-      ping_thread_status_type& status = *statusp;
-      std::mutex& ping_thread_lock = *ping_thread_lockp;
-      std::condition_variable& cv = *cvp;
-      unsigned int ns;
-      unsigned int sec;
-      struct itimerspec itval;
-      int timerfd = timerfd_create(CLOCK_MONOTONIC, 0);
-      if (timerfd == -1) {
-        taskparts_die("failed to properly initialize timerfd");
-      }
-      {
-        auto one_million = 1000000;
-        sec = kappa_usec / one_million;
-        ns = (kappa_usec - (sec * one_million)) * 1000;
-        itval.it_interval.tv_sec = sec;
-        itval.it_interval.tv_nsec = ns;
-        itval.it_value.tv_sec = sec;
-        itval.it_value.tv_nsec = ns;
-      }
-      timerfd_settime(timerfd, 0, &itval, nullptr);
-      while (status == ping_thread_status_active) {
-        unsigned long long missed;
-        int ret = read(timerfd, &missed, sizeof(missed));
-        if (ret == -1) {
-          taskparts_die("read timer");
-          return;
-        }
-        for (size_t i = 0; i < nb_workers; ++i) {
-          pthread_kill(pthreads[i], SIGUSR1);
-        }
-      }
-      std::unique_lock<std::mutex> lk(ping_thread_lock);
-      status = ping_thread_status_exited;
-      cv.notify_all();
-    });
-    t.detach();
+    launch_ping_thread0(nb_workers);
   }
   
 };
 
-ping_thread_status_type ping_thread_interrupt::ping_thread_status = ping_thread_status_active;
-
-std::mutex ping_thread_interrupt::ping_thread_lock;
-
-std::condition_variable ping_thread_interrupt::ping_thread_condition_variable;
-
 /*---------------------------------------------------------------------*/
 /* Interrupt/polling hybrid configuration */
 
+static
+perworker::array<std::atomic_bool> heartbeat_flags;
+
+auto hardware_alarm_signal_workers(size_t nb_workers) {
+  for (size_t i = 0; i < nb_workers; ++i) {
+    heartbeat_flags[i].store(true);
+  }
+}
+  
 class hardware_alarm_polling_worker {
 public:
 
   static
-  perworker::array<int> nb_pending_heartbeats;
-};
+  void initialize(size_t nb_workers) { }
 
-perworker::array<int> hardware_alarm_polling_worker::nb_pending_heartbeats;
+  static
+  void destroy() { }
+
+  static
+  void initialize_worker() { }
+
+  template <typename Body>
+  static
+  void launch_worker_thread(size_t id, const Body& b) {
+    launch_interrupt_worker_thread(id, b, [] { }, [] { });
+  }
+  
+  using worker_exit_barrier = typename minimal_worker::worker_exit_barrier;
+  
+  using termination_detection_type = minimal_termination_detection;
+
+};
 
 class hardware_alarm_polling_interrupt {
 public:
 
+  static
+  void initialize_signal_handler() {
+    initialize_signal_handler0();
+  }
+  
+  static
+  void wait_to_terminate_ping_thread() {
+    wait_to_terminate_ping_thread0();
+  }
+
+  static
+  void launch_ping_thread(size_t nb_workers) {
+    launch_ping_thread0(nb_workers, hardware_alarm_signal_workers);
+  }
+  
 };
 
 /*---------------------------------------------------------------------*/
