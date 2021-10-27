@@ -28,13 +28,13 @@ public:
   fiber(Scheduler _sched=Scheduler())
     : minimal_fiber<Scheduler>(), incounter(1), outedge(nullptr) { }
 
-  // later: remove the ifdef after correcting the bootstrapping of tpal programs, e.g., sum_tree
-#ifndef TASKPARTS_TPALRTS
   virtual
   ~fiber() {
+  // later: remove the ifdef after correcting the bootstrapping of tpal programs, e.g., sum_tree
+#ifndef TASKPARTS_TPALRTS
     assert(outedge == nullptr);
-  }
 #endif
+  }
 
   virtual
   fiber_status_type run() = 0;
