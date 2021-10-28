@@ -235,7 +235,16 @@ public:
 
   static
   void launch_ping_thread(size_t nb_workers) {
-    launch_ping_thread0(nb_workers, hardware_alarm_signal_workers);
+    launch_ping_thread0(nb_workers, [&] (size_t nb_workers) {
+      for (size_t i = 0; i < nb_workers; ++i) {
+	heartbeat_flags[i].store(true);
+      }
+    });
+  }
+
+  static
+  auto my_heartbeat_flag() -> std::atomic_bool* {
+    return &(heartbeat_flags.mine());
   }
   
 };
@@ -444,6 +453,20 @@ public:
 
 perworker::array<int> papi_worker::event_set;
 
+#endif
+
+#if defined(TASKPARTS_TPALRTS_HARDWARE_ALARM_POLLING)
+using tpalrts_worker = hardware_alarm_polling_worker;
+using tpalrts_interrupt = hardware_alarm_polling_interrupt;
+#elif defined(TASKPARTS_TPALRTS_PTHREAD_DIRECT)
+using tpalrts_worker = pthread_direct_worker;
+using tpalrts_interrupt = pthread_direct_interrupt;
+#elif defined(TASKPARTS_TPALRTS_PAPI)
+using tpalrts_worker = papi_worker;
+using tpalrts_interrupt = papi_interrupt;
+#else
+using tpalrts_worker = ping_thread_worker;
+using tpalrts_interrupt = ping_thread_interrupt;
 #endif
   
 } // end namespace
