@@ -461,7 +461,7 @@ using tpalrts_interrupt = hardware_alarm_polling_interrupt;
 #elif defined(TASKPARTS_TPALRTS_PTHREAD_DIRECT)
 using tpalrts_worker = pthread_direct_worker;
 using tpalrts_interrupt = pthread_direct_interrupt;
-#elif defined(TASKPARTS_TPALRTS_PAPI)
+#elif defined(TASKPARTS_TPALRTS_PAPI) && defined(TASKPARTS_USE_PAPI)
 using tpalrts_worker = papi_worker;
 using tpalrts_interrupt = papi_interrupt;
 #else
