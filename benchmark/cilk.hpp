@@ -94,8 +94,8 @@ auto benchmark_cilk(const Benchmark& benchmark,
       fprintf(f, ",");
 #endif
     }
-    benchmark_teardown();
   }
+  benchmark_teardown();
 #ifdef TASKPARTS_CILKRTS_WITH_STATS
   fprintf(f, "]\n");
   if (f != stdout) {
