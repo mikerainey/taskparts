@@ -1,5 +1,6 @@
 from plot import *
 from parameter import *
+from taskparts import *
 from benchmark import *
 from table import mk_table
 import itertools
@@ -10,42 +11,25 @@ from datetime import datetime
 def merge_dicts(x, y):
     return { **x, **y }
 
+def cross_product(xs, ys):
+    return list(itertools.product(xs, ys))
+
 # Notes
 # =====
 
 # For more general-purpose table generation:
 # https://pandas.pydata.org/docs/user_guide/style.html
 
-# Taskparts configuration
-# =======================
-
-taskparts_benchmark_num_repeat_key = 'TASKPARTS_BENCHMARK_NUM_REPEAT'
-taskparts_outfile_key = 'TASKPARTS_STATS_OUTFILE'
-taskparts_cilk_outfile_key = 'CILK_STATS_OUTFILE'
-taskparts_num_workers_key = 'TASKPARTS_NUM_WORKERS'
-taskparts_exectime_key = 'exectime'
-taskparts_usertime_key = 'usertime'
-taskparts_systime_key = 'systime'
-taskparts_maxrss_key = 'maxrss'
-taskparts_total_time_key = 'total_time'
-taskparts_total_work_time_key = 'total_work_time'
-taskparts_total_idle_time_key = 'total_idle_time'
-taskparts_total_sleep_time_key = 'total_sleep_time'
-taskparts_utilization_key = 'utilization'
-taskparts_nb_fibers_key = 'nb_fibers'
-taskparts_nb_steals_key = 'nb_steals'
-
-def mk_taskparts_num_repeat(n):
-    return mk_parameter(taskparts_benchmark_num_repeat_key, n)
-
-def mk_taskparts_num_workers(n):
-    return mk_parameter(taskparts_num_workers_key, n)
-
 # Experiment configuration
 # ========================
 
-virtual_runs = False # if True, do not run benchmarks
+virtual_runs = True # if True, do not run benchmarks
 virtual_report = False # if True, do not generate reports
+
+max_num_workers = 15
+workers_step = 7
+workers = range(1, max_num_workers + 1, workers_step)
+num_repeat = 2
 
 ## Schedulers
 ## ----------
@@ -87,10 +71,10 @@ path_to_executable_key = 'path_to_executable'
 tpal_benchmark_descriptions = {
     'sum_array': 'sum array',
     'sum_tree': 'sum tree',
+    'spmv': 'sparse matrix x dense vector product',
     'srad': 'srad',
-    'pdfs': 'pseudo dfs'
+#    'pdfs': 'pseudo dfs'
 }
-
 parlay_benchmark_descriptions = {
     'wc': 'word count',
     'mcss': 'maximum contiguous subsequence sum',
@@ -101,22 +85,15 @@ parlay_benchmark_descriptions = {
     'primes': 'prime number enumeration',
     'removeduplicates': 'remove duplicates'
 }
-
 benchmark_descriptions = merge_dicts(parlay_benchmark_descriptions, tpal_benchmark_descriptions)
-
 takes = ['wc', 'mcss', 'samplesort', 'quickhull', 'primes', 'removeduplicates'] # [b for b in benchmark_descriptions]
-takes = ['wc', 'srad']
+takes = ['integrate', 'sum_array']
 drops = []
-
-benchmarks = [ b for b in benchmark_descriptions if b in takes and not(b in drops)  ]
+benchmarks = [ b for b in benchmark_descriptions if b in takes and not(b in drops) ]
+mk_benchmarks = mk_parameters(benchmark_key, benchmarks)
 
 benchmark_path = '../'
 benchmark_bin_path = './bin/'
-
-max_num_workers = 15
-workers_step = 7
-workers = range(1, max_num_workers + 1, workers_step)
-num_repeat = 2
 
 def is_taskparts(scheduler):
     return scheduler != scheduler_cilk and scheduler != scheduler_serial
@@ -137,9 +114,6 @@ def mk_binpath(basename, scheduler = scheduler_taskparts, ext = 'sta'):
 def mk_benchmark_cmd(b, scheduler = scheduler_taskparts):
     return mk_cross(mk_cross(mk_binpath(b, scheduler), mk_scheduler(scheduler)),
                     mk_parameter(benchmark_key, b))
-
-def cross_product(xs, ys):
-    return list(itertools.product(xs, ys))
 
 commands_serial = mk_append_sequence([mk_benchmark_cmd(b, s)
                                       for b, s in cross_product(benchmarks, [scheduler_serial])])
@@ -206,7 +180,7 @@ def generate_speedup_plots():
     y_key = taskparts_exectime_key
     y_label = 'speedup'
     plots = mk_speedup_plots(all_results,
-                             mk_parameters(benchmark_key, benchmarks),
+                             mk_benchmarks,
                              max_num_workers = max_num_workers,
                              benchmark_key = benchmark_key,
                              mk_serial_mode = mk_scheduler(scheduler_serial),
@@ -273,8 +247,6 @@ if not(virtual_report):
 
 # Markdown/PDF global report
 # ==========================
-
-mk_benchmarks = mk_append_sequence([ mk_parameter(benchmark_key, b) for b in benchmarks ])
 
 table_md_file = 'report.md'
 table_pdf_file = 'report.pdf'

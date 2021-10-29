@@ -1,3 +1,4 @@
+#define TASKPARTS_TPALRTS_MINIMAL // disables heartbeat interrupts
 #include <taskparts/benchmark.hpp>
 #include "pdfs.hpp"
 #include "frontierseg.hpp"

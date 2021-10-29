@@ -238,6 +238,10 @@ BENCHMARKS=\
 	wc
 
 TPAL_BENCHMARKS=\
+	sum_array \
+	sum_tree \
+	pdfs \
+	spmv \
 	srad
 
 all_elastic_lifeline_opt: $(BENCHMARKS:%=%.elastic_lifeline.opt) $(BENCHMARKS:%=%.elastic_lifeline_elision.opt)

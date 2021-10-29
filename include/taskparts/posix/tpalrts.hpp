@@ -464,6 +464,9 @@ using tpalrts_interrupt = pthread_direct_interrupt;
 #elif defined(TASKPARTS_TPALRTS_PAPI) && defined(TASKPARTS_USE_PAPI)
 using tpalrts_worker = papi_worker;
 using tpalrts_interrupt = papi_interrupt;
+#elif defined(TASKPARTS_TPALRTS_MINIMAL)
+using tpalrts_worker = minimal_worker;
+using tpalrts_interrupt = minimal_interrupt;
 #else
 using tpalrts_worker = ping_thread_worker;
 using tpalrts_interrupt = ping_thread_interrupt;
