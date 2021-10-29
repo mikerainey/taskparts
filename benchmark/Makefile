@@ -237,10 +237,8 @@ BENCHMARKS=\
 	suffixarray \
 	wc
 
-all_taskparts_opt: $(BENCHMARKS:%=%.opt)
-all_taskparts_sta: $(BENCHMARKS:%=%.sta)
-all_taskparts_log: $(BENCHMARKS:%=%.log)
-all_taskparts_dbg: $(BENCHMARKS:%=%.dbg)
+TPAL_BENCHMARKS=\
+	srad
 
 all_elastic_lifeline_opt: $(BENCHMARKS:%=%.elastic_lifeline.opt) $(BENCHMARKS:%=%.elastic_lifeline_elision.opt)
 all_elastic_lifeline_sta: $(BENCHMARKS:%=%.elastic_lifeline.sta) $(BENCHMARKS:%=%.elastic_lifeline_elision.sta)
@@ -261,4 +259,60 @@ all_serial_sta: $(BENCHMARKS:%=%.serial.sta)
 all_opt: all_taskparts_opt all_cilk_opt all_serial_opt
 all_sta: all_taskparts_sta all_cilk_sta all_serial_sta
 
-all_elastic: all_opt all_sta all_elastic_lifeline_opt all_elastic_lifeline_sta all_elastic_flat_opt all_elastic_flat_sta 
+all_tpal_serial: $(TPAL_BENCHMARKS:%=%.serial.opt) $(TPAL_BENCHMARKS:%=%.serial.sta)
+all_tpal_cilk: $(TPAL_BENCHMARKS:%=%.cilk.opt) $(TPAL_BENCHMARKS:%=%.cilk.sta)
+
+all_tpal_opt: $(TPAL_BENCHMARKS:%=%.tpal.opt)
+all_tpal_sta: $(TPAL_BENCHMARKS:%=%.tpal.sta)
+all_tpal_log: $(TPAL_BENCHMARKS:%=%.tpal.log)
+all_tpal_dbg: $(TPAL_BENCHMARKS:%=%.tpal.dbg)
+
+all_elastic_lifeline_tpal_opt: $(TPAL_BENCHMARKS:%=%.elastic_lifeline_tpal.opt)
+all_elastic_lifeline_tpal_sta: $(TPAL_BENCHMARKS:%=%.elastic_lifeline_tpal.sta)
+all_elastic_lifeline_tpal_log: $(TPAL_BENCHMARKS:%=%.elastic_lifeline_tpal.log)
+all_elastic_lifeline_tpal_dbg: $(TPAL_BENCHMARKS:%=%.elastic_lifeline_tpal.dbg)
+
+all_elastic_flat_tpal_opt: $(TPAL_BENCHMARKS:%=%.elastic_flat_tpal.opt)
+all_elastic_flat_tpal_sta: $(TPAL_BENCHMARKS:%=%.elastic_flat_tpal.sta)
+all_elastic_flat_tpal_log: $(TPAL_BENCHMARKS:%=%.elastic_flat_tpal.log)
+all_elastic_flat_tpal_dbg: $(TPAL_BENCHMARKS:%=%.elastic_flat_tpal.dbg)
+
+%.taskparts.opt: %.opt
+	ln -f -s $(abspath $(INSTALL_PATH)/$*.opt) $(INSTALL_PATH)/$*.taskparts.opt
+	chmod u+x $(INSTALL_PATH)/$*.taskparts.opt
+%.taskparts.sta: %.sta
+	ln -f -s $(abspath $(INSTALL_PATH)/$*.sta) $(INSTALL_PATH)/$*.taskparts.sta
+	chmod u+x $(INSTALL_PATH)/$*.taskparts.sta
+%.taskparts.log: %.log
+	ln -f -s $(abspath $(INSTALL_PATH)/$*.log) $(INSTALL_PATH)/$*.taskparts.log
+	chmod u+x $(INSTALL_PATH)/$*.taskparts.log
+%.taskparts.dbg: %.dbg
+	ln -f -s $(abspath $(INSTALL_PATH)/$*.dbg) $(INSTALL_PATH)/$*.taskparts.dbg
+	chmod u+x $(INSTALL_PATH)/$*.taskparts.dbg
+
+all_taskparts_opt: $(BENCHMARKS:%=%.taskparts.opt)
+all_taskparts_sta: $(BENCHMARKS:%=%.taskparts.sta)
+all_taskparts_log: $(BENCHMARKS:%=%.taskparts.log)
+all_taskparts_dbg: $(BENCHMARKS:%=%.taskparts.dbg)
+
+%.taskparts_tpal.opt: %.tpal.opt
+	ln -f -s $(abspath $(INSTALL_PATH)/$*.tpal.opt) $(INSTALL_PATH)/$*.taskparts_tpal.opt
+	chmod u+x $(INSTALL_PATH)/$*.taskparts_tpal.opt
+%.taskparts_tpal.sta: %.tpal.sta
+	ln -f -s $(abspath $(INSTALL_PATH)/$*.tpal.sta) $(INSTALL_PATH)/$*.taskparts_tpal.sta
+	chmod u+x $(INSTALL_PATH)/$*.taskparts_tpal.sta
+%.taskparts_tpal.log: %.tpal.log
+	ln -f -s $(abspath $(INSTALL_PATH)/$*.tpal.log) $(INSTALL_PATH)/$*.taskparts_tpal.log
+	chmod u+x $(INSTALL_PATH)/$*.taskparts_tpal.log
+%.taskparts_tpal.dbg: %.tpal.dbg
+	ln -f -s $(abspath $(INSTALL_PATH)/$*.tpal.dbg) $(INSTALL_PATH)/$*.taskparts_tpal.dbg
+	chmod u+x $(INSTALL_PATH)/$*.taskparts_tpal.dbg
+
+all_taskparts_tpal_opt: $(TPAL_BENCHMARKS:%=%.taskparts_tpal.opt)
+all_taskparts_tpal_sta: $(TPAL_BENCHMARKS:%=%.taskparts_tpal.sta)
+all_taskparts_tpal_log: $(TPAL_BENCHMARKS:%=%.taskparts_tpal.log)
+all_taskparts_tpal_dbg: $(TPAL_BENCHMARKS:%=%.taskparts_tpal.dbg)
+
+all_elastic_tpal: all_taskparts_tpal_opt all_taskparts_tpal_sta all_elastic_lifeline_tpal_opt all_elastic_lifeline_tpal_sta all_elastic_flat_tpal_opt all_elastic_flat_tpal_sta all_tpal_serial all_tpal_cilk
+
+all_elastic: all_taskparts_opt all_taskparts_sta all_serial_opt all_serial_sta all_elastic_lifeline_opt all_elastic_lifeline_sta all_elastic_flat_opt all_elastic_flat_sta all_elastic_tpal all_cilk_opt all_cilk_sta
