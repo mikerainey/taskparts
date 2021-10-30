@@ -283,16 +283,12 @@ all_elastic_flat_tpal_dbg: $(TPAL_BENCHMARKS:%=%.elastic_flat_tpal.dbg)
 
 %.taskparts.opt: %.opt
 	ln -f -s $(abspath $(INSTALL_PATH)/$*.opt) $(INSTALL_PATH)/$*.taskparts.opt
-	chmod u+x $(INSTALL_PATH)/$*.taskparts.opt
 %.taskparts.sta: %.sta
 	ln -f -s $(abspath $(INSTALL_PATH)/$*.sta) $(INSTALL_PATH)/$*.taskparts.sta
-	chmod u+x $(INSTALL_PATH)/$*.taskparts.sta
 %.taskparts.log: %.log
 	ln -f -s $(abspath $(INSTALL_PATH)/$*.log) $(INSTALL_PATH)/$*.taskparts.log
-	chmod u+x $(INSTALL_PATH)/$*.taskparts.log
 %.taskparts.dbg: %.dbg
 	ln -f -s $(abspath $(INSTALL_PATH)/$*.dbg) $(INSTALL_PATH)/$*.taskparts.dbg
-	chmod u+x $(INSTALL_PATH)/$*.taskparts.dbg
 
 all_taskparts_opt: $(BENCHMARKS:%=%.taskparts.opt)
 all_taskparts_sta: $(BENCHMARKS:%=%.taskparts.sta)
@@ -301,16 +297,12 @@ all_taskparts_dbg: $(BENCHMARKS:%=%.taskparts.dbg)
 
 %.taskparts_tpal.opt: %.tpal.opt
 	ln -f -s $(abspath $(INSTALL_PATH)/$*.tpal.opt) $(INSTALL_PATH)/$*.taskparts_tpal.opt
-	chmod u+x $(INSTALL_PATH)/$*.taskparts_tpal.opt
 %.taskparts_tpal.sta: %.tpal.sta
 	ln -f -s $(abspath $(INSTALL_PATH)/$*.tpal.sta) $(INSTALL_PATH)/$*.taskparts_tpal.sta
-	chmod u+x $(INSTALL_PATH)/$*.taskparts_tpal.sta
 %.taskparts_tpal.log: %.tpal.log
 	ln -f -s $(abspath $(INSTALL_PATH)/$*.tpal.log) $(INSTALL_PATH)/$*.taskparts_tpal.log
-	chmod u+x $(INSTALL_PATH)/$*.taskparts_tpal.log
 %.taskparts_tpal.dbg: %.tpal.dbg
 	ln -f -s $(abspath $(INSTALL_PATH)/$*.tpal.dbg) $(INSTALL_PATH)/$*.taskparts_tpal.dbg
-	chmod u+x $(INSTALL_PATH)/$*.taskparts_tpal.dbg
 
 all_taskparts_tpal_opt: $(TPAL_BENCHMARKS:%=%.taskparts_tpal.opt)
 all_taskparts_tpal_sta: $(TPAL_BENCHMARKS:%=%.taskparts_tpal.sta)

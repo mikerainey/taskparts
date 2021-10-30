@@ -14,6 +14,7 @@
 #else
 #include <convexHull/serialHull/hull.C>
 #endif
+#include <taskparts/cmdline.hpp>
 using namespace benchIO;
 using namespace dataGen;
 using namespace std;
@@ -39,3 +40,22 @@ point3d<coord> randPlummer(size_t i) {
 }
 
 size_t dflt_n = 10000000;
+
+auto gen_input() -> parlay::sequence<point2d<coord>> {
+  size_t n = taskparts::cmdline::parse_or_default_long("n", dflt_n);
+  int dims = taskparts::cmdline::parse_or_default_int("dims", 2);
+  bool inSphere = false;
+  bool onSphere = false;
+  bool kuzmin = false;
+  taskparts::cmdline::dispatcher d;
+  d.add("in_sphere", [&] { inSphere = true; });
+  d.add("on_sphere", [&] { onSphere = true; });
+  d.add("kuzmin", [&] { kuzmin = true; });
+  d.dispatch_or_default("input", "in_sphere");
+  return parlay::tabulate(n, [&] (size_t i) -> point2d<coord> {
+      if (inSphere) return randInUnitSphere2d<coord>(i);
+      else if (onSphere) return randOnUnitSphere2d<coord>(i);
+      else if (kuzmin) return randKuzmin<coord>(i);
+      else return rand2d<coord>(i);
+    });
+}

@@ -23,7 +23,7 @@ def cross_product(xs, ys):
 # Experiment configuration
 # ========================
 
-virtual_runs = True # if True, do not run benchmarks
+virtual_runs = False # if True, do not run benchmarks
 virtual_report = False # if True, do not generate reports
 
 max_num_workers = 15
@@ -66,31 +66,40 @@ def mk_scheduler(m):
 ## ----------
 
 benchmark_key = 'benchmark'
+def mk_elastic_benchmark(b):
+    return mk_parameter(benchmark_key, b)
+
 path_to_executable_key = 'path_to_executable'
 
+mk_sum_tree_input = mk_append_sequence([mk_parameter('input_tree', i) for i in ['perfect', 'alternations']])
+
+mk_quickhull_input = mk_parameters('input', ['in_sphere', 'kuzmin'])
+
 tpal_benchmark_descriptions = {
-    'sum_array': 'sum array',
-    'sum_tree': 'sum tree',
-    'spmv': 'sparse matrix x dense vector product',
-    'srad': 'srad',
-#    'pdfs': 'pseudo dfs'
+    'sum_array': {'input': mk_unit(), 'descr': 'sum array'},
+    'sum_tree': {'input': mk_sum_tree_input, 'descr': 'sum tree'},
+    'spmv': {'input': mk_parameters('input_matrix', ['bigcols','bigrows','arrowhead']), 'descr': 'sparse matrix x dense vector product'},
+    'srad': {'input': mk_unit(), 'descr': 'srad'},
+    #    'pdfs': {'input': mk_unit(), 'descr': 'pseudo dfs'},
 }
 parlay_benchmark_descriptions = {
-    'wc': 'word count',
-    'mcss': 'maximum contiguous subsequence sum',
-    'samplesort': 'sample sort',
-    'suffixarray': 'suffix array',
-    'quickhull': 'convex hull',
-    'integrate': 'integration',
-    'primes': 'prime number enumeration',
-    'removeduplicates': 'remove duplicates'
+    'wc': {'input': mk_unit(), 'descr': 'word count'},
+    'mcss': {'input': mk_unit(), 'descr': 'maximum contiguous subsequence sum'},
+    'samplesort': {'input': mk_unit(), 'descr': 'sample sort'},
+    'suffixarray': {'input': mk_unit(), 'descr': 'suffix array'},
+    'quickhull': {'input': mk_quickhull_input, 'descr': 'convex hull'},
+    'integrate': {'input': mk_unit(), 'descr': 'integration'},
+    'primes': {'input': mk_unit(), 'descr': 'prime number enumeration'},
+    'removeduplicates': {'input': mk_unit(), 'descr': 'remove duplicates'},
+#    'bfs': {'input': mk_unit(), 'descr': 'breadth first search'},
 }
 benchmark_descriptions = merge_dicts(parlay_benchmark_descriptions, tpal_benchmark_descriptions)
 takes = ['wc', 'mcss', 'samplesort', 'quickhull', 'primes', 'removeduplicates'] # [b for b in benchmark_descriptions]
-takes = ['integrate', 'sum_array']
+takes = ['integrate','primes','sum_array','quickhull']
 drops = []
 benchmarks = [ b for b in benchmark_descriptions if b in takes and not(b in drops) ]
-mk_benchmarks = mk_parameters(benchmark_key, benchmarks)
+mk_benchmarks = mk_append_sequence([mk_cross(mk_elastic_benchmark(b), benchmark_descriptions[b]['input'])
+                                    for b in benchmarks])
 
 benchmark_path = '../'
 benchmark_bin_path = './bin/'
@@ -113,12 +122,15 @@ def mk_binpath(basename, scheduler = scheduler_taskparts, ext = 'sta'):
 
 def mk_benchmark_cmd(b, scheduler = scheduler_taskparts):
     return mk_cross(mk_cross(mk_binpath(b, scheduler), mk_scheduler(scheduler)),
-                    mk_parameter(benchmark_key, b))
+                    mk_elastic_benchmark(b))
 
-commands_serial = mk_append_sequence([mk_benchmark_cmd(b, s)
+commands_serial = mk_append_sequence([mk_cross(mk_benchmark_cmd(b, s),
+                                               benchmark_descriptions[b]['input'])
                                       for b, s in cross_product(benchmarks, [scheduler_serial])])
+                           
 
-commands_parallel = mk_cross_sequence([mk_append_sequence([mk_benchmark_cmd(b, s)
+commands_parallel = mk_cross_sequence([mk_append_sequence([mk_cross(mk_benchmark_cmd(b, s),
+                                                                    benchmark_descriptions[b]['input'])
                                                            for b, s in cross_product(benchmarks, parallel_schedulers)]),
                                        mk_parameters(taskparts_num_workers_key, workers),
                                        mk_taskparts_num_repeat(num_repeat)])
@@ -182,7 +194,6 @@ def generate_speedup_plots():
     plots = mk_speedup_plots(all_results,
                              mk_benchmarks,
                              max_num_workers = max_num_workers,
-                             benchmark_key = benchmark_key,
                              mk_serial_mode = mk_scheduler(scheduler_serial),
                              x_key = taskparts_num_workers_key,
                              x_vals = x_vals,
@@ -203,7 +214,7 @@ def percent_difference(v1, v2):
     return abs((v1 - v2) / ((v1 + v2) / 2))
 
 def mk_get_y_val(y_key):
-    get_y_val = lambda x_key, x_val, y_expr: mean(select_from_expr_by_key(y_expr, y_key))
+    get_y_val = lambda x_key, x_val, y_expr, mk_plot_expr: mean(select_from_expr_by_key(y_expr, y_key))
     return get_y_val
 
 def generate_basic_plots(get_y_val, y_label, curves_expr,
@@ -218,7 +229,7 @@ def generate_basic_plots(get_y_val, y_label, curves_expr,
     if outfile_pdf_name != '':
         opt_plot_args['default_outfile_pdf_name'] = outfile_pdf_name
     plots = mk_plots(all_results,
-                     mk_parameters(benchmark_key, benchmarks),
+                     mk_benchmarks,
                      x_key = taskparts_num_workers_key,
                      x_vals = x_vals,
                      get_y_val = get_y_val,
@@ -237,7 +248,7 @@ def get_percent_of_one_to_another(x_key, x_val, y_expr, y_key, ref_key):
 pct_sleeping_plots = []
 if not(virtual_report):
     pct_sleeping_plots = generate_basic_plots(
-        lambda x_key, x_val, y_expr:
+        lambda x_key, x_val, y_expr, mk_plot_expr:
         get_percent_of_one_to_another(x_key, x_val, y_expr, 'total_sleep_time', 'total_time'),
         'pct. of total time spent sleeping',
         mk_append(mk_scheduler(scheduler_elastic_flat),
@@ -248,6 +259,21 @@ if not(virtual_report):
 # Markdown/PDF global report
 # ==========================
 
+def string_of_expr(e, col_to_str = lambda d: str(d), row_sep = '; '):
+    rs = rows_of(e)
+    n = len(rs)
+    i = 0
+    s = ''
+    for r in rs:
+        s += col_to_str(row_to_dictionary(r))
+        if i + 1 != n:
+            s += row_sep
+    return s
+
+def string_of_benchmark(e):
+    col_to_str = lambda d: ",".join("{}={}".format(*i) for i in d.items())
+    return string_of_expr(e, col_to_str)
+
 table_md_file = 'report.md'
 table_pdf_file = 'report.pdf'
 
@@ -255,8 +281,7 @@ def mk_basic_table(results, result_key, columns):
     t = mk_table(results,
                  mk_benchmarks,
                  mk_parameters(scheduler_key, columns),
-                 gen_row_str = lambda mk_row:
-                 val_of_key_in_row(rows_of(mk_row)[0], benchmark_key),
+                 gen_row_str = string_of_benchmark,
                  gen_cell_str = lambda mk_row, mk_col, row:
                  mean(val_of_key_in_row(row, result_key)),
                  column_titles = columns) + '\n'
@@ -278,7 +303,7 @@ if not(virtual_report):
                                 ['scheduler', 'description']) + '\n', file=f)
 
         print('## Benchmark descriptions\n', file=f)
-        print(tabulate.tabulate([[k, benchmark_descriptions[k]] for k in benchmark_descriptions],
+        print(tabulate.tabulate([[k, benchmark_descriptions[k]['descr']] for k in benchmark_descriptions],
                                 ['benchmark', 'description']) + '\n', file=f)
 
         results_at_scale = mk_take_kvp(all_results, mk_taskparts_num_workers(max_num_workers))
@@ -327,7 +352,7 @@ if not(virtual_report):
             print('![](' + plot_pdf_path + '){ width=100% }\n', file=f)
 
         print('# Notes/todos\n', file=f)
-        print('- deal with crashing bfs.cilk by setting warmup time to zero', file=f)
+        print('- deal with crashing bfs.cilk', file=f)
         print('- generate challenge graphs/trees for pdfs/sum_tree resp.', file=f)
         print('- implement trivial elastic policy, which resembles the algorithm used by the GHC GC', file=f)
         print('- introduce elastic + sleep by spinning?', file=f)
@@ -341,4 +366,5 @@ if not(virtual_report):
                                stdout=subprocess.PIPE, 
                                stderr=subprocess.PIPE)
     stdout, stderr = process.communicate()
+    print('Generated result tables in ' + table_md_file)
     print('Generated result tables in ' + table_pdf_file)
