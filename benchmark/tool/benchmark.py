@@ -1,4 +1,4 @@
-import jsonschema, subprocess, tempfile, os, sys, socket, signal, threading, time, hashlib, pathlib
+import jsonschema, subprocess, tempfile, os, sys, socket, signal, threading, time, hashlib, pathlib, psutil
 import simplejson as json
 from datetime import datetime
 from parameter import *
@@ -157,22 +157,7 @@ def get_hash(thing):
 # Benchmark stepper
 # =================
 
-_currentChild = None
-def _signalHandler(signal, frame):
-  sys.stderr.write("[ERR] Interrupted.\n")
-  if _currentChild:
-    _currentChild.kill()
-  sys.exit(1)
-signal.signal(signal.SIGINT, _signalHandler)
-
-def _killer():
-  if _currentChild:
-    try:
-      _currentChild.kill()
-    except Exception as e:
-      sys.stderr.write("[WARN] Error while trying to kill process {}: {}\n".format(_currentChild.pid, str(e)))
-
-def run_benchmark(cmd, env_args, cwd = ''):
+def run_benchmark(cmd, env_args, cwd = '', timeout = None):
     # later: make it an option whether or not to run the benchmark w/ the calling environment
     os_env = os.environ.copy()
     env = {**os_env, **env_args}
@@ -181,7 +166,8 @@ def run_benchmark(cmd, env_args, cwd = ''):
                                 stdout = subprocess.PIPE, stderr = subprocess.PIPE)
     else:
         return subprocess.Popen(cmd, shell = True, env = env,
-                                stdout = subprocess.PIPE, stderr = subprocess.PIPE, cwd = cwd)
+                                stdout = subprocess.PIPE, stderr = subprocess.PIPE,
+                                cwd = cwd)
 
 def step_benchmark_todo(todo_1, outfiles = []):
     next_todo_position = 0
@@ -222,7 +208,7 @@ def step_benchmark_run(benchmark_1,
                        verbose = True,
                        client_format_to_row = lambda d: dictionary_to_row(d),
                        parse_output_to_json = lambda x: x,
-                       timeout_sec = 0.0):
+                       timeout = None):
     validate_benchmark(benchmark_1)
     nb_done = nb_done_in_benchmark(benchmark_1)
     nb_traced = nb_traced_in_benchmark(benchmark_1)
@@ -249,30 +235,26 @@ def step_benchmark_run(benchmark_1,
     current_child = run_benchmark(string_of_benchmark_run(next_run),
                                   { a['var']: str(a['val']) for a in next_run['benchmark_run']['env_args'] },
                                   modifiers['cwd'] if 'cwd' in modifiers else '')
-    timer = threading.Timer(timeout_sec, _killer) if timeout_sec > 0.0 else -1
     ts = time.time()
     child_stdout = ''
     child_stderr = ''
     return_code = 1
     try:
-        if timer != -1:
-            timer.start()
-        child_stdout, child_stderr = current_child.communicate()
+        child_stdout, child_stderr = current_child.communicate(timeout = timeout)
         child_stdout = child_stdout.decode('utf-8')
         child_stderr = child_stderr.decode('utf-8')
         return_code = current_child.returncode
         if return_code != 0:
             print('Warning: benchmark run returned error code ' + str(return_code))
             print('stdout:')
-            print(child_stdout)
+            print(str(child_stdout))
             print('stderr:')
-            print(child_stderr)
+            print(str(child_stderr))
         # Collect the results
         results_expr = collect_benchmark_run_outfiles(outfiles,
                                                       next_row,
                                                       client_format_to_row,
                                                       parse_output_to_json)
-        benchmark_2['todo'] = { 'value': todo_2 }
         benchmark_2['done'] = eval(mk_append(benchmark_1['done'], results_expr))
         if verbose:
             s = ''
@@ -283,9 +265,22 @@ def step_benchmark_run(benchmark_1,
             if s != '':
                 s += '\n'
             print(s, end = '')
-    finally:
-        if timer != -1:
-            timer.cancel()
+    except subprocess.TimeoutExpired:
+        # We kill the current_child process and all of its children to
+        # ensure the call to communicate() returns immediately.
+        parent = psutil.Process(current_child.pid)
+        for child in parent.children(recursive=True):
+            child.kill()
+        parent.kill()
+        child_stdout, child_stderr = current_child.communicate()
+        child_stdout = child_stdout.decode('utf-8')
+        child_stderr = child_stderr.decode('utf-8')
+        print('Warning: benchmark timed out after ' + str(timeout) + ' seconds')
+        print('stdout:')
+        print(str(child_stdout))
+        print('stderr:')
+        print(str(child_stderr))
+    benchmark_2['todo'] = { 'value': todo_2 }
     # Save the results
     trace_2 = next_run.copy()
     trace_2['benchmark_run']['return_code'] = return_code
@@ -300,7 +295,7 @@ def step_benchmark_run(benchmark_1,
     return benchmark_2
 
 # later: save benchmark runs incrementally, based on some client specification
-def step_benchmark(benchmark_1, done_peek_keys = []):
+def step_benchmark(benchmark_1, done_peek_keys = [], timeout = None):
     benchmark_2 = seed_benchmark(benchmark_1)
     nb_done_this_batch = 0
     nb_todo = nb_todo_in_benchmark(benchmark_2)
@@ -309,7 +304,8 @@ def step_benchmark(benchmark_1, done_peek_keys = []):
         benchmark_2 = step_benchmark_run(benchmark_2,
                                          nb_done_this_batch = nb_done_this_batch,
                                          nb_todo_this_batch = nb_todo_this_batch,
-                                         done_peek_keys = done_peek_keys)
+                                         done_peek_keys = done_peek_keys,
+                                         timeout = timeout)
         nb_todo = nb_todo_in_benchmark(benchmark_2)
         nb_done_this_batch += 1
     return benchmark_2

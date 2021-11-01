@@ -6,8 +6,8 @@ def pretty_print_json(j):
 
 taskparts_outfile_key = 'TASKPARTS_STATS_OUTFILE'
 taskparts_num_workers_key = 'TASKPARTS_NUM_WORKERS'
-q = mk_cross(mk_parameter('path_to_executable', '../bin/fib_nativeforkjoin.sta'),
-             mk_parameters(taskparts_num_workers_key, [12,16]))
+q = mk_cross(mk_parameter('path_to_executable', './test.opt'),
+             mk_parameters('n', [1,2,3,4]))
 
 mods = modifiers = {
     'path_to_executable_key': 'path_to_executable',

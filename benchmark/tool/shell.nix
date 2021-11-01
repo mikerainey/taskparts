@@ -7,6 +7,7 @@ let
                   pkgs.python38Packages.matplotlib
                   pkgs.python38Packages.pathvalidate
                   pkgs.python38Packages.tabulate
+                  pkgs.python38Packages.psutil
                 ];
   };
 in

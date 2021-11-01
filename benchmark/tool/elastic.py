@@ -23,8 +23,9 @@ def cross_product(xs, ys):
 # Experiment configuration
 # ========================
 
-virtual_runs = True # if True, do not run benchmarks
-virtual_report = True # if True, do not generate reports
+virtual_runs = False # if True, do not run benchmarks
+virtual_report = False # if True, do not generate reports
+timeout = 30.0 # any benchmark that takes > 30 seconds gets canceled; set to None if you dislike cancel culture
 
 max_num_workers = 15
 workers_step = 3
@@ -98,8 +99,10 @@ parlay_benchmark_descriptions = {
 #    'bfs': {'input': mk_unit(), 'descr': 'breadth first search'},
 }
 benchmark_descriptions = merge_dicts(parlay_benchmark_descriptions, tpal_benchmark_descriptions)
-takes = [b for b in benchmark_descriptions]
-drops = ['spmv']
+takes = ['sum_array', 'wc']
+drops = []
+#takes = [b for b in benchmark_descriptions]
+#drops = ['spmv']
 benchmarks = [ b for b in benchmark_descriptions if b in takes and not(b in drops) ]
 mk_benchmarks = mk_append_sequence([mk_cross(mk_elastic_benchmark(b), benchmark_descriptions[b]['input'])
                                     for b in benchmarks])
@@ -175,7 +178,7 @@ print('---------------\n')
 # ====================
 
 if not(virtual_runs):
-    bench = step_benchmark(bench, done_peek_keys = [taskparts_exectime_key])
+    bench = step_benchmark(bench, done_peek_keys = [taskparts_exectime_key], timeout = timeout)
     add_benchmark_to_results_repository(bench)
 
 all_results = mk_nil()
