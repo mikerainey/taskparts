@@ -173,11 +173,14 @@ def _killer():
       sys.stderr.write("[WARN] Error while trying to kill process {}: {}\n".format(_currentChild.pid, str(e)))
 
 def run_benchmark(cmd, env_args, cwd = ''):
+    # later: make it an option whether or not to run the benchmark w/ the calling environment
+    os_env = os.environ.copy()
+    env = {**os_env, **env_args}
     if cwd == '':
-        return subprocess.Popen(cmd, shell = True, env = env_args,
+        return subprocess.Popen(cmd, shell = True, env = env,
                                 stdout = subprocess.PIPE, stderr = subprocess.PIPE)
     else:
-        return subprocess.Popen(cmd, shell = True, env = env_args,
+        return subprocess.Popen(cmd, shell = True, env = env,
                                 stdout = subprocess.PIPE, stderr = subprocess.PIPE, cwd = cwd)
 
 def step_benchmark_todo(todo_1, outfiles = []):
