@@ -157,17 +157,13 @@ def get_hash(thing):
 # Benchmark stepper
 # =================
 
-def run_benchmark(cmd, env_args, cwd = '', timeout = None):
+def run_benchmark(cmd, env_args, cwd = None, timeout = None):
     # later: make it an option whether or not to run the benchmark w/ the calling environment
     os_env = os.environ.copy()
     env = {**os_env, **env_args}
-    if cwd == '':
-        return subprocess.Popen(cmd, shell = True, env = env,
-                                stdout = subprocess.PIPE, stderr = subprocess.PIPE)
-    else:
-        return subprocess.Popen(cmd, shell = True, env = env,
-                                stdout = subprocess.PIPE, stderr = subprocess.PIPE,
-                                cwd = cwd)
+    return subprocess.Popen(cmd, shell = True, env = env,
+                            stdout = subprocess.PIPE, stderr = subprocess.PIPE,
+                            cwd = cwd)
 
 def step_benchmark_todo(todo_1, outfiles = []):
     next_todo_position = 0
@@ -234,7 +230,7 @@ def step_benchmark_run(benchmark_1,
     # Do the next run
     current_child = run_benchmark(string_of_benchmark_run(next_run),
                                   { a['var']: str(a['val']) for a in next_run['benchmark_run']['env_args'] },
-                                  modifiers['cwd'] if 'cwd' in modifiers else '')
+                                  modifiers['cwd'] if 'cwd' in modifiers else None)
     ts = time.time()
     child_stdout = ''
     child_stderr = ''
