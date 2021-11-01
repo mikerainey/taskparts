@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+
+n=$2
+if [ $n == 3 ]; then
+    echo "[{\"exectime\": 333}]"
+    sleep 10
+fi
+
+echo "[{\"exectime\": $n}]" > $TASKPARTS_STATS_OUTFILE
