@@ -25,6 +25,7 @@ auto DFS(vertexId source, const Graph& g) -> parlay::sequence<int> {
 }
 
 int main() {
+  return -1; // later: write a proper cilk benchmark
   auto infile = taskparts::cmdline::parse_or_default_string("infile", "randlocal.adj");
   Graph G;
   sequence<int> visited;

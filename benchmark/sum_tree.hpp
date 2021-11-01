@@ -115,7 +115,7 @@ auto gen_input(Sched sched) {
     size_t nb_alternations = taskparts::cmdline::parse_or_default_int("alternations", 2);
     n0 = gen_alternating_tree(h, nb_spine_nodes, nb_alternations, sched);
   });
-  d.dispatch_or_default("input_tree", "perfect");
+  d.dispatch_or_default("input", "perfect");
 }
 
 auto teardown() {

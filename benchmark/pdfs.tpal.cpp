@@ -1,5 +1,3 @@
-#define TASKPARTS_TPALRTS_MINIMAL // disables heartbeat interrupts
-#include <taskparts/benchmark.hpp>
 #include "pdfs.hpp"
 #include "frontierseg.hpp"
 
@@ -81,15 +79,12 @@ auto PDFS(vertexId source, const Graph& g) -> parlay::sequence<std::atomic<int>>
 }
 
 int main() {
-  auto infile = taskparts::cmdline::parse_or_default_string("infile", "randlocal.adj");
   Graph G;
   sequence<std::atomic<int>> visited;
-  size_t source = 0;
   parlay::benchmark_taskparts([&] (auto sched) { // benchmark
     visited = PDFS(source, G);
   }, [&] (auto sched) { // setup
-    G = readGraphFromFile<vertexId,edgeId>((char*)infile.c_str());
-    G.addDegrees();
+    G = gen_input();
   }, [&] (auto sched) { // teardown
     size_t nb_visited = parlay::reduce(parlay::delayed_map(visited, [&] (auto& p) -> size_t {
       return (size_t)p.load();}));

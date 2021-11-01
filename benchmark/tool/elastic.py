@@ -23,13 +23,15 @@ def cross_product(xs, ys):
 # Experiment configuration
 # ========================
 
-virtual_runs = False # if True, do not run benchmarks
-virtual_report = False # if True, do not generate reports
+virtual_runs = True # if True, do not run benchmarks
+virtual_report = True # if True, do not generate reports
 
 max_num_workers = 15
-workers_step = 7
-workers = range(1, max_num_workers + 1, workers_step)
-num_repeat = 2
+workers_step = 3
+workers = list(map(lambda x: x + 1, range(1, max_num_workers, workers_step)))
+workers = workers if 1 in workers else [1] + workers
+workers = workers if max_num_workers in workers else workers + [max_num_workers]
+num_repeat = 4
 
 ## Schedulers
 ## ----------
@@ -71,22 +73,24 @@ def mk_elastic_benchmark(b):
 
 path_to_executable_key = 'path_to_executable'
 
-mk_sum_tree_input = mk_append_sequence([mk_parameter('input_tree', i) for i in ['perfect', 'alternations']])
-
+mk_sum_tree_input = mk_append_sequence([mk_parameter('input', i) for i in ['perfect', 'alternating']])
 mk_quickhull_input = mk_parameters('input', ['in_sphere', 'kuzmin'])
+mk_samplesort_input = mk_parameters('input', ['random', 'exponential', 'almost_sorted'])
+mk_pdfs_input = mk_parameters('input', ['rMat','alternating'])
+mk_suffixarray_input = mk_parameters('infile', ['chr22.dna'])
 
 tpal_benchmark_descriptions = {
     'sum_array': {'input': mk_unit(), 'descr': 'sum array'},
     'sum_tree': {'input': mk_sum_tree_input, 'descr': 'sum tree'},
     'spmv': {'input': mk_parameters('input_matrix', ['bigcols','bigrows','arrowhead']), 'descr': 'sparse matrix x dense vector product'},
     'srad': {'input': mk_unit(), 'descr': 'srad'},
-    #    'pdfs': {'input': mk_unit(), 'descr': 'pseudo dfs'},
+    'pdfs': {'input': mk_pdfs_input, 'descr': 'pseudo dfs'},
 }
 parlay_benchmark_descriptions = {
     'wc': {'input': mk_unit(), 'descr': 'word count'},
     'mcss': {'input': mk_unit(), 'descr': 'maximum contiguous subsequence sum'},
-    'samplesort': {'input': mk_unit(), 'descr': 'sample sort'},
-    'suffixarray': {'input': mk_unit(), 'descr': 'suffix array'},
+    'samplesort': {'input': mk_samplesort_input, 'descr': 'sample sort'},
+    'suffixarray': {'input': mk_suffixarray_input, 'descr': 'suffix array'},
     'quickhull': {'input': mk_quickhull_input, 'descr': 'convex hull'},
     'integrate': {'input': mk_unit(), 'descr': 'integration'},
     'primes': {'input': mk_unit(), 'descr': 'prime number enumeration'},
@@ -94,9 +98,8 @@ parlay_benchmark_descriptions = {
 #    'bfs': {'input': mk_unit(), 'descr': 'breadth first search'},
 }
 benchmark_descriptions = merge_dicts(parlay_benchmark_descriptions, tpal_benchmark_descriptions)
-takes = ['wc', 'mcss', 'samplesort', 'quickhull', 'primes', 'removeduplicates'] # [b for b in benchmark_descriptions]
-takes = ['integrate','primes','sum_array','quickhull']
-drops = []
+takes = [b for b in benchmark_descriptions]
+drops = ['spmv']
 benchmarks = [ b for b in benchmark_descriptions if b in takes and not(b in drops) ]
 mk_benchmarks = mk_append_sequence([mk_cross(mk_elastic_benchmark(b), benchmark_descriptions[b]['input'])
                                     for b in benchmarks])
@@ -243,6 +246,8 @@ def generate_basic_plots(get_y_val, y_label, curves_expr,
 def get_percent_of_one_to_another(x_key, x_val, y_expr, y_key, ref_key):
     st = mean(select_from_expr_by_key(y_expr, y_key))
     tt = mean(select_from_expr_by_key(y_expr, ref_key))
+    if tt == 0.0:
+        return 0.0
     return (st / tt) * 100.0
 
 pct_sleeping_plots = []
@@ -271,11 +276,17 @@ def string_of_expr(e, col_to_str = lambda d: str(d), row_sep = '; '):
     return s
 
 def string_of_benchmark(e):
-    col_to_str = lambda d: ",".join("{}={}".format(*i) for i in d.items())
+    col_to_str = lambda d: ';'.join(map(str, d.values()))
     return string_of_expr(e, col_to_str)
 
 table_md_file = 'report.md'
 table_pdf_file = 'report.pdf'
+
+def mean_of_key_in_row(row, result_key):
+    r  = val_of_key_in_row(row, result_key)
+    if r == []:
+        return 0.0
+    return mean(r[0])
 
 def mk_basic_table(results, result_key, columns):
     t = mk_table(results,
@@ -283,7 +294,7 @@ def mk_basic_table(results, result_key, columns):
                  mk_parameters(scheduler_key, columns),
                  gen_row_str = string_of_benchmark,
                  gen_cell_str = lambda mk_row, mk_col, row:
-                 mean(val_of_key_in_row(row, result_key)),
+                 mean_of_key_in_row(row, result_key),
                  column_titles = columns) + '\n'
     return t
 
@@ -353,15 +364,11 @@ if not(virtual_report):
 
         print('# Notes/todos\n', file=f)
         print('- deal with crashing bfs.cilk', file=f)
-        print('- generate challenge graphs/trees for pdfs/sum_tree resp.', file=f)
-        print('- implement trivial elastic policy, which resembles the algorithm used by the GHC GC', file=f)
+        print('- implement trivial elastic policy, which resembles the algorithm used by the GHC GC... or maybe instead benchmark against variant of ABP that calls yield() after failed steal attempts', file=f)
         print('- introduce elastic + sleep by spinning?', file=f)
         print('- introduce elastic + real concurrent random set?', file=f)
-        print('- better plot titles', file=f)
-
+   
         f.close()
-
-if not(virtual_report):
     process = subprocess.Popen(['pandoc', table_md_file, '-o', table_pdf_file, '--toc'],
                                stdout=subprocess.PIPE, 
                                stderr=subprocess.PIPE)

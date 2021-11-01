@@ -133,9 +133,9 @@ def does_row_contain_ktp(r, ktp):
 def select_from_expr_by_key(expr, k):
     vals = []
     for r in eval(expr)['value']:
-        for kvp in r:
-            if kvp['key'] == k:
-                vals += [kvp['val']]
+        i = index_of_key_in_row(r, k)
+        if i != -1:
+            vals += [r[i]['val']]
     return vals
 
 def get_first_key_in_dictionary(d):
@@ -143,8 +143,9 @@ def get_first_key_in_dictionary(d):
 
 def val_of_key_in_row(r, k):
     i = index_of_key_in_row(r, k)
-    assert(i != -1)
-    return r[i]['val']
+    if i == -1:
+        return []
+    return [r[i]['val']]
 
 # Conversions
 # ===========

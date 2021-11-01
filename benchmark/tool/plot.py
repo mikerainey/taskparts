@@ -69,12 +69,16 @@ def mk_plots(expr,
     return plots
 
 def mean(xs):
+    if xs == []:
+        return 0.0
     return statistics.mean([float(x) for x in xs])
 
 def get_speedup_y_val(all_expr, mk_serial_mode, y_key, x_key, x_val, y_expr, mk_plot_expr):
     mk_baseline = mk_take_kvp(all_expr, mk_cross(mk_plot_expr, mk_serial_mode))
     b = mean(select_from_expr_by_key(mk_baseline, y_key))
     p = mean(select_from_expr_by_key(y_expr, y_key))
+    if p == 0.0:
+        return 0.0
     return b / p
 
 def mk_speedup_plots(expr,

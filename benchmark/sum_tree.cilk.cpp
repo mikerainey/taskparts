@@ -16,7 +16,7 @@ auto sum(node* n) -> int {
 }
 
 int main() {
-  
+  return -1; // for now, this benchmark crashes on most large inputs
   taskparts::benchmark_cilk([&] { // benchmark
     answer = sum(n0);
   }, [&] { gen_input(taskparts::bench_scheduler()); }, [&] { teardown(); });
