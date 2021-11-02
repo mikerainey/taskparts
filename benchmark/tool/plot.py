@@ -73,8 +73,8 @@ def mean(xs):
         return 0.0
     return statistics.mean([float(x) for x in xs])
 
-def get_speedup_y_val(all_expr, mk_serial_mode, y_key, x_key, x_val, y_expr, mk_plot_expr):
-    mk_baseline = mk_take_kvp(all_expr, mk_cross(mk_plot_expr, mk_serial_mode))
+def get_speedup_y_val(all_expr, mk_baseline, y_key, x_key, x_val, y_expr, mk_plot_expr):
+    mk_baseline = mk_take_kvp(all_expr, mk_cross(mk_plot_expr, mk_baseline))
     b = mean(select_from_expr_by_key(mk_baseline, y_key))
     p = mean(select_from_expr_by_key(y_expr, y_key))
     if p == 0.0:
@@ -84,7 +84,7 @@ def get_speedup_y_val(all_expr, mk_serial_mode, y_key, x_key, x_val, y_expr, mk_
 def mk_speedup_plots(expr,
                      plots_expr,
                      max_num_workers,
-                     mk_serial_mode,
+                     mk_baseline,
                      x_key = 'nb_workers',
                      x_vals = [],
                      x_label = 'workers',
@@ -103,7 +103,7 @@ def mk_speedup_plots(expr,
                      x_vals = x_vals,
                      get_y_val =
                      lambda x_key, x_val, y_expr, mk_plot_expr:
-                     get_speedup_y_val(expr, mk_serial_mode, y_key, x_key, x_val, y_expr, mk_plot_expr),
+                     get_speedup_y_val(expr, mk_baseline, y_key, x_key, x_val, y_expr, mk_plot_expr),
                      y_label = y_label,
                      curves_expr = curves_expr,
                      opt_args = opt_plot_args)

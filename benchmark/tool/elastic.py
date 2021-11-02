@@ -24,7 +24,7 @@ def cross_product(xs, ys):
 # ========================
 
 virtual_runs = True # if True, do not run benchmarks
-virtual_report = True # if True, do not generate reports
+virtual_report = False # if True, do not generate reports
 timeout = 50.0 # any benchmark that takes > timeout seconds gets canceled; set to None if you dislike cancel culture
 
 max_num_workers = 15
@@ -197,14 +197,13 @@ x_vals = workers
 
 all_curves = mk_append_sequence([mk_scheduler(s) for s in parallel_schedulers])
 
-def generate_speedup_plots():
+def generate_speedup_plots(mk_baseline, y_label = 'speedup'):
     x_label = 'workers'
     y_key = taskparts_exectime_key
-    y_label = 'speedup'
     plots = mk_speedup_plots(all_results,
                              mk_benchmarks,
                              max_num_workers = max_num_workers,
-                             mk_serial_mode = mk_scheduler(scheduler_serial),
+                             mk_baseline = mk_baseline,
                              x_key = taskparts_num_workers_key,
                              x_vals = x_vals,
                              y_key = y_key,
@@ -214,8 +213,14 @@ def generate_speedup_plots():
     return plots
 
 speedup_plots = []
+self_relative_speedup_plots = []
 if not(virtual_report):
-    speedup_plots = generate_speedup_plots()
+    speedup_plots = generate_speedup_plots(mk_scheduler(scheduler_serial))
+    mk_self_relative_baseline = mk_cross(mk_scheduler(scheduler_taskparts),
+                                         mk_parameter(taskparts_num_workers_key, 1))
+    self_relative_speedup_plots = generate_speedup_plots(mk_self_relative_baseline,
+                                                         y_label = 'self relative speedup')
+    
 
 # Plots for other measures
 # ========================
@@ -360,6 +365,13 @@ if not(virtual_report):
               file=f)
 
         print('# Speedup plots\n', file=f)
+        print('The baseline for each curve is the serial version of the benchmark.', file=f)
+        for plot in speedup_plots:
+            plot_pdf_path = plot['plot']['default_outfile_pdf_name'] + '.pdf'
+            print('![](' + plot_pdf_path + '){ width=100% }\n', file=f)
+
+        print('# Self-relative speedup plots\n', file=f)
+        print('The baseline for each curve is the taskparts parallel version of the benchmark, run on $P = 1$ cores.', file=f)
         for plot in speedup_plots:
             plot_pdf_path = plot['plot']['default_outfile_pdf_name'] + '.pdf'
             print('![](' + plot_pdf_path + '){ width=100% }\n', file=f)
