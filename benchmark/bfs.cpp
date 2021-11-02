@@ -4,10 +4,16 @@
 int main() {
   Graph G;
   sequence<vertexId> parents;
+  bool include_graph_gen = taskparts::cmdline::parse_or_default_bool("include_graph_gen", false);
   parlay::benchmark_taskparts([&] (auto sched) { // benchmark
+    if (include_graph_gen) {
+      G = gen_input();
+    }
     parents = BFS(source, G);
   }, [&] (auto sched) { // setup
-    G = gen_input();
+    if (! include_graph_gen) {
+      G = gen_input();
+    }
   }, [&] (auto sched) { // teardown
     size_t visited = parlay::reduce(parlay::delayed_map(parents, [&] (auto p) -> size_t {
       return (p == -1) ? 0 : 1;}));

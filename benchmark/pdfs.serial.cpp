@@ -27,10 +27,16 @@ auto DFS(vertexId source, const Graph& g) -> parlay::sequence<int> {
 int main() {
   Graph G;
   sequence<int> visited;
+  bool include_graph_gen = taskparts::cmdline::parse_or_default_bool("include_graph_gen", false);
   parlay::benchmark_taskparts([&] (auto sched) { // benchmark
+    if (include_graph_gen) {
+      G = gen_input();
+    }
     visited = DFS(source, G);
   }, [&] (auto sched) { // setup
-    G = gen_input();
+    if (! include_graph_gen) {
+      G = gen_input();
+    }
   }, [&] (auto sched) { // teardown
     size_t nb_visited = parlay::reduce(visited);
       cout << "total visited = " << nb_visited << endl;

@@ -79,12 +79,18 @@ auto PDFS(vertexId source, const Graph& g) -> parlay::sequence<std::atomic<int>>
 }
 
 int main() {
+  bool include_graph_gen = taskparts::cmdline::parse_or_default_bool("include_graph_gen", false);
   Graph G;
   sequence<std::atomic<int>> visited;
   parlay::benchmark_taskparts([&] (auto sched) { // benchmark
+    if (include_graph_gen) {
+      G = gen_input();
+    }
     visited = PDFS(source, G);
   }, [&] (auto sched) { // setup
-    G = gen_input();
+    if (! include_graph_gen) {
+      G = gen_input();
+    }
   }, [&] (auto sched) { // teardown
     size_t nb_visited = parlay::reduce(parlay::delayed_map(visited, [&] (auto& p) -> size_t {
       return (size_t)p.load();}));

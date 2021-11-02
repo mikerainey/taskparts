@@ -23,8 +23,8 @@ def cross_product(xs, ys):
 # Experiment configuration
 # ========================
 
-virtual_runs = False # if True, do not run benchmarks
-virtual_report = False # if True, do not generate reports
+virtual_runs = True # if True, do not run benchmarks
+virtual_report = True # if True, do not generate reports
 timeout = 50.0 # any benchmark that takes > timeout seconds gets canceled; set to None if you dislike cancel culture
 
 max_num_workers = 15
@@ -77,7 +77,11 @@ path_to_executable_key = 'path_to_executable'
 mk_sum_tree_input = mk_append_sequence([mk_parameter('input', i) for i in ['perfect', 'alternating']])
 mk_quickhull_input = mk_parameters('input', ['in_sphere', 'kuzmin'])
 mk_samplesort_input = mk_parameters('input', ['random', 'exponential', 'almost_sorted'])
-mk_graph_input = mk_parameters('input', ['rMat','alternating'])
+mk_graph_io_input = mk_cross_sequence([mk_parameter('input', 'from_file'),
+                                       mk_parameter('include_graph_gen', 1),
+                                       mk_parameter('infile', 'randlocal.adj')])
+mk_graph_input = mk_append(mk_parameters('input', ['rMat','alternating']),
+                           mk_graph_io_input)
 mk_suffixarray_input = mk_parameters('infile', ['chr22.dna'])
 
 tpal_benchmark_descriptions = {
@@ -99,10 +103,10 @@ parlay_benchmark_descriptions = {
     'bfs': {'input': mk_graph_input, 'descr': 'breadth first search'},
 }
 benchmark_descriptions = merge_dicts(parlay_benchmark_descriptions, tpal_benchmark_descriptions)
-#takes = ['sum_array', 'wc']
-#drops = []
-takes = [b for b in benchmark_descriptions]
-drops = ['spmv']
+takes = ['bfs']
+drops = []
+#takes = [b for b in benchmark_descriptions]
+#drops = ['spmv']
 benchmarks = [ b for b in benchmark_descriptions if b in takes and not(b in drops) ]
 mk_benchmarks = mk_append_sequence([mk_cross(mk_elastic_benchmark(b), benchmark_descriptions[b]['input'])
                                     for b in benchmarks])
