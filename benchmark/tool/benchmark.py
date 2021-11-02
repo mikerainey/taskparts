@@ -29,6 +29,9 @@ def nb_todo_in_benchmark(b):
 def nb_done_in_benchmark(b):
     return len(b['done']['value'])
 
+def nb_failed_in_benchmark(b):
+    return len(b['failed']['value'])
+
 def nb_traced_in_benchmark(b):
     return len(b['trace'])
 
@@ -62,13 +65,16 @@ def mk_benchmark(parameters,
                      'path_to_executable_key': 'path_to_executable',
                      'outfile_keys': []
                  },
-                 todo = mk_nil(), trace = [], done = mk_nil()):
+                 todo = mk_nil(), trace = [], done = mk_nil(), failed = mk_nil()):
     b = { 'parameters': parameters,
           'modifiers': modifiers,
           'todo': todo,
           'trace': [],
           'done': done,
-          'done_trace_links': [] }
+          'done_trace_links': [],
+          'failed': failed,
+          'failed_trace_links': []
+         }
     validate_benchmark(b)
     return b
 
@@ -197,6 +203,9 @@ def collect_benchmark_run_outfiles(outfiles,
 
 # later: make it possible to capture output of benchmark via stdout?
 
+class Nonzero_return_code(Exception):
+    pass
+
 def step_benchmark_run(benchmark_1,
                        nb_done_this_batch = 0,
                        nb_todo_this_batch = 0,
@@ -209,6 +218,7 @@ def step_benchmark_run(benchmark_1,
     nb_done = nb_done_in_benchmark(benchmark_1)
     nb_traced = nb_traced_in_benchmark(benchmark_1)
     nb_todo = nb_todo_in_benchmark(benchmark_1)
+    nb_failed = nb_failed_in_benchmark(benchmark_1)
     parameters = benchmark_1['parameters']
     modifiers = benchmark_1['modifiers']
     # Try to load the next run to do
@@ -234,24 +244,22 @@ def step_benchmark_run(benchmark_1,
     ts = time.time()
     child_stdout = ''
     child_stderr = ''
-    return_code = 1
+    return_code = None
+    benchmark_failed = False
     try:
         child_stdout, child_stderr = current_child.communicate(timeout = timeout)
         child_stdout = child_stdout.decode('utf-8')
         child_stderr = child_stderr.decode('utf-8')
         return_code = current_child.returncode
         if return_code != 0:
-            print('Warning: benchmark run returned error code ' + str(return_code))
-            print('stdout:')
-            print(str(child_stdout))
-            print('stderr:')
-            print(str(child_stderr))
+            raise Nonzero_return_code
         # Collect the results
         results_expr = collect_benchmark_run_outfiles(outfiles,
                                                       next_row,
                                                       client_format_to_row,
                                                       parse_output_to_json)
         benchmark_2['done'] = eval(mk_append(benchmark_1['done'], results_expr))
+        benchmark_2['done_trace_links'] += [ {'trace_position': nb_traced, 'done_position': nb_done } ]
         if verbose:
             s = ''
             d = row_to_dictionary(benchmark_2['done']['value'][-1])
@@ -261,9 +269,17 @@ def step_benchmark_run(benchmark_1,
             if s != '':
                 s += '\n'
             print(s, end = '')
+    except Nonzero_return_code:
+        print('Warning: benchmark run returned error code ' + str(return_code))
+        print('stdout:')
+        print(str(child_stdout))
+        print('stderr:')
+        print(str(child_stderr))
+        benchmark_failed = True
     except subprocess.TimeoutExpired:
-        # We kill the current_child process and all of its children to
-        # ensure the call to communicate() returns immediately.
+        # Next, we kill the current_child process and all of its
+        # children to ensure the call to communicate() returns
+        # immediately.
         parent = psutil.Process(current_child.pid)
         for child in parent.children(recursive=True):
             child.kill()
@@ -276,17 +292,23 @@ def step_benchmark_run(benchmark_1,
         print(str(child_stdout))
         print('stderr:')
         print(str(child_stderr))
+        # The return_code field is hereby left out of the trace,
+        # indicating timeout.
+        benchmark_failed = True
     benchmark_2['todo'] = { 'value': todo_2 }
     # Save the results
     trace_2 = next_run.copy()
-    trace_2['benchmark_run']['return_code'] = return_code
+    if return_code != None:
+        trace_2['benchmark_run']['return_code'] = return_code
     trace_2['benchmark_run']['timestamp'] = datetime.now().strftime("%y-%m-%d %H:%M:%S.%f")
     trace_2['benchmark_run']['host'] = socket.gethostname()
     trace_2['benchmark_run']['elapsed'] = time.time() - ts
     trace_2['benchmark_run']['stdout'] = str(child_stdout)
     trace_2['benchmark_run']['stderr'] = str(child_stderr)
     benchmark_2['trace'] += [ trace_2 ]
-    benchmark_2['done_trace_links'] += [ {'trace_position': nb_traced, 'done_position': nb_done } ]
+    if benchmark_failed:
+        benchmark_2['failed'] = eval(mk_append(benchmark_1['failed'], {'value': [ next_row ]}))
+        benchmark_2['failed_trace_links'] += [ {'trace_position': nb_traced, 'failed_position': nb_failed } ]
     validate_benchmark(benchmark_2)
     return benchmark_2
 
@@ -313,12 +335,18 @@ def serial_merge_benchmarks(b1, b2):
     b3['todo'] = eval(mk_append(b1['todo'], b2['todo']))
     b3['trace'] = b1['trace'] + b2['trace']
     b3['done'] = eval(mk_append(b1['done'], b2['done']))
+    b3['failed'] = eval(mk_append(b1['failed'], b2['failed']))
     nb_done = nb_done_in_benchmark(b1)
+    nb_failed = nb_failed_in_benchmark(b1)
     nb_traced = nb_traced_in_benchmark(b1)
     b2_done_trace_links = [ {'trace_position': dtl['trace_position'] + nb_traced,
                              'done_position': dtl['done_position'] + nb_done }
                              for dtl in b2['done_trace_links'] ]
     b3['done_trace_links'] = b1['done_trace_links'] + b2_done_trace_links
+    b2_failed_trace_links = [ {'trace_position': dtl['trace_position'] + nb_traced,
+                               'failed_position': dtl['failed_position'] + nb_failed }
+                              for dtl in b2['failed_trace_links'] ]
+    b3['failed_trace_links'] = b1['failed_trace_links'] + b2_failed_trace_links
     b3['parent_hashes'] = [ get_hash(json_dumps(b1)), get_hash(json_dumps(b2)) ]
     validate_benchmark(b3)
     return b3

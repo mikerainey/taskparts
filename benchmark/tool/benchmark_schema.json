@@ -42,7 +42,7 @@
 		"stderr": { "type": "string" },
 		"elapsed": { "type": "number" }
 	    },
-	    "required": [ "path_to_executable", "cl_args", "env_args", "return_code" ]
+	    "required": [ "path_to_executable", "cl_args", "env_args" ]
 	},
 
 	"benchmark": {
@@ -82,6 +82,16 @@
 			"properties": {
 			    "trace_position": { "type": "number" },
 			    "done_position": { "type": "number" }
+			}
+		    }
+		},
+		"failed": { "$ref": "file:parameter_schema.json#/$defs/expr-value" },
+		"failed_trace_links": {
+		    "type": "array",
+		    "items": {
+			"properties": {
+			    "trace_position": { "type": "number" },
+			    "failed_position": { "type": "number" }
 			}
 		    }
 		},

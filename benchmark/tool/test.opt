@@ -3,7 +3,9 @@
 n=$2
 if [ $n == 3 ]; then
     echo "[{\"exectime\": 333}]"
-    sleep 10
+    sleep 100
+elif [ $n == 4 ]; then
+    exit 100
 fi
 
 echo "[{\"exectime\": $n}]" > $TASKPARTS_STATS_OUTFILE

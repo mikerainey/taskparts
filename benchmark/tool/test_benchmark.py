@@ -7,7 +7,7 @@ def pretty_print_json(j):
 taskparts_outfile_key = 'TASKPARTS_STATS_OUTFILE'
 taskparts_num_workers_key = 'TASKPARTS_NUM_WORKERS'
 q = mk_cross(mk_parameter('path_to_executable', './test.opt'),
-             mk_parameters('n', [1,2,3,4]))
+             mk_parameters('n', [1,2,3,4,5]))
 
 mods = modifiers = {
     'path_to_executable_key': 'path_to_executable',
@@ -17,5 +17,4 @@ mods = modifiers = {
 bench = mk_benchmark(q, mods)
 pretty_print_json(bench)
 print('=====step==>')
-pretty_print_json(step_benchmark(bench))
-
+pretty_print_json(step_benchmark(bench, timeout = 3.0))
