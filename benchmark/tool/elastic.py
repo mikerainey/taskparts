@@ -25,7 +25,7 @@ def cross_product(xs, ys):
 
 virtual_runs = False # if True, do not run benchmarks
 virtual_report = False # if True, do not generate reports
-timeout = 30.0 # any benchmark that takes > 30 seconds gets canceled; set to None if you dislike cancel culture
+timeout = 50.0 # any benchmark that takes > timeout seconds gets canceled; set to None if you dislike cancel culture
 
 max_num_workers = 15
 workers_step = 3
@@ -77,7 +77,7 @@ path_to_executable_key = 'path_to_executable'
 mk_sum_tree_input = mk_append_sequence([mk_parameter('input', i) for i in ['perfect', 'alternating']])
 mk_quickhull_input = mk_parameters('input', ['in_sphere', 'kuzmin'])
 mk_samplesort_input = mk_parameters('input', ['random', 'exponential', 'almost_sorted'])
-mk_pdfs_input = mk_parameters('input', ['rMat','alternating'])
+mk_graph_input = mk_parameters('input', ['rMat','alternating'])
 mk_suffixarray_input = mk_parameters('infile', ['chr22.dna'])
 
 tpal_benchmark_descriptions = {
@@ -85,7 +85,7 @@ tpal_benchmark_descriptions = {
     'sum_tree': {'input': mk_sum_tree_input, 'descr': 'sum tree'},
     'spmv': {'input': mk_parameters('input_matrix', ['bigcols','bigrows','arrowhead']), 'descr': 'sparse matrix x dense vector product'},
     'srad': {'input': mk_unit(), 'descr': 'srad'},
-    'pdfs': {'input': mk_pdfs_input, 'descr': 'pseudo dfs'},
+    'pdfs': {'input': mk_graph_input, 'descr': 'pseudo dfs'},
 }
 parlay_benchmark_descriptions = {
     'wc': {'input': mk_unit(), 'descr': 'word count'},
@@ -96,13 +96,13 @@ parlay_benchmark_descriptions = {
     'integrate': {'input': mk_unit(), 'descr': 'integration'},
     'primes': {'input': mk_unit(), 'descr': 'prime number enumeration'},
     'removeduplicates': {'input': mk_unit(), 'descr': 'remove duplicates'},
-#    'bfs': {'input': mk_unit(), 'descr': 'breadth first search'},
+    'bfs': {'input': mk_graph_input, 'descr': 'breadth first search'},
 }
 benchmark_descriptions = merge_dicts(parlay_benchmark_descriptions, tpal_benchmark_descriptions)
-takes = ['sum_array', 'wc']
-drops = []
-#takes = [b for b in benchmark_descriptions]
-#drops = ['spmv']
+#takes = ['sum_array', 'wc']
+#drops = []
+takes = [b for b in benchmark_descriptions]
+drops = ['spmv']
 benchmarks = [ b for b in benchmark_descriptions if b in takes and not(b in drops) ]
 mk_benchmarks = mk_append_sequence([mk_cross(mk_elastic_benchmark(b), benchmark_descriptions[b]['input'])
                                     for b in benchmarks])
@@ -366,10 +366,14 @@ if not(virtual_report):
             print('![](' + plot_pdf_path + '){ width=100% }\n', file=f)
 
         print('# Notes/todos\n', file=f)
-        print('- deal with crashing bfs.cilk', file=f)
         print('- implement trivial elastic policy, which resembles the algorithm used by the GHC GC... or maybe instead benchmark against variant of ABP that calls yield() after failed steal attempts', file=f)
         print('- introduce elastic + sleep by spinning?', file=f)
         print('- introduce elastic + real concurrent random set?', file=f)
+        print('- randomize benchmark run order to avoid interactions with the OS scheduler', file=f)
+        print('- generate report on all benchmark crashes/timeouts', file=f)
+        print('- have the benchmark tool generate snapshots of results on a regular basis', file=f)
+        print('- add support for building/nix based builds', file=f)
+        print('- think of a better way to handle incomplete experiment data in plotting/tables', file=f)
    
         f.close()
     process = subprocess.Popen(['pandoc', table_md_file, '-o', table_pdf_file, '--toc'],
