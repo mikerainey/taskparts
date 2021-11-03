@@ -1,5 +1,6 @@
 #include <taskparts/benchmark.hpp>
 #include "bfs.hpp"
+#include <breadthFirstSearch/simpleBFS/BFS.C>
 
 int main() {
   Graph G;

@@ -13,10 +13,7 @@
 #include <testData/graphData/rMat.h>
 
 #include <taskparts/cmdline.hpp>
-
-using vertexId = int;
-using edgeId = uint;
-using Graph = graph<vertexId,edgeId>;
+#include <breadthFirstSearch/bench/BFS.h>
 
 using namespace std;
 using namespace benchIO;
