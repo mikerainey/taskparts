@@ -32,7 +32,8 @@ workers_step = 3
 workers = list(map(lambda x: x + 1, range(1, max_num_workers, workers_step)))
 workers = workers if 1 in workers else [1] + workers
 workers = workers if max_num_workers in workers else workers + [max_num_workers]
-num_repeat = 4
+num_repeat = 3
+warmup_secs = 3.0
 
 ## Schedulers
 ## ----------
@@ -85,7 +86,6 @@ mk_graph_input = mk_append(mk_parameters('input', ['rMat','alternating']),
 mk_suffixarray_input = mk_parameters('infile', ['chr22.dna'])
 
 tpal_benchmark_descriptions = {
-#    'sum_array': {'input': mk_unit(), 'descr': 'sum array'},
     'sum_tree': {'input': mk_sum_tree_input, 'descr': 'sum tree'},
 #    'spmv': {'input': mk_parameters('input_matrix', ['bigcols','bigrows','arrowhead']), 'descr': 'sparse matrix x dense vector product'},
     'srad': {'input': mk_unit(), 'descr': 'srad'},
@@ -98,15 +98,15 @@ parlay_benchmark_descriptions = {
     'suffixarray': {'input': mk_suffixarray_input, 'descr': 'suffix array'},
     'quickhull': {'input': mk_quickhull_input, 'descr': 'convex hull'},
     'integrate': {'input': mk_unit(), 'descr': 'integration'},
-#    'primes': {'input': mk_unit(), 'descr': 'prime number enumeration'},
+    'primes': {'input': mk_unit(), 'descr': 'prime number enumeration'},
     'removeduplicates': {'input': mk_unit(), 'descr': 'remove duplicates'},
     'bfs': {'input': mk_graph_input, 'descr': 'breadth first search'},
 }
 benchmark_descriptions = merge_dicts(parlay_benchmark_descriptions, tpal_benchmark_descriptions)
-takes = ['bfs']
-drops = []
-#takes = [b for b in benchmark_descriptions]
-#drops = ['spmv']
+#takes = ['pdfs']
+#drops = []
+takes = benchmark_descriptions
+drops = ['primes', 'removeduplicates']
 benchmarks = [ b for b in benchmark_descriptions if b in takes and not(b in drops) ]
 mk_benchmarks = mk_append_sequence([mk_cross(mk_elastic_benchmark(b), benchmark_descriptions[b]['input'])
                                     for b in benchmarks])
@@ -143,7 +143,8 @@ commands_parallel = mk_cross_sequence([mk_append_sequence([mk_cross(mk_benchmark
                                                                     benchmark_descriptions[b]['input'])
                                                            for b, s in cross_product(benchmarks, parallel_schedulers)]),
                                        mk_parameters(taskparts_num_workers_key, workers),
-                                       mk_taskparts_num_repeat(num_repeat)])
+                                       mk_taskparts_num_repeat(num_repeat),
+                                       mk_taskparts_warmup_secs(warmup_secs)])
 
 commands = mk_append(commands_serial, commands_parallel)
 
@@ -155,12 +156,7 @@ modifiers = {
     'outfile_keys': [taskparts_outfile_key,
                      taskparts_cilk_outfile_key
                      ],
-    'env_vars': [
-        taskparts_num_workers_key,
-        taskparts_outfile_key,
-        taskparts_benchmark_num_repeat_key,
-        taskparts_cilk_outfile_key
-    ],
+    'env_vars': taskparts_env_vars,
     'silent_keys': [
         scheduler_key,
         benchmark_key
@@ -365,13 +361,13 @@ if not(virtual_report):
               file=f)
 
         print('# Speedup plots\n', file=f)
-        print('The baseline for each curve is the serial version of the benchmark.', file=f)
+        print('The baseline for each curve is the serial version of the benchmark.\n', file=f)
         for plot in speedup_plots:
             plot_pdf_path = plot['plot']['default_outfile_pdf_name'] + '.pdf'
             print('![](' + plot_pdf_path + '){ width=100% }\n', file=f)
 
         print('# Self-relative speedup plots\n', file=f)
-        print('The baseline for each curve is the taskparts parallel version of the benchmark, run on $P = 1$ cores.', file=f)
+        print('The baseline for each curve is the taskparts parallel version of the benchmark, run on $P = 1$ cores.\n', file=f)
         for plot in speedup_plots:
             plot_pdf_path = plot['plot']['default_outfile_pdf_name'] + '.pdf'
             print('![](' + plot_pdf_path + '){ width=100% }\n', file=f)
