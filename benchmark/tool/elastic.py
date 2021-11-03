@@ -23,7 +23,7 @@ def cross_product(xs, ys):
 # Experiment configuration
 # ========================
 
-virtual_runs = True # if True, do not run benchmarks
+virtual_runs = False # if True, do not run benchmarks
 virtual_report = False # if True, do not generate reports
 timeout = 50.0 # any benchmark that takes > timeout seconds gets canceled; set to None if you dislike cancel culture
 
@@ -85,9 +85,9 @@ mk_graph_input = mk_append(mk_parameters('input', ['rMat','alternating']),
 mk_suffixarray_input = mk_parameters('infile', ['chr22.dna'])
 
 tpal_benchmark_descriptions = {
-    'sum_array': {'input': mk_unit(), 'descr': 'sum array'},
+#    'sum_array': {'input': mk_unit(), 'descr': 'sum array'},
     'sum_tree': {'input': mk_sum_tree_input, 'descr': 'sum tree'},
-    'spmv': {'input': mk_parameters('input_matrix', ['bigcols','bigrows','arrowhead']), 'descr': 'sparse matrix x dense vector product'},
+#    'spmv': {'input': mk_parameters('input_matrix', ['bigcols','bigrows','arrowhead']), 'descr': 'sparse matrix x dense vector product'},
     'srad': {'input': mk_unit(), 'descr': 'srad'},
     'pdfs': {'input': mk_graph_input, 'descr': 'pseudo dfs'},
 }
@@ -98,7 +98,7 @@ parlay_benchmark_descriptions = {
     'suffixarray': {'input': mk_suffixarray_input, 'descr': 'suffix array'},
     'quickhull': {'input': mk_quickhull_input, 'descr': 'convex hull'},
     'integrate': {'input': mk_unit(), 'descr': 'integration'},
-    'primes': {'input': mk_unit(), 'descr': 'prime number enumeration'},
+#    'primes': {'input': mk_unit(), 'descr': 'prime number enumeration'},
     'removeduplicates': {'input': mk_unit(), 'descr': 'remove duplicates'},
     'bfs': {'input': mk_graph_input, 'descr': 'breadth first search'},
 }

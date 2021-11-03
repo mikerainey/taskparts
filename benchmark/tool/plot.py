@@ -15,16 +15,13 @@ def mk_plot(expr,
     val = eval(expr)
     curves_val = eval(curves_expr)
     curves = []
-    mk_plot_expr = mk_unit()
-    if 'mk_plot_expr' in opt_args:
-        mk_plot_expr = opt_args['mk_plot_expr']
     for curve_row in curves_val['value']:
         curve_label = ','.join([ str(kvp['key']) + '=' + str(kvp['val']) for kvp in curve_row ])
         xy_pairs = []
         ev = mk_take_kvp(val, {'value': [curve_row]})
         for x_val in x_vals:
             y_expr = eval(mk_take_kvp(ev, mk_parameter(x_key, x_val)))
-            y_val = get_y_val(x_key, x_val, y_expr, mk_plot_expr)
+            y_val = get_y_val(x_key, x_val, y_expr, expr)
             xy_pairs += [{ "x": x_val, "y": y_val } ]
         curves += [{"curve_label": curve_label, "xy_pairs": xy_pairs}]
     plot = {
@@ -63,7 +60,6 @@ def mk_plots(expr,
         opt_args_plot['title'] = plot_row_str
         n = y_label + '-' + plot_row_str
         opt_args_plot['default_outfile_pdf_name'] = pathvalidate.sanitize_filename(n.replace(' ', '-'))
-        opt_args_plot['mk_plot_expr'] = plot_expr
         plots += [mk_plot(mk_take_kvp(expr, plot_expr),
                           x_key, x_vals, get_y_val, y_label, curves_expr, opt_args_plot)]
     return plots
@@ -73,8 +69,8 @@ def mean(xs):
         return 0.0
     return statistics.mean([float(x) for x in xs])
 
-def get_speedup_y_val(all_expr, mk_baseline, y_key, x_key, x_val, y_expr, mk_plot_expr):
-    mk_baseline = mk_take_kvp(all_expr, mk_cross(mk_plot_expr, mk_baseline))
+def get_speedup_y_val(all_expr, mk_baseline, y_key, x_key, x_val, y_expr, plot_expr):
+    mk_baseline = mk_take_kvp(plot_expr, mk_baseline)
     b = mean(select_from_expr_by_key(mk_baseline, y_key))
     p = mean(select_from_expr_by_key(y_expr, y_key))
     if p == 0.0:
@@ -102,8 +98,8 @@ def mk_speedup_plots(expr,
                      x_key = x_key,
                      x_vals = x_vals,
                      get_y_val =
-                     lambda x_key, x_val, y_expr, mk_plot_expr:
-                     get_speedup_y_val(expr, mk_baseline, y_key, x_key, x_val, y_expr, mk_plot_expr),
+                     lambda x_key, x_val, y_expr, plot_expr:
+                     get_speedup_y_val(expr, mk_baseline, y_key, x_key, x_val, y_expr, plot_expr),
                      y_label = y_label,
                      curves_expr = curves_expr,
                      opt_args = opt_plot_args)
