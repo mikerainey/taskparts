@@ -22,3 +22,20 @@
 */
 #endif
 using uchar = unsigned char;
+
+parlay::sequence<uchar> ss;
+parlay::sequence<indexT> R;
+bool include_input_load;
+
+auto load_input() {
+  std::string fname = taskparts::cmdline::parse_or_default_string("infile", "chr22.dna");
+  parlay::sequence<char> s = benchIO::readStringFromFile(fname.c_str());
+  ss = parlay::tabulate(s.size(), [&] (size_t i) -> uchar {return (uchar) s[i];});
+}
+
+auto benchmark() {
+  if (include_input_load) {
+    load_input();
+  }
+  R = suffixArray(ss);
+}

@@ -2,15 +2,13 @@
 #include "suffixarray.hpp"
 
 int main() {
-  std::string fname = taskparts::cmdline::parse_or_default_string("infile", "chr22.dna");
-
-  parlay::sequence<uchar> ss;
-  parlay::sequence<indexT> R;
+  include_input_load = taskparts::cmdline::parse_or_default_bool("include_input_load", true);
   parlay::benchmark_taskparts([&] (auto sched) {
-    R = suffixArray(ss);
+    benchmark();
   }, [&] (auto sched) {
-    parlay::sequence<char> s = benchIO::readStringFromFile(fname.c_str());
-    ss = parlay::tabulate(s.size(), [&] (size_t i) -> uchar {return (uchar) s[i];});
+    if (! include_input_load) {
+      load_input();
+    }
   });
   return 0;
 }
