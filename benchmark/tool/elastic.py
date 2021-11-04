@@ -1,8 +1,9 @@
-from plot import *
 from parameter import *
 from taskparts import *
 from benchmark import *
+from plot import *
 from table import mk_table
+from barplot import *
 import itertools
 import subprocess
 import tabulate
@@ -23,7 +24,7 @@ def cross_product(xs, ys):
 # Experiment configuration
 # ========================
 
-virtual_runs = False # if True, do not run benchmarks
+virtual_runs = True # if True, do not run benchmarks
 virtual_report = False # if True, do not generate reports
 timeout = 50.0 # any benchmark that takes > timeout seconds gets canceled; set to None if you dislike cancel culture
 
@@ -186,6 +187,32 @@ if not(virtual_report):
     all_results = eval(read_head_from_benchmark_repository()['done'])
 print('')
 
+# Time breakdown bar plots
+# ========================
+
+if not(virtual_report):
+    for scheduler in [scheduler_elastic_flat, scheduler_elastic_lifeline, scheduler_taskparts]:
+        def get_y_vals(expr, x_expr, y_val):
+            rs = []
+            for x_row in genfunc_expr_by_row(x_expr):
+                x_val = eval(mk_take_kvp(expr, x_row))
+                for y_row in genfunc_expr_by_row(y_val):
+                    y_key = y_row['value'][0][0]['key']
+                    ys = select_from_expr_by_key(x_val, y_key)
+                    y = 0.0
+                    if ys != []:
+                        y = mean(ys)
+                    rs += [y]
+            return rs
+        barplot = mk_stacked_barplot(mk_take_kvp(mk_taskparts_num_workers(max_num_workers),
+                                                 mk_take_kvp(all_results, mk_scheduler(scheduler))),
+                                     mk_benchmarks,
+                                     mk_append_sequence([mk_parameter('total_work_time', 'number'),
+                                                         mk_parameter('total_idle_time', 'number'),
+                                                         mk_parameter('total_sleep_time', 'number')]),
+                                     get_y_vals = get_y_vals)
+        output_barplot(barplot, outfile = scheduler)
+
 # Speedup curves
 # ==============
 
@@ -263,7 +290,7 @@ if not(virtual_report):
     pct_sleeping_plots = generate_basic_plots(
         lambda x_key, x_val, y_expr, mk_plot_expr:
         get_percent_of_one_to_another(x_key, x_val, y_expr, 'total_sleep_time', 'total_time'),
-        'pct. of total time spent sleeping',
+        'percent of total time spent sleeping',
         mk_append(mk_scheduler(scheduler_elastic_flat),
                   mk_scheduler(scheduler_elastic_lifeline)),
         ylim = [0, 100],
