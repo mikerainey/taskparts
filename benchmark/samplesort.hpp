@@ -16,6 +16,7 @@ using item_type = double;
 parlay::sequence<item_type> a;
 
 auto gen_input() {
+  parlay::override_granularity = taskparts::cmdline::parse_or_default_long("override_granularity", 0);
   size_t n = taskparts::cmdline::parse_or_default_long("n", 10000000);
   taskparts::cmdline::dispatcher d;
   d.add("random", [&] { 
