@@ -2,10 +2,19 @@
 #include "samplesort.hpp"
 
 int main() {
-  parlay::benchmark_taskparts([&] (auto sched) {
-    compSort(a, [] (item_type x, item_type y) { return x < y; });
-  }, [&] (auto sched) {
-    gen_input();
-  });
+  size_t repeat = taskparts::cmdline::parse_or_default_long("repeat", 0);
+  if (repeat == 0) {
+    parlay::benchmark_taskparts([&] (auto sched) {
+      benchmark_no_swaps();
+    }, [&] (auto sched) {
+      gen_input();
+    });
+  } else {
+    parlay::benchmark_taskparts([&] (auto sched) {
+      benchmark_with_swaps(repeat);
+    }, [&] (auto sched) {
+      gen_input();
+    });
+  }
   return 0;
 }

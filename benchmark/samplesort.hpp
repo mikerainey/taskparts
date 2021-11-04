@@ -30,3 +30,20 @@ auto gen_input() {
   });
   d.dispatch_or_default("input", "random");
 }
+
+auto benchmark_no_swaps() {
+  compSort(a, [] (item_type x, item_type y) { return x < y; });
+}
+
+auto benchmark_with_swaps(size_t repeat) {
+  size_t repeat_swaps = taskparts::cmdline::parse_or_default_long("repeat_swaps", 1000000);
+  auto n = a.size();
+  for (size_t i = 0; i < repeat; i++) {
+    for (size_t j = 0; j < repeat_swaps; j++) {
+      auto k1 = taskparts::hash(i + j) % n;
+      auto k2 = taskparts::hash(k1 + i + j) % n;
+      std::swap(a[k1], a[k2]);
+    }
+    compSort(a, [] (item_type x, item_type y) { return x < y; });
+  }
+}
