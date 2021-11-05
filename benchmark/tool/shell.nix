@@ -8,6 +8,7 @@ let
                   pkgs.python38Packages.pathvalidate
                   pkgs.python38Packages.tabulate
                   pkgs.python38Packages.psutil
+#                  pkgs.python38Packages.pandas
                 ];
   };
 in

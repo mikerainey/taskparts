@@ -28,8 +28,6 @@ mk_b2 = mk_append_sequence([mk_b21, mk_b22])
 
 expr = mk_append_sequence([mk_b1, mk_b2])
 
-ppj(eval(expr))
-
 def get_y_vals(expr, x_expr, y_val):
     rs = []
     for x_row in genfunc_expr_by_row(x_expr):
