@@ -28,6 +28,7 @@ parlay::sequence<indexT> R;
 bool include_input_load;
 
 auto load_input() {
+  parlay::override_granularity = taskparts::cmdline::parse_or_default_long("override_granularity", 0);
   std::string fname = taskparts::cmdline::parse_or_default_string("infile", "chr22.dna");
   parlay::sequence<char> s = benchIO::readStringFromFile(fname.c_str());
   ss = parlay::tabulate(s.size(), [&] (size_t i) -> uchar {return (uchar) s[i];});

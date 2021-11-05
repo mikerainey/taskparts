@@ -2,12 +2,13 @@ from parameter import *
 from taskparts import *
 from benchmark import *
 from plot import *
-from table import mk_table
+from table import *
 from barplot import *
 import itertools
 import subprocess
 import tabulate
 from datetime import datetime
+from enum import Enum
 
 def merge_dicts(x, y):
     return { **x, **y }
@@ -24,17 +25,25 @@ def cross_product(xs, ys):
 # Experiment configuration
 # ========================
 
-virtual_runs = True # if True, do not run benchmarks
-virtual_report = False # if True, do not generate reports
-timeout = 50.0 # any benchmark that takes > timeout seconds gets canceled; set to None if you dislike cancel culture
+# if True, do not run benchmarks
+virtual_runs = False
+# if True, do not generate reports
+virtual_report = False
+# any benchmark that takes > timeout seconds gets canceled; set to None if you dislike cancel culture
+timeout = 50.0 
+# run minimal version of all benchmarks
+class Benchmark_mode(Enum):
+    Benchmark_full = 1
+    Benchmark_minimal = 2
+benchmark_mode = Benchmark_mode.Benchmark_minimal
 
 max_num_workers = 15
-workers_step = 3
-workers = list(map(lambda x: x + 1, range(1, max_num_workers, workers_step)))
+workers_step = 3 if benchmark_mode == Benchmark_mode.Benchmark_full else max_num_workers
+workers = list(map(lambda x: x + 1, range(0, max_num_workers, workers_step)))
 workers = workers if 1 in workers else [1] + workers
 workers = workers if max_num_workers in workers else workers + [max_num_workers]
-num_repeat = 3
-warmup_secs = 3.0
+num_repeat = 3 if benchmark_mode == Benchmark_mode.Benchmark_full else 1
+warmup_secs = 3.0 if benchmark_mode == Benchmark_mode.Benchmark_full else 0.0
 
 ## Schedulers
 ## ----------
@@ -51,10 +60,10 @@ taskparts_schedulers = [
     scheduler_elastic_flat,
     scheduler_taskparts
 ]
-other_schedulers = [
+other_parallel_schedulers = [
     scheduler_cilk
 ]
-parallel_schedulers = taskparts_schedulers + other_schedulers
+parallel_schedulers = taskparts_schedulers + other_parallel_schedulers
 
 scheduler_descriptions = {
     scheduler_serial: 'serial',
@@ -63,33 +72,77 @@ scheduler_descriptions = {
     scheduler_taskparts: 'taskparts (Chase Lev work stealing / no elastic)',
     scheduler_cilk: 'Cilk Plus (gcc7)',
 }
+parallel_schedulers = [s for s in [ s for s in list(scheduler_descriptions.keys()) ] if s != scheduler_serial ]
 
 def mk_scheduler(m):
     return mk_parameter(scheduler_key, m)
 
+## Benchmark inputs
+## ----------------
+
+experiment_key = 'experiment'
+experiment_agac_key = 'as_good_as_conventional'
+experiment_iio_key = 'impact_of_io'
+experiment_ilp_key = 'impact_of_low_parallelism'
+experiment_ipw_key = 'impact_of_phased_workload'
+experiments = [
+    experiment_agac_key,
+    experiment_iio_key,
+    experiment_ilp_key,
+    experiment_ipw_key
+]
+experiments_to_run = [ experiment_iio_key, experiment_ilp_key, experiment_ipw_key ]
+
+def mk_experiment(e):
+    return mk_parameter(experiment_key, e)
+
+def mk_input(i):
+    return mk_parameter('input', i)
+
+def mk_inputs(ins):
+    return mk_parameters('input', ins)
+
+mk_agac_input = mk_experiment(experiment_agac_key)
+mk_iio_input = mk_cross(mk_experiment(experiment_iio_key),
+                        mk_parameter('include_infile_load', 1))
+mk_ilp_input = mk_cross_sequence([mk_experiment(experiment_ilp_key),
+                                  mk_parameter('override_granularity', 200)])
+mk_ipw_input = mk_cross_sequence([mk_experiment(experiment_ipw_key),
+                                  mk_parameter('repeat', 3)])
+
+# sorting inputs
+sequence_inputs = ['random'] + (['exponential', 'almost_sorted']
+                                if benchmark_mode == Benchmark_mode.Benchmark_full else [])
+mk_samplesort_input = mk_cross(mk_inputs(sequence_inputs),
+                               mk_append_sequence([mk_agac_input, mk_iio_input, mk_ilp_input, mk_ipw_input]))
+# suffixarray inputs
+mk_suffixarray_input = mk_cross(mk_parameters('infile', ['chr22.dna']),
+                                mk_append_sequence([mk_agac_input, mk_iio_input]))
+# convex hull inputs
+mk_quickhull_input = mk_inputs(['in_sphere', 'kuzmin'])
+# graph inputs
+mk_graph_io_input = mk_cross_sequence([mk_input('from_file'),
+                                       mk_parameter('include_graph_gen', 1),
+                                       mk_parameter('infile', 'randlocal.adj')])
+mk_graph_input = mk_append(mk_inputs(['rMat','alternating']),
+                           mk_graph_io_input)
+# tree inputs
+mk_sum_tree_input = mk_append_sequence([mk_input(i) for i in ['perfect', 'alternating']])
+
 ## Benchmarks
 ## ----------
 
+path_to_executable_key = 'path_to_executable'
 benchmark_key = 'benchmark'
+
 def mk_elastic_benchmark(b):
     return mk_parameter(benchmark_key, b)
 
-path_to_executable_key = 'path_to_executable'
-
-mk_sum_tree_input = mk_append_sequence([mk_parameter('input', i) for i in ['perfect', 'alternating']])
-mk_quickhull_input = mk_parameters('input', ['in_sphere', 'kuzmin'])
-mk_samplesort_input = mk_parameters('input', ['random', 'exponential', 'almost_sorted'])
-mk_graph_io_input = mk_cross_sequence([mk_parameter('input', 'from_file'),
-                                       mk_parameter('include_graph_gen', 1),
-                                       mk_parameter('infile', 'randlocal.adj')])
-mk_graph_input = mk_append(mk_parameters('input', ['rMat','alternating']),
-                           mk_graph_io_input)
-mk_suffixarray_input = mk_parameters('infile', ['chr22.dna'])
-
 tpal_benchmark_descriptions = {
+    'sum_array': {'input': mk_parameter('n', 10000000), 'descr': 'sum array'},
     'sum_tree': {'input': mk_sum_tree_input, 'descr': 'sum tree'},
 #    'spmv': {'input': mk_parameters('input_matrix', ['bigcols','bigrows','arrowhead']), 'descr': 'sparse matrix x dense vector product'},
-    'srad': {'input': mk_unit(), 'descr': 'srad'},
+#    'srad': {'input': mk_unit(), 'descr': 'srad'},
     'pdfs': {'input': mk_graph_input, 'descr': 'pseudo dfs'},
 }
 parlay_benchmark_descriptions = {
@@ -101,16 +154,21 @@ parlay_benchmark_descriptions = {
     'integrate': {'input': mk_unit(), 'descr': 'integration'},
     'primes': {'input': mk_unit(), 'descr': 'prime number enumeration'},
     'removeduplicates': {'input': mk_unit(), 'descr': 'remove duplicates'},
-    'bfs': {'input': mk_graph_input, 'descr': 'breadth first search'},
+#    'bfs': {'input': mk_graph_input, 'descr': 'breadth first search'},
 }
 benchmark_descriptions = merge_dicts(parlay_benchmark_descriptions, tpal_benchmark_descriptions)
-#takes = ['pdfs']
-#drops = []
-takes = benchmark_descriptions
-drops = ['primes', 'removeduplicates']
+if benchmark_mode == Benchmark_mode.Benchmark_minimal:
+    takes = ['samplesort', 'suffixarray']
+    drops = []
+else:
+    takes = benchmark_descriptions
+    drops = []
 benchmarks = [ b for b in benchmark_descriptions if b in takes and not(b in drops) ]
 mk_benchmarks = mk_append_sequence([mk_cross(mk_elastic_benchmark(b), benchmark_descriptions[b]['input'])
                                     for b in benchmarks])
+mk_iio_benchmarks = mk_take_kvp(mk_benchmarks, mk_experiment(experiment_iio_key))
+mk_ilp_benchmarks = mk_take_kvp(mk_benchmarks, mk_experiment(experiment_ilp_key))
+mk_ipw_benchmarks = mk_take_kvp(mk_benchmarks, mk_experiment(experiment_ipw_key))
 
 benchmark_path = '../'
 benchmark_bin_path = './bin/'
@@ -135,19 +193,43 @@ def mk_benchmark_cmd(b, scheduler = scheduler_taskparts):
     return mk_cross(mk_cross(mk_binpath(b, scheduler), mk_scheduler(scheduler)),
                     mk_elastic_benchmark(b))
 
-commands_serial = mk_append_sequence([mk_cross(mk_benchmark_cmd(b, s),
-                                               benchmark_descriptions[b]['input'])
-                                      for b, s in cross_product(benchmarks, [scheduler_serial])])
-                           
+def mk_benchmark_experiment(b, s, e):
+    return mk_cross(mk_benchmark_cmd(b, s),
+                    mk_take_kvp(benchmark_descriptions[b]['input'],
+                                mk_experiment(e)))
 
-commands_parallel = mk_cross_sequence([mk_append_sequence([mk_cross(mk_benchmark_cmd(b, s),
-                                                                    benchmark_descriptions[b]['input'])
-                                                           for b, s in cross_product(benchmarks, parallel_schedulers)]),
-                                       mk_parameters(taskparts_num_workers_key, workers),
-                                       mk_taskparts_num_repeat(num_repeat),
-                                       mk_taskparts_warmup_secs(warmup_secs)])
+def mk_benchmarks_for_experiment(e):
+    return mk_append_sequence([mk_benchmark_experiment(b, s, e)
+                               for b, s in cross_product(benchmarks, parallel_schedulers)])
 
-commands = mk_append(commands_serial, commands_parallel)
+commands_serial = (mk_append_sequence([ mk_benchmark_experiment(b, s, experiment_agac_key)
+                                        for b, s in cross_product(benchmarks, [scheduler_serial])])
+                   if experiment_agac_key in experiments_to_run else mk_unit())
+
+mk_par_params = mk_cross_sequence([mk_taskparts_num_repeat(num_repeat),
+                                   mk_taskparts_warmup_secs(warmup_secs)])
+
+mk_par_agac = (mk_cross_sequence([mk_benchmarks_for_experiment(experiment_agac_key),
+                                  mk_par_params,
+                                  mk_parameters(taskparts_num_workers_key, workers)])
+               if experiment_agac_key in experiments_to_run else mk_unit())
+
+mk_par_iio = (mk_cross_sequence([mk_benchmarks_for_experiment(experiment_iio_key),
+                                 mk_par_params,
+                                 mk_taskparts_num_workers(max_num_workers)])
+              if experiment_iio_key in experiments_to_run else mk_unit())
+mk_par_ilp = (mk_cross_sequence([mk_benchmarks_for_experiment(experiment_ilp_key),
+                                 mk_par_params,
+                                 mk_taskparts_num_workers(max_num_workers)])
+              if experiment_ilp_key in experiments_to_run else mk_unit())
+mk_par_ipw = (mk_cross_sequence([mk_benchmarks_for_experiment(experiment_ipw_key),
+                                 mk_par_params,
+                                 mk_taskparts_num_workers(max_num_workers)])
+              if experiment_ipw_key in experiments_to_run else mk_unit())
+
+commands_parallel = mk_append_sequence([mk_par_agac, mk_par_iio, mk_par_ilp, mk_par_ipw])
+    
+commands = eval(mk_append(commands_serial, commands_parallel))
 
 ## Overall benchmark setup
 ## -----------------------
@@ -160,7 +242,8 @@ modifiers = {
     'env_vars': taskparts_env_vars,
     'silent_keys': [
         scheduler_key,
-        benchmark_key
+        benchmark_key,
+        experiment_key
     ],
     'cwd': benchmark_path # cwd here because this is where the input data is stored
 }
@@ -187,31 +270,96 @@ if not(virtual_report):
     all_results = eval(read_head_from_benchmark_repository()['done'])
 print('')
 
+agac_results = mk_take_kvp(all_results, mk_experiment(experiment_agac_key))
+iio_results = mk_take_kvp(all_results, mk_experiment(experiment_iio_key))
+ilp_results = mk_take_kvp(all_results, mk_experiment(experiment_ilp_key))
+ipw_results = mk_take_kvp(all_results, mk_experiment(experiment_ipw_key))
+
+results_at_scale = mk_take_kvp(agac_results, mk_taskparts_num_workers(max_num_workers))
+
+# Low-parallelism experiment
+# ==========================
+
+def mean_of_key_in_row(row, result_key):
+    r  = val_of_key_in_row(row, result_key)
+    if r == []:
+        return 0.0
+    return mean(r[0])
+
+def gen_table_cell_of_key(key, row):
+    return mean_of_key_in_row(row, key)
+
+print(gen_simple_table(mk_simple_table(iio_results,
+                                       mk_rows = mk_iio_benchmarks,
+                                       mk_cols = mk_parameters(scheduler_key, parallel_schedulers),
+                                       gen_cell = lambda row_expr, col_expr, row:
+                                       gen_table_cell_of_key('usertime', row),
+                                       gen_row_str = lambda e:
+                                       human_readable_string_of_expr(e,
+                                                                     show_keys = False,
+                                                                     silent_keys = [experiment_key,
+                                                                                    'include_infile_load']),
+                                       row_title = 'benchmark,inputs',
+                                       gen_col_titles = lambda cols_expr:
+                                       [human_readable_string_of_expr(e, show_keys = False)
+                                        for e in genfunc_expr_by_row(cols_expr)])))
+print('')
+
+print(gen_simple_table(mk_simple_table(ilp_results,
+                                       mk_rows = mk_ilp_benchmarks,
+                                       mk_cols = mk_parameters(scheduler_key, parallel_schedulers),
+                                       gen_cell = lambda row_expr, col_expr, row:
+                                       gen_table_cell_of_key('usertime', row),
+                                       gen_row_str = lambda e:
+                                       human_readable_string_of_expr(e,
+                                                                     show_keys = False,
+                                                                     silent_keys = [experiment_key]),
+                                       row_title = 'benchmark,input,grain',
+                                       gen_col_titles = lambda cols_expr:
+                                       [human_readable_string_of_expr(e, show_keys = False)
+                                        for e in genfunc_expr_by_row(cols_expr)])))
+print('')
+
+print(gen_simple_table(mk_simple_table(ipw_results,
+                                       mk_rows = mk_ipw_benchmarks,
+                                       mk_cols = mk_parameters(scheduler_key, parallel_schedulers),
+                                       gen_cell = lambda row_expr, col_expr, row:
+                                       gen_table_cell_of_key('usertime', row),
+                                       gen_row_str = lambda e:
+                                       human_readable_string_of_expr(e,
+                                                                     show_keys = False,
+                                                                     silent_keys = [experiment_key]),
+                                       row_title = 'benchmark,input,repeat',
+                                       gen_col_titles = lambda cols_expr:
+                                       [human_readable_string_of_expr(e, show_keys = False)
+                                        for e in genfunc_expr_by_row(cols_expr)])))
+sys.exit()
+
 # Time breakdown bar plots
 # ========================
 
-if not(virtual_report):
-    for scheduler in [scheduler_elastic_flat, scheduler_elastic_lifeline, scheduler_taskparts]:
-        def get_y_vals(expr, x_expr, y_val):
-            rs = []
-            for x_row in genfunc_expr_by_row(x_expr):
-                x_val = eval(mk_take_kvp(expr, x_row))
-                for y_row in genfunc_expr_by_row(y_val):
-                    y_key = y_row['value'][0][0]['key']
-                    ys = select_from_expr_by_key(x_val, y_key)
-                    y = 0.0
-                    if ys != []:
-                        y = mean(ys)
-                    rs += [y]
-            return rs
-        barplot = mk_stacked_barplot(mk_take_kvp(mk_taskparts_num_workers(max_num_workers),
-                                                 mk_take_kvp(all_results, mk_scheduler(scheduler))),
-                                     mk_benchmarks,
-                                     mk_append_sequence([mk_parameter('total_work_time', 'number'),
-                                                         mk_parameter('total_idle_time', 'number'),
-                                                         mk_parameter('total_sleep_time', 'number')]),
-                                     get_y_vals = get_y_vals)
-        output_barplot(barplot, outfile = scheduler)
+# if not(virtual_report):
+#     def get_y_vals(expr, x_expr, y_val):
+#         rs = []
+#         for x_row in genfunc_expr_by_row(x_expr):
+#             x_val = eval(mk_take_kvp(expr, x_row))
+#             for y_row in genfunc_expr_by_row(y_val):
+#                 y_key = y_row['value'][0][0]['key']
+#                 ys = select_from_expr_by_key(x_val, y_key)
+#                 y = 0.0
+#                 if ys != []:
+#                     y = mean(ys)
+#                 rs += [y]
+#         return rs
+#     for scheduler in [scheduler_elastic_flat, scheduler_elastic_lifeline, scheduler_taskparts]:
+#         barplot = mk_stacked_barplot(mk_take_kvp(mk_taskparts_num_workers(max_num_workers),
+#                                                  mk_take_kvp(all_results, mk_scheduler(scheduler))),
+#                                      mk_benchmarks,
+#                                      mk_append_sequence([mk_parameter('total_work_time', 'number'),
+#                                                          mk_parameter('total_idle_time', 'number'),
+#                                                          mk_parameter('total_sleep_time', 'number')]),
+#                                      get_y_vals = get_y_vals)
+#         output_barplot(barplot, outfile = scheduler)
 
 # Speedup curves
 # ==============
@@ -299,6 +447,7 @@ if not(virtual_report):
 # Markdown/PDF global report
 # ==========================
 
+#todo: replace this function by human_readable_string_of_expr
 def string_of_expr(e, col_to_str = lambda d: str(d), row_sep = '; '):
     rs = rows_of(e)
     n = len(rs)
@@ -316,12 +465,6 @@ def string_of_benchmark(e):
 
 table_md_file = 'report.md'
 table_pdf_file = 'report.pdf'
-
-def mean_of_key_in_row(row, result_key):
-    r  = val_of_key_in_row(row, result_key)
-    if r == []:
-        return 0.0
-    return mean(r[0])
 
 def mk_basic_table(results, result_key, columns):
     t = mk_table(results,
@@ -351,8 +494,6 @@ if not(virtual_report):
         print('## Benchmark descriptions\n', file=f)
         print(tabulate.tabulate([[k, benchmark_descriptions[k]['descr']] for k in benchmark_descriptions],
                                 ['benchmark', 'description']) + '\n', file=f)
-
-        results_at_scale = mk_take_kvp(all_results, mk_taskparts_num_workers(max_num_workers))
 
         print('# Raw data of runs at scale\n', file=f)
         print('## Wall-clock time\n', file=f)

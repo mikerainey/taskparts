@@ -5,6 +5,7 @@
 #include <parlay/primitives.h>
 #include <parlay/parallel.h>
 #include <testData/sequenceData/sequenceData.h>
+#include <common/sequenceIO.h>
 #ifndef PARLAY_SEQUENTIAL
 #include <comparisonSort/sampleSort/sort.h>
 #else
@@ -14,12 +15,24 @@
 using item_type = double;
 
 parlay::sequence<item_type> a;
+bool include_infile_load;
 
 auto gen_input() {
+  include_infile_load = taskparts::cmdline::parse_or_default_bool("include_infile_load", false);
   parlay::override_granularity = taskparts::cmdline::parse_or_default_long("override_granularity", 0);
+  if (include_infile_load) {
+    auto input = taskparts::cmdline::parse_or_default_string("input", "");
+    if (input == "") {
+      exit(-1);
+    }
+    auto infile = input + ".seq";
+    auto tokens = benchIO::get_tokens(infile.c_str());
+    a = benchIO::parseElements<item_type>(tokens.cut(1, tokens.size()));
+    return;
+  }
   size_t n = taskparts::cmdline::parse_or_default_long("n", 10000000);
   taskparts::cmdline::dispatcher d;
-  d.add("random", [&] { 
+  d.add("random", [&] {
     a = dataGen::rand<item_type>((size_t) 0, n);
   });
   d.add("exponential", [&] { 
@@ -33,6 +46,9 @@ auto gen_input() {
 }
 
 auto benchmark_no_swaps() {
+  if (include_infile_load) {
+    gen_input();
+  }
   compSort(a, [] (item_type x, item_type y) { return x < y; });
 }
 

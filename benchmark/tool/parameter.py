@@ -190,7 +190,38 @@ def genfunc_expr_by_row(e):
     for r in rows_of(e):
         yield mk_expr_of_row(r)
 
-# todo: write a function that generates a human-readable table summarizing all rows in a parameter value
+def human_readable_string_of_row(row,
+                                 col_separator = ',',
+                                 silent_keys = [],
+                                 show_keys = True):
+    row = [ kvp for kvp in row if kvp['key'] not in silent_keys ]
+    s = col_separator.join([ ((str(kvp['key']) + '=') if show_keys else '')
+                             +
+                             str(kvp['val']) for kvp in row ])
+    return s
+                                  
+def human_readable_string_of_expr(e,
+                                  col_separator = ',',
+                                  row_separator = ';',
+                                  silent_keys = [],
+                                  show_keys = True):
+    rows = rows_of(e)
+    n = len(rows)
+    if n == 0:
+        s = '<>'
+    else:
+        s = human_readable_string_of_row(rows[0],
+                                         col_separator = col_separator,
+                                         show_keys = show_keys,
+                                         silent_keys = silent_keys)
+    if n == 1:
+        return s
+    for i in range(1, n):
+        s += row_separator + human_readable_string_of_row(rows[i],
+                                                          col_separator = col_separator,
+                                                          show_keys = show_keys,
+                                                          silent_keys = silent_keys)
+    return s
 
 # Evaluation
 # ==========
@@ -217,7 +248,14 @@ def eval_rec(e):
     v1rs = v1['value']
     v2rs = v2['value']
     if k == 'append':
-        return { 'value': v1rs + v2rs }
+        vrs = []
+        if v1rs == [[]]:
+            vrs = v2rs
+        elif v2rs == [[]]:
+            vrs = v1rs
+        else:
+            vrs = v1rs + v2rs
+        return { 'value': vrs }
     if k == 'cross':
         vr = { 'value': [ cross_rows(r1, r2,
                                      value_list_combiner = value_list_combiner_1)

@@ -2,7 +2,7 @@
 #include "suffixarray.hpp"
 
 int main() {
-  include_input_load = taskparts::cmdline::parse_or_default_bool("include_input_load", true);
+  include_input_load = taskparts::cmdline::parse_or_default_bool("include_input_load", false);
   taskparts::benchmark_cilk([&] {
     benchmark();
   }, [&] {
