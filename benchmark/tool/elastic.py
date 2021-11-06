@@ -109,17 +109,26 @@ mk_ilp_input = mk_cross_sequence([mk_experiment(experiment_ilp_key),
                                   mk_parameter('override_granularity', 200)])
 mk_ipw_input = mk_cross_sequence([mk_experiment(experiment_ipw_key),
                                   mk_parameter('repeat', 3)])
+mk_experiments = mk_append_sequence([mk_agac_input, mk_iio_input, mk_ilp_input, mk_ipw_input])
 
 # sorting inputs
+# ./randomSeq -t double 10000000 random.seq
 sequence_inputs = ['random'] + (['exponential', 'almost_sorted']
                                 if benchmark_mode == Benchmark_mode.Benchmark_full else [])
-mk_samplesort_input = mk_cross(mk_inputs(sequence_inputs),
-                               mk_append_sequence([mk_agac_input, mk_iio_input, mk_ilp_input, mk_ipw_input]))
+mk_samplesort_input = mk_cross(mk_inputs(sequence_inputs), mk_experiments)
+# convex hull inputs
+# ./randPoints -S -d 2 10000000 in_sphere.geom
+twod_points_inputs = ['in_sphere'] + (['on_sphere', 'kuzmin']
+                                      if benchmark_mode == Benchmark_mode.Benchmark_full else [])
+mk_quickhull_input = mk_cross(mk_inputs(twod_points_inputs), mk_experiments)
+# removeduplicates inputs
+# ./randomSeq -t int 10000000 random_ints.seq
+removeduplicates_inputs = ['random_ints'] + (['strings']
+                                             if benchmark_mode == Benchmark_mode.Benchmark_full else [])
+mk_removeduplicates_inputs = mk_cross(mk_inputs(removeduplicates_inputs), mk_experiments)
 # suffixarray inputs
 mk_suffixarray_input = mk_cross(mk_parameters('infile', ['chr22.dna']),
-                                mk_append_sequence([mk_agac_input, mk_iio_input]))
-# convex hull inputs
-mk_quickhull_input = mk_inputs(['in_sphere', 'kuzmin'])
+                                mk_append_sequence([mk_agac_input, mk_iio_input, mk_ilp_input]))
 # graph inputs
 mk_graph_io_input = mk_cross_sequence([mk_input('from_file'),
                                        mk_parameter('include_graph_gen', 1),
@@ -146,19 +155,19 @@ tpal_benchmark_descriptions = {
     'pdfs': {'input': mk_graph_input, 'descr': 'pseudo dfs'},
 }
 parlay_benchmark_descriptions = {
+    'samplesort': {'input': mk_samplesort_input, 'descr': 'sample sort'},
+    'quickhull': {'input': mk_quickhull_input, 'descr': 'convex hull'},
+    'removeduplicates': {'input': mk_removeduplicates_inputs, 'descr': 'remove duplicates'},
+    'suffixarray': {'input': mk_suffixarray_input, 'descr': 'suffix array'},
     'wc': {'input': mk_unit(), 'descr': 'word count'},
     'mcss': {'input': mk_unit(), 'descr': 'maximum contiguous subsequence sum'},
-    'samplesort': {'input': mk_samplesort_input, 'descr': 'sample sort'},
-    'suffixarray': {'input': mk_suffixarray_input, 'descr': 'suffix array'},
-    'quickhull': {'input': mk_quickhull_input, 'descr': 'convex hull'},
     'integrate': {'input': mk_unit(), 'descr': 'integration'},
     'primes': {'input': mk_unit(), 'descr': 'prime number enumeration'},
-    'removeduplicates': {'input': mk_unit(), 'descr': 'remove duplicates'},
 #    'bfs': {'input': mk_graph_input, 'descr': 'breadth first search'},
 }
 benchmark_descriptions = merge_dicts(parlay_benchmark_descriptions, tpal_benchmark_descriptions)
 if benchmark_mode == Benchmark_mode.Benchmark_minimal:
-    takes = ['samplesort', 'suffixarray']
+    takes = ['suffixarray', 'removeduplicates'] #['samplesort', 'quickhull']
     drops = []
 else:
     takes = benchmark_descriptions
@@ -289,6 +298,7 @@ def mean_of_key_in_row(row, result_key):
 def gen_table_cell_of_key(key, row):
     return mean_of_key_in_row(row, key)
 
+print(experiment_iio_key)
 print(gen_simple_table(mk_simple_table(iio_results,
                                        mk_rows = mk_iio_benchmarks,
                                        mk_cols = mk_parameters(scheduler_key, parallel_schedulers),
@@ -305,6 +315,7 @@ print(gen_simple_table(mk_simple_table(iio_results,
                                         for e in genfunc_expr_by_row(cols_expr)])))
 print('')
 
+print(experiment_ilp_key)
 print(gen_simple_table(mk_simple_table(ilp_results,
                                        mk_rows = mk_ilp_benchmarks,
                                        mk_cols = mk_parameters(scheduler_key, parallel_schedulers),
@@ -320,6 +331,7 @@ print(gen_simple_table(mk_simple_table(ilp_results,
                                         for e in genfunc_expr_by_row(cols_expr)])))
 print('')
 
+print(experiment_ipw_key)
 print(gen_simple_table(mk_simple_table(ipw_results,
                                        mk_rows = mk_ipw_benchmarks,
                                        mk_cols = mk_parameters(scheduler_key, parallel_schedulers),

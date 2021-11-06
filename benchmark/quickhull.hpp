@@ -20,6 +20,10 @@ using namespace dataGen;
 using namespace std;
 
 using coord = double;
+parlay::sequence<point2d<coord>> Points;
+parlay::sequence<indexT> result;
+size_t dflt_n = 10000000;
+bool include_infile_load;
 
 template <class coord>
 point2d<coord> randKuzmin(size_t i) {
@@ -39,9 +43,18 @@ point3d<coord> randPlummer(size_t i) {
   return point3d<coord>(v*r);
 }
 
-size_t dflt_n = 10000000;
-
-auto gen_input() -> parlay::sequence<point2d<coord>> {
+auto gen_input() {
+  parlay::override_granularity = taskparts::cmdline::parse_or_default_long("override_granularity", 0);
+  include_infile_load = taskparts::cmdline::parse_or_default_bool("include_infile_load", false);
+  if (include_infile_load) {
+    auto input = taskparts::cmdline::parse_or_default_string("input", "");
+    if (input == "") {
+      exit(-1);
+    }
+    auto infile = input + ".geom";
+    Points = benchIO::readPointsFromFile<point2d<coord>>(infile.c_str());
+    return;
+  }
   size_t n = taskparts::cmdline::parse_or_default_long("n", dflt_n);
   int dims = taskparts::cmdline::parse_or_default_int("dims", 2);
   bool inSphere = false;
@@ -52,10 +65,43 @@ auto gen_input() -> parlay::sequence<point2d<coord>> {
   d.add("on_sphere", [&] { onSphere = true; });
   d.add("kuzmin", [&] { kuzmin = true; });
   d.dispatch_or_default("input", "in_sphere");
-  return parlay::tabulate(n, [&] (size_t i) -> point2d<coord> {
+  Points = parlay::tabulate(n, [&] (size_t i) -> point2d<coord> {
       if (inSphere) return randInUnitSphere2d<coord>(i);
       else if (onSphere) return randOnUnitSphere2d<coord>(i);
       else if (kuzmin) return randKuzmin<coord>(i);
       else return rand2d<coord>(i);
     });
+}
+
+auto benchmark_no_nudges() {
+  if (include_infile_load) {
+    gen_input();
+  }
+  result = hull(Points);
+}
+
+auto benchmark_with_nudges(size_t repeat) {
+  auto n = Points.size();
+  size_t nudges = taskparts::cmdline::parse_or_default_long("nudges", n/2);
+  for (size_t i = 0; i < repeat; i++) {
+    for (size_t j = 0; j < nudges; j++) {
+      auto k = taskparts::hash(i + j) % n;
+      auto d = taskparts::hash(k + i + j) % 2;
+      if (d == 0) {
+	Points[k].x += ((coord)k) / (double)n;
+      } else {
+	Points[k].y += ((coord)k) / (double)n;
+      }
+    }
+    result = hull(Points);
+  }
+}
+
+auto benchmark() {
+  size_t repeat = taskparts::cmdline::parse_or_default_long("repeat", 0);
+  if (repeat == 0) {
+    benchmark_no_nudges();
+  } else {
+    benchmark_with_nudges(repeat);
+  }
 }

@@ -18,8 +18,8 @@ parlay::sequence<item_type> a;
 bool include_infile_load;
 
 auto gen_input() {
-  include_infile_load = taskparts::cmdline::parse_or_default_bool("include_infile_load", false);
   parlay::override_granularity = taskparts::cmdline::parse_or_default_long("override_granularity", 0);
+  include_infile_load = taskparts::cmdline::parse_or_default_bool("include_infile_load", false);
   if (include_infile_load) {
     auto input = taskparts::cmdline::parse_or_default_string("input", "");
     if (input == "") {
@@ -62,5 +62,14 @@ auto benchmark_with_swaps(size_t repeat) {
       std::swap(a[k1], a[k2]);
     }
     compSort(a, [] (item_type x, item_type y) { return x < y; });
+  }
+}
+
+auto benchmark() {
+  size_t repeat = taskparts::cmdline::parse_or_default_long("repeat", 0);
+  if (repeat == 0) {
+    benchmark_no_swaps();
+  } else {
+    benchmark_with_swaps(repeat);
   }
 }

@@ -226,23 +226,25 @@ clean:
 # ----------
 
 BENCHMARKS=\
-	bfs \
-	fib \
-	integrate \
-	mcss \
-	primes \
+	samplesort \
 	quickhull \
 	removeduplicates \
-	samplesort \
-	suffixarray \
-	wc
+	suffixarray
+
+	# bfs \
+	# fib \
+	# integrate \
+	# mcss \
+	# primes \
+	# wc
 
 TPAL_BENCHMARKS=\
-	sum_array \
-	sum_tree \
-	pdfs \
-	spmv \
-	srad
+	sum_array
+
+	# sum_tree \
+	# pdfs \
+	# spmv \
+	# srad
 
 all_elastic_lifeline_opt: $(BENCHMARKS:%=%.elastic_lifeline.opt) $(BENCHMARKS:%=%.elastic_lifeline_elision.opt)
 all_elastic_lifeline_sta: $(BENCHMARKS:%=%.elastic_lifeline.sta) $(BENCHMARKS:%=%.elastic_lifeline_elision.sta)

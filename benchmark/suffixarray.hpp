@@ -21,6 +21,8 @@
 #include <suffixArray/serialDivsufsort/sssort.C>
 */
 #endif
+#include "../example/fib_serial.hpp"
+
 using uchar = unsigned char;
 
 parlay::sequence<uchar> ss;
@@ -34,9 +36,25 @@ auto load_input() {
   ss = parlay::tabulate(s.size(), [&] (size_t i) -> uchar {return (uchar) s[i];});
 }
 
-auto benchmark() {
+auto benchmark_no_repeat() {
   if (include_input_load) {
     load_input();
   }
   R = suffixArray(ss);
+}
+
+auto benchmark_with_repeat(size_t repeat) {
+  for (size_t i = 0; i < repeat; i++) {
+    fib_serial(30);
+    R = suffixArray(ss);    
+  }
+}
+
+auto benchmark() {
+  size_t repeat = taskparts::cmdline::parse_or_default_long("repeat", 0);
+  if (repeat == 0) {
+    benchmark_no_repeat();
+  } else {
+    benchmark_with_repeat(repeat);
+  }
 }
