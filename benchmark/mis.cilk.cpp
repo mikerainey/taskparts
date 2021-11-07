@@ -1,5 +1,5 @@
 #include "cilk.hpp"
-#include "removeduplicates.hpp"
+#include "mis.hpp"
 
 int main() {
   taskparts::benchmark_cilk([&] { // benchmark

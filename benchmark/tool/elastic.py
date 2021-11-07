@@ -30,7 +30,7 @@ virtual_runs = False
 # if True, do not generate reports
 virtual_report = False
 # any benchmark that takes > timeout seconds gets canceled; set to None if you dislike cancel culture
-timeout = 50.0 
+timeout = 100.0 
 # run minimal version of all benchmarks
 class Benchmark_mode(Enum):
     Benchmark_full = 1
@@ -40,10 +40,10 @@ benchmark_mode = Benchmark_mode.Benchmark_minimal
 max_num_workers = 15
 workers_step = 3 if benchmark_mode == Benchmark_mode.Benchmark_full else max_num_workers
 workers = list(map(lambda x: x + 1, range(0, max_num_workers, workers_step)))
-workers = workers if 1 in workers else [1] + workers
+#workers = workers if 1 in workers else [1] + workers
 workers = workers if max_num_workers in workers else workers + [max_num_workers]
-num_repeat = 3 if benchmark_mode == Benchmark_mode.Benchmark_full else 1
-warmup_secs = 3.0 if benchmark_mode == Benchmark_mode.Benchmark_full else 0.0
+num_repeat = 3 if benchmark_mode == Benchmark_mode.Benchmark_full else 5
+warmup_secs = 3.0 if benchmark_mode == Benchmark_mode.Benchmark_full else 3.0
 
 ## Schedulers
 ## ----------
@@ -91,7 +91,7 @@ experiments = [
     experiment_ilp_key,
     experiment_ipw_key
 ]
-experiments_to_run = [ experiment_iio_key, experiment_ilp_key, experiment_ipw_key ]
+experiments_to_run = experiments #[ experiment_iio_key, experiment_ilp_key, experiment_ipw_key ]
 
 def mk_experiment(e):
     return mk_parameter(experiment_key, e)
@@ -112,29 +112,32 @@ mk_ipw_input = mk_cross_sequence([mk_experiment(experiment_ipw_key),
 mk_experiments = mk_append_sequence([mk_agac_input, mk_iio_input, mk_ilp_input, mk_ipw_input])
 
 # sorting inputs
-# ./randomSeq -t double 10000000 random.seq
-sequence_inputs = ['random'] + (['exponential', 'almost_sorted']
+# ./randomSeq -t double 10000000 random_double.seq
+sequence_inputs = ['random_double'] + (['exponential_double', 'almost_sorted_double']
                                 if benchmark_mode == Benchmark_mode.Benchmark_full else [])
-mk_samplesort_input = mk_cross(mk_inputs(sequence_inputs), mk_experiments)
+mk_sort_input = mk_cross(mk_inputs(sequence_inputs), mk_experiments)
 # convex hull inputs
 # ./randPoints -S -d 2 10000000 in_sphere.geom
 twod_points_inputs = ['in_sphere'] + (['on_sphere', 'kuzmin']
                                       if benchmark_mode == Benchmark_mode.Benchmark_full else [])
 mk_quickhull_input = mk_cross(mk_inputs(twod_points_inputs), mk_experiments)
 # removeduplicates inputs
-# ./randomSeq -t int 10000000 random_ints.seq
-removeduplicates_inputs = ['random_ints'] + (['strings']
-                                             if benchmark_mode == Benchmark_mode.Benchmark_full else [])
-mk_removeduplicates_inputs = mk_cross(mk_inputs(removeduplicates_inputs), mk_experiments)
+# ./randomSeq -t int 10000000 random_int.seq
+removeduplicates_inputs = ['random_int'] + (['strings']
+                                            if benchmark_mode == Benchmark_mode.Benchmark_full else [])
+mk_removeduplicates_input = mk_cross(mk_inputs(removeduplicates_inputs), mk_experiments)
+# histogram inputs
+# ./randomSeq -r 256 -t int 100000000 random_int_256.seq
+histogram_inputs = ['random_int', 'random_256_int']
+mk_histogram_input = mk_cross(mk_inputs(histogram_inputs), mk_experiments)
 # suffixarray inputs
 mk_suffixarray_input = mk_cross(mk_parameters('infile', ['chr22.dna']),
                                 mk_append_sequence([mk_agac_input, mk_iio_input, mk_ilp_input]))
 # graph inputs
-mk_graph_io_input = mk_cross_sequence([mk_input('from_file'),
-                                       mk_parameter('include_graph_gen', 1),
-                                       mk_parameter('infile', 'randlocal.adj')])
-mk_graph_input = mk_append(mk_inputs(['rMat','alternating']),
-                           mk_graph_io_input)
+# ./rMatGraph -j 5000000 rmat.adj
+# ./randLocalGraph -j 5000000 random.adj
+graph_inputs = ['rmat', 'random']
+mk_graph_input = mk_cross(mk_inputs(graph_inputs), mk_experiments)
 # tree inputs
 mk_sum_tree_input = mk_append_sequence([mk_input(i) for i in ['perfect', 'alternating']])
 
@@ -148,26 +151,29 @@ def mk_elastic_benchmark(b):
     return mk_parameter(benchmark_key, b)
 
 tpal_benchmark_descriptions = {
-    'sum_array': {'input': mk_parameter('n', 10000000), 'descr': 'sum array'},
+#    'sum_array': {'input': mk_parameter('n', 10000000), 'descr': 'sum array'},
     'sum_tree': {'input': mk_sum_tree_input, 'descr': 'sum tree'},
 #    'spmv': {'input': mk_parameters('input_matrix', ['bigcols','bigrows','arrowhead']), 'descr': 'sparse matrix x dense vector product'},
 #    'srad': {'input': mk_unit(), 'descr': 'srad'},
-    'pdfs': {'input': mk_graph_input, 'descr': 'pseudo dfs'},
+    'pdfs': {'input': mk_unit(), 'descr': 'pseudo dfs'},
 }
 parlay_benchmark_descriptions = {
-    'samplesort': {'input': mk_samplesort_input, 'descr': 'sample sort'},
+    'samplesort': {'input': mk_sort_input, 'descr': 'sample sort'},
+    'quicksort': {'input': mk_sort_input, 'descr': 'sample sort'},
     'quickhull': {'input': mk_quickhull_input, 'descr': 'convex hull'},
-    'removeduplicates': {'input': mk_removeduplicates_inputs, 'descr': 'remove duplicates'},
+    'removeduplicates': {'input': mk_removeduplicates_input, 'descr': 'remove duplicates'},
     'suffixarray': {'input': mk_suffixarray_input, 'descr': 'suffix array'},
-    'wc': {'input': mk_unit(), 'descr': 'word count'},
-    'mcss': {'input': mk_unit(), 'descr': 'maximum contiguous subsequence sum'},
-    'integrate': {'input': mk_unit(), 'descr': 'integration'},
-    'primes': {'input': mk_unit(), 'descr': 'prime number enumeration'},
-#    'bfs': {'input': mk_graph_input, 'descr': 'breadth first search'},
+    'mis': {'input': mk_graph_input, 'descr': 'maximal independent set'},
+    'histogram': {'input': mk_histogram_input, 'descr': 'histogram'},
+#    'wc': {'input': mk_unit(), 'descr': 'word count'},
+#    'mcss': {'input': mk_unit(), 'descr': 'maximum contiguous subsequence sum'},
+#    'integrate': {'input': mk_unit(), 'descr': 'integration'},
+#    'primes': {'input': mk_unit(), 'descr': 'prime number enumeration'},
+#    'bfs': {'input': mk_unit(), 'descr': 'breadth first search'},
 }
 benchmark_descriptions = merge_dicts(parlay_benchmark_descriptions, tpal_benchmark_descriptions)
 if benchmark_mode == Benchmark_mode.Benchmark_minimal:
-    takes = ['suffixarray', 'removeduplicates'] #['samplesort', 'quickhull']
+    takes = ['samplesort','quicksort','quickhull','removeduplicates','suffixarray','mis','histogram']
     drops = []
 else:
     takes = benchmark_descriptions
@@ -175,6 +181,7 @@ else:
 benchmarks = [ b for b in benchmark_descriptions if b in takes and not(b in drops) ]
 mk_benchmarks = mk_append_sequence([mk_cross(mk_elastic_benchmark(b), benchmark_descriptions[b]['input'])
                                     for b in benchmarks])
+mk_agac_benchmarks = mk_take_kvp(mk_benchmarks, mk_experiment(experiment_agac_key))
 mk_iio_benchmarks = mk_take_kvp(mk_benchmarks, mk_experiment(experiment_iio_key))
 mk_ilp_benchmarks = mk_take_kvp(mk_benchmarks, mk_experiment(experiment_ilp_key))
 mk_ipw_benchmarks = mk_take_kvp(mk_benchmarks, mk_experiment(experiment_ipw_key))
@@ -211,9 +218,10 @@ def mk_benchmarks_for_experiment(e):
     return mk_append_sequence([mk_benchmark_experiment(b, s, e)
                                for b, s in cross_product(benchmarks, parallel_schedulers)])
 
-commands_serial = (mk_append_sequence([ mk_benchmark_experiment(b, s, experiment_agac_key)
-                                        for b, s in cross_product(benchmarks, [scheduler_serial])])
-                   if experiment_agac_key in experiments_to_run else mk_unit())
+# commands_serial = (mk_append_sequence([ mk_benchmark_experiment(b, s, experiment_agac_key)
+#                                         for b, s in cross_product(benchmarks, [scheduler_serial])])
+#                    if experiment_agac_key in experiments_to_run else mk_unit())
+commands_serial = mk_unit()
 
 mk_par_params = mk_cross_sequence([mk_taskparts_num_repeat(num_repeat),
                                    mk_taskparts_warmup_secs(warmup_secs)])
@@ -283,8 +291,7 @@ agac_results = mk_take_kvp(all_results, mk_experiment(experiment_agac_key))
 iio_results = mk_take_kvp(all_results, mk_experiment(experiment_iio_key))
 ilp_results = mk_take_kvp(all_results, mk_experiment(experiment_ilp_key))
 ipw_results = mk_take_kvp(all_results, mk_experiment(experiment_ipw_key))
-
-results_at_scale = mk_take_kvp(agac_results, mk_taskparts_num_workers(max_num_workers))
+agac_results_at_scale = mk_take_kvp(agac_results, mk_taskparts_num_workers(max_num_workers))
 
 # Low-parallelism experiment
 # ==========================
@@ -298,80 +305,25 @@ def mean_of_key_in_row(row, result_key):
 def gen_table_cell_of_key(key, row):
     return mean_of_key_in_row(row, key)
 
-print(experiment_iio_key)
-print(gen_simple_table(mk_simple_table(iio_results,
-                                       mk_rows = mk_iio_benchmarks,
-                                       mk_cols = mk_parameters(scheduler_key, parallel_schedulers),
-                                       gen_cell = lambda row_expr, col_expr, row:
-                                       gen_table_cell_of_key('usertime', row),
-                                       gen_row_str = lambda e:
-                                       human_readable_string_of_expr(e,
-                                                                     show_keys = False,
-                                                                     silent_keys = [experiment_key,
-                                                                                    'include_infile_load']),
-                                       row_title = 'benchmark,inputs',
-                                       gen_col_titles = lambda cols_expr:
-                                       [human_readable_string_of_expr(e, show_keys = False)
-                                        for e in genfunc_expr_by_row(cols_expr)])))
-print('')
-
-print(experiment_ilp_key)
-print(gen_simple_table(mk_simple_table(ilp_results,
-                                       mk_rows = mk_ilp_benchmarks,
-                                       mk_cols = mk_parameters(scheduler_key, parallel_schedulers),
-                                       gen_cell = lambda row_expr, col_expr, row:
-                                       gen_table_cell_of_key('usertime', row),
-                                       gen_row_str = lambda e:
-                                       human_readable_string_of_expr(e,
-                                                                     show_keys = False,
-                                                                     silent_keys = [experiment_key]),
-                                       row_title = 'benchmark,input,grain',
-                                       gen_col_titles = lambda cols_expr:
-                                       [human_readable_string_of_expr(e, show_keys = False)
-                                        for e in genfunc_expr_by_row(cols_expr)])))
-print('')
-
-print(experiment_ipw_key)
-print(gen_simple_table(mk_simple_table(ipw_results,
-                                       mk_rows = mk_ipw_benchmarks,
-                                       mk_cols = mk_parameters(scheduler_key, parallel_schedulers),
-                                       gen_cell = lambda row_expr, col_expr, row:
-                                       gen_table_cell_of_key('usertime', row),
-                                       gen_row_str = lambda e:
-                                       human_readable_string_of_expr(e,
-                                                                     show_keys = False,
-                                                                     silent_keys = [experiment_key]),
-                                       row_title = 'benchmark,input,repeat',
-                                       gen_col_titles = lambda cols_expr:
-                                       [human_readable_string_of_expr(e, show_keys = False)
-                                        for e in genfunc_expr_by_row(cols_expr)])))
-sys.exit()
-
-# Time breakdown bar plots
-# ========================
-
-# if not(virtual_report):
-#     def get_y_vals(expr, x_expr, y_val):
-#         rs = []
-#         for x_row in genfunc_expr_by_row(x_expr):
-#             x_val = eval(mk_take_kvp(expr, x_row))
-#             for y_row in genfunc_expr_by_row(y_val):
-#                 y_key = y_row['value'][0][0]['key']
-#                 ys = select_from_expr_by_key(x_val, y_key)
-#                 y = 0.0
-#                 if ys != []:
-#                     y = mean(ys)
-#                 rs += [y]
-#         return rs
-#     for scheduler in [scheduler_elastic_flat, scheduler_elastic_lifeline, scheduler_taskparts]:
-#         barplot = mk_stacked_barplot(mk_take_kvp(mk_taskparts_num_workers(max_num_workers),
-#                                                  mk_take_kvp(all_results, mk_scheduler(scheduler))),
-#                                      mk_benchmarks,
-#                                      mk_append_sequence([mk_parameter('total_work_time', 'number'),
-#                                                          mk_parameter('total_idle_time', 'number'),
-#                                                          mk_parameter('total_sleep_time', 'number')]),
-#                                      get_y_vals = get_y_vals)
-#         output_barplot(barplot, outfile = scheduler)
+def gen_elastic_table(expr,
+                      rows_expr,
+                      gen_cell,
+                      cols_expr = mk_parameters(scheduler_key, parallel_schedulers),
+                      gen_row_str = lambda e:
+                      human_readable_string_of_expr(e,
+                                                    show_keys = False,
+                                                    silent_keys = [experiment_key,
+                                                                   'include_infile_load']),
+                      row_title = ''):
+    return gen_simple_table(mk_simple_table(expr,
+                                            mk_rows = rows_expr,
+                                            mk_cols = cols_expr,
+                                            gen_cell = gen_cell,
+                                            gen_row_str = gen_row_str,
+                                            row_title = row_title,
+                                            gen_col_titles = lambda cols_expr:
+                                            [human_readable_string_of_expr(e, show_keys = False)
+                                             for e in genfunc_expr_by_row(cols_expr)])) + '\n'
 
 # Speedup curves
 # ==============
@@ -395,14 +347,14 @@ def generate_speedup_plots(mk_baseline, y_label = 'speedup'):
         output_plot(plot)
     return plots
 
-speedup_plots = []
-self_relative_speedup_plots = []
-if not(virtual_report):
-    speedup_plots = generate_speedup_plots(mk_scheduler(scheduler_serial))
-    mk_self_relative_baseline = mk_cross(mk_scheduler(scheduler_taskparts),
-                                         mk_parameter(taskparts_num_workers_key, 1))
-    self_relative_speedup_plots = generate_speedup_plots(mk_self_relative_baseline,
-                                                         y_label = 'self relative speedup')
+# speedup_plots = []
+# self_relative_speedup_plots = []
+# if not(virtual_report):
+#     speedup_plots = generate_speedup_plots(mk_scheduler(scheduler_serial))
+#     mk_self_relative_baseline = mk_cross(mk_scheduler(scheduler_taskparts),
+#                                          mk_parameter(taskparts_num_workers_key, 1))
+#     self_relative_speedup_plots = generate_speedup_plots(mk_self_relative_baseline,
+#                                                          y_label = 'self relative speedup')
     
 
 # Plots for other measures
@@ -445,16 +397,16 @@ def get_percent_of_one_to_another(x_key, x_val, y_expr, y_key, ref_key):
         return 0.0
     return (st / tt) * 100.0
 
-pct_sleeping_plots = []
-if not(virtual_report):
-    pct_sleeping_plots = generate_basic_plots(
-        lambda x_key, x_val, y_expr, mk_plot_expr:
-        get_percent_of_one_to_another(x_key, x_val, y_expr, 'total_sleep_time', 'total_time'),
-        'percent of total time spent sleeping',
-        mk_append(mk_scheduler(scheduler_elastic_flat),
-                  mk_scheduler(scheduler_elastic_lifeline)),
-        ylim = [0, 100],
-        outfile_pdf_name = 'percent-of-total-time-spent-sleeping')
+# pct_sleeping_plots = []
+# if not(virtual_report):
+#     pct_sleeping_plots = generate_basic_plots(
+#         lambda x_key, x_val, y_expr, mk_plot_expr:
+#         get_percent_of_one_to_another(x_key, x_val, y_expr, 'total_sleep_time', 'total_time'),
+#         'percent of total time spent sleeping',
+#         mk_append(mk_scheduler(scheduler_elastic_flat),
+#                   mk_scheduler(scheduler_elastic_lifeline)),
+#         ylim = [0, 100],
+#         outfile_pdf_name = 'percent-of-total-time-spent-sleeping')
 
 # Markdown/PDF global report
 # ==========================
@@ -478,16 +430,6 @@ def string_of_benchmark(e):
 table_md_file = 'report.md'
 table_pdf_file = 'report.pdf'
 
-def mk_basic_table(results, result_key, columns):
-    t = mk_table(results,
-                 mk_benchmarks,
-                 mk_parameters(scheduler_key, columns),
-                 gen_row_str = string_of_benchmark,
-                 gen_cell_str = lambda mk_row, mk_col, row:
-                 mean_of_key_in_row(row, result_key),
-                 column_titles = columns) + '\n'
-    return t
-
 if not(virtual_report):
     with open(table_md_file, 'w') as f:
 
@@ -507,58 +449,68 @@ if not(virtual_report):
         print(tabulate.tabulate([[k, benchmark_descriptions[k]['descr']] for k in benchmark_descriptions],
                                 ['benchmark', 'description']) + '\n', file=f)
 
-        print('# Raw data of runs at scale\n', file=f)
+        print('# As good as Cilk Plus\n', file=f)
         print('## Wall-clock time\n', file=f)
-        print(mk_basic_table(results_at_scale, taskparts_exectime_key, parallel_schedulers),
+        print(gen_elastic_table(agac_results,
+                                rows_expr = mk_agac_benchmarks, 
+                                gen_cell = lambda row_expr, col_expr, row:
+                                gen_table_cell_of_key('exectime', row),
+                                row_title = 'benchmark,input'),
               file=f)
-        print('## Total time\n', file=f)
-        print(mk_basic_table(results_at_scale, taskparts_total_time_key, parallel_schedulers),
-              file=f)
-        print('## Total work time\n', file=f)
-        print(mk_basic_table(results_at_scale, taskparts_total_work_time_key, parallel_schedulers),
-              file=f)
-        print('## Total idle time\n', file=f)
-        print(mk_basic_table(results_at_scale, taskparts_total_idle_time_key, parallel_schedulers),
-              file=f)
-        print('## Total sleep time\n', file=f)
-        print(mk_basic_table(results_at_scale, taskparts_total_sleep_time_key, taskparts_schedulers),
-              file=f)
-
-        print('## User time\n', file=f)
-        print(mk_basic_table(results_at_scale, taskparts_usertime_key, parallel_schedulers),
-              file=f)
-        print('## System time\n', file=f)
-        print(mk_basic_table(results_at_scale, taskparts_systime_key, parallel_schedulers),
-              file=f)
-        print('## Utilization (percent of total time / 100)\n', file=f)
-        print(mk_basic_table(results_at_scale, taskparts_utilization_key, parallel_schedulers),
-              file=f)
-        print('## Number of steals\n', file=f)
-        print(mk_basic_table(results_at_scale, taskparts_nb_steals_key, parallel_schedulers),
-              file=f)
-        print('## Maximum resident set size\n', file=f)
-        print(mk_basic_table(results_at_scale, taskparts_maxrss_key, parallel_schedulers),
+        print('## Usertime\n', file=f)
+        print(gen_elastic_table(agac_results,
+                                rows_expr = mk_agac_benchmarks, 
+                                gen_cell = lambda row_expr, col_expr, row:
+                                gen_table_cell_of_key('usertime', row),
+                                row_title = 'benchmark,input'),
               file=f)
 
-        print('# Speedup plots\n', file=f)
-        print('The baseline for each curve is the serial version of the benchmark.\n', file=f)
-        for plot in speedup_plots:
-            plot_pdf_path = plot['plot']['default_outfile_pdf_name'] + '.pdf'
-            print('![](' + plot_pdf_path + '){ width=100% }\n', file=f)
+        print('# Impact of sequential I/O\n', file=f)
+        print('## Usertime\n', file=f)
+        print(gen_elastic_table(iio_results,
+                                rows_expr = mk_iio_benchmarks, 
+                                gen_cell = lambda row_expr, col_expr, row:
+                                gen_table_cell_of_key('usertime', row),
+                                row_title = 'benchmark,input'),
+              file=f)
 
-        print('# Self-relative speedup plots\n', file=f)
-        print('The baseline for each curve is the taskparts parallel version of the benchmark, run on $P = 1$ cores.\n', file=f)
-        for plot in speedup_plots:
-            plot_pdf_path = plot['plot']['default_outfile_pdf_name'] + '.pdf'
-            print('![](' + plot_pdf_path + '){ width=100% }\n', file=f)
+        print('# Impact of low parallelism\n', file=f)
+        print('## Usertime\n', file=f)
+        print(gen_elastic_table(ilp_results,
+                                rows_expr = mk_ilp_benchmarks, 
+                                gen_cell = lambda row_expr, col_expr, row:
+                                gen_table_cell_of_key('usertime', row),
+                                row_title = 'benchmark,input,grain'),
+              file=f)
 
-        print('# Percent of time spent sleeping plots\n', file=f)
-        for plot in pct_sleeping_plots:
-            plot_pdf_path = plot['plot']['default_outfile_pdf_name'] + '.pdf'
-            print('![](' + plot_pdf_path + '){ width=100% }\n', file=f)
+        print('# Impact of sequential and parallel phases\n', file=f)
+        print('## Usertime\n', file=f)
+        print(gen_elastic_table(ipw_results,
+                                rows_expr = mk_ipw_benchmarks, 
+                                gen_cell = lambda row_expr, col_expr, row:
+                                gen_table_cell_of_key('usertime', row),
+                                row_title = 'benchmark,input,repeat'),
+              file=f)
+        
+        # print('# Speedup plots\n', file=f)
+        # print('The baseline for each curve is the serial version of the benchmark.\n', file=f)
+        # for plot in speedup_plots:
+        #     plot_pdf_path = plot['plot']['default_outfile_pdf_name'] + '.pdf'
+        #     print('![](' + plot_pdf_path + '){ width=100% }\n', file=f)
+
+        # print('# Self-relative speedup plots\n', file=f)
+        # print('The baseline for each curve is the taskparts parallel version of the benchmark, run on $P = 1$ cores.\n', file=f)
+        # for plot in speedup_plots:
+        #     plot_pdf_path = plot['plot']['default_outfile_pdf_name'] + '.pdf'
+        #     print('![](' + plot_pdf_path + '){ width=100% }\n', file=f)
+
+        # print('# Percent of time spent sleeping plots\n', file=f)
+        # for plot in pct_sleeping_plots:
+        #     plot_pdf_path = plot['plot']['default_outfile_pdf_name'] + '.pdf'
+        #     print('![](' + plot_pdf_path + '){ width=100% }\n', file=f)
 
         print('# Notes/todos\n', file=f)
-        print('- implement trivial elastic policy, which resembles the algorithm used by the GHC GC... or maybe instead benchmark against variant of ABP that calls yield() after failed steal attempts', file=f)
+        print('- implement trivial elastic policy, which resembles the algorithm used by the GHC GC... or maybe instead benchmark against variant of ABP that calls yield() after failed steal attempts?', file=f)
         print('- introduce elastic + sleep by spinning?', file=f)
         print('- introduce elastic + real concurrent random set?', file=f)
         print('- randomize benchmark run order to avoid interactions with the OS scheduler', file=f)
@@ -574,3 +526,31 @@ if not(virtual_report):
     stdout, stderr = process.communicate()
     print('Generated result tables in ' + table_md_file)
     print('Generated result tables in ' + table_pdf_file)
+
+# Safe space
+    
+# Time breakdown bar plots
+# ========================
+
+# if not(virtual_report):
+#     def get_y_vals(expr, x_expr, y_val):
+#         rs = []
+#         for x_row in genfunc_expr_by_row(x_expr):
+#             x_val = eval(mk_take_kvp(expr, x_row))
+#             for y_row in genfunc_expr_by_row(y_val):
+#                 y_key = y_row['value'][0][0]['key']
+#                 ys = select_from_expr_by_key(x_val, y_key)
+#                 y = 0.0
+#                 if ys != []:
+#                     y = mean(ys)
+#                 rs += [y]
+#         return rs
+#     for scheduler in [scheduler_elastic_flat, scheduler_elastic_lifeline, scheduler_taskparts]:
+#         barplot = mk_stacked_barplot(mk_take_kvp(mk_taskparts_num_workers(max_num_workers),
+#                                                  mk_take_kvp(all_results, mk_scheduler(scheduler))),
+#                                      mk_benchmarks,
+#                                      mk_append_sequence([mk_parameter('total_work_time', 'number'),
+#                                                          mk_parameter('total_idle_time', 'number'),
+#                                                          mk_parameter('total_sleep_time', 'number')]),
+#                                      get_y_vals = get_y_vals)
+#         output_barplot(barplot, outfile = scheduler)

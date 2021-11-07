@@ -227,9 +227,12 @@ clean:
 
 BENCHMARKS=\
 	samplesort \
+	quicksort \
 	quickhull \
 	removeduplicates \
-	suffixarray
+	suffixarray \
+	mis \
+	histogram
 
 	# bfs \
 	# fib \

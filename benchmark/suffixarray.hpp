@@ -27,7 +27,7 @@ using uchar = unsigned char;
 
 parlay::sequence<uchar> ss;
 parlay::sequence<indexT> R;
-bool include_input_load;
+bool include_infile_load;
 
 auto load_input() {
   parlay::override_granularity = taskparts::cmdline::parse_or_default_long("override_granularity", 0);
@@ -37,7 +37,7 @@ auto load_input() {
 }
 
 auto benchmark_no_repeat() {
-  if (include_input_load) {
+  if (include_infile_load) {
     load_input();
   }
   R = suffixArray(ss);

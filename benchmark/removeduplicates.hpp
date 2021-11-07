@@ -53,7 +53,7 @@ auto gen_input() {
   }
   n = taskparts::cmdline::parse_or_default_long("n", dflt_n);
   taskparts::cmdline::dispatcher d;
-  d.add("random_ints", [&] {
+  d.add("random_int", [&] {
     in_type = benchIO::intType;
     size_t r = taskparts::cmdline::parse_or_default_long("r", n);
     a_ints = dataGen::randIntRange<int>((size_t) 0,n,r);
@@ -62,7 +62,7 @@ auto gen_input() {
     in_type = benchIO::stringT;
     taskparts_die("todo");
   });
-  d.dispatch_or_default("input", "random_ints");
+  d.dispatch_or_default("input", "random_int");
 }
 
 auto _benchmark() {
@@ -106,5 +106,13 @@ auto benchmark() {
     benchmark_no_nudges();
   } else {
     benchmark_with_nudges(repeat);
+  }
+}
+
+auto reset() {
+  if (in_type == benchIO::intType) {
+    res_ints.clear(); 
+  } else if (in_type == benchIO::stringT) {
+    res_strs.clear();
   }
 }
