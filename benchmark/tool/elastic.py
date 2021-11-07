@@ -26,7 +26,7 @@ def cross_product(xs, ys):
 # ========================
 
 # if True, do not run benchmarks
-virtual_runs = False
+virtual_runs = True
 # if True, do not generate reports
 virtual_report = False
 # any benchmark that takes > timeout seconds gets canceled; set to None if you dislike cancel culture
@@ -37,10 +37,15 @@ class Benchmark_mode(Enum):
     Benchmark_minimal = 2
 benchmark_mode = Benchmark_mode.Benchmark_minimal
 
-max_num_workers = 15
+def get_nb_cores():
+    _c = subprocess.Popen('hwloc-ls --only core | wc -l', shell = True, stdout = subprocess.PIPE)
+    child_stdout, _ = _c.communicate()
+    return int(child_stdout.decode('utf-8'))
+
+max_num_workers = get_nb_cores() - 1
 workers_step = 3 if benchmark_mode == Benchmark_mode.Benchmark_full else max_num_workers
 workers = list(map(lambda x: x + 1, range(0, max_num_workers, workers_step)))
-#workers = workers if 1 in workers else [1] + workers
+workers = workers if 1 in workers else [1] + workers
 workers = workers if max_num_workers in workers else workers + [max_num_workers]
 num_repeat = 3 if benchmark_mode == Benchmark_mode.Benchmark_full else 5
 warmup_secs = 3.0 if benchmark_mode == Benchmark_mode.Benchmark_full else 3.0
@@ -79,7 +84,7 @@ def mk_scheduler(m):
 
 ## Benchmark inputs
 ## ----------------
-
+ 
 experiment_key = 'experiment'
 experiment_agac_key = 'as_good_as_conventional'
 experiment_iio_key = 'impact_of_io'
@@ -451,14 +456,32 @@ if not(virtual_report):
 
         print('# As good as Cilk Plus\n', file=f)
         print('## Wall-clock time\n', file=f)
-        print(gen_elastic_table(agac_results,
+        print('### $P = ' + str(max_num_workers) + '$\n', file=f)
+        print(gen_elastic_table(agac_results_at_scale,
+                                rows_expr = mk_agac_benchmarks, 
+                                gen_cell = lambda row_expr, col_expr, row:
+                                gen_table_cell_of_key('exectime', row),
+                                row_title = 'benchmark,input'),
+              file=f)
+        print('### $P = ' + str(1) + '$\n', file=f)
+        print(gen_elastic_table(mk_take_kvp(agac_results,
+                                            mk_taskparts_num_workers(1)),
                                 rows_expr = mk_agac_benchmarks, 
                                 gen_cell = lambda row_expr, col_expr, row:
                                 gen_table_cell_of_key('exectime', row),
                                 row_title = 'benchmark,input'),
               file=f)
         print('## Usertime\n', file=f)
-        print(gen_elastic_table(agac_results,
+        print('### $P = ' + str(max_num_workers) + '$\n', file=f)
+        print(gen_elastic_table(agac_results_at_scale,
+                                rows_expr = mk_agac_benchmarks, 
+                                gen_cell = lambda row_expr, col_expr, row:
+                                gen_table_cell_of_key('usertime', row),
+                                row_title = 'benchmark,input'),
+              file=f)
+        print('### $P = ' + str(1) + '$\n', file=f)
+        print(gen_elastic_table(mk_take_kvp(agac_results,
+                                            mk_taskparts_num_workers(1)),
                                 rows_expr = mk_agac_benchmarks, 
                                 gen_cell = lambda row_expr, col_expr, row:
                                 gen_table_cell_of_key('usertime', row),
