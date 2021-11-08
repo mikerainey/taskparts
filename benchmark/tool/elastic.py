@@ -49,8 +49,8 @@ workers = workers if 1 in workers else [1] + workers
 workers = workers if max_num_workers - 1 in workers else workers + [max_num_workers - 1]
 workers = workers if max_num_workers in workers else workers + [max_num_workers]
 parallel_workers = [p for p in workers if p != 1]
-num_repeat = 3 if benchmark_mode == Benchmark_mode.Benchmark_full else 5
-warmup_secs = 3.0 if benchmark_mode == Benchmark_mode.Benchmark_full else 3.0
+num_repeat = 3 if benchmark_mode == Benchmark_mode.Benchmark_full else 3
+warmup_secs = 3.0 if benchmark_mode == Benchmark_mode.Benchmark_full else 1.0
 
 print('workers = ' + str(workers))
 
@@ -182,7 +182,7 @@ parlay_benchmark_descriptions = {
 }
 benchmark_descriptions = merge_dicts(parlay_benchmark_descriptions, tpal_benchmark_descriptions)
 if benchmark_mode == Benchmark_mode.Benchmark_minimal:
-    takes = ['samplesort','quicksort','quickhull','removeduplicates','suffixarray','mis','histogram']
+    takes = ['samplesort','quicksort','quickhull','removeduplicates','suffixarray','histogram']
     drops = []
 else:
     takes = benchmark_descriptions
@@ -420,27 +420,23 @@ def get_percent_of_one_to_another(x_key, x_val, y_expr, y_key, ref_key):
 # Markdown/PDF global report
 # ==========================
 
-#todo: replace this function by human_readable_string_of_expr
-def string_of_expr(e, col_to_str = lambda d: str(d), row_sep = '; '):
-    rs = rows_of(e)
-    n = len(rs)
-    i = 0
-    s = ''
-    for r in rs:
-        s += col_to_str(row_to_dictionary(r))
-        if i + 1 != n:
-            s += row_sep
-    return s
-
-def string_of_benchmark(e):
-    col_to_str = lambda d: ';'.join(map(str, d.values()))
-    return string_of_expr(e, col_to_str)
-
 table_md_file = 'report.md'
 table_pdf_file = 'report.pdf'
 
+metrics = ['exectime', 'usertime', 'systime'] #, 'total_work_time', 'total_idle_time', 'total_sleep_time']
+
 if not(virtual_report):
     with open(table_md_file, 'w') as f:
+
+        def print_elastic_table(results, rows_expr, key, w, row_title):
+            print('### $P = ' + str(w) + '$\n', file=f)
+            print(gen_elastic_table(mk_take_kvp(results,
+                                                mk_taskparts_num_workers(w)),
+                                    rows_expr = rows_expr, 
+                                    gen_cell = lambda row_expr, col_expr, row:
+                                    gen_table_cell_of_key(key, row),
+                                    row_title = row_title),
+                  file=f)
 
         print('% Elastic scheduling benchmark report', file=f) # title
         print('% Yue Yao, Sam Westrick, Mike Rainey, Umut Acar', file=f) # authors
@@ -459,62 +455,28 @@ if not(virtual_report):
                                 ['benchmark', 'description']) + '\n', file=f)
 
         print('# As good as Cilk Plus\n', file=f)
-        print('## Wall-clock time\n', file=f)
-        for w in workers:
-            print('### $P = ' + str(w) + '$\n', file=f)
-            print(gen_elastic_table(mk_take_kvp(agac_results,
-                                                mk_taskparts_num_workers(w)),
-                                    rows_expr = mk_agac_benchmarks, 
-                                    gen_cell = lambda row_expr, col_expr, row:
-                                    gen_table_cell_of_key('exectime', row),
-                                    row_title = 'benchmark,input'),
-                  file=f)
-        print('## Usertime\n', file=f)
-        for w in workers:
-            print('### $P = ' + str(w) + '$\n', file=f)
-            print(gen_elastic_table(mk_take_kvp(agac_results,
-                                                mk_taskparts_num_workers(w)),
-                                    rows_expr = mk_agac_benchmarks, 
-                                    gen_cell = lambda row_expr, col_expr, row:
-                                    gen_table_cell_of_key('usertime', row),
-                                    row_title = 'benchmark,input'),
-                  file=f)
+        for metric in metrics:
+            print('## ' + metric + '\n', file=f)
+            for w in workers:
+                print_elastic_table(agac_results, mk_agac_benchmarks, metric, w, 'benchmark,input')
 
         print('# Impact of sequential I/O\n', file=f)
-        print('## Usertime\n', file=f)
-        for w in parallel_workers:
-            print('### $P = ' + str(w) + '$\n', file=f)
-            print(gen_elastic_table(mk_take_kvp(iio_results,
-                                                mk_taskparts_num_workers(w)),
-                                    rows_expr = mk_iio_benchmarks, 
-                                    gen_cell = lambda row_expr, col_expr, row:
-                                    gen_table_cell_of_key('usertime', row),
-                                    row_title = 'benchmark,input'),
-                  file=f)
+        for metric in metrics:
+            print('## ' + metric + '\n', file=f)
+            for w in parallel_workers:
+                print_elastic_table(iio_results, mk_iio_benchmarks, metric, w, 'benchmark,input')
 
         print('# Impact of low parallelism\n', file=f)
-        print('## Usertime\n', file=f)
-        for w in parallel_workers:
-            print('### $P = ' + str(w) + '$\n', file=f)
-            print(gen_elastic_table(mk_take_kvp(ilp_results,
-                                                mk_taskparts_num_workers(w)),
-                                    rows_expr = mk_ilp_benchmarks, 
-                                    gen_cell = lambda row_expr, col_expr, row:
-                                    gen_table_cell_of_key('usertime', row),
-                                    row_title = 'benchmark,input,grain'),
-                  file=f)
+        for metric in metrics:
+            print('## ' + metric + '\n', file=f)
+            for w in parallel_workers:
+                print_elastic_table(ilp_results, mk_ilp_benchmarks, metric, w, 'benchmark,input,grain')
 
         print('# Impact of sequential and parallel phases\n', file=f)
-        print('## Usertime\n', file=f)
-        for w in parallel_workers:
-            print('### $P = ' + str(w) + '$\n', file=f)
-            print(gen_elastic_table(mk_take_kvp(ipw_results,
-                                                mk_taskparts_num_workers(w)),
-                                    rows_expr = mk_ipw_benchmarks, 
-                                    gen_cell = lambda row_expr, col_expr, row:
-                                    gen_table_cell_of_key('usertime', row),
-                                    row_title = 'benchmark,input,repeat'),
-                  file=f)
+        for metric in metrics:
+            print('## ' + metric + '\n', file=f)
+            for w in parallel_workers:
+                print_elastic_table(ipw_results, mk_ipw_benchmarks, metric, w, 'benchmark,input,repeat')
         
         # print('# Speedup plots\n', file=f)
         # print('The baseline for each curve is the serial version of the benchmark.\n', file=f)
@@ -578,3 +540,19 @@ if not(virtual_report):
 #                                                          mk_parameter('total_sleep_time', 'number')]),
 #                                      get_y_vals = get_y_vals)
 #         output_barplot(barplot, outfile = scheduler)
+
+#todo: replace this function by human_readable_string_of_expr
+# def string_of_expr(e, col_to_str = lambda d: str(d), row_sep = '; '):
+#     rs = rows_of(e)
+#     n = len(rs)
+#     i = 0
+#     s = ''
+#     for r in rs:
+#         s += col_to_str(row_to_dictionary(r))
+#         if i + 1 != n:
+#             s += row_sep
+#     return s
+
+# def string_of_benchmark(e):
+#     col_to_str = lambda d: ';'.join(map(str, d.values()))
+#     return string_of_expr(e, col_to_str)
