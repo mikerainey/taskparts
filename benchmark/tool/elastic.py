@@ -3,7 +3,7 @@ from taskparts import *
 from benchmark import *
 from plot import *
 from table import *
-from barplot import *
+#from barplot import *
 import itertools
 import subprocess
 import tabulate

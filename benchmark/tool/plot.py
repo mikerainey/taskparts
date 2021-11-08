@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
-import statistics, pathvalidate
+import statistics
+#import pathvalidate
 from matplotlib.backends.backend_pdf import PdfPages
 from parameter import *
 
@@ -59,7 +60,7 @@ def mk_plots(expr,
         plot_row_str = ",".join("{}={}".format(*i) for i in plot_row_dict.items())
         opt_args_plot['title'] = plot_row_str
         n = y_label + '-' + plot_row_str
-        opt_args_plot['default_outfile_pdf_name'] = pathvalidate.sanitize_filename(n.replace(' ', '-'))
+#        opt_args_plot['default_outfile_pdf_name'] = pathvalidate.sanitize_filename(n.replace(' ', '-'))
         plots += [mk_plot(mk_take_kvp(expr, plot_expr),
                           x_key, x_vals, get_y_val, y_label, curves_expr, opt_args_plot)]
     return plots
