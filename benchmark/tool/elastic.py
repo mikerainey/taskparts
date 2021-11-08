@@ -182,7 +182,7 @@ parlay_benchmark_descriptions = {
 }
 benchmark_descriptions = merge_dicts(parlay_benchmark_descriptions, tpal_benchmark_descriptions)
 if benchmark_mode == Benchmark_mode.Benchmark_minimal:
-    takes = ['quickhull'] #['samplesort','quicksort','quickhull','removeduplicates','suffixarray','mis','histogram']
+    takes = ['samplesort','quicksort','quickhull','removeduplicates','suffixarray','mis','histogram']
     drops = []
 else:
     takes = benchmark_descriptions
