@@ -11,8 +11,10 @@ let
 #                  pkgs.python38Packages.pandas
                 ];
   };
+  jemalloc = pkgs.jemalloc450;
 in
 
 pkgs.mkShell {
   buildInputs = [ customPython pkgs.pandoc pkgs.texlive.combined.scheme-small pkgs.hwloc ];
+  LD_PRELOAD="${jemalloc}/lib/libjemalloc.so";
 }
