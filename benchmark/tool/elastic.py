@@ -26,7 +26,7 @@ def cross_product(xs, ys):
 # ========================
 
 # if True, do not run benchmarks
-virtual_runs = True
+virtual_runs = False
 # if True, do not generate reports
 virtual_report = False
 # any benchmark that takes > timeout seconds gets canceled; set to None if you dislike cancel culture
@@ -37,18 +37,22 @@ class Benchmark_mode(Enum):
     Benchmark_minimal = 2
 benchmark_mode = Benchmark_mode.Benchmark_minimal
 
-def get_nb_cores():
+def get_num_cores():
     _c = subprocess.Popen('hwloc-ls --only core | wc -l', shell = True, stdout = subprocess.PIPE)
     child_stdout, _ = _c.communicate()
     return int(child_stdout.decode('utf-8'))
 
-max_num_workers = get_nb_cores() - 1
+max_num_workers = get_num_cores()
 workers_step = 3 if benchmark_mode == Benchmark_mode.Benchmark_full else max_num_workers
 workers = list(map(lambda x: x + 1, range(0, max_num_workers, workers_step)))
 workers = workers if 1 in workers else [1] + workers
+workers = workers if max_num_workers - 1 in workers else workers + [max_num_workers - 1]
 workers = workers if max_num_workers in workers else workers + [max_num_workers]
+parallel_workers = [p for p in workers if p != 1]
 num_repeat = 3 if benchmark_mode == Benchmark_mode.Benchmark_full else 5
 warmup_secs = 3.0 if benchmark_mode == Benchmark_mode.Benchmark_full else 3.0
+
+print('workers = ' + str(workers))
 
 ## Schedulers
 ## ----------
@@ -178,7 +182,7 @@ parlay_benchmark_descriptions = {
 }
 benchmark_descriptions = merge_dicts(parlay_benchmark_descriptions, tpal_benchmark_descriptions)
 if benchmark_mode == Benchmark_mode.Benchmark_minimal:
-    takes = ['samplesort','quicksort','quickhull','removeduplicates','suffixarray','mis','histogram']
+    takes = ['quickhull'] #['samplesort','quicksort','quickhull','removeduplicates','suffixarray','mis','histogram']
     drops = []
 else:
     takes = benchmark_descriptions
@@ -238,15 +242,15 @@ mk_par_agac = (mk_cross_sequence([mk_benchmarks_for_experiment(experiment_agac_k
 
 mk_par_iio = (mk_cross_sequence([mk_benchmarks_for_experiment(experiment_iio_key),
                                  mk_par_params,
-                                 mk_taskparts_num_workers(max_num_workers)])
+                                 mk_parameters(taskparts_num_workers_key, parallel_workers)])
               if experiment_iio_key in experiments_to_run else mk_unit())
 mk_par_ilp = (mk_cross_sequence([mk_benchmarks_for_experiment(experiment_ilp_key),
                                  mk_par_params,
-                                 mk_taskparts_num_workers(max_num_workers)])
+                                 mk_parameters(taskparts_num_workers_key, parallel_workers)])
               if experiment_ilp_key in experiments_to_run else mk_unit())
 mk_par_ipw = (mk_cross_sequence([mk_benchmarks_for_experiment(experiment_ipw_key),
                                  mk_par_params,
-                                 mk_taskparts_num_workers(max_num_workers)])
+                                 mk_parameters(taskparts_num_workers_key, parallel_workers)])
               if experiment_ipw_key in experiments_to_run else mk_unit())
 
 commands_parallel = mk_append_sequence([mk_par_agac, mk_par_iio, mk_par_ilp, mk_par_ipw])
@@ -456,64 +460,61 @@ if not(virtual_report):
 
         print('# As good as Cilk Plus\n', file=f)
         print('## Wall-clock time\n', file=f)
-        print('### $P = ' + str(max_num_workers) + '$\n', file=f)
-        print(gen_elastic_table(agac_results_at_scale,
-                                rows_expr = mk_agac_benchmarks, 
-                                gen_cell = lambda row_expr, col_expr, row:
-                                gen_table_cell_of_key('exectime', row),
-                                row_title = 'benchmark,input'),
-              file=f)
-        print('### $P = ' + str(1) + '$\n', file=f)
-        print(gen_elastic_table(mk_take_kvp(agac_results,
-                                            mk_taskparts_num_workers(1)),
-                                rows_expr = mk_agac_benchmarks, 
-                                gen_cell = lambda row_expr, col_expr, row:
-                                gen_table_cell_of_key('exectime', row),
-                                row_title = 'benchmark,input'),
-              file=f)
+        for w in workers:
+            print('### $P = ' + str(w) + '$\n', file=f)
+            print(gen_elastic_table(mk_take_kvp(agac_results,
+                                                mk_taskparts_num_workers(w)),
+                                    rows_expr = mk_agac_benchmarks, 
+                                    gen_cell = lambda row_expr, col_expr, row:
+                                    gen_table_cell_of_key('exectime', row),
+                                    row_title = 'benchmark,input'),
+                  file=f)
         print('## Usertime\n', file=f)
-        print('### $P = ' + str(max_num_workers) + '$\n', file=f)
-        print(gen_elastic_table(agac_results_at_scale,
-                                rows_expr = mk_agac_benchmarks, 
-                                gen_cell = lambda row_expr, col_expr, row:
-                                gen_table_cell_of_key('usertime', row),
-                                row_title = 'benchmark,input'),
-              file=f)
-        print('### $P = ' + str(1) + '$\n', file=f)
-        print(gen_elastic_table(mk_take_kvp(agac_results,
-                                            mk_taskparts_num_workers(1)),
-                                rows_expr = mk_agac_benchmarks, 
-                                gen_cell = lambda row_expr, col_expr, row:
-                                gen_table_cell_of_key('usertime', row),
-                                row_title = 'benchmark,input'),
-              file=f)
+        for w in workers:
+            print('### $P = ' + str(w) + '$\n', file=f)
+            print(gen_elastic_table(mk_take_kvp(agac_results,
+                                                mk_taskparts_num_workers(w)),
+                                    rows_expr = mk_agac_benchmarks, 
+                                    gen_cell = lambda row_expr, col_expr, row:
+                                    gen_table_cell_of_key('usertime', row),
+                                    row_title = 'benchmark,input'),
+                  file=f)
 
         print('# Impact of sequential I/O\n', file=f)
         print('## Usertime\n', file=f)
-        print(gen_elastic_table(iio_results,
-                                rows_expr = mk_iio_benchmarks, 
-                                gen_cell = lambda row_expr, col_expr, row:
-                                gen_table_cell_of_key('usertime', row),
-                                row_title = 'benchmark,input'),
-              file=f)
+        for w in parallel_workers:
+            print('### $P = ' + str(w) + '$\n', file=f)
+            print(gen_elastic_table(mk_take_kvp(iio_results,
+                                                mk_taskparts_num_workers(w)),
+                                    rows_expr = mk_iio_benchmarks, 
+                                    gen_cell = lambda row_expr, col_expr, row:
+                                    gen_table_cell_of_key('usertime', row),
+                                    row_title = 'benchmark,input'),
+                  file=f)
 
         print('# Impact of low parallelism\n', file=f)
         print('## Usertime\n', file=f)
-        print(gen_elastic_table(ilp_results,
-                                rows_expr = mk_ilp_benchmarks, 
-                                gen_cell = lambda row_expr, col_expr, row:
-                                gen_table_cell_of_key('usertime', row),
-                                row_title = 'benchmark,input,grain'),
-              file=f)
+        for w in parallel_workers:
+            print('### $P = ' + str(w) + '$\n', file=f)
+            print(gen_elastic_table(mk_take_kvp(ilp_results,
+                                                mk_taskparts_num_workers(w)),
+                                    rows_expr = mk_ilp_benchmarks, 
+                                    gen_cell = lambda row_expr, col_expr, row:
+                                    gen_table_cell_of_key('usertime', row),
+                                    row_title = 'benchmark,input,grain'),
+                  file=f)
 
         print('# Impact of sequential and parallel phases\n', file=f)
         print('## Usertime\n', file=f)
-        print(gen_elastic_table(ipw_results,
-                                rows_expr = mk_ipw_benchmarks, 
-                                gen_cell = lambda row_expr, col_expr, row:
-                                gen_table_cell_of_key('usertime', row),
-                                row_title = 'benchmark,input,repeat'),
-              file=f)
+        for w in parallel_workers:
+            print('### $P = ' + str(w) + '$\n', file=f)
+            print(gen_elastic_table(mk_take_kvp(ipw_results,
+                                                mk_taskparts_num_workers(w)),
+                                    rows_expr = mk_ipw_benchmarks, 
+                                    gen_cell = lambda row_expr, col_expr, row:
+                                    gen_table_cell_of_key('usertime', row),
+                                    row_title = 'benchmark,input,repeat'),
+                  file=f)
         
         # print('# Speedup plots\n', file=f)
         # print('The baseline for each curve is the serial version of the benchmark.\n', file=f)
