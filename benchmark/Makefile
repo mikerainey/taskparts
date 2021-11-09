@@ -217,7 +217,7 @@ CILK_COMMON_PREFIX=-fcilkplus -lcilkrts -DCILK -ldl -DPARLAY_CILK
 	$(CXX) $(OPT_PREFIX) $(CILK_COMMON_PREFIX) -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
 # TODO: enable cilk w/ stats
 %.cilk.sta: %.cilk.cpp $(INCLUDE_FILES) install_folder
-	$(CXX) $(OPT_PREFIX) $(CILK_COMMON_PREFIX) $(CILKRTS_STATS_PREFIX) -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+	$(CXX) $(OPT_PREFIX) -o $(INSTALL_PATH)/$@ $< $(CILKRTS_STATS_PREFIX) $(CILK_COMMON_PREFIX) $(LINKER_PREFIX)
 %.cilk.dbg: %.cilk.cpp $(INCLUDE_FILES) install_folder
 	$(CXX) $(DBG_PREFIX) $(CILK_COMMON_PREFIX) -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
 
