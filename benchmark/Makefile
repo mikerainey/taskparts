@@ -47,10 +47,19 @@ INCLUDE_PREFIX=\
 	$(MINI_UTS_INCLUDE_PREFIX) \
 	$(CHUNKEDSEQ_PREFIX)
 
+ifeq (, $(shell which jemalloc-config))
+JEMALLOC =
+else
+JEMALLOCLD = $(shell jemalloc-config --libdir)
+JEMALLOC = -L$(JEMALLOCLD) -ljemalloc
+endif
+
+# jemalloc needs to go last
 LINKER_PREFIX=\
 	-pthread \
 	$(HWLOC_LIBRARY_PREFIX) \
-	$(MINI_UTS_LINKER_FLAGS)
+	$(MINI_UTS_LINKER_FLAGS) \
+	$(JEMALLOC)
 
 # WARNING: flag -fno-stack-protector needed for native fork join to
 # compile binaries that do not segfault
