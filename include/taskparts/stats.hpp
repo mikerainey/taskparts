@@ -189,7 +189,7 @@ public:
       total_sleep_time += t.total_sleep_time;
     }
     double relative_idle =
-      cycles::seconds_of_cycles(total_idle_time + total_sleep_time) / cumulated_time;
+      cycles::seconds_of_cycles(total_idle_time) / cumulated_time;
     summary.total_work_time = total_work_time;
     summary.total_idle_time = total_idle_time;
     summary.total_sleep_time = total_sleep_time;
