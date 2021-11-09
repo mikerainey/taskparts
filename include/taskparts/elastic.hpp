@@ -55,6 +55,13 @@ public:
   }
 };
 
+#ifndef TASKPARTS_USE_SPINNING_SEMAPHORE
+using dflt_semaphore = semaphore;
+#else
+using dflt_semaphore = spinning_binary_semaphore;
+#endif
+  
+
 /*---------------------------------------------------------------------*/
 /* Atomic status word for elastic work stealing */
   
@@ -127,7 +134,7 @@ public:
 /*---------------------------------------------------------------------*/
 /* Elastic work stealing */
 
-template <typename Stats, typename Logging, typename Semaphore=semaphore>
+template <typename Stats, typename Logging, typename Semaphore=dflt_semaphore>
 class elastic {
 public:
 
@@ -226,7 +233,7 @@ template <typename Stats, typename Logging, typename Semaphore>
 perworker::array<typename elastic<Stats,Logging,Semaphore>::elastic_fields_type> elastic<Stats,Logging,Semaphore>::fields;
 
 // Elsatic WS without Lifelines 
-template <typename Stats, typename Logging, typename semaphore=semaphore, typename spinlock=spinlock>
+template <typename Stats, typename Logging, typename semaphore=dflt_semaphore, typename spinlock=spinlock>
 class elastic_flat {
 public:
   static constexpr bool override_rand_worker = true;
