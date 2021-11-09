@@ -1,20 +1,19 @@
 # Creates an environment prepared for taskparts.
 #
-# By default, the environment uses clang/llvm instead of GCC. To
-# use GCC instead, use the following:
+# By default, the environment uses GCC version 7, which is the final version
+# to include support for Cilk Plus
+# To instead use the default system compiler, use the following:
 #   $ nix-shell --arg stdenv '(import <nixpkgs> {}).stdenv'
-# If you need to use Cilk, then use the following:
-#   $ nix-shell --arg stdenv '(import <nixpkgs> {}).gcc7Stdenv'
+# If you want to use Clang, then use the following:
+#   $ nix-shell --arg stdenv '(import <nixpkgs> {}).clangStdenv'
 #
 # If you don't want to use jemalloc:
 #   $ nix-shell --arg jemalloc null
-# For full debugging:
-#   $ nix-shell --arg stdenv '(import <nixpkgs> {}).stdenv' --arg jemalloc null
 
 # later: investigate idiomatic way to share code between this file and debug.nix
 
 { pkgs   ? import <nixpkgs> {},
-  stdenv ? pkgs.clangStdenv,
+  stdenv ? pkgs.gcc7Stdenv,
   hwloc ? pkgs.hwloc,
   jemalloc ? pkgs.jemalloc450,
   cilk-stats-rts ? import ../cilk-plus-rts-with-stats {}
