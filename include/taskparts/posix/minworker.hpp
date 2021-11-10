@@ -46,4 +46,12 @@ public:
 
 };
 
+auto worker_yield() {
+#if defined(TASKPARTS_MULTIPROGRAMMED)
+  std::this_thread::yield();
+#else
+  cycles::spin_for(1000);
+#endif
+}
+
 } // end namespace

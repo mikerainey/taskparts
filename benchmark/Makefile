@@ -21,7 +21,6 @@ MINI_UTS_INCLUDE_PREFIX?=-I $(TASKPARTS_PATH)/../mini-uts/
 MINI_UTS_LINKER_FLAGS?=-lm
 CHUNKEDSEQ_PREFIX?=-I $(TASKPARTS_PATH)/../chunkedseq/include
 CILKRTS_STATS_PREFIX?=
-ELASTIC_EXTRAS_PREFIX?=
 
 .PHONY: install_folder
 install_folder:
@@ -70,8 +69,7 @@ COMMON_COMPILE_PREFIX=\
 	-m64 \
 	-fno-stack-protector \
 	-DTASKPARTS_POSIX \
-	-DTASKPARTS_X64 \
-	$(ELASTIC_EXTRAS_PREFIX)
+	-DTASKPARTS_X64
 
 OPT_COMPILE_PREFIX=\
 	$(COMMON_COMPILE_PREFIX) \
@@ -120,8 +118,8 @@ DBG_PREFIX=\
 %.elision.dbg: %.cpp $(INCLUDE_FILES) install_folder
 	$(CXX) $(DBG_PREFIX) -DTASKPARTS_SERIAL_ELISION -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
 
-# Binaries for serial elision
-# ---------------------------
+# Binaries for serial-by-construction programs
+# --------------------------------------------
 
 PARLAYLIB_SERIAL_PREFIX=-DPARLAY_SEQUENTIAL -DPARLAY_USE_STD_ALLOC
 SERIAL_PREFIX=-DTASKPARTS_SERIAL -DTASKPARTS_SERIAL_ELISION $(PARLAYLIB_SERIAL_PREFIX)
@@ -154,6 +152,7 @@ SERIAL_PREFIX=-DTASKPARTS_SERIAL -DTASKPARTS_SERIAL_ELISION $(PARLAYLIB_SERIAL_P
 # Binaries for elastic scheduling
 # -------------------------------
 
+# Lifeline
 %.elastic_lifeline.opt: %.cpp $(INCLUDE_FILES) install_folder
 	$(CXX) $(OPT_PREFIX) -DTASKPARTS_ELASTIC_LIFELINE -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
 %.elastic_lifeline.sta: %.cpp $(INCLUDE_FILES) install_folder
@@ -162,15 +161,6 @@ SERIAL_PREFIX=-DTASKPARTS_SERIAL -DTASKPARTS_SERIAL_ELISION $(PARLAYLIB_SERIAL_P
 	$(CXX) $(LOG_PREFIX) -DTASKPARTS_ELASTIC_LIFELINE -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
 %.elastic_lifeline.dbg: %.cpp $(INCLUDE_FILES) install_folder
 	$(CXX) $(DBG_PREFIX) -DTASKPARTS_ELASTIC_LIFELINE -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
-
-%.elastic_lifeline_elision.opt: %.cpp $(INCLUDE_FILES) install_folder
-	$(CXX) $(OPT_PREFIX) -DTASKPARTS_ELASTIC_LIFELINE -DTASKPARTS_SERIAL_ELISION -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
-%.elastic_lifeline_elision.sta: %.cpp $(INCLUDE_FILES) install_folder
-	$(CXX) $(STA_PREFIX) -DTASKPARTS_ELASTIC_LIFELINE -DTASKPARTS_SERIAL_ELISION -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
-%.elastic_lifeline_elision.log: %.cpp $(INCLUDE_FILES) install_folder
-	$(CXX) $(LOG_PREFIX) -DTASKPARTS_ELASTIC_LIFELINE -DTASKPARTS_SERIAL_ELISION -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
-%.elastic_lifeline_elision.dbg: %.cpp $(INCLUDE_FILES) install_folder
-	$(CXX) $(DBG_PREFIX) -DTASKPARTS_ELASTIC_LIFELINE -DTASKPARTS_SERIAL_ELISION -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
 
 %.elastic_lifeline_tpal.opt: %.tpal.cpp $(INCLUDE_FILES) install_folder
 	$(CXX) $(OPT_PREFIX) -DTASKPARTS_ELASTIC_LIFELINE -DTASKPARTS_TPALRTS $(basename $<)_manual.s -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
@@ -181,8 +171,26 @@ SERIAL_PREFIX=-DTASKPARTS_SERIAL -DTASKPARTS_SERIAL_ELISION $(PARLAYLIB_SERIAL_P
 %.elastic_lifeline_tpal.dbg: %.tpal.cpp $(INCLUDE_FILES) install_folder
 	$(CXX) $(DBG_PREFIX) -DTASKPARTS_ELASTIC_LIFELINE -DTASKPARTS_TPALRTS $(basename $<)_manual.s -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
 
+# Lifeline (spin version)
+%.elastic_lifeline_spin.opt: %.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(OPT_PREFIX) -DTASKPARTS_ELASTIC_LIFELINE -DTASKPARTS_USE_SPINNING_SEMAPHORE -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+%.elastic_lifeline_spin.sta: %.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(STA_PREFIX) -DTASKPARTS_ELASTIC_LIFELINE -DTASKPARTS_USE_SPINNING_SEMAPHORE -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+%.elastic_lifeline_spin.log: %.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(LOG_PREFIX) -DTASKPARTS_ELASTIC_LIFELINE -DTASKPARTS_USE_SPINNING_SEMAPHORE -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+%.elastic_lifeline_spin.dbg: %.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(DBG_PREFIX) -DTASKPARTS_ELASTIC_LIFELINE -DTASKPARTS_USE_SPINNING_SEMAPHORE -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
 
+%.elastic_lifeline_spin_tpal.opt: %.tpal.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(OPT_PREFIX) -DTASKPARTS_ELASTIC_LIFELINE -DTASKPARTS_USE_SPINNING_SEMAPHORE -DTASKPARTS_TPALRTS $(basename $<)_manual.s -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+%.elastic_lifeline_spin_tpal.sta: %.tpal.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(STA_PREFIX) -DTASKPARTS_ELASTIC_LIFELINE -DTASKPARTS_USE_SPINNING_SEMAPHORE -DTASKPARTS_TPALRTS $(basename $<)_manual.s -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+%.elastic_lifeline_spin_tpal.log: %.tpal.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(LOG_PREFIX) -DTASKPARTS_ELASTIC_LIFELINE -DTASKPARTS_USE_SPINNING_SEMAPHORE -DTASKPARTS_TPALRTS $(basename $<)_manual.s -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+%.elastic_lifeline_spin_tpal.dbg: %.tpal.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(DBG_PREFIX) -DTASKPARTS_ELASTIC_LIFELINE -DTASKPARTS_USE_SPINNING_SEMAPHORE -DTASKPARTS_TPALRTS $(basename $<)_manual.s -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
 
+# Flat
 %.elastic_flat.opt: %.cpp $(INCLUDE_FILES) install_folder
 	$(CXX) $(OPT_PREFIX) -DTASKPARTS_ELASTIC_FLAT -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
 %.elastic_flat.sta: %.cpp $(INCLUDE_FILES) install_folder
@@ -192,15 +200,6 @@ SERIAL_PREFIX=-DTASKPARTS_SERIAL -DTASKPARTS_SERIAL_ELISION $(PARLAYLIB_SERIAL_P
 %.elastic_flat.dbg: %.cpp $(INCLUDE_FILES) install_folder
 	$(CXX) $(DBG_PREFIX) -DTASKPARTS_ELASTIC_FLAT -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
 
-%.elastic_flat_elision.opt: %.cpp $(INCLUDE_FILES) install_folder
-	$(CXX) $(OPT_PREFIX) -DTASKPARTS_ELASTIC_FLAT -DTASKPARTS_SERIAL_ELISION -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
-%.elastic_flat_elision.sta: %.cpp $(INCLUDE_FILES) install_folder
-	$(CXX) $(STA_PREFIX) -DTASKPARTS_ELASTIC_FLAT -DTASKPARTS_SERIAL_ELISION -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
-%.elastic_flat_elision.log: %.cpp $(INCLUDE_FILES) install_folder
-	$(CXX) $(LOG_PREFIX) -DTASKPARTS_ELASTIC_FLAT -DTASKPARTS_SERIAL_ELISION -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
-%.elastic_flat_elision.dbg: %.cpp $(INCLUDE_FILES) install_folder
-	$(CXX) $(DBG_PREFIX) -DTASKPARTS_ELASTIC_FLAT -DTASKPARTS_SERIAL_ELISION -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
-
 %.elastic_flat_tpal.opt: %.tpal.cpp $(INCLUDE_FILES) install_folder
 	$(CXX) $(OPT_PREFIX) -DTASKPARTS_ELASTIC_FLAT -DTASKPARTS_TPALRTS $(basename $<)_manual.s -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
 %.elastic_flat_tpal.sta: %.tpal.cpp $(INCLUDE_FILES) install_folder
@@ -209,6 +208,44 @@ SERIAL_PREFIX=-DTASKPARTS_SERIAL -DTASKPARTS_SERIAL_ELISION $(PARLAYLIB_SERIAL_P
 	$(CXX) $(LOG_PREFIX) -DTASKPARTS_ELASTIC_FLAT -DTASKPARTS_TPALRTS $(basename $<)_manual.s -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
 %.elastic_flat_tpal.dbg: %.tpal.cpp $(INCLUDE_FILES) install_folder
 	$(CXX) $(DBG_PREFIX) -DTASKPARTS_ELASTIC_FLAT -DTASKPARTS_TPALRTS $(basename $<)_manual.s -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+
+# Flat (spin version)
+%.elastic_flat_spin.opt: %.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(OPT_PREFIX) -DTASKPARTS_ELASTIC_FLAT -DTASKPARTS_USE_SPINNING_SEMAPHORE -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+%.elastic_flat_spin.sta: %.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(STA_PREFIX) -DTASKPARTS_ELASTIC_FLAT -DTASKPARTS_USE_SPINNING_SEMAPHORE -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+%.elastic_flat_spin.log: %.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(LOG_PREFIX) -DTASKPARTS_ELASTIC_FLAT -DTASKPARTS_USE_SPINNING_SEMAPHORE -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+%.elastic_flat_spin.dbg: %.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(DBG_PREFIX) -DTASKPARTS_ELASTIC_FLAT -DTASKPARTS_USE_SPINNING_SEMAPHORE -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+
+%.elastic_flat_spin_tpal.opt: %.tpal.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(OPT_PREFIX) -DTASKPARTS_ELASTIC_FLAT -DTASKPARTS_USE_SPINNING_SEMAPHORE -DTASKPARTS_TPALRTS $(basename $<)_manual.s -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+%.elastic_flat_spin_tpal.sta: %.tpal.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(STA_PREFIX) -DTASKPARTS_ELASTIC_FLAT -DTASKPARTS_USE_SPINNING_SEMAPHORE -DTASKPARTS_TPALRTS $(basename $<)_manual.s -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+%.elastic_flat_spin_tpal.log: %.tpal.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(LOG_PREFIX) -DTASKPARTS_ELASTIC_FLAT -DTASKPARTS_USE_SPINNING_SEMAPHORE -DTASKPARTS_TPALRTS $(basename $<)_manual.s -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+%.elastic_flat_spin_tpal.dbg: %.tpal.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(DBG_PREFIX) -DTASKPARTS_ELASTIC_FLAT -DTASKPARTS_USE_SPINNING_SEMAPHORE -DTASKPARTS_TPALRTS $(basename $<)_manual.s -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+
+# Multiprogrammed
+%.multiprogrammed.opt: %.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(OPT_PREFIX) -DTASKPARTS_MULTIPROGRAMMED -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+%.multiprogrammed.sta: %.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(STA_PREFIX) -DTASKPARTS_MULTIPROGRAMMED -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+%.multiprogrammed.log: %.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(LOG_PREFIX) -DTASKPARTS_MULTIPROGRAMMED -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+%.multiprogrammed.dbg: %.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(DBG_PREFIX) -DTASKPARTS_MULTIPROGRAMMED -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+
+%.multiprogrammed_tpal.opt: %.tpal.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(OPT_PREFIX) -DTASKPARTS_MULTIPROGRAMMED -DTASKPARTS_TPALRTS $(basename $<)_manual.s -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+%.multiprogrammed_tpal.sta: %.tpal.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(STA_PREFIX) -DTASKPARTS_MULTIPROGRAMMED -DTASKPARTS_TPALRTS $(basename $<)_manual.s -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+%.multiprogrammed_tpal.log: %.tpal.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(LOG_PREFIX) -DTASKPARTS_MULTIPROGRAMMED -DTASKPARTS_TPALRTS $(basename $<)_manual.s -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+%.multiprogrammed_tpal.dbg: %.tpal.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(DBG_PREFIX) -DTASKPARTS_MULTIPROGRAMMED -DTASKPARTS_TPALRTS $(basename $<)_manual.s -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
 
 # Binaries for Cilk
 # -----------------
@@ -260,15 +297,15 @@ TPAL_BENCHMARKS=\
 	# spmv \
 	# srad
 
-all_elastic_lifeline_opt: $(BENCHMARKS:%=%.elastic_lifeline.opt) $(BENCHMARKS:%=%.elastic_lifeline_elision.opt)
-all_elastic_lifeline_sta: $(BENCHMARKS:%=%.elastic_lifeline.sta) $(BENCHMARKS:%=%.elastic_lifeline_elision.sta)
-all_elastic_lifeline_log: $(BENCHMARKS:%=%.elastic_lifeline.log) $(BENCHMARKS:%=%.elastic_lifeline_elision.log)
-all_elastic_lifeline_dbg: $(BENCHMARKS:%=%.elastic_lifeline.dbg) $(BENCHMARKS:%=%.elastic_lifeline_elision.dbg)
+all_elastic_lifeline_opt: $(BENCHMARKS:%=%.elastic_lifeline.opt)
+all_elastic_lifeline_sta: $(BENCHMARKS:%=%.elastic_lifeline.sta)
+all_elastic_lifeline_log: $(BENCHMARKS:%=%.elastic_lifeline.log)
+all_elastic_lifeline_dbg: $(BENCHMARKS:%=%.elastic_lifeline.dbg)
 
-all_elastic_flat_opt: $(BENCHMARKS:%=%.elastic_flat.opt) $(BENCHMARKS:%=%.elastic_flat_elision.opt)
-all_elastic_flat_sta: $(BENCHMARKS:%=%.elastic_flat.sta) $(BENCHMARKS:%=%.elastic_flat_elision.sta)
-all_elastic_flat_log: $(BENCHMARKS:%=%.elastic_flat.log) $(BENCHMARKS:%=%.elastic_flat_elision.log)
-all_elastic_flat_dbg: $(BENCHMARKS:%=%.elastic_flat.dbg) $(BENCHMARKS:%=%.elastic_flat_elision.dbg)
+all_elastic_flat_opt: $(BENCHMARKS:%=%.elastic_flat.opt)
+all_elastic_flat_sta: $(BENCHMARKS:%=%.elastic_flat.sta)
+all_elastic_flat_log: $(BENCHMARKS:%=%.elastic_flat.log)
+all_elastic_flat_dbg: $(BENCHMARKS:%=%.elastic_flat.dbg)
 
 all_cilk_opt: $(BENCHMARKS:%=%.cilk.opt)
 all_cilk_sta: $(BENCHMARKS:%=%.cilk.sta)

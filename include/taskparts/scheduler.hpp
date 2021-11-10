@@ -226,7 +226,7 @@ public:
 
   static
   auto try_to_sleep(size_t) {
-    cycles::spin_for(1000);
+    worker_yield();
   }
 
   static

@@ -1,7 +1,6 @@
 #pragma once
 
 #include <assert.h>
-
 #include <optional>
 
 #include "perworker.hpp"
@@ -60,7 +59,6 @@ using dflt_semaphore = semaphore;
 #else
 using dflt_semaphore = spinning_binary_semaphore;
 #endif
-  
 
 /*---------------------------------------------------------------------*/
 /* Atomic status word for elastic work stealing */
@@ -132,7 +130,7 @@ public:
 };
 
 /*---------------------------------------------------------------------*/
-/* Elastic work stealing */
+/* Elastic work stealing (lifeline based) */
 
 template <typename Stats, typename Logging, typename Semaphore=dflt_semaphore>
 class elastic {
@@ -232,7 +230,9 @@ public:
 template <typename Stats, typename Logging, typename Semaphore>
 perworker::array<typename elastic<Stats,Logging,Semaphore>::elastic_fields_type> elastic<Stats,Logging,Semaphore>::fields;
 
-// Elsatic WS without Lifelines 
+/*---------------------------------------------------------------------*/
+/* Elastic work stealing (without lifelines) */
+  
 template <typename Stats, typename Logging, typename semaphore=dflt_semaphore, typename spinlock=spinlock>
 class elastic_flat {
 public:
