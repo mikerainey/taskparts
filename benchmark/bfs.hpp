@@ -10,17 +10,16 @@
 
 Graph G;
 sequence<vertexId> parents;
-bool include_graph_gen;
 
 auto benchmark() {
-  if (include_graph_gen) {
+  if (include_infile_load) {
     G = gen_input();
   }
   parents = BFS(source, G);  
 }
 
 auto load_input() {
-  if (! include_graph_gen) {
+  if (! include_infile_load) {
     G = gen_input();
   }
 }

@@ -2,7 +2,7 @@
 #include "bfs.hpp"
 
 int main() {
-  include_graph_gen = taskparts::cmdline::parse_or_default_bool("include_graph_gen", false);
+  include_infile_load = taskparts::cmdline::parse_or_default_bool("include_infile_load", false);
   parlay::benchmark_taskparts([&] (auto sched) { // benchmark
     benchmark();
   }, [&] (auto sched) { // setup
