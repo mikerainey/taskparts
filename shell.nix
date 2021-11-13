@@ -1,9 +1,9 @@
 # Creates an environment prepared for taskparts.
 #
-# By default, the environment uses GCC version 7, which is the final version
-# to include support for Cilk Plus
-# To instead use the default system compiler, use the following:
-#   $ nix-shell --arg stdenv '(import <nixpkgs> {}).stdenv'
+# In order to build the Cilk Plus benchmarks, the compiler needs
+# to be an older version of GCC, such as version 7. It can be
+# loaded as follows.
+#   $ nix-shell --arg stdenv '(import <nixpkgs> {}).gcc7Stdenv'
 # If you want to use Clang, then use the following:
 #   $ nix-shell --arg stdenv '(import <nixpkgs> {}).clangStdenv'
 #
@@ -13,7 +13,7 @@
 # later: investigate idiomatic way to share code between this file and debug.nix
 
 { pkgs   ? import <nixpkgs> {},
-  stdenv ? pkgs.gcc7Stdenv,
+  stdenv ? pkgs.stdenv,
   hwloc ? pkgs.hwloc,
   jemalloc ? pkgs.jemalloc450,
   cilk-stats-rts ? import ../cilk-plus-rts-with-stats {}
