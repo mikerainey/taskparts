@@ -1,9 +1,6 @@
 #pragma once
 
-#include <parlay/delayed_sequence.h>
-#include <parlay/monoid.h>
-#include <parlay/primitives.h>
-#include <parlay/parallel.h>
+#include "common.hpp"
 #include <testData/sequenceData/sequenceData.h>
 #include <common/sequenceIO.h>
 #ifndef PARLAY_SEQUENTIAL
@@ -11,7 +8,6 @@
 #else
 #include <histogram/sequential/histogram.C>
 #endif
-#include "../example/fib_serial.hpp"
 
 using namespace parlay;
 using namespace benchIO;
@@ -19,9 +15,9 @@ using namespace benchIO;
 sequence<uint> In;
 sequence<uint> R;
 uint buckets;
-bool include_infile_load;
 
 auto gen_input() {
+  force_sequential = taskparts::cmdline::parse_or_default_bool("force_sequential", false);
   parlay::override_granularity = taskparts::cmdline::parse_or_default_long("override_granularity", 0);
   include_infile_load = taskparts::cmdline::parse_or_default_bool("include_infile_load", false);
   auto input = taskparts::cmdline::parse_or_default_string("input", "");
@@ -39,27 +35,18 @@ auto gen_input() {
   }
 }
 
-auto benchmark_no_swaps() {
+auto benchmark_dflt() {
   if (include_infile_load) {
     gen_input();
   }
   R = histogram(In, buckets);
 }
 
-auto benchmark_with_swaps(size_t repeat) {
-  size_t repeat_swaps = taskparts::cmdline::parse_or_default_long("repeat_swaps", 1000000);
-  for (size_t i = 0; i < repeat; i++) {
-    fib_serial(30);
-    R = histogram(In, buckets);
-  }
-}
-
 auto benchmark() {
-  size_t repeat = taskparts::cmdline::parse_or_default_long("repeat", 0);
-  if (repeat == 0) {
-    benchmark_no_swaps();
+  if (force_sequential) {
+    benchmark_intermix([&] { benchmark_dflt(); });
   } else {
-    benchmark_with_swaps(repeat);
+    benchmark_dflt();
   }
 }
 

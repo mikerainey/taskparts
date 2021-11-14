@@ -1,25 +1,18 @@
 #pragma once
 
-#include <parlay/delayed_sequence.h>
-#include <parlay/monoid.h>
-#include <parlay/primitives.h>
-#include <parlay/parallel.h>
-
+#include "common.hpp"
 #include <common/graph.h>
 #include <common/IO.h>
 #include <common/graphIO.h>
 #include <common/sequenceIO.h>
 #include <testData/graphData/alternatingGraph.h>
 #include <testData/graphData/rMat.h>
-
-#include <taskparts/cmdline.hpp>
 #include <breadthFirstSearch/bench/BFS.h>
 
 using namespace std;
 using namespace benchIO;
 
 size_t source = 0;
-bool include_infile_load;
 
 auto gen_alternating() {
   Graph G;
@@ -46,15 +39,18 @@ auto gen_alternating() {
 }
 
 auto gen_input() {
+  force_sequential = taskparts::cmdline::parse_or_default_bool("force_sequential", false);
+  parlay::override_granularity = taskparts::cmdline::parse_or_default_long("override_granularity", 0);
+  include_infile_load = taskparts::cmdline::parse_or_default_bool("include_infile_load", false);
   Graph G;
   source = taskparts::cmdline::parse_or_default_long("source", source);
   auto input = taskparts::cmdline::parse_or_default_string("input", "rmat");
-  auto repeat = taskparts::cmdline::parse_or_default_long("repeat", 0);
+  auto infile = input + ".adj";
+  G = readGraphFromFile<vertexId,edgeId>((char*)infile.c_str());
+  /*
   if (include_infile_load) {
     auto infile = input + ".adj";
     G = readGraphFromFile<vertexId,edgeId>((char*)infile.c_str());
-  } else if (repeat > 0) {
-    G = gen_alternating();    
   } else {
     if (input == "alternating") {
       gen_alternating();
@@ -68,7 +64,7 @@ auto gen_input() {
       auto EA = edgeRmat<vertexId>(n, m, seed, a, b, c);
       G = graphFromEdges<vertexId,edgeId>(EA, true);    
     } 
-  }
+    } */
   G.addDegrees();
   return G;
 }

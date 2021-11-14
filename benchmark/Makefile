@@ -243,7 +243,10 @@ BENCHMARKS=\
 	suffixarray \
 	mis \
 	histogram \
-	bfs
+	bfs \
+	delaunay \
+	index \
+	classify
 
 	# fib \
 	# integrate \
@@ -252,7 +255,8 @@ BENCHMARKS=\
 	# wc
 
 TPAL_BENCHMARKS=\
-	sum_array
+	sum_array \
+	pdfs
 
 	# sum_tree \
 	# pdfs \

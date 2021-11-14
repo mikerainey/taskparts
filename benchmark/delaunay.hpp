@@ -6,18 +6,19 @@
 #include <common/geometry.h>
 #include <common/geometryIO.h>
 #include <testData/geometryData/geometryData.h>
-#ifndef PARLAY_SEQUENTIAL
-#include <convexHull/quickHull/hull.C>
-#else
-#include <convexHull/serialHull/hull.C>
-#endif
+#include <delaunayTriangulation/incrementalDelaunay/delaunay.C>
 using namespace benchIO;
 using namespace dataGen;
 using namespace std;
 
 using coord = double;
-parlay::sequence<point2d<coord>> Points;
-parlay::sequence<indexT> result;
+using point = point2d<coord>;
+
+triangles<point> delaunay(parlay::sequence<point>& P);
+
+parlay::sequence<point> pts;
+triangles<point> R;
+
 size_t dflt_n = 10000000;
 
 template <class coord>
@@ -48,7 +49,7 @@ auto gen_input() {
       exit(-1);
     }
     auto infile = input + ".geom";
-    Points = benchIO::readPointsFromFile<point2d<coord>>(infile.c_str());
+    pts = benchIO::readPointsFromFile<point2d<coord>>(infile.c_str());
     return;
     //  }
   size_t n = taskparts::cmdline::parse_or_default_long("n", dflt_n);
@@ -61,7 +62,7 @@ auto gen_input() {
   d.add("on_sphere", [&] { onSphere = true; });
   d.add("kuzmin", [&] { kuzmin = true; });
   d.dispatch_or_default("input", "in_sphere");
-  Points = parlay::tabulate(n, [&] (size_t i) -> point2d<coord> {
+  pts = parlay::tabulate(n, [&] (size_t i) -> point2d<coord> {
       if (inSphere) return randInUnitSphere2d<coord>(i);
       else if (onSphere) return randOnUnitSphere2d<coord>(i);
       else if (kuzmin) return randKuzmin<coord>(i);
@@ -73,7 +74,7 @@ auto benchmark_dflt() {
   if (include_infile_load) {
     gen_input();
   }
-  result = hull(Points);
+  R = delaunay(pts);
 }
 
 auto benchmark() {
@@ -82,4 +83,9 @@ auto benchmark() {
   } else {
     benchmark_dflt();
   }
+}
+
+auto reset() {
+  R.P.clear();
+  R.T.clear();
 }

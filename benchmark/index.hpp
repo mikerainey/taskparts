@@ -1,30 +1,34 @@
 #pragma once
 
 #include "common.hpp"
-#include <common/IO.h>
+#include <testData/sequenceData/sequenceData.h>
 #include <common/sequenceIO.h>
-#include <suffixArray/bench/SA.h>
-#include <suffixArray/parallelKS/SA.C>
+#ifndef PARLAY_SEQUENTIAL
+#include <index/parallel/index.C>
+#else
+#include <index/sequential/index.C>
+#endif
 
-using uchar = unsigned char;
+charseq R;
+charseq s;
+charseq start;
+bool verbose = false;
 
-parlay::sequence<uchar> ss;
-parlay::sequence<indexT> R;
-
-auto load_input() {
+auto gen_input() {
   force_sequential = taskparts::cmdline::parse_or_default_bool("force_sequential", false);
   parlay::override_granularity = taskparts::cmdline::parse_or_default_long("override_granularity", 0);
   include_infile_load = taskparts::cmdline::parse_or_default_bool("include_infile_load", false);
-  std::string fname = taskparts::cmdline::parse_or_default_string("input", "chr22.dna");
-  parlay::sequence<char> s = benchIO::readStringFromFile(fname.c_str());
-  ss = parlay::tabulate(s.size(), [&] (size_t i) -> uchar {return (uchar) s[i];});
+  auto iFile = taskparts::cmdline::parse_or_default_string("input", "wikisamp.xml");
+  s = parlay::to_sequence(parlay::file_map(iFile));
+  string header = "<doc";
+  start = parlay::to_sequence(header);
 }
 
 auto benchmark_dflt() {
   if (include_infile_load) {
-    load_input();
+    gen_input();
   }
-  R = suffixArray(ss);
+  R = build_index(s, start, verbose);
 }
 
 auto benchmark() {
@@ -33,4 +37,8 @@ auto benchmark() {
   } else {
     benchmark_dflt();
   }
+}
+
+auto reset() {
+  R.clear();
 }

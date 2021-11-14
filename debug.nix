@@ -8,7 +8,7 @@
 #   $ nix-shell --arg jemalloc '(import <nixpkgs> {}).jemalloc450'
 
 { pkgs   ? import <nixpkgs> {},
-  stdenv ? pkgs.clangStdenv,
+  stdenv ? pkgs.stdenv,
   hwloc ? pkgs.hwloc,
   jemalloc ? null, # pkgs.jemalloc450
   valgrind ? pkgs.valgrind,

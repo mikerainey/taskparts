@@ -1,9 +1,6 @@
 #pragma once
 
-#include <parlay/delayed_sequence.h>
-#include <parlay/monoid.h>
-#include <parlay/primitives.h>
-#include <parlay/parallel.h>
+#include "common.hpp"
 #include <testData/sequenceData/sequenceData.h>
 #include <common/sequenceIO.h>
 #ifndef PARLAY_SEQUENTIAL
@@ -21,7 +18,6 @@ parlay::sequence<str> res_strs;
 benchIO::elementType in_type;
 size_t dflt_n = 10000000;
 size_t n = dflt_n;
-bool include_infile_load;
 
 auto parse_ints(auto In) {
   a_ints = benchIO::parseElements<int>(In.cut(1, In.size()));
@@ -33,6 +29,8 @@ auto parse_strs(auto In) {
 }
 
 auto gen_input() {
+  force_sequential = taskparts::cmdline::parse_or_default_bool("force_sequential", false);
+  parlay::override_granularity = taskparts::cmdline::parse_or_default_long("override_granularity", 0);
   include_infile_load = taskparts::cmdline::parse_or_default_bool("include_infile_load", false);
   if (include_infile_load) {
     auto input = taskparts::cmdline::parse_or_default_string("input", "");
@@ -65,7 +63,10 @@ auto gen_input() {
   d.dispatch_or_default("input", "random_int");
 }
 
-auto _benchmark() {
+auto benchmark_dflt() {
+  if (include_infile_load) {
+    gen_input();
+  }
   if (in_type == benchIO::intType) {
     res_ints = dedup(a_ints);
   } else if (in_type == benchIO::stringT) {
@@ -73,39 +74,11 @@ auto _benchmark() {
   }
 }
 
-auto benchmark_no_nudges() {
-  if (include_infile_load) {
-    gen_input();
-  }
-  _benchmark();
-}
-
-auto benchmark_with_nudges(size_t repeat) {
-  size_t nudges = taskparts::cmdline::parse_or_default_long("nudges", n/2);
-  for (size_t i = 0; i < repeat; i++) {
-    for (size_t j = 0; j < nudges; j++) {
-      auto k = taskparts::hash(i + j) % n;
-      if (in_type == benchIO::intType) {
-	a_ints[k]++;
-      } else if (in_type == benchIO::stringT) {
-	auto& s = a_strs[k];
-	auto m = s.size();
-	if (m > 0) {
-	  auto k2 = taskparts::hash(k) % m;
-	  s[k2]++;
-	}
-      }
-    }
-    _benchmark();    
-  }
-}
-
 auto benchmark() {
-  size_t repeat = taskparts::cmdline::parse_or_default_long("repeat", 0);
-  if (repeat == 0) {
-    benchmark_no_nudges();
+  if (force_sequential) {
+    benchmark_intermix([&] { benchmark_dflt(); });
   } else {
-    benchmark_with_nudges(repeat);
+    benchmark_dflt();
   }
 }
 

@@ -230,8 +230,15 @@ public:
   
 };
 
+bool force_sequential = false;
+
 template <typename F1, typename F2, typename Scheduler=minimal_scheduler<>>
 auto fork2join(const F1& f1, const F2& f2, Scheduler sched=Scheduler()) {
+  if (force_sequential) {
+    f1();
+    f2();
+    return;
+  }
 #ifndef TASKPARTS_SERIAL_ELISION
   nativefj_from_lambda fb1(f1, sched);
   nativefj_from_lambda fb2(f2, sched);
