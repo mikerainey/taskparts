@@ -91,24 +91,26 @@ def mk_scheduler(m):
  
 experiment_key = 'experiment'
 experiment_agac_key = 'as_good_as_conventional'
-experiment_iio_key = 'impact_of_io'
+#experiment_iio_key = 'impact_of_io'
 experiment_ilp1_key = 'impact_of_low_parallelism1'
 experiment_ilp2_key = 'impact_of_low_parallelism2'
 experiment_ipw_key = 'impact_of_phased_workload'
+experiment_pdfs_key = 'pdfs'
 experiments = [
     experiment_agac_key,
-    experiment_iio_key,
+#    experiment_iio_key,
     experiment_ilp1_key,
     experiment_ilp2_key,
-    experiment_ipw_key
+    experiment_ipw_key,
+    experiment_pdfs_key
 ]
 experiments_to_run = experiments #[ experiment_iio_key, experiment_ilp1_key, experiment_ipw_key ]
 experiment_descriptions = {
     experiment_agac_key: 'E1',
-    experiment_iio_key: 'E2',
-    experiment_ilp1_key: 'E3',
-    experiment_ilp2_key: 'E4',
-    experiment_ipw_key: 'E5',
+    experiment_ilp1_key: 'E2',
+    experiment_ilp2_key: 'E3',
+    experiment_ipw_key: 'E4',
+    experiment_pdfs_key: 'E5',
 }
 
 def mk_experiment(e):
@@ -121,8 +123,8 @@ def mk_inputs(ins):
     return mk_parameters('input', ins)
 
 mk_agac_input = mk_experiment(experiment_agac_key)
-mk_iio_input = mk_cross(mk_experiment(experiment_iio_key),
-                        mk_parameter('include_infile_load', 1))
+# mk_iio_input = mk_cross(mk_experiment(experiment_iio_key),
+#                         mk_parameter('include_infile_load', 1))
 mk_ilp1_input = mk_cross_sequence([mk_experiment(experiment_ilp1_key),
                                   mk_parameter('override_granularity', 200)])
 mk_ilp2_input = mk_cross_sequence([mk_experiment(experiment_ilp2_key),
@@ -131,7 +133,8 @@ mk_ipw_input = mk_cross_sequence([mk_experiment(experiment_ipw_key),
                                   mk_parameter('force_sequential', 1),
                                   mk_parameter('k', 3),
                                   mk_parameter('m', 2)])
-mk_experiments = mk_append_sequence([mk_agac_input, mk_iio_input, mk_ilp1_input, mk_ilp2_input, mk_ipw_input])
+mk_pdfs_input = mk_experiment(experiment_pdfs_key)
+mk_experiments = mk_append_sequence([mk_agac_input, mk_ilp1_input, mk_ilp2_input, mk_ipw_input, mk_pdfs_input])
 
 input_descriptions = {
     'random_double': 'random',
@@ -140,6 +143,9 @@ input_descriptions = {
     'in_sphere': 'in sphere',
     'on_sphere': 'on sphere',
     'kuzmin': 'kuzmin',
+    'kuzmin2d': 'kuzmin',
+    'plummer': 'plummer',
+    'happy': 'happy',
     'random_int': 'random',
     'random_256_int': 'random (256)',
     'strings': 'strings',
@@ -148,6 +154,9 @@ input_descriptions = {
     'random': 'random',
     'wikisamp.xml': 'wikisamp',
     'kddcup.data': 'kddcup',
+    '100m': '$100 \cdot 10^6$',
+    '1b': '$10^9$',
+    'alternating': 'alternating',
 }
 
 # sorting inputs
@@ -155,6 +164,15 @@ input_descriptions = {
 sequence_inputs = ['random_double'] + (['exponential_double', 'almost_sorted_double']
                                 if benchmark_mode == Benchmark_mode.Benchmark_full else [])
 mk_sort_input = mk_cross(mk_inputs(sequence_inputs), mk_experiments)
+# nearest neighbors inputs
+# cd testData/geometryData/data
+# make 2Dkuzmin_10M
+mk_nearest_input = mk_cross(mk_inputs(['kuzmin2d']), mk_experiments)
+# nbody inputs
+# make 3Dplummer_1000000
+mk_nbody_input = mk_cross(mk_inputs(['plummer']), mk_experiments)
+# raycast inputs
+mk_raycast_input = mk_cross(mk_inputs(['happy']), mk_experiments)
 # convex hull inputs
 # ./randPoints -S -d 2 10000000 in_sphere.geom
 twod_points_inputs = ['kuzmin'] + (['on_sphere', 'in_sphere']
@@ -178,7 +196,7 @@ mk_index_input = mk_cross(mk_inputs(['wikisamp.xml']), mk_experiments)
 mk_classify_input = mk_cross(mk_inputs(['kddcup.data']), mk_experiments)
 # suffixarray inputs
 mk_suffixarray_input = mk_cross(mk_parameters('input', ['chr22.dna']),
-                                mk_append_sequence([mk_agac_input, mk_iio_input, mk_ilp1_input]))
+                                mk_append_sequence([mk_agac_input, mk_ilp1_input]))
 # graph inputs
 # ./rMatGraph -j 5000000 rmat.adj
 # ./randLocalGraph -j 5000000 random.adj
@@ -188,6 +206,12 @@ graph_inputs = ['rmat'] + (['random']
 mk_graph_input = mk_cross(mk_inputs(graph_inputs), mk_experiments)
 # tree inputs
 mk_sum_tree_input = mk_append_sequence([mk_input(i) for i in ['perfect', 'alternating']])
+#
+mk_wc_input = mk_cross(mk_inputs(['100m']), mk_experiments)
+mk_mcss_input = mk_cross(mk_inputs(['100m']), mk_experiments)
+mk_integrate_input = mk_cross(mk_inputs(['1b']), mk_experiments)
+# pdfs inputs
+mk_pdfs_input = mk_cross(mk_inputs(['rmat','alternating']), mk_experiment(experiment_pdfs_key))
 
 ## Benchmarks
 ## ----------
@@ -203,28 +227,31 @@ tpal_benchmark_descriptions = {
 #    'sum_tree': {'input': mk_sum_tree_input, 'descr': 'sum tree'},
 #    'spmv': {'input': mk_parameters('input_matrix', ['bigcols','bigrows','arrowhead']), 'descr': 'sparse matrix x dense vector product'},
 #    'srad': {'input': mk_unit(), 'descr': 'srad'},
-    'pdfs': {'input': mk_unit(), 'descr': 'pseudo dfs'},
+    'pdfs': {'input': mk_pdfs_input, 'descr': 'pseudo dfs'},
 }
 parlay_benchmark_descriptions = {
     'samplesort': {'input': mk_sort_input, 'descr': 'samplesort'},
     'quicksort': {'input': mk_sort_input, 'descr': 'quicksort'},
     'quickhull': {'input': mk_quickhull_input, 'descr': 'convex hull'},
-    'delaunay': {'input': mk_delaunay_input, 'descr': 'delaunay'},    
+    'delaunay': {'input': mk_delaunay_input, 'descr': 'delaunay'},
+    'nearest': {'input': mk_nearest_input, 'descr': 'nearest neighbors'},
+    'nbody': {'input': mk_nbody_input, 'descr': 'nbody'},
+    'raycast': {'input': mk_raycast_input, 'descr': 'raycast'},
     'removeduplicates': {'input': mk_removeduplicates_input, 'descr': 'remove duplicates'},
     'suffixarray': {'input': mk_suffixarray_input, 'descr': 'suffix array'},
     'histogram': {'input': mk_histogram_input, 'descr': 'histogram'},
     'index': {'input': mk_index_input, 'descr': 'index'},
     'classify': {'input': mk_classify_input, 'descr': 'classify'},
-#    'mis': {'input': mk_graph_input, 'descr': 'maximal independent set'},
-#    'wc': {'input': mk_unit(), 'descr': 'word count'},
-#    'mcss': {'input': mk_unit(), 'descr': 'maximum contiguous subsequence sum'},
-#    'integrate': {'input': mk_unit(), 'descr': 'integration'},
-#    'primes': {'input': mk_unit(), 'descr': 'prime number enumeration'},
     'bfs': {'input': mk_graph_input, 'descr': 'breadth first search'},
+    'wc': {'input': mk_wc_input, 'descr': 'word count'},
+    'mcss': {'input': mk_mcss_input, 'descr': 'maximum contiguous subsequence sum'},
+    'integrate': {'input': mk_integrate_input, 'descr': 'integration'},
+#    'primes': {'input': mk_unit(), 'descr': 'prime number enumeration'},
+#    'mis': {'input': mk_graph_input, 'descr': 'maximal independent set'},    
 }
 benchmark_descriptions = merge_dicts(parlay_benchmark_descriptions, tpal_benchmark_descriptions)
 if benchmark_mode == Benchmark_mode.Benchmark_minimal:
-    takes = benchmark_descriptions #['samplesort','quicksort'] #,'quickhull','removeduplicates','suffixarray','bfs']
+    takes = ['integrate','raycast','pdfs'] #['samplesort','quicksort'] #,'quickhull','removeduplicates','suffixarray','bfs']
     drops = []
 else:
     takes = benchmark_descriptions
@@ -233,10 +260,11 @@ benchmarks = [ b for b in benchmark_descriptions if b in takes and not(b in drop
 mk_benchmarks = mk_append_sequence([mk_cross(mk_elastic_benchmark(b), benchmark_descriptions[b]['input'])
                                     for b in benchmarks])
 mk_agac_benchmarks = mk_take_kvp(mk_benchmarks, mk_experiment(experiment_agac_key))
-mk_iio_benchmarks = mk_take_kvp(mk_benchmarks, mk_experiment(experiment_iio_key))
+#mk_iio_benchmarks = mk_take_kvp(mk_benchmarks, mk_experiment(experiment_iio_key))
 mk_ilp1_benchmarks = mk_take_kvp(mk_benchmarks, mk_experiment(experiment_ilp1_key))
 mk_ilp2_benchmarks = mk_take_kvp(mk_benchmarks, mk_experiment(experiment_ilp2_key))
 mk_ipw_benchmarks = mk_take_kvp(mk_benchmarks, mk_experiment(experiment_ipw_key))
+mk_pdfs_benchmarks = mk_take_kvp(mk_benchmarks, mk_experiment(experiment_pdfs_key))
 
 benchmark_path = '../'
 benchmark_bin_path = './bin/'
@@ -278,10 +306,10 @@ mk_par_agac = (mk_cross_sequence([mk_benchmarks_for_experiment(experiment_agac_k
                                   mk_parameters(taskparts_num_workers_key, workers)])
                if experiment_agac_key in experiments_to_run else mk_unit())
 
-mk_par_iio = (mk_cross_sequence([mk_benchmarks_for_experiment(experiment_iio_key),
-                                 mk_par_params,
-                                 mk_parameters(taskparts_num_workers_key, parallel_workers)])
-              if experiment_iio_key in experiments_to_run else mk_unit())
+# mk_par_iio = (mk_cross_sequence([mk_benchmarks_for_experiment(experiment_iio_key),
+#                                  mk_par_params,
+#                                  mk_parameters(taskparts_num_workers_key, parallel_workers)])
+#               if experiment_iio_key in experiments_to_run else mk_unit())
 mk_par_ilp1 = (mk_cross_sequence([mk_benchmarks_for_experiment(experiment_ilp1_key),
                                  mk_par_params,
                                  mk_parameters(taskparts_num_workers_key, parallel_workers)])
@@ -294,8 +322,12 @@ mk_par_ipw = (mk_cross_sequence([mk_benchmarks_for_experiment(experiment_ipw_key
                                  mk_par_params,
                                  mk_parameters(taskparts_num_workers_key, parallel_workers)])
               if experiment_ipw_key in experiments_to_run else mk_unit())
+mk_par_pdfs = (mk_cross_sequence([mk_benchmarks_for_experiment(experiment_pdfs_key),
+                                  mk_par_params,
+                                  mk_parameters(taskparts_num_workers_key, parallel_workers)])
+              if experiment_pdfs_key in experiments_to_run else mk_unit())
 
-commands_parallel = mk_append_sequence([mk_par_agac, mk_par_iio, mk_par_ilp1, mk_par_ilp2, mk_par_ipw])
+commands_parallel = mk_append_sequence([mk_par_agac, mk_par_ilp1, mk_par_ilp2, mk_par_ipw, mk_par_pdfs])
     
 commands = eval(commands_parallel)
 
@@ -336,8 +368,13 @@ if not(virtual_report):
     all_results = eval(read_head_from_benchmark_repository()['done'])
 print('')
 
+# def percent_difference(v1, v2):
+#     return abs((v1 - v2) / ((v1 + v2) / 2))
+
 def percent_difference(v1, v2):
-    return abs((v1 - v2) / ((v1 + v2) / 2))
+    if v1 == 0.0:
+        return float('nan')
+    return ((v1 - v2 ) / v1) * 100.0
 
 def get_percent_of_one_to_another(x_key, x_val, y_expr, y_key, ref_key):
     st = mean(select_from_expr_by_key(y_expr, y_key))
@@ -375,6 +412,8 @@ for experiment in experiments:
     print('\multirow{2}{*}{' + experiment_descriptions[experiment] + '} ', end = '')
     experiment_e = mk_take_kvp(all_results, mk_experiment(experiment))
     for benchmark in benchmarks:
+        if benchmark != 'pdfs' and experiment == experiment_pdfs_key:
+            continue
         benchmark_inputs = mk_take_kvp(benchmark_descriptions[benchmark]['input'], mk_experiment(experiment))
         for inp in genfunc_expr_by_row(benchmark_inputs):
             print('', end = ' & ')
@@ -388,7 +427,7 @@ for experiment in experiments:
             for scheduler in elastic_schedulers:
                 scheduler_e = eval(mk_take_kvp(benchmark_e, mk_scheduler(scheduler)))
                 scheduler_exectime = mean(select_from_expr_by_key(scheduler_e, 'exectime'))
-                scheduler_diff = percent_difference(taskparts_exectime, scheduler_exectime) * 100.0
+                scheduler_diff = percent_difference(taskparts_exectime, scheduler_exectime)
                 if scheduler_exectime < taskparts_exectime:
                     scheduler_diff = scheduler_diff * -1.0
                 pre = '+' if scheduler_diff > 0.0 else ''
@@ -401,7 +440,7 @@ for experiment in experiments:
                 scheduler_total_work_time = mean(select_from_expr_by_key(scheduler_e, 'total_work_time'))
                 scheduler_total_idle_time = mean(select_from_expr_by_key(scheduler_e, 'total_idle_time'))
                 scheduler_active_time = scheduler_total_work_time + scheduler_total_idle_time
-                scheduler_diff = percent_difference(taskparts_total_time, scheduler_active_time) * 100.0
+                scheduler_diff = percent_difference(taskparts_total_time, scheduler_active_time)
                 if scheduler_active_time < taskparts_total_time:
                     scheduler_diff = scheduler_diff * -1.0
                 pre = '+' if scheduler_diff > 0.0 else ''

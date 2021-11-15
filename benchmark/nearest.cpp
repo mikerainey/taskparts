@@ -1,5 +1,5 @@
 #include <taskparts/benchmark.hpp>
-#include "integrate.hpp"
+#include "nearest.hpp"
 
 int main() {
   parlay::benchmark_taskparts([&] (auto sched) { // benchmark

@@ -32,7 +32,7 @@ auto gen_input() {
   force_sequential = taskparts::cmdline::parse_or_default_bool("force_sequential", false);
   parlay::override_granularity = taskparts::cmdline::parse_or_default_long("override_granularity", 0);
   include_infile_load = taskparts::cmdline::parse_or_default_bool("include_infile_load", false);
-  if (include_infile_load) {
+  //if (include_infile_load) {
     auto input = taskparts::cmdline::parse_or_default_string("input", "");
     if (input == "") {
       exit(-1);
@@ -48,8 +48,8 @@ auto gen_input() {
       taskparts_die("bogus input");
     }
     return;
-  }
-  n = taskparts::cmdline::parse_or_default_long("n", dflt_n);
+    //}
+    /*  n = taskparts::cmdline::parse_or_default_long("n", dflt_n);
   taskparts::cmdline::dispatcher d;
   d.add("random_int", [&] {
     in_type = benchIO::intType;
@@ -60,7 +60,7 @@ auto gen_input() {
     in_type = benchIO::stringT;
     taskparts_die("todo");
   });
-  d.dispatch_or_default("input", "random_int");
+  d.dispatch_or_default("input", "random_int"); */
 }
 
 auto benchmark_dflt() {

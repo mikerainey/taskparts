@@ -246,20 +246,19 @@ BENCHMARKS=\
 	bfs \
 	delaunay \
 	index \
-	classify
-
-	# fib \
-	# integrate \
-	# mcss \
-	# primes \
-	# wc
+	classify \
+	nearest \
+	raycast \
+	nbody \
+	mcss \
+	wc \
+	integrate	
 
 TPAL_BENCHMARKS=\
 	sum_array \
 	pdfs
 
 	# sum_tree \
-	# pdfs \
 	# spmv \
 	# srad
 

@@ -2,9 +2,7 @@
 
 #define TASKPARTS_TPALRTS_MINIMAL // disables heartbeat interrupts
 #include <taskparts/benchmark.hpp>
-
 #include "graph.hpp"
-
 #include "frontierseg.hpp"
 
 class graph_alias {

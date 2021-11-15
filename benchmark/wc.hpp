@@ -1,9 +1,8 @@
 #pragma once
 
-#include <parlay/delayed_sequence.h>
-#include <parlay/monoid.h>
-#include <parlay/primitives.h>
-#include <parlay/parallel.h>
+#include "common.hpp"
+
+std::string s;
 
 // ------------------------- Word Count -----------------------------
 
@@ -25,4 +24,27 @@ std::tuple<size_t,size_t,size_t> wc(Seq const &s) {
   auto r = parlay::reduce(f, m);
 
   return std::make_tuple(r.first, r.second, s.size());
+}
+
+auto gen_input() {
+  size_t n = taskparts::cmdline::parse_or_default_long("n", 100000000);
+  force_sequential = taskparts::cmdline::parse_or_default_bool("force_sequential", false);
+  parlay::override_granularity = taskparts::cmdline::parse_or_default_long("override_granularity", 0);
+  s.resize(n, 'b');
+}
+
+
+auto benchmark_dflt() {
+  if (include_infile_load) {
+    gen_input();
+  }
+  wc(s);
+}
+
+auto benchmark() {
+  if (force_sequential) {
+    benchmark_intermix([&] { benchmark_dflt(); });
+  } else {
+    benchmark_dflt();
+  }
 }

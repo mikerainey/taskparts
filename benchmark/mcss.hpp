@@ -1,9 +1,8 @@
 #pragma once
 
-#include <parlay/delayed_sequence.h>
-#include <parlay/monoid.h>
-#include <parlay/primitives.h>
-#include <parlay/parallel.h>
+#include "common.hpp"
+
+std::vector<long long> a;
 
 // ------------- Maximum Contiguous Subsequence Sum ------------------
 
@@ -27,4 +26,30 @@ typename Seq::value_type mcss(Seq const &A) {
   auto m = parlay::make_monoid(f, std::tuple<T,T,T,T>(0,0,0,0));
   auto r = parlay::reduce(S, m);
   return std::get<0>(r);
+}
+
+auto gen_input() {
+  size_t n = taskparts::cmdline::parse_or_default_long("n", 100000000);
+  force_sequential = taskparts::cmdline::parse_or_default_bool("force_sequential", false);
+  parlay::override_granularity = taskparts::cmdline::parse_or_default_long("override_granularity", 0);
+  a.resize(n);
+  parlay::parallel_for(0, n, [&] (auto i) {
+    a[i] = (i % 2 == 0 ? -1 : 1) * i;
+  });
+}
+
+
+auto benchmark_dflt() {
+  if (include_infile_load) {
+    gen_input();
+  }
+  mcss(a);
+}
+
+auto benchmark() {
+  if (force_sequential) {
+    benchmark_intermix([&] { benchmark_dflt(); });
+  } else {
+    benchmark_dflt();
+  }
 }
