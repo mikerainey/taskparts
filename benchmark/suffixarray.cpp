@@ -2,13 +2,10 @@
 #include "suffixarray.hpp"
 
 int main() {
-  include_infile_load = taskparts::cmdline::parse_or_default_bool("include_infile_load", false);
-  parlay::benchmark_taskparts([&] (auto sched) {
+  parlay::benchmark_taskparts([&] (auto sched) { // benchmark
     benchmark();
-  }, [&] (auto sched) {
-    if (! include_infile_load) {
-      load_input();
-    }
+  }, [&] (auto sched) { // setup
+    gen_input();
   });
   return 0;
 }

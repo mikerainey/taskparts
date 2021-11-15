@@ -11,10 +11,9 @@ using uchar = unsigned char;
 parlay::sequence<uchar> ss;
 parlay::sequence<indexT> R;
 
-auto load_input() {
+auto gen_input() {
   force_sequential = taskparts::cmdline::parse_or_default_bool("force_sequential", false);
   parlay::override_granularity = taskparts::cmdline::parse_or_default_long("override_granularity", 0);
-  include_infile_load = taskparts::cmdline::parse_or_default_bool("include_infile_load", false);
   std::string fname = taskparts::cmdline::parse_or_default_string("input", "chr22.dna");
   parlay::sequence<char> s = benchIO::readStringFromFile(fname.c_str());
   ss = parlay::tabulate(s.size(), [&] (size_t i) -> uchar {return (uchar) s[i];});
@@ -22,7 +21,7 @@ auto load_input() {
 
 auto benchmark_dflt() {
   if (include_infile_load) {
-    load_input();
+    gen_input();
   }
   R = suffixArray(ss);
 }

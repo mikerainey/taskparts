@@ -1,3 +1,5 @@
+import sys
+sys.setrecursionlimit(150000)
 from parameter import *
 from taskparts import *
 from benchmark import *
@@ -26,7 +28,7 @@ def cross_product(xs, ys):
 # ========================
 
 # if True, do not run benchmarks
-virtual_runs = True
+virtual_runs = False
 # if True, do not generate reports
 virtual_report = False
 # any benchmark that takes > timeout seconds gets canceled; set to None if you dislike cancel culture
@@ -188,7 +190,7 @@ mk_removeduplicates_input = mk_cross(mk_inputs(removeduplicates_inputs), mk_expe
 # histogram inputs
 # ./randomSeq -r 256 -t int 400000000 random_256_int.seq
 # ./randomSeq -t int 400000000 random_int.seq
-histogram_inputs = ['random_int', 'random_256_int']
+histogram_inputs = ['random_int'] #, 'random_256_int']
 mk_histogram_input = mk_cross(mk_inputs(histogram_inputs), mk_experiments)
 # index
 mk_index_input = mk_cross(mk_inputs(['wikisamp.xml']), mk_experiments)
@@ -196,7 +198,7 @@ mk_index_input = mk_cross(mk_inputs(['wikisamp.xml']), mk_experiments)
 mk_classify_input = mk_cross(mk_inputs(['kddcup.data']), mk_experiments)
 # suffixarray inputs
 mk_suffixarray_input = mk_cross(mk_parameters('input', ['chr22.dna']),
-                                mk_append_sequence([mk_agac_input, mk_ilp1_input]))
+                                mk_experiments)
 # graph inputs
 # ./rMatGraph -j 5000000 rmat.adj
 # ./randLocalGraph -j 5000000 random.adj
@@ -227,31 +229,31 @@ tpal_benchmark_descriptions = {
 #    'sum_tree': {'input': mk_sum_tree_input, 'descr': 'sum tree'},
 #    'spmv': {'input': mk_parameters('input_matrix', ['bigcols','bigrows','arrowhead']), 'descr': 'sparse matrix x dense vector product'},
 #    'srad': {'input': mk_unit(), 'descr': 'srad'},
-    'pdfs': {'input': mk_pdfs_input, 'descr': 'pseudo dfs'},
+    'pdfs': {'input': mk_pdfs_input, 'descr': 'pdfs'},
 }
 parlay_benchmark_descriptions = {
     'samplesort': {'input': mk_sort_input, 'descr': 'samplesort'},
     'quicksort': {'input': mk_sort_input, 'descr': 'quicksort'},
-    'quickhull': {'input': mk_quickhull_input, 'descr': 'convex hull'},
+    'quickhull': {'input': mk_quickhull_input, 'descr': 'quickhull'},
     'delaunay': {'input': mk_delaunay_input, 'descr': 'delaunay'},
-    'nearest': {'input': mk_nearest_input, 'descr': 'nearest neighbors'},
+    'nearest': {'input': mk_nearest_input, 'descr': 'knn'},
     'nbody': {'input': mk_nbody_input, 'descr': 'nbody'},
     'raycast': {'input': mk_raycast_input, 'descr': 'raycast'},
-    'removeduplicates': {'input': mk_removeduplicates_input, 'descr': 'remove duplicates'},
-    'suffixarray': {'input': mk_suffixarray_input, 'descr': 'suffix array'},
+    'removeduplicates': {'input': mk_removeduplicates_input, 'descr': 'remdups'},
+    'suffixarray': {'input': mk_suffixarray_input, 'descr': 'suffixarray'},
     'histogram': {'input': mk_histogram_input, 'descr': 'histogram'},
     'index': {'input': mk_index_input, 'descr': 'index'},
     'classify': {'input': mk_classify_input, 'descr': 'classify'},
-    'bfs': {'input': mk_graph_input, 'descr': 'breadth first search'},
-    'wc': {'input': mk_wc_input, 'descr': 'word count'},
-    'mcss': {'input': mk_mcss_input, 'descr': 'maximum contiguous subsequence sum'},
-    'integrate': {'input': mk_integrate_input, 'descr': 'integration'},
+    'bfs': {'input': mk_graph_input, 'descr': 'bfs'},
+    'wc': {'input': mk_wc_input, 'descr': 'wc'},
+    'mcss': {'input': mk_mcss_input, 'descr': 'mcss'},
+    'integrate': {'input': mk_integrate_input, 'descr': 'integrate'},
 #    'primes': {'input': mk_unit(), 'descr': 'prime number enumeration'},
 #    'mis': {'input': mk_graph_input, 'descr': 'maximal independent set'},    
 }
 benchmark_descriptions = merge_dicts(parlay_benchmark_descriptions, tpal_benchmark_descriptions)
 if benchmark_mode == Benchmark_mode.Benchmark_minimal:
-    takes = ['integrate','raycast','pdfs'] #['samplesort','quicksort'] #,'quickhull','removeduplicates','suffixarray','bfs']
+    takes = benchmark_descriptions #['samplesort','quicksort'] #,'quickhull','removeduplicates','suffixarray','bfs']
     drops = []
 else:
     takes = benchmark_descriptions

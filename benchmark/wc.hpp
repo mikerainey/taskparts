@@ -27,7 +27,7 @@ std::tuple<size_t,size_t,size_t> wc(Seq const &s) {
 }
 
 auto gen_input() {
-  size_t n = taskparts::cmdline::parse_or_default_long("n", 100000000);
+  size_t n = taskparts::cmdline::parse_or_default_long("n", 500 * 1000 * 1000);
   force_sequential = taskparts::cmdline::parse_or_default_bool("force_sequential", false);
   parlay::override_granularity = taskparts::cmdline::parse_or_default_long("override_granularity", 0);
   s.resize(n, 'b');

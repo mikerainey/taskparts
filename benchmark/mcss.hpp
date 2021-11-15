@@ -29,7 +29,7 @@ typename Seq::value_type mcss(Seq const &A) {
 }
 
 auto gen_input() {
-  size_t n = taskparts::cmdline::parse_or_default_long("n", 100000000);
+  size_t n = taskparts::cmdline::parse_or_default_long("n", 500 * 1000 * 1000);
   force_sequential = taskparts::cmdline::parse_or_default_bool("force_sequential", false);
   parlay::override_granularity = taskparts::cmdline::parse_or_default_long("override_granularity", 0);
   a.resize(n);
