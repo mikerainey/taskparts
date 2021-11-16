@@ -25,34 +25,18 @@ auto big_add_delayed(bignum const& A, bignum const &B) {
   return std::pair(std::move(r), (total >> 7));
 }
 
-auto big_add_rad(bignum const& A, bignum const &B) {
-  timer t("add");
-  size_t n = A.size();
-  auto sums = parlay::delayed_tabulate(n, [&] (size_t i) {
-      return A[i] + B[i];});
-  t.next("sums");
-  auto f = [] (byte a, byte b) { // carry propagate
-    return (b == 127) ? a : b;};
-  auto [carries, total] = parlay::scan(sums, parlay::make_monoid(f,0));
-  t.next("scan");
-  auto r = parlay::tabulate(n, [&] (size_t i) {
-      return ((carries[i] >> 7) + sums[i]) & 127;});
-  t.next("tabulate");
-  return std::pair(std::move(r), (total >> 7));
+int result1, result2;
+parlay::sequence<byte> a;
+parlay::sequence<byte> b;
+
+auto benchmark() {
+  auto [sums, carry] = big_add_delayed(a,b);
+  result1 = sums[0];
+  result2 = carry;
 }
 
-auto big_add_strict(bignum const& A, bignum const &B) {
-  timer t("add");
-  size_t n = A.size();
-  auto sums = parlay::tabulate(n, [&] (size_t i) {
-      return A[i] + B[i];});
-  t.next("sums");
-  auto f = [] (byte a, byte b) { // carry propagate
-    return (b == 127) ? a : b;};
-  auto [carries, total] = parlay::scan(sums, parlay::make_monoid(f,0));
-  t.next("scan");
-  auto r = parlay::tabulate(n, [&] (size_t i) {
-      return ((carries[i] >> 7) + sums[i]) & 127;});
-  t.next("tabulate");
-  return std::pair(std::move(r), (total >> 7));
+auto gen_input() {
+  size_t n = std::max((size_t)1, (size_t)taskparts::cmdline::parse_or_default_long("n", 100000000));
+  a = parlay::tabulate(n, [] (size_t i) -> byte {return 64;});
+  b = parlay::tabulate(n, [] (size_t i) -> byte {return 64;});
 }
