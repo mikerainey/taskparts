@@ -25,8 +25,8 @@ auto random_matrix(float *I, int rows, int cols) {
   2	//number of iterations
 */
 
-int rows=4000;
-int cols=4000, size_I, size_R;
+int rows=8000;
+int cols=8000, size_I, size_R;
 float *I, *J, q0sqr, sum, sum2, tmp, meanROI,varROI ;
 int *iN,*iS,*jE,*jW;
 float *dN,*dS,*dW,*dE;
