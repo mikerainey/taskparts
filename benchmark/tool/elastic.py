@@ -28,7 +28,7 @@ def cross_product(xs, ys):
 # ========================
 
 # if True, do not run benchmarks
-virtual_runs = False
+virtual_runs = True
 # if True, do not generate reports
 virtual_report = False
 # any benchmark that takes > timeout seconds gets canceled; set to None if you dislike cancel culture
@@ -159,6 +159,7 @@ input_descriptions = {
     '100m': '$100 \cdot 10^6$',
     '1b': '$10^9$',
     'alternating': 'alternating',
+    'europe': 'europe',
 }
 
 # sorting inputs
@@ -205,7 +206,8 @@ mk_suffixarray_input = mk_cross(mk_parameters('input', ['chr22.dna']),
 # ./alternatingGraph -j 3 alternating.adj
 graph_inputs = ['rmat'] + (['random']
                            if benchmark_mode == Benchmark_mode.Benchmark_full else [])
-mk_graph_input = mk_cross(mk_inputs(graph_inputs), mk_experiments)
+mk_europe_graph_input = mk_cross(mk_input('europe'), mk_parameter('source', 1))
+mk_graph_input = mk_cross(mk_append(mk_inputs(graph_inputs), mk_europe_graph_input), mk_experiments)
 # tree inputs
 mk_sum_tree_input = mk_append_sequence([mk_input(i) for i in ['perfect', 'alternating']])
 #
@@ -213,7 +215,8 @@ mk_wc_input = mk_cross(mk_inputs(['100m']), mk_experiments)
 mk_mcss_input = mk_cross(mk_inputs(['100m']), mk_experiments)
 mk_integrate_input = mk_cross(mk_inputs(['1b']), mk_experiments)
 # pdfs inputs
-mk_pdfs_input = mk_cross(mk_inputs(['rmat','alternating']), mk_experiment(experiment_pdfs_key))
+mk_pdfs_input = mk_cross(mk_append(mk_europe_graph_input, mk_inputs(['rmat','alternating'])),
+                         mk_experiment(experiment_pdfs_key))
 
 ## Benchmarks
 ## ----------
@@ -236,8 +239,8 @@ parlay_benchmark_descriptions = {
     'quicksort': {'input': mk_sort_input, 'descr': 'quicksort'},
     'quickhull': {'input': mk_quickhull_input, 'descr': 'quickhull'},
     'delaunay': {'input': mk_delaunay_input, 'descr': 'delaunay'},
-    'nearest': {'input': mk_nearest_input, 'descr': 'knn'},
-    'nbody': {'input': mk_nbody_input, 'descr': 'nbody'},
+#    'nearest': {'input': mk_nearest_input, 'descr': 'knn'},
+#    'nbody': {'input': mk_nbody_input, 'descr': 'nbody'},
     'raycast': {'input': mk_raycast_input, 'descr': 'raycast'},
     'removeduplicates': {'input': mk_removeduplicates_input, 'descr': 'remdups'},
     'suffixarray': {'input': mk_suffixarray_input, 'descr': 'suffixarray'},
@@ -253,7 +256,7 @@ parlay_benchmark_descriptions = {
 }
 benchmark_descriptions = merge_dicts(parlay_benchmark_descriptions, tpal_benchmark_descriptions)
 if benchmark_mode == Benchmark_mode.Benchmark_minimal:
-    takes = benchmark_descriptions #['samplesort','quicksort'] #,'quickhull','removeduplicates','suffixarray','bfs']
+    takes = ['pdfs','bfs'] #['samplesort','quicksort'] #,'quickhull','removeduplicates','suffixarray','bfs']
     drops = []
 else:
     takes = benchmark_descriptions

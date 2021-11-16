@@ -44,7 +44,7 @@ auto gen_input() {
   parlay::override_granularity = taskparts::cmdline::parse_or_default_long("override_granularity", 0);
   include_infile_load = taskparts::cmdline::parse_or_default_bool("include_infile_load", false);
   //  if (include_infile_load) {
-    auto input = taskparts::cmdline::parse_or_default_string("input", "");
+    auto input = taskparts::cmdline::parse_or_default_string("input", "kuzmin");
     if (input == "") {
       exit(-1);
     }

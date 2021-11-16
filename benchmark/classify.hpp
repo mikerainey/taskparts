@@ -3,11 +3,11 @@
 #include "common.hpp"
 #include <testData/sequenceData/sequenceData.h>
 #include <common/sequenceIO.h>
-#ifndef PARLAY_SEQUENTIAL
+//#ifndef PARLAY_SEQUENTIAL
 #include <classify/decisionTree/classify.C>
-#else
-#include <classify/serial/classify.C>
-#endif
+//#else
+//#include <classify/serial/classify.C>
+//#endif
 
 using namespace std;
 using namespace benchIO;
@@ -91,7 +91,7 @@ auto gen_input() {
   force_sequential = taskparts::cmdline::parse_or_default_bool("force_sequential", false);
   parlay::override_granularity = taskparts::cmdline::parse_or_default_long("override_granularity", 0);
   include_infile_load = taskparts::cmdline::parse_or_default_bool("include_infile_load", false);
-  auto iFile = taskparts::cmdline::parse_or_default_string("input", "covtype.data");
+  auto iFile = taskparts::cmdline::parse_or_default_string("input", "kddcup.data");
   string train_file = iFile;
   string test_file = iFile;
   string label_file = iFile;

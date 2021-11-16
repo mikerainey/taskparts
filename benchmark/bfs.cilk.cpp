@@ -2,7 +2,6 @@
 #include "bfs.hpp"
 
 int main() {
-  include_graph_gen = taskparts::cmdline::parse_or_default_bool("include_graph_gen", false);
   taskparts::benchmark_cilk([&] { // benchmark
     benchmark();
   }, [&] { // setup
