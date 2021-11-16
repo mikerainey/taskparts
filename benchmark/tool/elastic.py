@@ -162,6 +162,7 @@ input_descriptions = {
     'europe': 'europe',
 }
 
+mk_bignumadd_input = mk_cross(mk_inputs(['100m']), mk_experiments)
 # sorting inputs
 # ./randomSeq -t double 10000000 random_double.seq
 sequence_inputs = ['random_double'] + (['exponential_double', 'almost_sorted_double']
@@ -251,6 +252,7 @@ parlay_benchmark_descriptions = {
     'wc': {'input': mk_wc_input, 'descr': 'wc'},
     'mcss': {'input': mk_mcss_input, 'descr': 'mcss'},
     'integrate': {'input': mk_integrate_input, 'descr': 'integrate'},
+    'bignumadd': {'input': mk_bignumadd_input, 'descr': 'bignumadd'},
 #    'primes': {'input': mk_unit(), 'descr': 'prime number enumeration'},
 #    'mis': {'input': mk_graph_input, 'descr': 'maximal independent set'},    
 }
