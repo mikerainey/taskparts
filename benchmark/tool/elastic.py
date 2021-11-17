@@ -28,7 +28,7 @@ def cross_product(xs, ys):
 # ========================
 
 # if True, do not run benchmarks
-virtual_runs = False
+virtual_runs = True
 # if True, do not generate reports
 virtual_report = False
 # any benchmark that takes > timeout seconds gets canceled; set to None if you dislike cancel culture
@@ -161,6 +161,7 @@ input_descriptions = {
     'alternating': 'alternating',
     'europe': 'europe',
     'orkut.snap': 'orkut',
+    'orkut': 'orkut',
     'sources': 'sources',
 }
 
@@ -432,7 +433,6 @@ for benchmark in benchmarks:
     benchmark_inputs = mk_take_kvp(benchmark_descriptions[benchmark]['input'], mk_experiment(experiment))
     experiment_e = eval(mk_take_kvp(all_results, mk_experiment(experiment)))
     for inp in genfunc_expr_by_row(benchmark_inputs):
-        print('', end = ' & ')
         pretty_input = input_descriptions[row_to_dictionary(rows_of(inp)[0])['input']]
         print(benchmark_descriptions[benchmark]['descr'] + ', ' + str(pretty_input), end = ' & ')
         benchmark_e = mk_take_kvp(experiment_e, mk_cross(mk_parameter('benchmark', benchmark),
@@ -443,7 +443,7 @@ for benchmark in benchmarks:
         benchmark_cilk = mk_take_kvp(experiment_e, mk_cross(mk_parameter('benchmark', benchmark), inp))
         cilk_scheduler_e = eval(mk_take_kvp(benchmark_cilk, mk_scheduler(scheduler_cilk)))
         cilk_exectime = mean(select_from_expr_by_key(cilk_scheduler_e, 'exectime'))
-        print("{:.2f}".format(cilk_exectime), end = ' & ')
+        print("{:.2f}".format(cilk_exectime), end = '')
         print('\\\\')
 print('\hline')
 print('')
