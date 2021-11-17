@@ -28,11 +28,11 @@ def cross_product(xs, ys):
 # ========================
 
 # if True, do not run benchmarks
-virtual_runs = True
+virtual_runs = False
 # if True, do not generate reports
 virtual_report = False
 # any benchmark that takes > timeout seconds gets canceled; set to None if you dislike cancel culture
-timeout = 8.0 * 60.0
+timeout = 20.0 * 60.0
 # run minimal version of all benchmarks
 class Benchmark_mode(Enum):
     Benchmark_full = 1
@@ -53,7 +53,7 @@ workers = [max_num_workers]
 # workers = workers if max_num_workers in workers else workers + [max_num_workers]
 parallel_workers = [p for p in workers if p != 1]
 num_repeat = 3 if benchmark_mode == Benchmark_mode.Benchmark_full else 1
-warmup_secs = 3.0 if benchmark_mode == Benchmark_mode.Benchmark_full else 1.0
+warmup_secs = 3.0 if benchmark_mode == Benchmark_mode.Benchmark_full else 0.0
 
 print('workers = ' + str(workers))
 
@@ -63,6 +63,7 @@ print('workers = ' + str(workers))
 scheduler_key = 'scheduler'
 
 scheduler_serial = 'serial'
+scheduler_cilk = 'cilk'
 scheduler_elastic_flat = 'elastic_flat'
 scheduler_elastic_flat_spin = 'elastic_flat_spin'
 scheduler_taskparts = 'taskparts'
@@ -82,8 +83,9 @@ scheduler_descriptions = {
     scheduler_elastic_flat_spin: 'elastic (spin)',
     scheduler_elastic_flat: 'elastic (semaphore)',
     scheduler_taskparts: 'nonelastic',
+    scheduler_cilk: 'Cilk Plus',
 }
-parallel_schedulers = [s for s in [ s for s in list(scheduler_descriptions.keys()) ] if s != scheduler_serial ]
+parallel_schedulers = [s for s in [ s for s in list(scheduler_descriptions.keys()) ] if s != scheduler_serial and s != scheduler_cilk ]
 
 def mk_scheduler(m):
     return mk_parameter(scheduler_key, m)
@@ -93,20 +95,18 @@ def mk_scheduler(m):
  
 experiment_key = 'experiment'
 experiment_agac_key = 'as_good_as_conventional'
-#experiment_iio_key = 'impact_of_io'
 experiment_ilp1_key = 'impact_of_low_parallelism1'
 experiment_ilp2_key = 'impact_of_low_parallelism2'
 experiment_ipw_key = 'impact_of_phased_workload'
 experiment_pdfs_key = 'pdfs'
 experiments = [
     experiment_agac_key,
-#    experiment_iio_key,
     experiment_ilp1_key,
     experiment_ilp2_key,
     experiment_ipw_key,
-    experiment_pdfs_key
+    experiment_pdfs_key,
 ]
-experiments_to_run = experiments #[ experiment_iio_key, experiment_ilp1_key, experiment_ipw_key ]
+experiments_to_run = experiments
 experiment_descriptions = {
     experiment_agac_key: 'E1',
     experiment_ilp1_key: 'E2',
@@ -125,18 +125,16 @@ def mk_inputs(ins):
     return mk_parameters('input', ins)
 
 mk_agac_input = mk_experiment(experiment_agac_key)
-# mk_iio_input = mk_cross(mk_experiment(experiment_iio_key),
-#                         mk_parameter('include_infile_load', 1))
 mk_ilp1_input = mk_cross_sequence([mk_experiment(experiment_ilp1_key),
-                                  mk_parameter('override_granularity', 200)])
+                                   mk_parameter('override_granularity', 200)])
 mk_ilp2_input = mk_cross_sequence([mk_experiment(experiment_ilp2_key),
-                                  mk_parameter('override_granularity', 900)])
+                                   mk_parameter('override_granularity', 900)])
 mk_ipw_input = mk_cross_sequence([mk_experiment(experiment_ipw_key),
                                   mk_parameter('force_sequential', 1),
                                   mk_parameter('k', 3),
                                   mk_parameter('m', 2)])
 mk_pdfs_input = mk_experiment(experiment_pdfs_key)
-mk_experiments = mk_append_sequence([mk_agac_input, mk_ilp1_input, mk_ilp2_input, mk_ipw_input, mk_pdfs_input])
+mk_experiments = mk_append_sequence([mk_agac_input, mk_ilp1_input, mk_ilp2_input, mk_ipw_input])
 
 input_descriptions = {
     'random_double': 'random',
@@ -163,7 +161,7 @@ input_descriptions = {
 }
 
 mk_bignumadd_input = mk_cross(mk_inputs(['100m']), mk_experiments)
-#mk_grep_input = mk_cross(mk_inputs(['']), mk_experiments)
+mk_grep_input = mk_cross(mk_inputs(['orkut.snap']), mk_experiments)
 # sorting inputs
 # ./randomSeq -t double 10000000 random_double.seq
 sequence_inputs = ['random_double'] + (['exponential_double', 'almost_sorted_double']
@@ -200,8 +198,7 @@ mk_index_input = mk_cross(mk_inputs(['wikisamp.xml']), mk_experiments)
 # classify
 mk_classify_input = mk_cross(mk_inputs(['kddcup.data']), mk_experiments)
 # suffixarray inputs
-mk_suffixarray_input = mk_cross(mk_parameters('input', ['chr22.dna']),
-                                mk_experiments)
+mk_suffixarray_input = mk_cross(mk_parameters('input', ['chr22.dna']), mk_experiments)
 # graph inputs
 # ./rMatGraph -j 5000000 rmat.adj
 # ./randLocalGraph -j 5000000 random.adj
@@ -254,13 +251,13 @@ parlay_benchmark_descriptions = {
     'mcss': {'input': mk_mcss_input, 'descr': 'mcss'},
     'integrate': {'input': mk_integrate_input, 'descr': 'integrate'},
     'bignumadd': {'input': mk_bignumadd_input, 'descr': 'bignumadd'},
-#    'grep': {'input': mk_grep_input, 'descr': 'grep'},    
+    'grep': {'input': mk_grep_input, 'descr': 'grep'},    
 #    'primes': {'input': mk_unit(), 'descr': 'prime number enumeration'},
 #    'mis': {'input': mk_graph_input, 'descr': 'maximal independent set'},    
 }
 benchmark_descriptions = merge_dicts(parlay_benchmark_descriptions, tpal_benchmark_descriptions)
 if benchmark_mode == Benchmark_mode.Benchmark_minimal:
-    takes = ['pdfs','bfs'] #['samplesort','quicksort'] #,'quickhull','removeduplicates','suffixarray','bfs']
+    takes = benchmark_descriptions #['samplesort','quicksort'] #,'quickhull','removeduplicates','suffixarray','bfs']
     drops = []
 else:
     takes = benchmark_descriptions
@@ -268,12 +265,6 @@ else:
 benchmarks = [ b for b in benchmark_descriptions if b in takes and not(b in drops) ]
 mk_benchmarks = mk_append_sequence([mk_cross(mk_elastic_benchmark(b), benchmark_descriptions[b]['input'])
                                     for b in benchmarks])
-mk_agac_benchmarks = mk_take_kvp(mk_benchmarks, mk_experiment(experiment_agac_key))
-#mk_iio_benchmarks = mk_take_kvp(mk_benchmarks, mk_experiment(experiment_iio_key))
-mk_ilp1_benchmarks = mk_take_kvp(mk_benchmarks, mk_experiment(experiment_ilp1_key))
-mk_ilp2_benchmarks = mk_take_kvp(mk_benchmarks, mk_experiment(experiment_ilp2_key))
-mk_ipw_benchmarks = mk_take_kvp(mk_benchmarks, mk_experiment(experiment_ipw_key))
-mk_pdfs_benchmarks = mk_take_kvp(mk_benchmarks, mk_experiment(experiment_pdfs_key))
 
 benchmark_path = '../'
 benchmark_bin_path = './bin/'
@@ -307,18 +298,30 @@ def mk_benchmarks_for_experiment(e):
     return mk_append_sequence([mk_benchmark_experiment(b, s, e)
                                for b, s in cross_product(benchmarks, parallel_schedulers)])
 
+def mk_benchmarks_for_cilk(e):
+    bs = [b for b in benchmarks if b != 'pdfs']
+    return mk_append_sequence([mk_benchmark_experiment(b, s, e)
+                               for b, s in cross_product(bs, [scheduler_cilk])])
+
 mk_par_params = mk_cross_sequence([mk_taskparts_num_repeat(num_repeat),
                                    mk_taskparts_warmup_secs(warmup_secs)])
+
+mk_seq_benchmarks = mk_append_sequence([mk_append_sequence([mk_benchmark_experiment(b, s, e)
+                                                            for b, s in cross_product(benchmarks, [scheduler_serial])])
+                                        for e in experiments])
+mk_seq_agac = mk_seq_benchmarks
+#               if experiment_agac_key in experiments_to_run else mk_unit())
 
 mk_par_agac = (mk_cross_sequence([mk_benchmarks_for_experiment(experiment_agac_key),
                                   mk_par_params,
                                   mk_parameters(taskparts_num_workers_key, workers)])
                if experiment_agac_key in experiments_to_run else mk_unit())
 
-# mk_par_iio = (mk_cross_sequence([mk_benchmarks_for_experiment(experiment_iio_key),
-#                                  mk_par_params,
-#                                  mk_parameters(taskparts_num_workers_key, parallel_workers)])
-#               if experiment_iio_key in experiments_to_run else mk_unit())
+mk_cilk = (mk_cross_sequence([mk_benchmarks_for_cilk(experiment_agac_key),
+                              mk_par_params,
+                              mk_parameters(taskparts_num_workers_key, workers)])
+           if experiment_agac_key in experiments_to_run else mk_unit())
+
 mk_par_ilp1 = (mk_cross_sequence([mk_benchmarks_for_experiment(experiment_ilp1_key),
                                  mk_par_params,
                                  mk_parameters(taskparts_num_workers_key, parallel_workers)])
@@ -336,7 +339,7 @@ mk_par_pdfs = (mk_cross_sequence([mk_benchmarks_for_experiment(experiment_pdfs_k
                                   mk_parameters(taskparts_num_workers_key, parallel_workers)])
               if experiment_pdfs_key in experiments_to_run else mk_unit())
 
-commands_parallel = mk_append_sequence([mk_par_agac, mk_par_ilp1, mk_par_ilp2, mk_par_ipw, mk_par_pdfs])
+commands_parallel = mk_append_sequence([mk_par_agac, mk_par_ilp1, mk_par_ilp2, mk_par_ipw, mk_par_pdfs, mk_cilk, mk_seq_agac])
     
 commands = eval(commands_parallel)
 
@@ -350,7 +353,7 @@ modifiers = {
     'silent_keys': [
         scheduler_key,
         benchmark_key,
-        experiment_key
+        experiment_key,
     ],
     'cwd': benchmark_path # cwd here because this is where the input data is stored
 }
@@ -417,6 +420,30 @@ table_pdf_file = 'report.pdf'
         # print(tabulate.tabulate([[k, benchmark_descriptions[k]['descr']] for k in benchmark_descriptions],
         #                         ['benchmark', 'description']) + '\n', file=f)
 
+# cilk table
+for benchmark in benchmarks:
+    if benchmark == 'pdfs':
+        continue
+    experiment = experiment_agac_key
+    benchmark_inputs = mk_take_kvp(benchmark_descriptions[benchmark]['input'], mk_experiment(experiment))
+    experiment_e = eval(mk_take_kvp(all_results, mk_experiment(experiment)))
+    for inp in genfunc_expr_by_row(benchmark_inputs):
+        print('', end = ' & ')
+        pretty_input = input_descriptions[row_to_dictionary(rows_of(inp)[0])['input']]
+        print(benchmark_descriptions[benchmark]['descr'] + ', ' + str(pretty_input), end = ' & ')
+        benchmark_e = mk_take_kvp(experiment_e, mk_cross(mk_parameter('benchmark', benchmark),
+                                                         inp))
+        taskparts_scheduler_e = eval(mk_take_kvp(benchmark_e, mk_scheduler(scheduler_taskparts)))
+        taskparts_exectime = mean(select_from_expr_by_key(taskparts_scheduler_e, 'exectime'))
+        print("{:.2f}".format(taskparts_exectime), end = ' & ')
+        benchmark_cilk = mk_take_kvp(experiment_e, mk_cross(mk_parameter('benchmark', benchmark), inp))
+        cilk_scheduler_e = eval(mk_take_kvp(benchmark_cilk, mk_scheduler(scheduler_cilk)))
+        cilk_exectime = mean(select_from_expr_by_key(cilk_scheduler_e, 'exectime'))
+        print("{:.2f}".format(cilk_exectime), end = ' & ')
+        print('\\\\')
+print('\hline')
+print('')
+
 for experiment in experiments:
     print('\multirow{2}{*}{' + experiment_descriptions[experiment] + '} ', end = '')
     experiment_e = mk_take_kvp(all_results, mk_experiment(experiment))
@@ -428,11 +455,13 @@ for experiment in experiments:
             print('', end = ' & ')
             pretty_input = input_descriptions[row_to_dictionary(rows_of(inp)[0])['input']]
             print(benchmark_descriptions[benchmark]['descr'] + ', ' + str(pretty_input), end = ' & ')
-            benchmark_e = mk_take_kvp(experiment_e, mk_cross(mk_parameter('benchmark', benchmark),
-                                                             inp))
+            benchmark_e = mk_take_kvp(experiment_e, mk_cross(mk_parameter('benchmark', benchmark), inp))
+            serial_scheduler_e = eval(mk_take_kvp(benchmark_e, mk_scheduler(scheduler_serial)))
+            serial_exectime = mean(select_from_expr_by_key(serial_scheduler_e, 'exectime'))
             taskparts_scheduler_e = eval(mk_take_kvp(benchmark_e, mk_scheduler(scheduler_taskparts)))
             taskparts_exectime = mean(select_from_expr_by_key(taskparts_scheduler_e, 'exectime'))
             print("{:.2f}".format(taskparts_exectime), end = ' & ')
+            print("{:.2f}".format(serial_exectime / taskparts_exectime), end = ' & ')
             for scheduler in elastic_schedulers:
                 scheduler_e = eval(mk_take_kvp(benchmark_e, mk_scheduler(scheduler)))
                 scheduler_exectime = mean(select_from_expr_by_key(scheduler_e, 'exectime'))
@@ -676,3 +705,18 @@ for experiment in experiments:
 # iio_results = mk_take_kvp(all_results, mk_experiment(experiment_iio_key))
 # ilp1_results = mk_take_kvp(all_results, mk_experiment(experiment_ilp1_key))
 # ipw_results = mk_take_kvp(all_results, mk_experiment(experiment_ipw_key))
+# mk_agac_benchmarks = mk_take_kvp(mk_benchmarks, mk_experiment(experiment_agac_key))
+# #mk_iio_benchmarks = mk_take_kvp(mk_benchmarks, mk_experiment(experiment_iio_key))
+# mk_ilp1_benchmarks = mk_take_kvp(mk_benchmarks, mk_experiment(experiment_ilp1_key))
+# mk_ilp2_benchmarks = mk_take_kvp(mk_benchmarks, mk_experiment(experiment_ilp2_key))
+# mk_ipw_benchmarks = mk_take_kvp(mk_benchmarks, mk_experiment(experiment_ipw_key))
+# mk_pdfs_benchmarks = mk_take_kvp(mk_benchmarks, mk_experiment(experiment_pdfs_key))
+# mk_cilk_benchmarks = mk_take_kvp(mk_drop_kvp(mk_benchmarks, mk_elastic_benchmark('pdfs')),
+#                                  mk_experiment(experiment_cilk_key))
+
+# mk_par_iio = (mk_cross_sequence([mk_benchmarks_for_experiment(experiment_iio_key),
+#                                  mk_par_params,
+#                                  mk_parameters(taskparts_num_workers_key, parallel_workers)])
+#               if experiment_iio_key in experiments_to_run else mk_unit())
+# mk_iio_input = mk_cross(mk_experiment(experiment_iio_key),
+#                         mk_parameter('include_infile_load', 1))

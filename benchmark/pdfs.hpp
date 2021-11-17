@@ -35,6 +35,15 @@ bool try_to_mark(parlay::sequence<std::atomic<int>>& visited, vertexId target) {
 
 using frontier_type = pasl::graph::frontiersegbag<graph_alias>;
 
+Graph G;
+
+auto load_input() {
+  if (! include_infile_load) {
+    G = gen_input();
+  }
+}
+
+#ifndef TASKPARTS_SERIAL_ELISION
 void loop(const Graph& g, frontier_type& _frontier, parlay::sequence<std::atomic<int>>& visited) {
   size_t poll_cutoff = 10000;
   size_t split_cutoff = 10000;
@@ -82,7 +91,6 @@ auto PDFS(vertexId source, const Graph& g) -> parlay::sequence<std::atomic<int>>
   return visited;
 }
 
-Graph G;
 sequence<std::atomic<int>> visited;
 
 auto benchmark_dflt() {
@@ -92,12 +100,6 @@ auto benchmark_dflt() {
   visited = PDFS(source, G);
 }
 
-auto load_input() {
-  if (! include_infile_load) {
-    G = gen_input();
-  }
-}
-
 auto benchmark() {
   if (force_sequential) {
     benchmark_intermix([&] { benchmark_dflt(); });
@@ -105,3 +107,4 @@ auto benchmark() {
     benchmark_dflt();
   }
 }
+ #endif

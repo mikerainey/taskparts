@@ -35,7 +35,7 @@ auto benchmark() {
 }
 
 auto gen_input() {
-  auto infile = taskparts::cmdline::parse_or_default_string("infile", "grep.txt");
+  auto infile = taskparts::cmdline::parse_or_default_string("input", "orkut.snap");
   auto pattern_str = taskparts::cmdline::parse_or_default_string("pattern", "xxy");
   pattern = parlay::tabulate(pattern_str.size(), [&] (size_t i) { return pattern_str[i]; });
   input = parlay::chars_from_file(infile.c_str(), true);

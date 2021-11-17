@@ -241,21 +241,23 @@ BENCHMARKS=\
 	quickhull \
 	removeduplicates \
 	suffixarray \
-	mis \
 	histogram \
 	bfs \
 	delaunay \
 	index \
 	classify \
-	nearest \
 	raycast \
-	nbody \
 	mcss \
 	wc \
-	integrate	
+	integrate \
+	bignumadd \
+	grep
+
+#	nbody \
+#	mis \
+#	nearest \
 
 TPAL_BENCHMARKS=\
-	sum_array \
 	pdfs
 
 	# sum_tree \
@@ -327,6 +329,6 @@ all_taskparts_tpal_sta: $(TPAL_BENCHMARKS:%=%.taskparts_tpal.sta)
 all_taskparts_tpal_log: $(TPAL_BENCHMARKS:%=%.taskparts_tpal.log)
 all_taskparts_tpal_dbg: $(TPAL_BENCHMARKS:%=%.taskparts_tpal.dbg)
 
-all_elastic_tpal: all_taskparts_tpal_sta all_elastic_flat_tpal_sta all_elastic_flat_spin_tpal_sta #all_tpal_cilk
+all_elastic_tpal: all_taskparts_tpal_sta all_elastic_flat_tpal_sta all_elastic_flat_spin_tpal_sta all_tpal_serial #all_tpal_cilk
 
-all_elastic: all_taskparts_sta all_elastic_flat_spin_sta all_elastic_flat_sta all_elastic_tpal #all_cilk_sta
+all_elastic: all_taskparts_sta all_elastic_flat_spin_sta all_elastic_flat_sta all_elastic_tpal all_cilk_sta all_serial_sta
