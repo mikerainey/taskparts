@@ -29,14 +29,28 @@ int result1, result2;
 parlay::sequence<byte> a;
 parlay::sequence<byte> b;
 
-auto benchmark() {
+auto gen_input() {
+  force_sequential = taskparts::cmdline::parse_or_default_bool("force_sequential", false);
+  parlay::override_granularity = taskparts::cmdline::parse_or_default_long("override_granularity", 0);
+  include_infile_load = taskparts::cmdline::parse_or_default_bool("include_infile_load", false);
+  size_t n = std::max((size_t)1, (size_t)taskparts::cmdline::parse_or_default_long("n", 500 * 1000 * 1000));
+  a = parlay::tabulate(n, [] (size_t i) -> byte {return 64;});
+  b = parlay::tabulate(n, [] (size_t i) -> byte {return 64;});
+}
+
+auto benchmark_dflt() {
+  if (include_infile_load) {
+    gen_input();
+  }
   auto [sums, carry] = big_add_delayed(a,b);
   result1 = sums[0];
   result2 = carry;
 }
 
-auto gen_input() {
-  size_t n = std::max((size_t)1, (size_t)taskparts::cmdline::parse_or_default_long("n", 100000000));
-  a = parlay::tabulate(n, [] (size_t i) -> byte {return 64;});
-  b = parlay::tabulate(n, [] (size_t i) -> byte {return 64;});
+auto benchmark() {
+  if (force_sequential) {
+    benchmark_intermix([&] { benchmark_dflt(); });
+  } else {
+    benchmark_dflt();
+  }
 }

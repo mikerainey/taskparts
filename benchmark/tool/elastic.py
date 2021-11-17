@@ -157,16 +157,17 @@ input_descriptions = {
     '100m': '$100 \cdot 10^6$',
     '500m': '$500 \cdot 10^6$',
     '1b': '$10^9$',
+    '2b': '$2 \cdot 10^9$',
     'alternating': 'alternating',
     'europe': 'europe',
     'orkut.snap': 'orkut',
     'sources': 'sources',
 }
 
-mk_bignumadd_input = mk_cross(mk_inputs(['100m']), mk_experiments)
+mk_bignumadd_input = mk_cross(mk_inputs(['500m']), mk_experiments)
 mk_grep_input = mk_cross(mk_inputs(['sources']), mk_experiments)
 # sorting inputs
-# ./randomSeq -t double 10000000 random_double.seq
+# ./randomSeq -t double 20000000 random_double.seq
 sequence_inputs = ['random_double'] + (['exponential_double', 'almost_sorted_double']
                                 if benchmark_mode == Benchmark_mode.Benchmark_full else [])
 mk_sort_input = mk_cross(mk_inputs(sequence_inputs), mk_experiments)
@@ -180,7 +181,7 @@ mk_nbody_input = mk_cross(mk_inputs(['plummer']), mk_experiments)
 # raycast inputs
 mk_raycast_input = mk_cross(mk_inputs(['happy']), mk_experiments)
 # convex hull inputs
-# ./randPoints -S -d 2 10000000 in_sphere.geom
+# ./randPoints -k -d 2 10000000 kuzmin.geom
 twod_points_inputs = ['kuzmin'] + (['on_sphere', 'in_sphere']
                                    if benchmark_mode == Benchmark_mode.Benchmark_full else [])
 mk_quickhull_input = mk_cross(mk_inputs(twod_points_inputs), mk_experiments)
@@ -213,9 +214,9 @@ mk_graph_input = mk_cross(mk_append(mk_inputs(graph_inputs), mk_europe_graph_inp
 # tree inputs
 mk_sum_tree_input = mk_append_sequence([mk_input(i) for i in ['perfect', 'alternating']])
 #
-mk_wc_input = mk_cross(mk_inputs(['100m']), mk_experiments)
+mk_wc_input = mk_cross(mk_inputs(['500m']), mk_experiments)
 mk_mcss_input = mk_cross(mk_inputs(['100m']), mk_experiments)
-mk_integrate_input = mk_cross(mk_inputs(['500m']), mk_experiments)
+mk_integrate_input = mk_cross(mk_inputs(['2b']), mk_experiments)
 # pdfs inputs
 mk_pdfs_input = mk_cross(mk_append(mk_europe_graph_input, mk_inputs(['rmat','alternating'])),
                          mk_experiment(experiment_pdfs_key))

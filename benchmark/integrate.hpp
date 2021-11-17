@@ -25,7 +25,7 @@ auto benchmark_dflt() {
   if (include_infile_load) {
     gen_input();
   }
-  size_t n = taskparts::cmdline::parse_or_default_long("n", 500 * 1000 * 1000);
+  size_t n = taskparts::cmdline::parse_or_default_long("n", 2000 * 1000 * 1000);
   auto f = [&] (double q) -> double {
     return pow(q, 2);
   };

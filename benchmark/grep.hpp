@@ -29,14 +29,28 @@ size_t result;
 parlay::sequence<char> input;
 parlay::sequence<char> pattern;
 
-auto benchmark() {
-  auto out_str = grep_delayed(input, pattern);
-  result = out_str.size();
-}
-
 auto gen_input() {
+  force_sequential = taskparts::cmdline::parse_or_default_bool("force_sequential", false);
+  parlay::override_granularity = taskparts::cmdline::parse_or_default_long("override_granularity", 0);
+  include_infile_load = taskparts::cmdline::parse_or_default_bool("include_infile_load", false);
   auto infile = taskparts::cmdline::parse_or_default_string("input", "sources");
   auto pattern_str = taskparts::cmdline::parse_or_default_string("pattern", "xxy");
   pattern = parlay::tabulate(pattern_str.size(), [&] (size_t i) { return pattern_str[i]; });
   input = parlay::chars_from_file(infile.c_str(), true);
+}
+
+auto benchmark_dflt() {
+  if (include_infile_load) {
+    gen_input();
+  }
+  auto out_str = grep_delayed(input, pattern);
+  result = out_str.size();
+}
+
+auto benchmark() {
+  if (force_sequential) {
+    benchmark_intermix([&] { benchmark_dflt(); });
+  } else {
+    benchmark_dflt();
+  }
 }
