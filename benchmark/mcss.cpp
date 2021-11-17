@@ -6,6 +6,8 @@ int main() {
     benchmark();
   }, [&] (auto sched) { // setup
     gen_input();
+  }, [&] (auto sched) { // teardown
+    printf("result %f\n", result);
   });
   return 0;
 }

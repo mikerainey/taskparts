@@ -216,7 +216,7 @@ mk_graph_input = mk_cross(mk_append(mk_inputs(graph_inputs), mk_europe_graph_inp
 mk_sum_tree_input = mk_append_sequence([mk_input(i) for i in ['perfect', 'alternating']])
 #
 mk_wc_input = mk_cross(mk_inputs(['500m']), mk_experiments)
-mk_mcss_input = mk_cross(mk_inputs(['100m']), mk_experiments)
+mk_mcss_input = mk_cross(mk_inputs(['500m']), mk_experiments)
 mk_integrate_input = mk_cross(mk_inputs(['2b']), mk_experiments)
 # pdfs inputs
 mk_pdfs_input = mk_cross(mk_append(mk_europe_graph_input, mk_inputs(['rmat','alternating'])),
@@ -246,7 +246,7 @@ parlay_benchmark_descriptions = {
 #    'nearest': {'input': mk_nearest_input, 'descr': 'knn'},
 #    'nbody': {'input': mk_nbody_input, 'descr': 'nbody'},
     'raycast': {'input': mk_raycast_input, 'descr': 'raycast'},
-    'removeduplicates': {'input': mk_removeduplicates_input, 'descr': 'remdups'},
+    'removeduplicates': {'input': mk_removeduplicates_input, 'descr': 'dedup'},
     'suffixarray': {'input': mk_suffixarray_input, 'descr': 'suffixarray'},
     'histogram': {'input': mk_histogram_input, 'descr': 'histogram'},
     'index': {'input': mk_index_input, 'descr': 'index'},

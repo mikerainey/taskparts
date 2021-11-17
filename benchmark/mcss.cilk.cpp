@@ -6,6 +6,8 @@ int main() {
     benchmark();
   }, [&] { // setup
     gen_input();
+  }, [&] { // teardown
+    printf("result %f\n", result);
   });
   return 0;
 }
