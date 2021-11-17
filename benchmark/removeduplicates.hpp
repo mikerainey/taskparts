@@ -3,11 +3,12 @@
 #include "common.hpp"
 #include <testData/sequenceData/sequenceData.h>
 #include <common/sequenceIO.h>
-#ifndef PARLAY_SEQUENTIAL
+// later: find out why the serial version is so slow
+//#ifndef PARLAY_SEQUENTIAL
 #include <removeDuplicates/parlayhash/dedup.h>
-#else
-#include <removeDuplicates/serial_sort/dedup.h>
-#endif
+//#else
+//#include <removeDuplicates/serial_sort/dedup.h>
+//#endif
 
 using str = parlay::sequence<char>;
 

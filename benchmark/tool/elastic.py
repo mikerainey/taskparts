@@ -155,13 +155,16 @@ input_descriptions = {
     'wikisamp.xml': 'wikisamp',
     'kddcup.data': 'kddcup',
     '100m': '$100 \cdot 10^6$',
+    '500m': '$500 \cdot 10^6$',
     '1b': '$10^9$',
     'alternating': 'alternating',
     'europe': 'europe',
+    'orkut.snap': 'orkut',
+    'sources': 'sources',
 }
 
 mk_bignumadd_input = mk_cross(mk_inputs(['100m']), mk_experiments)
-mk_grep_input = mk_cross(mk_inputs(['orkut.snap']), mk_experiments)
+mk_grep_input = mk_cross(mk_inputs(['sources']), mk_experiments)
 # sorting inputs
 # ./randomSeq -t double 10000000 random_double.seq
 sequence_inputs = ['random_double'] + (['exponential_double', 'almost_sorted_double']
@@ -203,7 +206,7 @@ mk_suffixarray_input = mk_cross(mk_parameters('input', ['chr22.dna']), mk_experi
 # ./rMatGraph -j 5000000 rmat.adj
 # ./randLocalGraph -j 5000000 random.adj
 # ./alternatingGraph -j 3 alternating.adj
-graph_inputs = ['rmat'] + (['random']
+graph_inputs = ['rmat','orkut'] + (['random']
                            if benchmark_mode == Benchmark_mode.Benchmark_full else [])
 mk_europe_graph_input = mk_cross(mk_input('europe'), mk_parameter('source', 1))
 mk_graph_input = mk_cross(mk_append(mk_inputs(graph_inputs), mk_europe_graph_input), mk_experiments)
@@ -212,7 +215,7 @@ mk_sum_tree_input = mk_append_sequence([mk_input(i) for i in ['perfect', 'altern
 #
 mk_wc_input = mk_cross(mk_inputs(['100m']), mk_experiments)
 mk_mcss_input = mk_cross(mk_inputs(['100m']), mk_experiments)
-mk_integrate_input = mk_cross(mk_inputs(['1b']), mk_experiments)
+mk_integrate_input = mk_cross(mk_inputs(['500m']), mk_experiments)
 # pdfs inputs
 mk_pdfs_input = mk_cross(mk_append(mk_europe_graph_input, mk_inputs(['rmat','alternating'])),
                          mk_experiment(experiment_pdfs_key))
@@ -444,6 +447,11 @@ for benchmark in benchmarks:
 print('\hline')
 print('')
 
+def speedup_of(e, b):
+    if e == 0.0:
+        return float('nan')
+    return b / e
+
 for experiment in experiments:
     print('\multirow{2}{*}{' + experiment_descriptions[experiment] + '} ', end = '')
     experiment_e = mk_take_kvp(all_results, mk_experiment(experiment))
@@ -461,7 +469,7 @@ for experiment in experiments:
             taskparts_scheduler_e = eval(mk_take_kvp(benchmark_e, mk_scheduler(scheduler_taskparts)))
             taskparts_exectime = mean(select_from_expr_by_key(taskparts_scheduler_e, 'exectime'))
             print("{:.2f}".format(taskparts_exectime), end = ' & ')
-            print("{:.2f}".format(serial_exectime / taskparts_exectime), end = ' & ')
+            print("{:.2f}".format(speedup_of(taskparts_exectime, serial_exectime)), end = ' & ')
             for scheduler in elastic_schedulers:
                 scheduler_e = eval(mk_take_kvp(benchmark_e, mk_scheduler(scheduler)))
                 scheduler_exectime = mean(select_from_expr_by_key(scheduler_e, 'exectime'))
