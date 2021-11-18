@@ -6,11 +6,11 @@
 #include <common/geometry.h>
 #include <common/geometryIO.h>
 #include <testData/geometryData/geometryData.h>
-#ifndef PARLAY_SEQUENTIAL
+//#ifndef PARLAY_SEQUENTIAL
 #include <convexHull/quickHull/hull.C>
-#else
-#include <convexHull/serialHull/hull.C>
-#endif
+//#else
+//#include <convexHull/serialHull/hull.C>
+//#endif
 using namespace benchIO;
 using namespace dataGen;
 using namespace std;

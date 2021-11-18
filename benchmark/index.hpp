@@ -3,11 +3,11 @@
 #include "common.hpp"
 #include <testData/sequenceData/sequenceData.h>
 #include <common/sequenceIO.h>
-#ifndef PARLAY_SEQUENTIAL
+//#ifndef PARLAY_SEQUENTIAL
 #include <index/parallel/index.C>
-#else
-#include <index/sequential/index.C>
-#endif
+//#else
+//#include <index/sequential/index.C>
+//#endif
 
 charseq R;
 charseq s;

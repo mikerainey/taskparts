@@ -3,11 +3,11 @@
 #include "common.hpp"
 #include <testData/sequenceData/sequenceData.h>
 #include <common/sequenceIO.h>
-#ifndef PARLAY_SEQUENTIAL
+//#ifndef PARLAY_SEQUENTIAL
 #include <histogram/parallel/histogram.C>
-#else
-#include <histogram/sequential/histogram.C>
-#endif
+//#else
+//#include <histogram/sequential/histogram.C>
+//#endif
 
 using namespace parlay;
 using namespace benchIO;

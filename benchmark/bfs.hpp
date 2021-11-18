@@ -2,11 +2,11 @@
 
 #include "graph.hpp"
 
-#ifndef PARLAY_SEQUENTIAL
+//#ifndef PARLAY_SEQUENTIAL
 #include <breadthFirstSearch/simpleBFS/BFS.C>
-#else
-#include <breadthFirstSearch/serialBFS/BFS.C>
-#endif
+//#else
+//#include <breadthFirstSearch/serialBFS/BFS.C>
+//#endif
 
 Graph G;
 sequence<vertexId> parents;

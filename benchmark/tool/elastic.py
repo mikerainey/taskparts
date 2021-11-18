@@ -28,7 +28,7 @@ def cross_product(xs, ys):
 # ========================
 
 # if True, do not run benchmarks
-virtual_runs = True
+virtual_runs = False
 # if True, do not generate reports
 virtual_report = False
 # any benchmark that takes > timeout seconds gets canceled; set to None if you dislike cancel culture
@@ -65,10 +65,10 @@ scheduler_key = 'scheduler'
 scheduler_serial = 'serial'
 scheduler_cilk = 'cilk'
 scheduler_elastic_flat = 'elastic_flat'
-scheduler_elastic_flat_spin = 'elastic_flat_spin'
+#scheduler_elastic_flat_spin = 'elastic_flat_spin'
 scheduler_taskparts = 'taskparts'
 elastic_schedulers = [
-    scheduler_elastic_flat_spin,
+#    scheduler_elastic_flat_spin,
     scheduler_elastic_flat,
 ]
 taskparts_schedulers = [
@@ -80,7 +80,7 @@ other_parallel_schedulers = [
 parallel_schedulers = taskparts_schedulers + other_parallel_schedulers
 
 scheduler_descriptions = {
-    scheduler_elastic_flat_spin: 'elastic (spin)',
+#    scheduler_elastic_flat_spin: 'elastic (spin)',
     scheduler_elastic_flat: 'elastic (semaphore)',
     scheduler_taskparts: 'nonelastic',
     scheduler_cilk: 'Cilk Plus',
@@ -96,13 +96,13 @@ def mk_scheduler(m):
 experiment_key = 'experiment'
 experiment_agac_key = 'as_good_as_conventional'
 experiment_ilp1_key = 'impact_of_low_parallelism1'
-experiment_ilp2_key = 'impact_of_low_parallelism2'
+#experiment_ilp2_key = 'impact_of_low_parallelism2'
 experiment_ipw_key = 'impact_of_phased_workload'
 experiment_pdfs_key = 'pdfs'
 experiments = [
     experiment_agac_key,
     experiment_ilp1_key,
-    experiment_ilp2_key,
+#    experiment_ilp2_key,
     experiment_ipw_key,
     experiment_pdfs_key,
 ]
@@ -110,9 +110,9 @@ experiments_to_run = experiments
 experiment_descriptions = {
     experiment_agac_key: 'E1',
     experiment_ilp1_key: 'E2',
-    experiment_ilp2_key: 'E3',
-    experiment_ipw_key: 'E4',
-    experiment_pdfs_key: 'E5',
+#    experiment_ilp2_key: 'E3',
+    experiment_ipw_key: 'E3',
+    experiment_pdfs_key: 'E4',
 }
 
 def mk_experiment(e):
@@ -127,14 +127,14 @@ def mk_inputs(ins):
 mk_agac_input = mk_experiment(experiment_agac_key)
 mk_ilp1_input = mk_cross_sequence([mk_experiment(experiment_ilp1_key),
                                    mk_parameter('override_granularity', 200)])
-mk_ilp2_input = mk_cross_sequence([mk_experiment(experiment_ilp2_key),
-                                   mk_parameter('override_granularity', 900)])
+# mk_ilp2_input = mk_cross_sequence([mk_experiment(experiment_ilp2_key),
+#                                    mk_parameter('override_granularity', 900)])
 mk_ipw_input = mk_cross_sequence([mk_experiment(experiment_ipw_key),
                                   mk_parameter('force_sequential', 1),
                                   mk_parameter('k', 3),
                                   mk_parameter('m', 2)])
 mk_pdfs_input = mk_experiment(experiment_pdfs_key)
-mk_experiments = mk_append_sequence([mk_agac_input, mk_ilp1_input, mk_ilp2_input, mk_ipw_input])
+mk_experiments = mk_append_sequence([mk_agac_input, mk_ilp1_input, mk_ipw_input])
 
 input_descriptions = {
     'random_double': 'random',
@@ -208,10 +208,9 @@ mk_suffixarray_input = mk_cross(mk_parameters('input', ['chr22.dna']), mk_experi
 # ./rMatGraph -j 5000000 rmat.adj
 # ./randLocalGraph -j 5000000 random.adj
 # ./alternatingGraph -j 3 alternating.adj
-graph_inputs = ['rmat','orkut'] + (['random']
+graph_inputs = ['rmat'] + (['random']
                            if benchmark_mode == Benchmark_mode.Benchmark_full else [])
-mk_europe_graph_input = mk_cross(mk_input('europe'), mk_parameter('source', 1))
-mk_graph_input = mk_cross(mk_append(mk_inputs(graph_inputs), mk_europe_graph_input), mk_experiments)
+mk_bfs_input = mk_cross(mk_inputs(graph_inputs), mk_experiments)
 # tree inputs
 mk_sum_tree_input = mk_append_sequence([mk_input(i) for i in ['perfect', 'alternating']])
 #
@@ -219,8 +218,11 @@ mk_wc_input = mk_cross(mk_inputs(['500m']), mk_experiments)
 mk_mcss_input = mk_cross(mk_inputs(['500m']), mk_experiments)
 mk_integrate_input = mk_cross(mk_inputs(['2b']), mk_experiments)
 # pdfs inputs
-mk_pdfs_input = mk_cross(mk_append(mk_europe_graph_input, mk_inputs(['rmat','alternating'])),
-                         mk_experiment(experiment_pdfs_key))
+mk_europe_graph_input = mk_cross(mk_input('europe'), mk_parameter('source', 1))
+mk_graph_input = mk_append(mk_inputs(['orkut']), mk_europe_graph_input)
+mk_pdfs_input = mk_cross(mk_append(mk_inputs(['alternating']), mk_graph_input),
+                          mk_experiment(experiment_pdfs_key))
+mk_bfs2_input = mk_cross(mk_graph_input, mk_experiment(experiment_pdfs_key))
 
 ## Benchmarks
 ## ----------
@@ -240,7 +242,7 @@ tpal_benchmark_descriptions = {
 }
 parlay_benchmark_descriptions = {
     'samplesort': {'input': mk_sort_input, 'descr': 'samplesort'},
-    'quicksort': {'input': mk_sort_input, 'descr': 'quicksort'},
+#    'quicksort': {'input': mk_sort_input, 'descr': 'quicksort'},
     'quickhull': {'input': mk_quickhull_input, 'descr': 'quickhull'},
     'delaunay': {'input': mk_delaunay_input, 'descr': 'delaunay'},
 #    'nearest': {'input': mk_nearest_input, 'descr': 'knn'},
@@ -251,7 +253,7 @@ parlay_benchmark_descriptions = {
     'histogram': {'input': mk_histogram_input, 'descr': 'histogram'},
     'index': {'input': mk_index_input, 'descr': 'index'},
     'classify': {'input': mk_classify_input, 'descr': 'classify'},
-    'bfs': {'input': mk_graph_input, 'descr': 'bfs'},
+    'bfs': {'input': mk_append(mk_bfs_input, mk_bfs2_input), 'descr': 'bfs'},
     'wc': {'input': mk_wc_input, 'descr': 'wc'},
     'mcss': {'input': mk_mcss_input, 'descr': 'mcss'},
     'integrate': {'input': mk_integrate_input, 'descr': 'integrate'},
@@ -262,7 +264,7 @@ parlay_benchmark_descriptions = {
 }
 benchmark_descriptions = merge_dicts(parlay_benchmark_descriptions, tpal_benchmark_descriptions)
 if benchmark_mode == Benchmark_mode.Benchmark_minimal:
-    takes = benchmark_descriptions #['samplesort','quicksort'] #,'quickhull','removeduplicates','suffixarray','bfs']
+    takes = ['bfs','pdfs','wc','grep'] # benchmark_descriptions #['samplesort','quicksort'] #,'quickhull','removeduplicates','suffixarray','bfs']
     drops = []
 else:
     takes = benchmark_descriptions
@@ -308,6 +310,9 @@ def mk_benchmarks_for_cilk(e):
     return mk_append_sequence([mk_benchmark_experiment(b, s, e)
                                for b, s in cross_product(bs, [scheduler_cilk])])
 
+mk_agac_params = mk_cross_sequence([mk_taskparts_num_repeat(5),
+                                   mk_taskparts_warmup_secs(3.0)])
+
 mk_par_params = mk_cross_sequence([mk_taskparts_num_repeat(num_repeat),
                                    mk_taskparts_warmup_secs(warmup_secs)])
 
@@ -318,7 +323,7 @@ mk_seq_agac = mk_seq_benchmarks
 #               if experiment_agac_key in experiments_to_run else mk_unit())
 
 mk_par_agac = (mk_cross_sequence([mk_benchmarks_for_experiment(experiment_agac_key),
-                                  mk_par_params,
+                                  mk_agac_params,
                                   mk_parameters(taskparts_num_workers_key, workers)])
                if experiment_agac_key in experiments_to_run else mk_unit())
 
@@ -331,20 +336,20 @@ mk_par_ilp1 = (mk_cross_sequence([mk_benchmarks_for_experiment(experiment_ilp1_k
                                  mk_par_params,
                                  mk_parameters(taskparts_num_workers_key, parallel_workers)])
               if experiment_ilp1_key in experiments_to_run else mk_unit())
-mk_par_ilp2 = (mk_cross_sequence([mk_benchmarks_for_experiment(experiment_ilp2_key),
-                                 mk_par_params,
-                                 mk_parameters(taskparts_num_workers_key, parallel_workers)])
-              if experiment_ilp2_key in experiments_to_run else mk_unit())
+# mk_par_ilp2 = (mk_cross_sequence([mk_benchmarks_for_experiment(experiment_ilp2_key),
+#                                  mk_par_params,
+#                                  mk_parameters(taskparts_num_workers_key, parallel_workers)])
+#               if experiment_ilp2_key in experiments_to_run else mk_unit())
 mk_par_ipw = (mk_cross_sequence([mk_benchmarks_for_experiment(experiment_ipw_key),
                                  mk_par_params,
                                  mk_parameters(taskparts_num_workers_key, parallel_workers)])
               if experiment_ipw_key in experiments_to_run else mk_unit())
 mk_par_pdfs = (mk_cross_sequence([mk_benchmarks_for_experiment(experiment_pdfs_key),
-                                  mk_par_params,
+                                  mk_agac_params,
                                   mk_parameters(taskparts_num_workers_key, parallel_workers)])
               if experiment_pdfs_key in experiments_to_run else mk_unit())
 
-commands_parallel = mk_append_sequence([mk_par_agac, mk_par_ilp1, mk_par_ilp2, mk_par_ipw, mk_par_pdfs, mk_cilk, mk_seq_agac])
+commands_parallel = mk_append_sequence([mk_par_agac, mk_par_ilp1, mk_par_ipw, mk_par_pdfs, mk_cilk, mk_seq_agac])
     
 commands = eval(commands_parallel)
 
@@ -385,45 +390,16 @@ if not(virtual_report):
     all_results = eval(read_head_from_benchmark_repository()['done'])
 print('')
 
-# def percent_difference(v1, v2):
-#     return abs((v1 - v2) / ((v1 + v2) / 2))
-
 def percent_difference(v1, v2):
     if v1 == 0.0:
         return float('nan')
     return ((v1 - v2 ) / v1) * 100.0
-
-def get_percent_of_one_to_another(x_key, x_val, y_expr, y_key, ref_key):
-    st = mean(select_from_expr_by_key(y_expr, y_key))
-    tt = mean(select_from_expr_by_key(y_expr, ref_key))
-    if tt == 0.0:
-        return 0.0
-    return (st / tt) * 100.0
 
 # Markdown/PDF global report
 # ==========================
 
 table_md_file = 'report.md'
 table_pdf_file = 'report.pdf'
-
-# if not(virtual_report):
-#     with open(table_md_file, 'w') as f:
-
-        # print('% Elastic scheduling benchmark report', file=f) # title
-        # print('% Yue Yao, Sam Westrick, Mike Rainey, Umut Acar', file=f) # authors
-        # print('% ' + datetime.now().ctime() + '\n', file=f) # date
-
-        # print('# Preliminaries\n', file=f)
-        # print('- max number of worker threads $P$ = ' + str(max_num_workers), file=f)
-        # print('- all times are in seconds\n', file=f)
-
-        # print('## Scheduler descriptions\n', file=f)
-        # print(tabulate.tabulate([[k, scheduler_descriptions[k]] for k in scheduler_descriptions],
-        #                         ['scheduler', 'description']) + '\n', file=f)
-
-        # print('## Benchmark descriptions\n', file=f)
-        # print(tabulate.tabulate([[k, benchmark_descriptions[k]['descr']] for k in benchmark_descriptions],
-        #                         ['benchmark', 'description']) + '\n', file=f)
 
 # cilk table
 for benchmark in benchmarks:
@@ -435,15 +411,15 @@ for benchmark in benchmarks:
     for inp in genfunc_expr_by_row(benchmark_inputs):
         pretty_input = input_descriptions[row_to_dictionary(rows_of(inp)[0])['input']]
         print(benchmark_descriptions[benchmark]['descr'] + ', ' + str(pretty_input), end = ' & ')
-        benchmark_e = mk_take_kvp(experiment_e, mk_cross(mk_parameter('benchmark', benchmark),
-                                                         inp))
+        benchmark_e = mk_take_kvp(experiment_e, mk_cross(mk_parameter('benchmark', benchmark), inp))
         taskparts_scheduler_e = eval(mk_take_kvp(benchmark_e, mk_scheduler(scheduler_taskparts)))
         taskparts_exectime = mean(select_from_expr_by_key(taskparts_scheduler_e, 'exectime'))
         print("{:.2f}".format(taskparts_exectime), end = ' & ')
         benchmark_cilk = mk_take_kvp(experiment_e, mk_cross(mk_parameter('benchmark', benchmark), inp))
         cilk_scheduler_e = eval(mk_take_kvp(benchmark_cilk, mk_scheduler(scheduler_cilk)))
         cilk_exectime = mean(select_from_expr_by_key(cilk_scheduler_e, 'exectime'))
-        print("{:.2f}".format(cilk_exectime), end = '')
+        cilk_diff = percent_difference(taskparts_exectime, cilk_exectime)
+        print("{:.2f}".format(cilk_diff), end = '')
         print('\\\\')
 print('\hline')
 print('')
@@ -457,7 +433,7 @@ for experiment in experiments:
     print('\multirow{2}{*}{' + experiment_descriptions[experiment] + '} ', end = '')
     experiment_e = mk_take_kvp(all_results, mk_experiment(experiment))
     for benchmark in benchmarks:
-        if benchmark != 'pdfs' and experiment == experiment_pdfs_key:
+        if (benchmark != 'pdfs' or 'bfs') and experiment == experiment_pdfs_key:
             continue
         benchmark_inputs = mk_take_kvp(benchmark_descriptions[benchmark]['input'], mk_experiment(experiment))
         for inp in genfunc_expr_by_row(benchmark_inputs):
@@ -470,7 +446,7 @@ for experiment in experiments:
             taskparts_scheduler_e = eval(mk_take_kvp(benchmark_e, mk_scheduler(scheduler_taskparts)))
             taskparts_exectime = mean(select_from_expr_by_key(taskparts_scheduler_e, 'exectime'))
             print("{:.2f}".format(taskparts_exectime), end = ' & ')
-            print("{:.2f}".format(speedup_of(taskparts_exectime, serial_exectime)), end = ' & ')
+            print("{:.1f}".format(speedup_of(taskparts_exectime, serial_exectime)), end = ' & ')
             for scheduler in elastic_schedulers:
                 scheduler_e = eval(mk_take_kvp(benchmark_e, mk_scheduler(scheduler)))
                 scheduler_exectime = mean(select_from_expr_by_key(scheduler_e, 'exectime'))
@@ -496,6 +472,26 @@ for experiment in experiments:
                 print(pre + "{:.1f}".format(scheduler_diff) + '\%', end = end)
             print('\\\\')
     print('\hline')
+
+
+# if not(virtual_report):
+#     with open(table_md_file, 'w') as f:
+
+        # print('% Elastic scheduling benchmark report', file=f) # title
+        # print('% Yue Yao, Sam Westrick, Mike Rainey, Umut Acar', file=f) # authors
+        # print('% ' + datetime.now().ctime() + '\n', file=f) # date
+
+        # print('# Preliminaries\n', file=f)
+        # print('- max number of worker threads $P$ = ' + str(max_num_workers), file=f)
+        # print('- all times are in seconds\n', file=f)
+
+        # print('## Scheduler descriptions\n', file=f)
+        # print(tabulate.tabulate([[k, scheduler_descriptions[k]] for k in scheduler_descriptions],
+        #                         ['scheduler', 'description']) + '\n', file=f)
+
+        # print('## Benchmark descriptions\n', file=f)
+        # print(tabulate.tabulate([[k, benchmark_descriptions[k]['descr']] for k in benchmark_descriptions],
+        #                         ['benchmark', 'description']) + '\n', file=f)
 
     #     print('# Notes/todos\n', file=f)
     #     print('- randomize benchmark run order to avoid interactions with the OS scheduler', file=f)
@@ -729,3 +725,10 @@ for experiment in experiments:
 #               if experiment_iio_key in experiments_to_run else mk_unit())
 # mk_iio_input = mk_cross(mk_experiment(experiment_iio_key),
 #                         mk_parameter('include_infile_load', 1))
+
+# def get_percent_of_one_to_another(x_key, x_val, y_expr, y_key, ref_key):
+#     st = mean(select_from_expr_by_key(y_expr, y_key))
+#     tt = mean(select_from_expr_by_key(y_expr, ref_key))
+#     if tt == 0.0:
+#         return 0.0
+#     return (st / tt) * 100.0
