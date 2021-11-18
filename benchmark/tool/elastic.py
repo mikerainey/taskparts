@@ -220,7 +220,7 @@ mk_integrate_input = mk_cross(mk_inputs(['2b']), mk_experiments)
 # pdfs inputs
 mk_europe_graph_input = mk_cross(mk_input('europe'), mk_parameter('source', 1))
 mk_graph_input = mk_append(mk_inputs(['orkut']), mk_europe_graph_input)
-mk_pdfs_input = mk_cross(mk_append(mk_inputs(['alternating']), mk_graph_input),
+mk_pdfs_input = mk_cross(mk_append(mk_graph_input, mk_inputs(['alternating'])),
                           mk_experiment(experiment_pdfs_key))
 mk_bfs2_input = mk_cross(mk_graph_input, mk_experiment(experiment_pdfs_key))
 
@@ -433,13 +433,13 @@ for experiment in experiments:
     print('\multirow{2}{*}{' + experiment_descriptions[experiment] + '} ', end = '')
     experiment_e = mk_take_kvp(all_results, mk_experiment(experiment))
     for benchmark in benchmarks:
-        if (benchmark != 'pdfs' or 'bfs') and experiment == experiment_pdfs_key:
+        if (benchmark != 'pdfs' and benchmark != 'bfs') and experiment == experiment_pdfs_key:
             continue
         benchmark_inputs = mk_take_kvp(benchmark_descriptions[benchmark]['input'], mk_experiment(experiment))
         for inp in genfunc_expr_by_row(benchmark_inputs):
             print('', end = ' & ')
-            pretty_input = input_descriptions[row_to_dictionary(rows_of(inp)[0])['input']]
-            print(benchmark_descriptions[benchmark]['descr'] + ', ' + str(pretty_input), end = ' & ')
+            pretty_input =  (', ' + str(input_descriptions[row_to_dictionary(rows_of(inp)[0])['input']])) if experiment == experiment_pdfs_key else ''
+            print(benchmark_descriptions[benchmark]['descr'] + pretty_input, end = ' & ')
             benchmark_e = mk_take_kvp(experiment_e, mk_cross(mk_parameter('benchmark', benchmark), inp))
             serial_scheduler_e = eval(mk_take_kvp(benchmark_e, mk_scheduler(scheduler_serial)))
             serial_exectime = mean(select_from_expr_by_key(serial_scheduler_e, 'exectime'))
