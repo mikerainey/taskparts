@@ -264,7 +264,7 @@ parlay_benchmark_descriptions = {
 }
 benchmark_descriptions = merge_dicts(parlay_benchmark_descriptions, tpal_benchmark_descriptions)
 if benchmark_mode == Benchmark_mode.Benchmark_minimal:
-    takes = ['bfs','pdfs','wc','grep'] # benchmark_descriptions #['samplesort','quicksort'] #,'quickhull','removeduplicates','suffixarray','bfs']
+    takes = benchmark_descriptions #['samplesort','quicksort'] #,'quickhull','removeduplicates','suffixarray','bfs']
     drops = []
 else:
     takes = benchmark_descriptions
@@ -419,7 +419,8 @@ for benchmark in benchmarks:
         cilk_scheduler_e = eval(mk_take_kvp(benchmark_cilk, mk_scheduler(scheduler_cilk)))
         cilk_exectime = mean(select_from_expr_by_key(cilk_scheduler_e, 'exectime'))
         cilk_diff = percent_difference(taskparts_exectime, cilk_exectime)
-        print("{:.2f}".format(cilk_diff), end = '')
+        pre = '+' if cilk_diff > 0.0 else ''
+        print(pre + "{:.2f}".format(cilk_diff) + '\%', end = '')
         print('\\\\')
 print('\hline')
 print('')
