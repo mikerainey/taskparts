@@ -6,6 +6,8 @@
 
 #if defined(TASKPARTS_POSIX)
 #include "posix/aligned.hpp"
+#elif defined(TASKPARTS_DARWIN)
+#include "darwin/aligned.hpp"
 #elif defined (TASKPARTS_NAUTILUS)
 #include "nautilus/aligned.hpp"
 #else

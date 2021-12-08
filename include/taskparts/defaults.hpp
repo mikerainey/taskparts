@@ -19,6 +19,8 @@ using promote_status_type = enum promote_status_enum {
 
 #if defined(TASKPARTS_POSIX)
 #include "posix/tpalrts.hpp"
+#elif defined(TASKPARTS_DARWIN)
+
 #elif defined (TASKPARTS_NAUTILUS)
 #include "nautilus/tpalrts.hpp"
 #else

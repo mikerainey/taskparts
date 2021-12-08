@@ -148,7 +148,7 @@ auto teardown_machine();
   
 } // end namespace
 
-#if defined(TASKPARTS_POSIX)
+#if defined(TASKPARTS_POSIX) || defined(TASKPARTS_DARWIN)
 #include "posix/machine.hpp"
 #elif defined (TASKPARTS_NAUTILUS)
 #include "nautilus/machine.hpp"
