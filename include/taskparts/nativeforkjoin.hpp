@@ -4,6 +4,8 @@
 
 #if defined(TASKPARTS_X64)
 #include "x64/context.hpp"
+#elif defined(TASKPARTS_ARM64)
+#include "arm64/context.hpp"
 #else
 #error need to declare platform (e.g., TASKPARTS_X64)
 #endif

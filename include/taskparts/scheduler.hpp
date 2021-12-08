@@ -5,7 +5,7 @@
 #include "timing.hpp"
 #include "perworker.hpp"
 
-#if defined(TASKPARTS_POSIX)
+#if defined(TASKPARTS_POSIX) || defined(TASKPARTS_DARWIN)
 #include "posix/minworker.hpp"
 #elif defined (TASKPARTS_NAUTILUS)
 #include "nautilus/minworker.hpp"

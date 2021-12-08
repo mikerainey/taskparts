@@ -3,20 +3,7 @@
 #include <assert.h>
 #include <optional>
 
-#include "perworker.hpp"
-#include "atomic.hpp"
-#include "hash.hpp"
-#if defined(TASKPARTS_POSIX)
-#include "posix/semaphore.hpp"
-#include "posix/spinlock.hpp"
-#elif defined (TASKPARTS_NAUTILUS)
-#include "nautilus/semaphore.hpp"
-#else
-#error need to declare platform (e.g., TASKPARTS_POSIX)
-#endif
-
 namespace taskparts {
-
 /*---------------------------------------------------------------------*/
 /* Spinning binary semaphore (for performance debugging) */
 
@@ -53,11 +40,29 @@ public:
     assert(flag.load() == 0); // The semaphore has to be balanced
   }
 };
+} // end namespace
 
-#ifndef TASKPARTS_USE_SPINNING_SEMAPHORE
-using dflt_semaphore = semaphore;
+#include "perworker.hpp"
+#include "atomic.hpp"
+#include "hash.hpp"
+#if defined(TASKPARTS_POSIX)
+#include "posix/semaphore.hpp"
+#include "posix/spinlock.hpp"
+#elif defined(TASKPARTS_DARWIN)
+// later: add semaphore
+#include "darwin/spinlock.hpp"
+#elif defined (TASKPARTS_NAUTILUS)
+#include "nautilus/semaphore.hpp"
 #else
+#error need to declare platform (e.g., TASKPARTS_POSIX)
+#endif
+
+namespace taskparts {
+
+#if defined(TASKPARTS_USE_SPINNING_SEMAPHORE) || defined(TASKPARTS_DARWIN)
 using dflt_semaphore = spinning_binary_semaphore;
+#else
+using dflt_semaphore = semaphore;
 #endif
 
 /*---------------------------------------------------------------------*/

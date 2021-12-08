@@ -3,6 +3,8 @@
 INSTALL_PATH?=bin
 #   root folder of taskparts repository:
 TASKPARTS_PATH?=../
+TASKPARTS_PLATFORM?=-DTASKPARTS_POSIX -DTASKPARTS_X64
+
 # Other parameters (all nil by default):
 #   HWLOC_INCLUDE_PREFIX           include directives for hwloc (optionally empty)
 #   HWLOC_LIBRARY_PREFIX           linker directives for hwloc (optionally empty)
@@ -66,10 +68,8 @@ LINKER_PREFIX=\
 COMMON_COMPILE_PREFIX=\
 	$(INCLUDE_PREFIX) \
 	-std=c++17 \
-	-m64 \
 	-fno-stack-protector \
-	-DTASKPARTS_POSIX \
-	-DTASKPARTS_X64
+	$(TASKPARTS_PLATFORM)
 
 OPT_COMPILE_PREFIX=\
 	$(COMMON_COMPILE_PREFIX) \
