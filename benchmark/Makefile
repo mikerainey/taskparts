@@ -329,6 +329,11 @@ all_taskparts_tpal_sta: $(TPAL_BENCHMARKS:%=%.taskparts_tpal.sta)
 all_taskparts_tpal_log: $(TPAL_BENCHMARKS:%=%.taskparts_tpal.log)
 all_taskparts_tpal_dbg: $(TPAL_BENCHMARKS:%=%.taskparts_tpal.dbg)
 
+all_multiprogrammed_opt: $(BENCHMARKS:%=%.multiprogrammed.opt)
+all_multiprogrammed_sta: $(BENCHMARKS:%=%.multiprogrammed.sta)
+all_multiprogrammed_log: $(BENCHMARKS:%=%.multiprogrammed.log)
+all_multiprogrammed_dbg: $(BENCHMARKS:%=%.multiprogrammed.dbg)
+
 all_elastic_tpal: all_taskparts_tpal_sta all_elastic_flat_tpal_sta all_elastic_flat_spin_tpal_sta all_tpal_serial #all_tpal_cilk
 
-all_elastic: all_taskparts_sta all_elastic_flat_spin_sta all_elastic_flat_sta all_elastic_tpal all_cilk_sta all_serial_sta
+all_elastic: all_taskparts_sta all_elastic_flat_spin_sta all_elastic_flat_sta all_elastic_tpal all_cilk_sta all_serial_sta all_multiprogrammed_sta

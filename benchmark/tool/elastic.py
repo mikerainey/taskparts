@@ -28,7 +28,7 @@ def cross_product(xs, ys):
 # ========================
 
 # if True, do not run benchmarks
-virtual_runs = False
+virtual_runs = True
 # if True, do not generate reports
 virtual_report = False
 # any benchmark that takes > timeout seconds gets canceled; set to None if you dislike cancel culture
@@ -54,7 +54,7 @@ workers = [max_num_workers]
 parallel_workers = [p for p in workers if p != 1]
 num_repeat = 3 if benchmark_mode == Benchmark_mode.Benchmark_full else 1
 warmup_secs = 3.0 if benchmark_mode == Benchmark_mode.Benchmark_full else 0.0
-
+multiprogrammed_workers = [16,32,48,64]
 print('workers = ' + str(workers))
 
 ## Schedulers
@@ -67,12 +67,14 @@ scheduler_cilk = 'cilk'
 scheduler_elastic_flat = 'elastic_flat'
 #scheduler_elastic_flat_spin = 'elastic_flat_spin'
 scheduler_taskparts = 'taskparts'
+scheduler_multiprogrammed = 'multiprogrammed'
 elastic_schedulers = [
 #    scheduler_elastic_flat_spin,
     scheduler_elastic_flat,
 ]
 taskparts_schedulers = [
     scheduler_taskparts,
+    scheduler_multiprogrammed,
 ] + elastic_schedulers
 other_parallel_schedulers = [
 #    scheduler_cilk
@@ -83,9 +85,10 @@ scheduler_descriptions = {
 #    scheduler_elastic_flat_spin: 'elastic (spin)',
     scheduler_elastic_flat: 'elastic (semaphore)',
     scheduler_taskparts: 'nonelastic',
+    scheduler_multiprogrammed: 'multiprogrammed',
     scheduler_cilk: 'Cilk Plus',
 }
-parallel_schedulers = [s for s in [ s for s in list(scheduler_descriptions.keys()) ] if s != scheduler_serial and s != scheduler_cilk ]
+parallel_schedulers = [s for s in [ s for s in list(scheduler_descriptions.keys()) ] if s != scheduler_serial and s != scheduler_cilk and s != scheduler_multiprogrammed ]
 
 def mk_scheduler(m):
     return mk_parameter(scheduler_key, m)
@@ -99,20 +102,23 @@ experiment_ilp1_key = 'impact_of_low_parallelism1'
 #experiment_ilp2_key = 'impact_of_low_parallelism2'
 experiment_ipw_key = 'impact_of_phased_workload'
 experiment_pdfs_key = 'pdfs'
+experiment_multiprogrammed_key = 'multiprogrammed'
 experiments = [
     experiment_agac_key,
     experiment_ilp1_key,
 #    experiment_ilp2_key,
     experiment_ipw_key,
     experiment_pdfs_key,
+    experiment_multiprogrammed_key,
 ]
-experiments_to_run = experiments
+experiments_to_run = [experiment_multiprogrammed_key] #experiments
 experiment_descriptions = {
     experiment_agac_key: 'E1',
     experiment_ilp1_key: 'E2',
 #    experiment_ilp2_key: 'E3',
     experiment_ipw_key: 'E3',
     experiment_pdfs_key: 'E4',
+    experiment_multiprogrammed_key: 'E5',
 }
 
 def mk_experiment(e):
@@ -134,7 +140,8 @@ mk_ipw_input = mk_cross_sequence([mk_experiment(experiment_ipw_key),
                                   mk_parameter('k', 3),
                                   mk_parameter('m', 2)])
 mk_pdfs_input = mk_experiment(experiment_pdfs_key)
-mk_experiments = mk_append_sequence([mk_agac_input, mk_ilp1_input, mk_ipw_input])
+mk_multiprogrammed_input = mk_experiment(experiment_multiprogrammed_key)
+mk_experiments = mk_append_sequence([mk_agac_input, mk_ilp1_input, mk_ipw_input, mk_multiprogrammed_input])
 
 input_descriptions = {
     'random_double': 'random',
@@ -310,6 +317,13 @@ def mk_benchmarks_for_cilk(e):
     return mk_append_sequence([mk_benchmark_experiment(b, s, e)
                                for b, s in cross_product(bs, [scheduler_cilk])])
 
+def mk_benchmarks_for_multiprogrammed(e):
+    bs = [b for b in benchmarks if b != 'pdfs']
+    return mk_append_sequence([mk_benchmark_experiment(b, s, e)
+                               for b, s in cross_product(bs, [scheduler_taskparts,
+                                                              scheduler_multiprogrammed,
+                                                              scheduler_elastic_flat])])
+
 mk_agac_params = mk_cross_sequence([mk_taskparts_num_repeat(5),
                                    mk_taskparts_warmup_secs(3.0)])
 
@@ -318,7 +332,7 @@ mk_par_params = mk_cross_sequence([mk_taskparts_num_repeat(num_repeat),
 
 mk_seq_benchmarks = mk_append_sequence([mk_append_sequence([mk_benchmark_experiment(b, s, e)
                                                             for b, s in cross_product(benchmarks, [scheduler_serial])])
-                                        for e in experiments])
+                                        for e in experiments if e != experiment_multiprogrammed_key])
 mk_seq_agac = mk_seq_benchmarks
 #               if experiment_agac_key in experiments_to_run else mk_unit())
 
@@ -331,6 +345,12 @@ mk_cilk = (mk_cross_sequence([mk_benchmarks_for_cilk(experiment_agac_key),
                               mk_par_params,
                               mk_parameters(taskparts_num_workers_key, workers)])
            if experiment_agac_key in experiments_to_run else mk_unit())
+
+mk_multiprogrammed = mk_cross_sequence([mk_benchmarks_for_multiprogrammed(experiment_multiprogrammed_key),
+                                        mk_par_params,
+                                        mk_parameter(taskparts_resource_binding_key, 'all'),
+                                        mk_parameters(taskparts_num_workers_key, multiprogrammed_workers)])
+#                      if experiment_multiprogrammed_key in experiments_to_run else mk_unit())
 
 mk_par_ilp1 = (mk_cross_sequence([mk_benchmarks_for_experiment(experiment_ilp1_key),
                                  mk_par_params,
@@ -349,7 +369,7 @@ mk_par_pdfs = (mk_cross_sequence([mk_benchmarks_for_experiment(experiment_pdfs_k
                                   mk_parameters(taskparts_num_workers_key, parallel_workers)])
               if experiment_pdfs_key in experiments_to_run else mk_unit())
 
-commands_parallel = mk_append_sequence([mk_par_agac, mk_par_ilp1, mk_par_ipw, mk_par_pdfs, mk_cilk, mk_seq_agac])
+commands_parallel = mk_take_kvp(mk_append_sequence([mk_par_agac, mk_par_ilp1, mk_par_ipw, mk_par_pdfs, mk_cilk, mk_seq_agac, mk_multiprogrammed]), mk_parameters(experiment_key, experiments_to_run))
     
 commands = eval(commands_parallel)
 
@@ -395,11 +415,84 @@ def percent_difference(v1, v2):
         return float('nan')
     return ((v1 - v2 ) / v1) * 100.0
 
-# Markdown/PDF global report
-# ==========================
+# multiprogrammed
+for worker_threads in multiprogrammed_workers:
+    print('\multirow{2}{*}{$P = ' + str(worker_threads) +  '$}', end = '')
+    multiprogrammed_results = mk_take_kvp(all_results, mk_parameter(taskparts_num_workers_key, worker_threads))
+    for benchmark in benchmarks:
+        if benchmark == 'pdfs':
+            continue
+        experiment = experiment_multiprogrammed_key
+        benchmark_inputs = mk_take_kvp(benchmark_descriptions[benchmark]['input'], mk_experiment(experiment))
+        experiment_e = eval(mk_take_kvp(multiprogrammed_results, mk_experiment(experiment)))
+        for inp in genfunc_expr_by_row(benchmark_inputs):
+            pretty_input = input_descriptions[row_to_dictionary(rows_of(inp)[0])['input']]
+            print(' & ' + benchmark_descriptions[benchmark]['descr'] + ', ' + str(pretty_input), end = ' & ')
+            benchmark_e = mk_take_kvp(experiment_e, mk_cross(mk_parameter('benchmark', benchmark), inp))
+            taskparts_scheduler_e = eval(mk_take_kvp(benchmark_e, mk_scheduler(scheduler_taskparts)))
+            taskparts_exectime = mean(select_from_expr_by_key(taskparts_scheduler_e, 'exectime'))
+            print("{:.2f}".format(taskparts_exectime), end = ' & ')
 
-table_md_file = 'report.md'
-table_pdf_file = 'report.pdf'
+            benchmark_multiprogrammed = mk_take_kvp(experiment_e, mk_cross(mk_parameter('benchmark', benchmark), inp))
+            multiprogrammed_scheduler_e = eval(mk_take_kvp(benchmark_multiprogrammed, mk_scheduler(scheduler_multiprogrammed)))
+            multiprogrammed_exectime = mean(select_from_expr_by_key(multiprogrammed_scheduler_e, 'exectime'))
+            multiprogrammed_diff = percent_difference(taskparts_exectime, multiprogrammed_exectime)
+            if multiprogrammed_exectime < taskparts_exectime:
+                multiprogrammed_diff = multiprogrammed_diff * -1.0
+            pre = '+' if multiprogrammed_diff > 0.0 else ''
+            print(pre + "{:.2f}".format(multiprogrammed_diff) + '\%', end = ' & ')
+
+            benchmark_elastic_flat = mk_take_kvp(experiment_e, mk_cross(mk_parameter('benchmark', benchmark), inp))
+            elastic_flat_scheduler_e = eval(mk_take_kvp(benchmark_elastic_flat, mk_scheduler(scheduler_elastic_flat)))
+            elastic_flat_exectime = mean(select_from_expr_by_key(elastic_flat_scheduler_e, 'exectime'))
+            elastic_flat_diff = percent_difference(taskparts_exectime, elastic_flat_exectime)
+            if elastic_flat_exectime < taskparts_exectime:
+                elastic_flat_diff = elastic_flat_diff * -1.0
+            pre = '+' if elastic_flat_diff > 0.0 else ''
+            print(pre + "{:.2f}".format(elastic_flat_diff) +  '\%', end = '')
+
+            print('\\\\')
+    print('\hline')
+    print('')
+
+for worker_threads in multiprogrammed_workers:
+    print('\multirow{2}{*}{$P = ' + str(worker_threads) +  '$}', end = '')
+    multiprogrammed_results = mk_take_kvp(all_results, mk_parameter(taskparts_num_workers_key, worker_threads))
+    for benchmark in benchmarks:
+        if benchmark == 'pdfs':
+            continue
+        experiment = experiment_multiprogrammed_key
+        benchmark_inputs = mk_take_kvp(benchmark_descriptions[benchmark]['input'], mk_experiment(experiment))
+        experiment_e = eval(mk_take_kvp(multiprogrammed_results, mk_experiment(experiment)))
+        for inp in genfunc_expr_by_row(benchmark_inputs):
+            pretty_input = input_descriptions[row_to_dictionary(rows_of(inp)[0])['input']]
+            print(' & ' + benchmark_descriptions[benchmark]['descr'] + ', ' + str(pretty_input), end = ' & ')
+            benchmark_e = mk_take_kvp(experiment_e, mk_cross(mk_parameter('benchmark', benchmark), inp))
+            taskparts_scheduler_e = eval(mk_take_kvp(benchmark_e, mk_scheduler(scheduler_taskparts)))
+            taskparts_exectime = mean(select_from_expr_by_key(taskparts_scheduler_e, 'usertime')) + mean(select_from_expr_by_key(taskparts_scheduler_e, 'systime'))
+            print("{:.2f}".format(taskparts_exectime), end = ' & ')
+
+            benchmark_multiprogrammed = mk_take_kvp(experiment_e, mk_cross(mk_parameter('benchmark', benchmark), inp))
+            multiprogrammed_scheduler_e = eval(mk_take_kvp(benchmark_multiprogrammed, mk_scheduler(scheduler_multiprogrammed)))
+            multiprogrammed_exectime = mean(select_from_expr_by_key(multiprogrammed_scheduler_e, 'usertime')) + mean(select_from_expr_by_key(multiprogrammed_scheduler_e, 'systime'))
+            multiprogrammed_diff = percent_difference(taskparts_exectime, multiprogrammed_exectime)
+            if multiprogrammed_exectime < taskparts_exectime:
+                multiprogrammed_diff = multiprogrammed_diff * -1.0
+            pre = '+' if multiprogrammed_diff > 0.0 else ''
+            print(pre + "{:.2f}".format(multiprogrammed_diff) + '\%', end = ' & ')
+
+            benchmark_elastic_flat = mk_take_kvp(experiment_e, mk_cross(mk_parameter('benchmark', benchmark), inp))
+            elastic_flat_scheduler_e = eval(mk_take_kvp(benchmark_elastic_flat, mk_scheduler(scheduler_elastic_flat)))
+            elastic_flat_exectime = mean(select_from_expr_by_key(elastic_flat_scheduler_e, 'usertime')) + mean(select_from_expr_by_key(elastic_flat_scheduler_e, 'systime'))
+            elastic_flat_diff = percent_difference(taskparts_exectime, elastic_flat_exectime)
+            if elastic_flat_exectime < taskparts_exectime:
+                elastic_flat_diff = elastic_flat_diff * -1.0
+            pre = '+' if elastic_flat_diff > 0.0 else ''
+            print(pre + "{:.2f}".format(elastic_flat_diff) +  '\%', end = '')
+
+            print('\\\\')
+    print('\hline')
+    print('')
 
 # cilk table
 for benchmark in benchmarks:
@@ -424,6 +517,7 @@ for benchmark in benchmarks:
         print('\\\\')
 print('\hline')
 print('')
+
 
 def speedup_of(e, b):
     if e == 0.0:
@@ -733,3 +827,9 @@ for experiment in experiments:
 #     if tt == 0.0:
 #         return 0.0
 #     return (st / tt) * 100.0
+
+# # Markdown/PDF global report
+# # ==========================
+
+# table_md_file = 'report.md'
+# table_pdf_file = 'report.pdf'

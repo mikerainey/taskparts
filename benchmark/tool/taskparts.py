@@ -16,13 +16,15 @@ taskparts_total_sleep_time_key = 'total_sleep_time'
 taskparts_utilization_key = 'utilization'
 taskparts_nb_fibers_key = 'nb_fibers'
 taskparts_nb_steals_key = 'nb_steals'
+taskparts_resource_binding_key = 'TASKPARTS_RESOURCE_BINDING'
 
 taskparts_env_vars = [
     taskparts_num_workers_key,
     taskparts_outfile_key,
     taskparts_benchmark_num_repeat_key,
     taskparts_benchmark_warmup_secs_key,
-    taskparts_cilk_outfile_key
+    taskparts_cilk_outfile_key,
+    taskparts_resource_binding_key
 ]
 
 def mk_taskparts_num_repeat(n):
