@@ -10,6 +10,11 @@ def pretty_print_json(j):
 #p = json.loads('{"append": { "e1": ' +  v1 + ', "e2": ' + v1 + ' } }')
 p1 = mk_parameter('foo1', 'bar')
 p2 = mk_parameter('foo2', 321.0)
+p3 = mk_append(p1,p2)
+p0 = mk_cross(p3, mk_append(mk_parameter('yyy', 222), mk_parameter('xxx', 333)))
+pretty_print_json(eval(p0))
+print('')
+
 p3 = mk_parameter('baz', 555)
 p4 = mk_parameters('baz', [1,2,3])
 p5 = mk_parameter('bbz', 1555)

@@ -178,12 +178,52 @@
   [(Merge-two-rows ((key cell_1) kcp_a1 ...) (kcp_2 ...))
    ((key cell_2) kcp_r ...)
    (where/error cell_2 (List-of-cell cell_1))
-   (where/error (kcp_r ...) (Merge-two-rows (kcp_a1 ...) (kcp_2 ...)))])   
-  
+   (where/error (kcp_r ...) (Merge-two-rows (kcp_a1 ...) (kcp_2 ...)))])
+
 (define-metafunction Flexibench
   Implode : (row ...) -> row
   [(Implode (row ...))
    ,(foldr (λ (r1 r2) (term (Merge-two-rows ,r1 ,r2))) '() (term (row ...)))])
+
+(define-metafunction Flexibench
+  Shave-row : row -> (row row)
+  [(Shave-row ())
+   (() ())]
+  [(Shave-row ((key_b ()) kcp_a ...))
+   (Shave-row (kcp_a ...))]
+  [(Shave-row ((key_b (atom_b atom_a ...)) kcp_a ...))
+   (((key_b atom_b) kcp_1 ...) ((key_b (atom_a ...)) kcp_2 ...))
+   (where/error ((kcp_1 ...) (kcp_2 ...)) (Shave-row (kcp_a ...)))]
+  [(Shave-row ((key_b atom_b) kcp_a ...))
+   (((key_b atom_b) kcp_1 ...) row_2)
+   (where/error ((kcp_1 ...) row_2) (Shave-row (kcp_a ...)))])
+
+(test-equal (term (Shave-row ((x (1 2))))) (term (((x 1)) ((x (2))))))
+(test-equal (term (Shave-row ((x (1))))) (term (((x 1)) ((x ())))))
+
+(define-metafunction Flexibench
+  Explode-row : row -> (row ...)
+  [(Explode-row ())
+   ()]
+  [(Explode-row row)
+   ()
+   (where (() ()) (Shave-row row))]
+  [(Explode-row row)
+   (row_1 row_3 ...)
+   (where/error (row_1 row_2) (Shave-row row))
+   (where/error (row_3 ...) (Explode-row row_2))])
+
+(test-equal (term (Explode-row ((x (1 2))))) (term (((x 1)) ((x 2)))))
+(test-equal (term (Explode-row ((x (1 2)) (y (3 4))))) (term (((x 1) (y 3)) ((x 2) (y 4)))))
+
+(define-metafunction Flexibench
+  Explode : (row ...) -> (row ...)
+  [(Explode ())
+   ()]
+  [(Explode (row_b row_a ...))
+   (row_b1 ... row_b2 ...)
+   (where/error (row_b1 ...) (Explode-row row_b))
+   (where/error (row_b2 ...) (Explode (row_a ...)))])
 
 (define (bytes->sha1 bs)
   (sha1 (open-input-bytes bs)))
@@ -278,6 +318,11 @@
    ----------- "implode"
    (⇓ (implode exp_1) val env_1)]
 
+  [(⇓ exp_1 val_1 env_1)
+   (where/error val (Explode val_1))
+   ----------- "explode"
+   (⇓ (explode exp_1) val env_1)]
+
   [(⇓ exp_1 (row_1 ...) env_1)
    (where/error (val_r ...) ((Cross-rows (row_1) (Output-of-run row_1)) ...))
    (where/error ((row_r ...) ...) (val_r ...))
@@ -358,7 +403,7 @@
 (define exp-speedup
   (term
    (let (prog-par (((prog "foo_par"))))
-     (let (procs (((proc 1)) ((proc 2)) ((proc 4))))
+     (let (procs (explode (((proc (1 2 4))))))
        (append
         (((prog "foo_seq")))
         (crossprd prog-par procs))))))
@@ -382,3 +427,8 @@
          ((prog "foo_par") (proc 2) (exectime 2728))
          ((prog "foo_par") (proc 4) (exectime 3122))
          ((prog "foo_par") (proc 4) (exectime 2574))))))
+
+(test-equal
+ (judgment-holds
+  (⇓ (explode (((x (1 2 3))))) val env) val)
+ (term ((((x 1)) ((x 2)) ((x 3))))))
