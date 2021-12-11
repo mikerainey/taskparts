@@ -1,6 +1,7 @@
 #lang racket
 (require redex)
 (require file/sha1)
+(require plot)
 
 (define-language Flexibench
 
@@ -332,9 +333,10 @@
   
   [(⇓ exp_a val_a env_1)
    (⇓ exp_2 val env_2)
-   (where/error env (Merge-envs (env_1 env_2)))
+   (where/error env_3 (Merge-envs (env_1 env_2)))
+   (where/error env_4 (Merge-envs (((var val_a)) env_3)))
    ----------------------------------- ":="
-   (⇓ ((:= var exp_a) exp_2) val env)]
+   (⇓ ((:= var exp_a) exp_2) val env_4)]
   
   )
 
@@ -430,5 +432,27 @@
 
 (test-equal
  (judgment-holds
+  (⇓ (let (par seq (split-by-kcp (run ,exp-speedup) (((prog "foo_par")))))
+       (let (par-by-proc (implode par))
+         ((:= out-seq (implode seq))
+          par-by-proc)))
+     val env) (val env))
+ (term (((((prog
+            ("foo_par"
+             "foo_par"
+             "foo_par"
+             "foo_par"
+             "foo_par"
+             "foo_par"))
+           (proc (1 1 2 2 4 4))
+           (exectime (2291 2222 2625 2728 3122 2574))))
+         ((out-seq
+           (((prog ("foo_seq" "foo_seq"))
+             (exectime (2665 2279))))))))))
+
+(test-equal
+ (judgment-holds
   (⇓ (explode (((x (1 2 3))))) val env) val)
  (term ((((x 1)) ((x 2)) ((x 3))))))
+
+; (plot (lines (map vector '(1 2) '(2 40))))
