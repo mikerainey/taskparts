@@ -1,7 +1,5 @@
 #lang racket
-(require redex)
-(require file/sha1)
-(require plot)
+(require redex file/sha1 math/statistics plot)
 
 (define-language Flexibench
 
@@ -43,19 +41,19 @@
                (elapsed number)))
   (trace ::= (run-record ...))
   (store ::=
-       (todo ((hash val) ...))
-       (done ((hash val) ...))
-       (done-trace-links (natural natural))
-       (failed ((hash val) ...))
-       (failed-trace-links (natural natural)))
+         (todo ((hash val) ...))
+         (done ((hash val) ...))
+         (done-trace-links (natural natural))
+         (failed ((hash val) ...))
+         (failed-trace-links (natural natural)))
 
   ; later: consider how to make an experiment a crdt
   ; in particular, it should be possible to make the benchmark expressions modifiable in much the same way as json dictionaries are in the way described by Schlepman et al
   (bench ::=
-       (benchmark
-        ((run-id ...)
-         (var ...))
-         ((var exp) ...)))
+         (benchmark
+          ((run-id ...)
+           (var ...))
+          ((var exp) ...)))
   (run-mode ::=
             overwrite
             append
@@ -388,6 +386,21 @@
 
 (test-equal
  (judgment-holds
+  (⇓ (implode (((x 1)) ((x 2)) ((x 3)))) val env) val)
+ (term ((((x (1 2 3)))))))
+
+(test-equal
+ (judgment-holds
+  (⇓ (explode (((x (1 2 3))))) val env) val)
+ (term ((((x 1)) ((x 2)) ((x 3))))))
+
+(test-equal
+ (judgment-holds
+  (⇓ (implode (explode (((x (1 2 3)))))) val env) val)
+ (term ((((x (1 2 3)))))))
+
+(test-equal
+ (judgment-holds
   (⇓ (append ,exp1 ,exp2) val env) val)
  (term ((((x 1) (y 2))
          ((x 2) (y 4))
@@ -443,11 +456,10 @@
 
 (define exp-speedup
   (term
-   (let (prog-par (((prog "foo_par"))))
-     (let (procs (explode (((proc (1 2 4))))))
-       (append
-        (((prog "foo_seq")))
-        (crossprd prog-par procs))))))
+   (append
+    (((prog "foo_seq")))
+    (crossprd (((prog "foo_par")))
+              (explode (((proc (1 2 4)))))))))
   
 (test-equal
  (judgment-holds
@@ -469,13 +481,14 @@
          ((prog "foo_par") (proc 4) (exectime 3122))
          ((prog "foo_par") (proc 4) (exectime 2574))))))
 
+(define exp-speedup2
+  (term (let (par seq (split-by-kcp (run r ,exp-speedup)
+                                    (((prog "foo_par")))))
+          ((:= out-seq (implode seq))
+           (implode par)))))
+
 (test-equal
- (judgment-holds
-  (⇓ (let (par seq (split-by-kcp (run r ,exp-speedup) (((prog "foo_par")))))
-       (let (par-by-proc (implode par))
-         ((:= out-seq (implode seq))
-          par-by-proc)))
-     val env) (val env))
+ (judgment-holds (⇓ ,exp-speedup2 val env) (val env))
  (term (((((prog
             ("foo_par"
              "foo_par"
@@ -489,9 +502,49 @@
            (((prog ("foo_seq" "foo_seq"))
              (exectime (2665 2279))))))))))
 
-(test-equal
- (judgment-holds
-  (⇓ (explode (((x (1 2 3))))) val env) val)
- (term ((((x 1)) ((x 2)) ((x 3))))))
+(define (group xs n)
+  (if (null? xs)
+      '()
+      (let ([xs1 (take xs n)]
+            [xs2 (drop xs n)])
+        (cons xs1 (group xs2 n)))))
 
-; (plot (lines (map vector '(1 2) '(2 40))))
+(define-metafunction Flexibench
+  Calculate-result : ((var (atom ...)) ...) var natural -> ((atom ...) ...)
+  [(Calculate-result (_ ... (var (atom ...)) _ ...) var natural)
+   ,(group (term (atom ...)) (term natural))])
+
+(define-metafunction Flexibench
+  Get-ys : ((var (atom ...)) ...) var natural -> (atom ...)
+  [(Get-ys ((var (atom ...)) ...) var_t natural)
+   ,(map car (term (Calculate-result ((var (atom ...)) ...) var_t natural)))])
+
+(define-metafunction Flexibench
+  Get-mean-of-ys : ((var (atom ...)) ...) var natural -> (atom ...)
+  [(Get-mean-of-ys ((var (atom ...)) ...) var_t natural)
+   ,(map mean (term (Calculate-result ((var (atom ...)) ...) var_t natural)))])
+
+(define-metafunction Flexibench
+  Lookup : ((any any) ...) any -> any or #f
+  [(Lookup (_ ... (any any_0) _ ...) any) any_0]
+  [(Lookup _ _) #f])
+
+(define-metafunction Flexibench
+  Get-speedup : env var var natural -> ((natural ...) (number ...))
+  [(Get-speedup env var_par var_seq natural)
+   ((natural_proc ...) (number_parexec ...))
+   (where/error (natural_proc ...) (Get-ys ,(car (term (Lookup env var_par))) proc natural))
+   (where/error (number_parexec ...) (Get-mean-of-ys ,(car (term (Lookup env var_par)))  exectime natural))
+   (where/error (number_seqexec ...) (Get-mean-of-ys ,(car (term (Lookup env var_seq)))  exectime natural))])
+
+(define-metafunction Flexibench
+  Extend-env : env var val -> env
+  [(Extend-env ((var val) ...) var_e val_e)
+   ((var val) ... (var_e val_e))])
+
+(let ([results (car (judgment-holds (⇓ ,exp-speedup2 val env) (val env)))])
+  (let ([env (term (Extend-env ,(cadr results) out-par ,(car results)))])
+    (let ([results2 (term (Get-speedup ,env out-par out-seq 2))])
+      (printf "proc: ~a~n" (car results2))
+      (printf "speedup: ~a~n" (cadr results2))
+      (plot (lines (map vector (car results2) (cadr results2)))))))
