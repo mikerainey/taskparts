@@ -11,7 +11,10 @@
   (kcp ::= (key cell))
   (row ::= (kcp ...))
   (var ::= variable-not-otherwise-mentioned)
+  ; later: consider adding to the value grammar a remote reference, e.g., a hash, which should help to handle large tables.
   (val ::= var (row ...))
+  (run-id ::= variable-not-otherwise-mentioned)
+  ; todo: make append, crossprd and split variable arity 
   (exp ::=
        val
        (let (var ... exp) exp)
@@ -20,20 +23,53 @@
        (split-by-kcp exp exp)
        (implode exp)
        (explode exp)
-       (run exp)
+       (run run-id exp)
        ((:= var exp) exp))
-  (mod ::=
-       (module
-           (var ...)
-         (var ...)
-         exp))
-
   (env ::= ((var val) ...))
+
+  ; todo: define a specification for the behavior of a run
+  ; in particular, define the conversion from a row to a run-record and from the output format to a row
+  ; later: model how we can make these conversions customizable
+  (hash ::= string)
+  (run-record ::=
+              ((path-to-executable string)
+               (cl-args atom ...)
+               (env-args (string atom) ...)
+               (timeout-sec number)
+               (return-code integer)
+               (hostname string)
+               (stdout string)
+               (stderr string)
+               (elapsed number)))
+  (trace ::= (run-record ...))
+  (store ::=
+       (todo ((hash val) ...))
+       (done ((hash val) ...))
+       (done-trace-links (natural natural))
+       (failed ((hash val) ...))
+       (failed-trace-links (natural natural)))
+
+  ; later: consider how to make an experiment a crdt
+  ; in particular, it should be possible to make the benchmark expressions modifiable in much the same way as json dictionaries are in the way described by Schlepman et al
+  (bench ::=
+       (benchmark
+        ((run-id ...)
+         (var ...))
+         ((var exp) ...)))
+  (run-mode ::=
+            overwrite
+            append
+            read-only)
+  (run-cfg ::= ((run-id run-mode) ...))
+  
+  (experiment ::= (bench run-cfg store))
 
   #:binding-forms
   (let (var ... exp_1) exp_2 #:refers-to (shadow var ...))
-  (module (var_i ...) (var_o ...) exp #:refers-to (shadow var_i ... var_o ...))
-
+  (benchmark
+   ((run-id ...)
+    (var ...))
+   ((var exp) ...) #:refers-to (shadow var ... run-id ...))
   )
 
 (define exp1
@@ -275,6 +311,9 @@
    (((exectime (Random-of-row row_1 0)))
     ((exectime (Random-of-row row_1 (Random-of-row row_1 0)))))])
 
+; todo: refactor to be small step semantics
+; why? i want to make it easier to inject data into the output of run operations
+
 (define-judgment-form Flexibench
   #:mode (⇓ I O O)
   #:contract (⇓ exp val env)
@@ -329,7 +368,7 @@
    (where/error ((row_r ...) ...) (val_r ...))
    (where/error val (row_r ... ...))
    ----------- "run"
-   (⇓ (run exp_1) val env_1)]
+   (⇓ (run run-id exp_1) val env_1)]
   
   [(⇓ exp_a val_a env_1)
    (⇓ exp_2 val env_2)
@@ -420,7 +459,7 @@
 
 (test-equal
  (judgment-holds
-  (⇓ (run ,exp-speedup) val env) val)
+  (⇓ (run r ,exp-speedup) val env) val)
  (term ((((prog "foo_seq") (exectime 2665))
          ((prog "foo_seq") (exectime 2279))
          ((prog "foo_par") (proc 1) (exectime 2291))
@@ -432,7 +471,7 @@
 
 (test-equal
  (judgment-holds
-  (⇓ (let (par seq (split-by-kcp (run ,exp-speedup) (((prog "foo_par")))))
+  (⇓ (let (par seq (split-by-kcp (run r ,exp-speedup) (((prog "foo_par")))))
        (let (par-by-proc (implode par))
          ((:= out-seq (implode seq))
           par-by-proc)))
