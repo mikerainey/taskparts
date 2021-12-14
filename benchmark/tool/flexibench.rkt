@@ -313,6 +313,32 @@
 ; why? i want to make it easier to inject data into the output of run operations
 
 (define-judgment-form Flexibench
+  #:mode (→ I I O O)
+  #:contract (→ exp env exp env)
+
+  [(→ exp_1 env_1 exp_3 env_2)
+   ----------- "let (cong)"
+   (→ (let (var_1 exp_1) exp_2) env_1
+      (let (var_1 exp_3) exp_2) env_2)]
+
+  [(where/error exp_3 (substitute exp_2 var_1 val_1))
+   ----------- "let (val)"
+   (→ (let (var_1 val_1) exp_2) env_1
+      exp_3 env_1)]
+
+  [(→ exp_m env_1 exp_n env_2)
+   ---------------------------- "append (cong)"
+   (→ (append val_b ... exp_m exp_a ...) env_1
+      (append val_b ... exp_n exp_a ...) env_2)]
+
+  [(where/error ((row_a ...) ...) (val_a ...))
+   ---------------------------- "append (val)"
+   (→ (append val_a ...) env_1
+      (row_a ... ...) env_1)]
+  
+  )
+
+(define-judgment-form Flexibench
   #:mode (⇓ I O O)
   #:contract (⇓ exp val env)
 
