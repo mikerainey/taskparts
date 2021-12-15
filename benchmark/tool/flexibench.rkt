@@ -117,6 +117,11 @@
    (Wf-val (row ...))])
 
 (define-metafunction Flexibench
+  Append : (val ...) -> val
+  [(Append ((row ...) ...))
+   (row ... ...)])
+
+(define-metafunction Flexibench
   Cross-row : (row ...) row -> (row ...)
   [(Cross-row () _)
    ()]
@@ -176,11 +181,6 @@
 (test-equal (term (Match-any-rows ((x 1) (a "b")) (((x 1)) ((a "b") (x 1))))) #t)
 (test-equal (term (Match-any-rows ((x 1) (a "b")) (((x 1)) ((a "b") (x 2))))) #t)
 (test-equal (term (Match-any-rows ((x 1) (a "b")) (((x 2)) ((a "b") (y 1))))) #f)
-
-(define-metafunction Flexibench
-  Append : (val ...) -> val
-  [(Append ((row ...) ...))
-   (row ... ...)])
 
 (test-equal (term (Append ((((prog "foo_seq") (exectime 2279)))
                            (((prog "foo_par") (proc 1) (exectime 2291))))))
@@ -379,8 +379,8 @@
 
   [(→ exp_1 env_1 exp_3 env_2)
    ----------- "let (cong)"
-   (→ (let (var_1 exp_1) exp_2) env_1
-      (let (var_1 exp_3) exp_2) env_2)]
+   (→ (let (var_1 ... exp_1) exp_2) env_1
+      (let (var_1 ... exp_3) exp_2) env_2)]
 
   [(where/error exp_3 (substitute exp_2 var_1 val_1))
    ----------- "let (val)"
@@ -398,7 +398,7 @@
 
   [---------------------------- "×"
    (→ (× val_c ...) env_1
-      (Cross-prod (val_c ...)) env_1)]
+      (Cross-rows (val_c ...)) env_1)]
 
   [(where/error (val_2 ...) (Split-rows (val_1 ...)))
    (where/error exp_4 (substitute* exp_3 ((var_1 val_2) ...)))
@@ -408,16 +408,16 @@
 
   [---------------------------- "implode"
    (→ (implode val) env_1
-      (Implode val) env_1)]
+      ((Implode val)) env_1)]
 
   [---------------------------- "explode"
    (→ (explode val) env_1
       (Explode val) env_1)]
 
-  [(→ exp_1 env_1 exp_2 env_2)
+  [(→ exp_1 env_1 exp_3 env_2)
    ----------------------------------- ":= (cong)"
    (→ ((:= var exp_1) exp_2) env_1
-      ((:= var exp_2) exp_2) env_2)]
+      ((:= var exp_3) exp_2) env_2)]
 
   [(where/error env_2 (Merge-envs (((var val_1)) env_1)))
    ----------------------------------- ":= (val)"
@@ -437,6 +437,12 @@
       val env_1)]
 
   )
+
+(define ⇒
+  (reduction-relation Flexibench
+                      (--> (exp_1 env_1)
+                           (exp_2 env_2)
+                           (judgment-holds (→ exp_1 env_1 exp_2 env_2)))))
 
 (define-judgment-form Flexibench
   #:mode (⇓ I O O)
@@ -627,6 +633,8 @@
          ((out-seq
            (((prog ("foo_seq" "foo_seq"))
              (exectime (2665 2279))))))))))
+
+(stepper ⇒ (term (,exp-speedup2 ())))
 
 (define (group xs n)
   (if (null? xs)
