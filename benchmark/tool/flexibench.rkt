@@ -12,15 +12,11 @@
   ; later: consider adding to the value grammar a remote reference, e.g., a hash, which should help to handle large tables.
   (val ::= var (row ...))
   (run-id ::= variable-not-otherwise-mentioned)
-  ; todo: make append, crossprd and split variable arity 
+  (builtin ::= append crossprd split-by-kcp implode explode)
   (exp ::=
        val
        (let (var ... exp) exp)
-       (append exp exp)
-       (crossprd exp exp)
-       (split-by-kcp exp exp)
-       (implode exp)
-       (explode exp)
+       (builtin exp ...)
        (run run-id exp)
        ((:= var exp) exp))
   (env ::= ((var val) ...))
@@ -81,6 +77,11 @@
    (((z "a"))
     ((z "b")))))
 
+(define exp3
+  (term
+   (((x "a2"))
+    ((x "b2")))))
+
 (define-metafunction Flexibench
   Unique : (any ...) -> boolean
   [(Unique (any_!_1 ...)) #t]
@@ -127,13 +128,22 @@
    (where/error (row_r ...) (Cross-row (row_a ...) (kcp ...)))])
 
 (define-metafunction Flexibench
-  Cross-rows : (row ...) (row ...) -> (row ...)
-  [(Cross-rows (row ...) ())
+  Cross-rows-2 : (row ...) (row ...) -> (row ...)
+  [(Cross-rows-2 (row ...) ())
    ()]
-  [(Cross-rows (row ...) (row_b row_a ...))
+  [(Cross-rows-2 (row ...) (row_b row_a ...))
    (row_r1 ... row_r2 ...)
    (where/error (row_r1 ...) (Cross-row (row ...) row_b))
-   (where/error (row_r2 ...) (Cross-rows (row ...) (row_a ...)))])
+   (where/error (row_r2 ...) (Cross-rows-2 (row ...) (row_a ...)))])
+
+(define-metafunction Flexibench
+  Cross-rows : ((row ...) ...) -> (row ...)
+  [(Cross-rows ())
+   ()]
+  [(Cross-rows ((row ...)))
+   (row ...)]
+  [(Cross-rows ((row_b1 ...) (row_b2 ...) (row_a ...) ...))
+   (Cross-rows ((Cross-rows-2 (row_b1 ...) (row_b2 ...)) (row_a ...) ...))])
 
 (define-metafunction Flexibench
   Match-rows : row row -> boolean
@@ -170,19 +180,68 @@
 (test-equal (term (Match-any-rows ((x 1) (a "b")) (((x 2)) ((a "b") (y 1))))) #f)
 
 (define-metafunction Flexibench
-  Split-rows : (row ...) (row ...) -> ((row ...) (row ...))
-  [(Split-rows () _)
+  Append : (val ...) -> val
+  [(Append ((row ...) ...))
+   (row ... ...)])
+
+(test-equal (term (Append ((((prog "foo_seq") (exectime 2279)))
+                           (((prog "foo_par") (proc 1) (exectime 2291))))))
+            (term (((prog "foo_seq") (exectime 2279))
+                   ((prog "foo_par") (proc 1) (exectime 2291)))))
+
+(define-metafunction Flexibench
+  Split-rows-2 : (row ...) (row ...) -> ((row ...) (row ...))
+  [(Split-rows-2 () _)
    (() ())]
-  [(Split-rows (row_b row_a ...) (row ...))
+  [(Split-rows-2 (row_b row_a ...) (row ...))
    ((row_b row_r1 ...) (row_r2 ...))
    (side-condition (term (Match-any-rows row_b (row ...))))
-   (where/error ((row_r1 ...) (row_r2 ...)) (Split-rows (row_a ...) (row ...)))]
-  [(Split-rows (row_b row_a ...) (row ...))
+   (where/error ((row_r1 ...) (row_r2 ...)) (Split-rows-2 (row_a ...) (row ...)))]
+  [(Split-rows-2 (row_b row_a ...) (row ...))
    ((row_r1 ...) (row_b row_r2 ...))
    (side-condition (not (term (Match-any-rows row_b (row ...)))))
-   (where/error ((row_r1 ...) (row_r2 ...)) (Split-rows (row_a ...) (row ...)))])
+   (where/error ((row_r1 ...) (row_r2 ...)) (Split-rows-2 (row_a ...) (row ...)))])
 
-(test-equal (term (Split-rows ,exp1 ())) (term (() (((x 1) (y 2)) ((x 2) (y 4)) ((x 3) (y 6))))))
+(test-equal (term (Split-rows-2 ,exp1 ())) (term (() (((x 1) (y 2)) ((x 2) (y 4)) ((x 3) (y 6))))))
+
+(define-metafunction Flexibench
+  Split-rows-helper : val (val ...) -> (val ...)
+  [(Split-rows-helper _ ())
+   ()]
+  [(Split-rows-helper val_b1 (val_b2 val_a ...))
+   (val_r1 val_r ...)
+   (where/error (val_r1 val_r2) (Split-rows-2 val_b1 val_b2))
+   (where/error (val_r ...) (Split-rows-helper val_b1 (val_a ...)))])
+
+(define-metafunction Flexibench
+  Split-rows : (val ...) -> (val ...)
+  [(Split-rows ())
+   ()]
+  [(Split-rows (_))
+   ()]
+  [(Split-rows (val_b val_a ...))
+   (val_r ... val_c)
+   (where/error (val_r ...) (Split-rows-helper val_b (val_a ...)))
+   (where/error (_ val_c) (Split-rows-2 val_b (Append (val_a ...))))])
+
+(test-equal (term (Split-rows ( (((prog "foo_seq") (exectime 2665))
+                                 ((prog "foo_seq") (exectime 2279))
+                                 ((prog "foo_par") (proc 1) (exectime 2291))
+                                 ((prog "foo_par") (proc 1) (exectime 2222))
+                                 ((prog "foo_par") (proc 2) (exectime 2625))
+                                 ((prog "foo_par") (proc 2) (exectime 2728))
+                                 ((prog "foo_par") (proc 4) (exectime 3122))
+                                 ((prog "foo_par") (proc 4) (exectime 2574)))
+                                (((prog "foo_par") (proc 2)))
+                                (((prog "foo_par") (proc 4))) )))
+            (term ((((prog "foo_par") (proc 2) (exectime 2625))
+                    ((prog "foo_par") (proc 2) (exectime 2728)))
+                   (((prog "foo_par") (proc 4) (exectime 3122))
+                    ((prog "foo_par") (proc 4) (exectime 2574)))
+                   (((prog "foo_seq") (exectime 2665))
+                    ((prog "foo_seq") (exectime 2279))
+                    ((prog "foo_par") (proc 1) (exectime 2291))
+                    ((prog "foo_par") (proc 1) (exectime 2222))))))
 
 (define-metafunction Flexibench
   Merge-envs : (env ...) -> env
@@ -190,7 +249,7 @@
    ()]
   [(Merge-envs (((var_b val_b) ...) env_a ...))
    ((var_b val_b) ... (var_r val_r) ...)
-   (where/error ((var_r val_r) ...) (Merge-envs (env_a ...)))])
+   (where/error ((var_r val_r) ...) (Merge-envs (env_a ...)))])            
 
 (define-metafunction Flexibench
   List-of-cell : cell -> cell
@@ -309,8 +368,12 @@
    (((exectime (Random-of-row row_1 0)))
     ((exectime (Random-of-row row_1 (Random-of-row row_1 0)))))])
 
-; todo: refactor to be small step semantics
-; why? i want to make it easier to inject data into the output of run operations
+(define-metafunction Flexibench
+  [(substitute* any_o ((var any_n) (var_a any_na) ...))
+   (substitute* any_o2 ((var_a any_na) ...))
+   (where any_o2 (substitute any_o var any_n))]
+  [(substitute* any_o ())
+   any_o])
 
 (define-judgment-form Flexibench
   #:mode (→ I I O O)
@@ -327,15 +390,54 @@
       exp_3 env_1)]
 
   [(→ exp_m env_1 exp_n env_2)
-   ---------------------------- "append (cong)"
-   (→ (append val_b ... exp_m exp_a ...) env_1
-      (append val_b ... exp_n exp_a ...) env_2)]
+   ---------------------------- "builtin (cong)"
+   (→ (builtin val_b ... exp_m exp_a ...) env_1
+      (builtin val_b ... exp_n exp_a ...) env_2)]
 
-  [(where/error ((row_a ...) ...) (val_a ...))
-   ---------------------------- "append (val)"
+  [---------------------------- "append"
    (→ (append val_a ...) env_1
-      (row_a ... ...) env_1)]
-  
+      (Append (val_a ...)) env_1)]
+
+  [---------------------------- "crossprd"
+   (→ (crossprd val_c ...) env_1
+      (Cross-prod (val_c ...)) env_1)]
+
+  [(where/error (val_2 ...) (Split-rows (val_1 ...)))
+   (where/error exp_4 (substitute* exp_3 ((var_1 val_2) ...)))
+   ---------------------------- "split-by-kcp"
+   (→ (let (var_1 ... (split-by-kcp val_1 ...)) exp_3) env_1
+      exp_4 env_1)]
+
+  [---------------------------- "implode"
+   (→ (implode val) env_1
+      (Implode val) env_1)]
+
+  [---------------------------- "explode"
+   (→ (explode val) env_1
+      (Explode val) env_1)]
+
+  [(→ exp_1 env_1 exp_2 env_2)
+   ----------------------------------- ":= (cong)"
+   (→ ((:= var exp_1) exp_2) env_1
+      ((:= var exp_2) exp_2) env_2)]
+
+  [(where/error env_2 (Merge-envs (((var val_1)) env_1)))
+   ----------------------------------- ":= (val)"
+   (→ ((:= var val_1) exp_2) env_1
+      exp_2 env_2)]
+
+  [(→ exp_1 env_1 exp_2 env_2)
+   ----------- "run (cong)"
+   (→ (run run-id exp_1) env_1
+      (run run-id exp_2) env_2)]
+
+  [(where (row_1 ...) val_1)
+   (where/error (val_r ...) ((Cross-rows ((row_1) (Output-of-run row_1))) ...))
+   (where/error val (Append (val_r ...)))
+   ----------- "run (val)"
+   (→ (run run-id val_1) env_1
+      val env_1)]
+
   )
 
 (define-judgment-form Flexibench
@@ -361,14 +463,14 @@
 
   [(⇓ exp_1 (row_1 ...) env_1)
    (⇓ exp_2 (row_2 ...) env_2)
-   (where/error val (Cross-rows (row_1 ...) (row_2 ...)))
+   (where/error val (Cross-rows-2 (row_1 ...) (row_2 ...)))
    (where/error env (Merge-envs (env_1 env_2)))
    ---------------------------- "cross"
    (⇓ (crossprd exp_1 exp_2) val env)]
 
   [(⇓ exp_1 (row_1 ...) env_1)
    (⇓ exp_2 (row_2 ...) env_2)
-   (where/error ((row_t ...) (row_d ...)) (Split-rows (row_1 ...) (row_2 ...)))
+   (where/error ((row_t ...) (row_d ...)) (Split-rows-2 (row_1 ...) (row_2 ...)))
    (where/error exp_4 (substitute exp_3 var_t (row_t ...)))
    (where/error exp_5 (substitute exp_4 var_d (row_d ...)))
    (⇓ exp_5 val env_3)
@@ -388,7 +490,7 @@
    (⇓ (explode exp_1) val env_1)]
 
   [(⇓ exp_1 (row_1 ...) env_1)
-   (where/error (val_r ...) ((Cross-rows (row_1) (Output-of-run row_1)) ...))
+   (where/error (val_r ...) ((Cross-rows-2 (row_1) (Output-of-run row_1)) ...))
    (where/error ((row_r ...) ...) (val_r ...))
    (where/error val (row_r ... ...))
    ----------- "run"
