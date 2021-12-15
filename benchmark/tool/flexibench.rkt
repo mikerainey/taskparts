@@ -12,7 +12,7 @@
   ; later: consider adding to the value grammar a remote reference, e.g., a hash, which should help to handle large tables.
   (val ::= var (row ...))
   (run-id ::= variable-not-otherwise-mentioned)
-  (builtin ::= ++ × ÷-kcp implode explode)
+  (builtin ::= ++ × ÷/kcp implode explode)
   (exp ::=
        val
        (let (var ... exp) exp)
@@ -402,8 +402,8 @@
 
   [(where/error (val_2 ...) (Split-rows (val_1 ...)))
    (where/error exp_4 (substitute* exp_3 ((var_1 val_2) ...)))
-   ---------------------------- "÷-kcp"
-   (→ (let (var_1 ... (÷-kcp val_1 ...)) exp_3) env_1
+   ---------------------------- "÷/kcp"
+   (→ (let (var_1 ... (÷/kcp val_1 ...)) exp_3) env_1
       exp_4 env_1)]
 
   [---------------------------- "implode"
@@ -473,8 +473,8 @@
    (where/error exp_5 (substitute exp_4 var_d (row_d ...)))
    (⇓ exp_5 val env_3)
    (where/error env (Merge-envs (env_1 env_2 env_3)))
-   ---------------------------- "÷-kcp"
-   (⇓ (let (var_t var_d (÷-kcp exp_1 exp_2)) exp_3) val env)]
+   ---------------------------- "÷/kcp"
+   (⇓ (let (var_t var_d (÷/kcp exp_1 exp_2)) exp_3) val env)]
 
   [(⇓ exp_1 val_1 env_1)
    (where/error row (Implode val_1))
@@ -546,27 +546,27 @@
 
 (test-equal
  (judgment-holds
-  (⇓ (let (var-t var-d (÷-kcp ,exp1 (((y 4))))) var-t) val env) val)
+  (⇓ (let (var-t var-d (÷/kcp ,exp1 (((y 4))))) var-t) val env) val)
  (term ((((x 2) (y 4))))))
 
 (test-equal
  (judgment-holds
-  (⇓ (let (var-t var-d (÷-kcp ,exp1 (((y 4))))) var-d) val env) val)
+  (⇓ (let (var-t var-d (÷/kcp ,exp1 (((y 4))))) var-d) val env) val)
  (term ((((x 1) (y 2)) ((x 3) (y 6))))))
 
 (test-equal
  (judgment-holds
-  (⇓ (let (var-t var-d (÷-kcp ,exp1 ())) var-d) val env) val)
+  (⇓ (let (var-t var-d (÷/kcp ,exp1 ())) var-d) val env) val)
  (term ((((x 1) (y 2)) ((x 2) (y 4)) ((x 3) (y 6))))))
 
 (test-equal
  (judgment-holds
-  (⇓ (let (var-t var-d (÷-kcp ,exp1 ())) var-t) val env) val)
+  (⇓ (let (var-t var-d (÷/kcp ,exp1 ())) var-t) val env) val)
  (term (())))
 
 (test-equal
  (judgment-holds
-  (⇓ (let (var-t var-d (÷-kcp ,exp1 (()))) var-t) val env) val)
+  (⇓ (let (var-t var-d (÷/kcp ,exp1 (()))) var-t) val env) val)
  (term (,exp1)))
 
 (test-equal
@@ -608,7 +608,7 @@
          ((prog "foo_par") (proc 4) (exectime 2574))))))
 
 (define exp-speedup2
-  (term (let (par seq (÷-kcp (run r ,exp-speedup)
+  (term (let (par seq (÷/kcp (run r ,exp-speedup)
                              (((prog "foo_par")))))
           ((:= out-seq (implode seq))
            (implode par)))))
