@@ -12,7 +12,7 @@
   ; later: consider adding to the value grammar a remote reference, e.g., a hash, which should help to handle large tables.
   (val ::= var (row ...))
   (run-id ::= variable-not-otherwise-mentioned)
-  (builtin ::= append crossprd split-by-kcp implode explode)
+  (builtin ::= ++ × ÷-kcp implode explode)
   (exp ::=
        val
        (let (var ... exp) exp)
@@ -27,8 +27,8 @@
   (hash ::= string)
   (run-record ::=
               ((path-to-executable string)
-               (cl-args atom ...)
-               (env-args (string atom) ...)
+               (cmdline-args atom ...)
+               (env-var-args (string atom) ...)
                (timeout-sec number)
                (return-code integer)
                (hostname string)
@@ -89,10 +89,8 @@
 
 (define-metafunction Flexibench
   Nonempty : (any ...) -> boolean
-  [(Nonempty ())
-   #f]
-  [(Nonempty _)
-   #t])
+  [(Nonempty ()) #f]
+  [(Nonempty _) #t])
 
 (define-judgment-form Flexibench
   #:mode (Wf-row I)
@@ -394,18 +392,18 @@
    (→ (builtin val_b ... exp_m exp_a ...) env_1
       (builtin val_b ... exp_n exp_a ...) env_2)]
 
-  [---------------------------- "append"
-   (→ (append val_a ...) env_1
+  [---------------------------- "++"
+   (→ (++ val_a ...) env_1
       (Append (val_a ...)) env_1)]
 
-  [---------------------------- "crossprd"
-   (→ (crossprd val_c ...) env_1
+  [---------------------------- "×"
+   (→ (× val_c ...) env_1
       (Cross-prod (val_c ...)) env_1)]
 
   [(where/error (val_2 ...) (Split-rows (val_1 ...)))
    (where/error exp_4 (substitute* exp_3 ((var_1 val_2) ...)))
-   ---------------------------- "split-by-kcp"
-   (→ (let (var_1 ... (split-by-kcp val_1 ...)) exp_3) env_1
+   ---------------------------- "÷-kcp"
+   (→ (let (var_1 ... (÷-kcp val_1 ...)) exp_3) env_1
       exp_4 env_1)]
 
   [---------------------------- "implode"
@@ -458,15 +456,15 @@
    (⇓ exp_2 (row_2 ...) env_2)
    (where/error val (row_1 ... row_2 ...))
    (where/error env (Merge-envs (env_1 env_2)))
-   ---------------------------- "append"
-   (⇓ (append exp_1 exp_2) val env)]
+   ---------------------------- "++"
+   (⇓ (++ exp_1 exp_2) val env)]
 
   [(⇓ exp_1 (row_1 ...) env_1)
    (⇓ exp_2 (row_2 ...) env_2)
    (where/error val (Cross-rows-2 (row_1 ...) (row_2 ...)))
    (where/error env (Merge-envs (env_1 env_2)))
    ---------------------------- "cross"
-   (⇓ (crossprd exp_1 exp_2) val env)]
+   (⇓ (× exp_1 exp_2) val env)]
 
   [(⇓ exp_1 (row_1 ...) env_1)
    (⇓ exp_2 (row_2 ...) env_2)
@@ -475,8 +473,8 @@
    (where/error exp_5 (substitute exp_4 var_d (row_d ...)))
    (⇓ exp_5 val env_3)
    (where/error env (Merge-envs (env_1 env_2 env_3)))
-   ---------------------------- "split-by-kcp"
-   (⇓ (let (var_t var_d (split-by-kcp exp_1 exp_2)) exp_3) val env)]
+   ---------------------------- "÷-kcp"
+   (⇓ (let (var_t var_d (÷-kcp exp_1 exp_2)) exp_3) val env)]
 
   [(⇓ exp_1 val_1 env_1)
    (where/error row (Implode val_1))
@@ -529,7 +527,7 @@
 
 (test-equal
  (judgment-holds
-  (⇓ (append ,exp1 ,exp2) val env) val)
+  (⇓ (++ ,exp1 ,exp2) val env) val)
  (term ((((x 1) (y 2))
          ((x 2) (y 4))
          ((x 3) (y 6))
@@ -538,7 +536,7 @@
 
 (test-equal
  (judgment-holds
-  (⇓ (crossprd ,exp1 ,exp2) val env) val)
+  (⇓ (× ,exp1 ,exp2) val env) val)
  (term ((((x 1) (y 2) (z "a"))
          ((x 2) (y 4) (z "a"))
          ((x 3) (y 6) (z "a"))
@@ -548,33 +546,33 @@
 
 (test-equal
  (judgment-holds
-  (⇓ (let (var-t var-d (split-by-kcp ,exp1 (((y 4))))) var-t) val env) val)
+  (⇓ (let (var-t var-d (÷-kcp ,exp1 (((y 4))))) var-t) val env) val)
  (term ((((x 2) (y 4))))))
 
 (test-equal
  (judgment-holds
-  (⇓ (let (var-t var-d (split-by-kcp ,exp1 (((y 4))))) var-d) val env) val)
+  (⇓ (let (var-t var-d (÷-kcp ,exp1 (((y 4))))) var-d) val env) val)
  (term ((((x 1) (y 2)) ((x 3) (y 6))))))
 
 (test-equal
  (judgment-holds
-  (⇓ (let (var-t var-d (split-by-kcp ,exp1 ())) var-d) val env) val)
+  (⇓ (let (var-t var-d (÷-kcp ,exp1 ())) var-d) val env) val)
  (term ((((x 1) (y 2)) ((x 2) (y 4)) ((x 3) (y 6))))))
 
 (test-equal
  (judgment-holds
-  (⇓ (let (var-t var-d (split-by-kcp ,exp1 ())) var-t) val env) val)
+  (⇓ (let (var-t var-d (÷-kcp ,exp1 ())) var-t) val env) val)
  (term (())))
 
 (test-equal
  (judgment-holds
-  (⇓ (let (var-t var-d (split-by-kcp ,exp1 (()))) var-t) val env) val)
+  (⇓ (let (var-t var-d (÷-kcp ,exp1 (()))) var-t) val env) val)
  (term (,exp1)))
 
 (test-equal
  (judgment-holds
   (⇓ (let (x ,exp1)
-       (crossprd x ,exp2)) val env) val)
+       (× x ,exp2)) val env) val)
  (term ((((x 1) (y 2) (z "a"))
          ((x 2) (y 4) (z "a"))
          ((x 3) (y 6) (z "a"))
@@ -584,10 +582,10 @@
 
 (define exp-speedup
   (term
-   (append
+   (++
     (((prog "foo_seq")))
-    (crossprd (((prog "foo_par")))
-              (explode (((proc (1 2 4)))))))))
+    (× (((prog "foo_par")))
+       (explode (((proc (1 2 4)))))))))
   
 (test-equal
  (judgment-holds
@@ -610,8 +608,8 @@
          ((prog "foo_par") (proc 4) (exectime 2574))))))
 
 (define exp-speedup2
-  (term (let (par seq (split-by-kcp (run r ,exp-speedup)
-                                    (((prog "foo_par")))))
+  (term (let (par seq (÷-kcp (run r ,exp-speedup)
+                             (((prog "foo_par")))))
           ((:= out-seq (implode seq))
            (implode par)))))
 
