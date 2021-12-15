@@ -106,8 +106,7 @@
 
 (define-metafunction Flexibench
   Append : (val ...) -> val
-  [(Append ((row ...) ...))
-   (row ... ...)])
+  [(Append ((row ...) ...)) (row ... ...)])
 
 (define-metafunction Flexibench
   Cross-row : (row ...) row -> (row ...)
@@ -136,44 +135,33 @@
   [(Cross-rows ((row_b1 ...) (row_b2 ...) (row_a ...) ...))
    (Cross-rows ((Cross-rows-2 (row_b1 ...) (row_b2 ...)) (row_a ...) ...))])
 
-(define-metafunction Flexibench
-  Match-rows : row row -> boolean
-  [(Match-rows _ ())
-   #t]
-  [(Match-rows (kcp_1 ... kcp_b kcp_2 ...) (kcp_b kcp_a ...))
-   (Match-rows (kcp_1 ... kcp_2 ...) (kcp_a ...))]
-  [(Match-rows _ _)
-   #f])
+(define-relation Flexibench
+  Rows-match? ⊆ row × row
+  [(Rows-match? _ ())]
+  [(Rows-match? (kcp_1 ... kcp_b kcp_2 ...) (kcp_b kcp_a ...))
+   (Rows-match? (kcp_1 ... kcp_2 ...) (kcp_a ...))])
 
-(test-equal (term (Match-rows ((y 4)) ((y 4)))) #t)
-(test-equal (term (Match-rows ((y 4)) ((y 5)))) #f)
-(test-equal (term (Match-rows ((y 4)) ((x 5) (y 4)))) #f)
-(test-equal (term (Match-rows ((y 4) (a "b")) ((y 4)))) #t)
-(test-equal (term (Match-rows ((y 4) (x 3) (a "b") (b "c")) ((a "b") (y 4)))) #t)
+(test-judgment-holds (Rows-match? ((y 4)) ((y 4))))
+(test-equal (term (Rows-match? ((y 4)) ((y 5)))) #f)
+(test-equal (term (Rows-match? ((y 4)) ((x 5) (y 4)))) #f)
+(test-judgment-holds (Rows-match? ((y 4) (a "b")) ((y 4))))
+(test-judgment-holds (Rows-match? ((y 4) (x 3) (a "b") (b "c")) ((a "b") (y 4))))
 
-(define-metafunction Flexibench
-  Match-any-rows : row (row ...) -> boolean
-  [(Match-any-rows _ ())
-   #f]
-  [(Match-any-rows row (row_b _ ...))
-   #t
-   (side-condition (term (Match-rows row row_b)))]
-  [(Match-any-rows row (_ row_a ...))
-   (Match-any-rows row (row_a ...))])
+(define-relation Flexibench
+  Row-matches-any-other? ⊆ row × (row ...)
+  [(Row-matches-any-other? row (row_b _ ...))
+   (Rows-match? row row_b)]
+  [(Row-matches-any-other? row (_ row_a ...))
+   (Row-matches-any-other? row (row_a ...))])
 
-(test-equal (term (Match-any-rows () ())) #f)
-(test-equal (term (Match-any-rows ((a "b")) ())) #f)
-(test-equal (term (Match-any-rows ((a "b")) (((a "b"))))) #t)
-(test-equal (term (Match-any-rows ((x 1) (a "b")) (((a "b"))))) #t)
-(test-equal (term (Match-any-rows ((x 1) (a "b")) (((a "b") (x 1))))) #t)
-(test-equal (term (Match-any-rows ((x 1) (a "b")) (((x 1)) ((a "b") (x 1))))) #t)
-(test-equal (term (Match-any-rows ((x 1) (a "b")) (((x 1)) ((a "b") (x 2))))) #t)
-(test-equal (term (Match-any-rows ((x 1) (a "b")) (((x 2)) ((a "b") (y 1))))) #f)
-
-(test-equal (term (Append ((((prog "foo_seq") (exectime 2279)))
-                           (((prog "foo_par") (proc 1) (exectime 2291))))))
-            (term (((prog "foo_seq") (exectime 2279))
-                   ((prog "foo_par") (proc 1) (exectime 2291)))))
+(test-equal (term (Row-matches-any-other? () ())) #f)
+(test-equal (term (Row-matches-any-other? ((a "b")) ())) #f)
+(test-equal (term (Row-matches-any-other? ((a "b")) (((a "b"))))) #t)
+(test-equal (term (Row-matches-any-other? ((x 1) (a "b")) (((a "b"))))) #t)
+(test-equal (term (Row-matches-any-other? ((x 1) (a "b")) (((a "b") (x 1))))) #t)
+(test-equal (term (Row-matches-any-other? ((x 1) (a "b")) (((x 1)) ((a "b") (x 1))))) #t)
+(test-equal (term (Row-matches-any-other? ((x 1) (a "b")) (((x 1)) ((a "b") (x 2))))) #t)
+(test-equal (term (Row-matches-any-other? ((x 1) (a "b")) (((x 2)) ((a "b") (y 1))))) #f)
 
 (define-metafunction Flexibench
   Split-rows-2 : (row ...) (row ...) -> ((row ...) (row ...))
@@ -181,11 +169,11 @@
    (() ())]
   [(Split-rows-2 (row_b row_a ...) (row ...))
    ((row_b row_r1 ...) (row_r2 ...))
-   (side-condition (term (Match-any-rows row_b (row ...))))
+   (side-condition (term (Row-matches-any-other? row_b (row ...))))
    (where/error ((row_r1 ...) (row_r2 ...)) (Split-rows-2 (row_a ...) (row ...)))]
   [(Split-rows-2 (row_b row_a ...) (row ...))
    ((row_r1 ...) (row_b row_r2 ...))
-   (side-condition (not (term (Match-any-rows row_b (row ...)))))
+   (side-condition (not (term (Row-matches-any-other? row_b (row ...)))))
    (where/error ((row_r1 ...) (row_r2 ...)) (Split-rows-2 (row_a ...) (row ...)))])
 
 (test-equal (term (Split-rows-2 ,exp1 ())) (term (() (((x 1) (y 2)) ((x 2) (y 4)) ((x 3) (y 6))))))
