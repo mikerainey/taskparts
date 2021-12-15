@@ -447,16 +447,14 @@
    (where/error env (Merge-envs (env_1 env_2)))
    ---------------------------- "cross"
    (⇓ (× exp_1 exp_2) val env)]
-
-  [(⇓ exp_1 (row_1 ...) env_1)
-   (⇓ exp_2 (row_2 ...) env_2)
-   (where/error ((row_t ...) (row_d ...)) (Split-rows-2 (row_1 ...) (row_2 ...)))
-   (where/error exp_4 (substitute exp_3 var_t (row_t ...)))
-   (where/error exp_5 (substitute exp_4 var_d (row_d ...)))
-   (⇓ exp_5 val env_3)
-   (where/error env (Merge-envs (env_1 env_2 env_3)))
+  
+  [(⇓ exp_1 val_1 env_1) ...
+   (where/error (val_2 ...) (Split-rows (val_1 ...)))
+   (where/error exp_4 (substitute* exp_2 ((var_1 val_2) ...)))
+   (⇓ exp_4 val env_2)
+   (where/error env (Merge-envs (env_1 ... env_2)))
    ---------------------------- "÷/kcp"
-   (⇓ (let (var_t var_d (÷/kcp exp_1 exp_2)) exp_3) val env)]
+   (⇓ (let (var_1 ... (÷/kcp exp_1 ...)) exp_2) val env)]
 
   [(⇓ exp_1 val_1 env_1)
    (where/error row (Implode val_1))
