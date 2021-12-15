@@ -82,39 +82,27 @@
    (((x "a2"))
     ((x "b2")))))
 
-(define-metafunction Flexibench
-  Unique : (any ...) -> boolean
-  [(Unique (any_!_1 ...)) #t]
-  [(Unique (_ ...)) #f])
+(define-relation Flexibench
+  Unique ⊆ (any ...)
+  [(Unique (any_!_1 ...))])
 
-(define-metafunction Flexibench
-  Nonempty : (any ...) -> boolean
-  [(Nonempty ()) #f]
-  [(Nonempty _) #t])
+(define-relation Flexibench
+  Nonempty ⊆ (any ...)
+  [(Nonempty (any_b any_a ...))])
 
-(define-judgment-form Flexibench
-  #:mode (Wf-row I)
-  #:contract (Wf-row row)
+(define-relation Flexibench
+  Wf-row ⊆ row
+  [(Wf-row ((key cell) ...))
+   (Unique (key ...))
+   (Nonempty (key ...))])
 
-  [(side-condition (Nonempty (key ...)))
-   (side-condition (Unique (key ...)))
-   ------------------------- "row"
-   (Wf-row ((key cell) ...))])
-
-(define-judgment-form Flexibench
-  #:mode (Wf-val I)
-  #:contract (Wf-val val)
-
-  [----------- "empty"
-   (Wf-val ())]
-  
-  [----------- "unit"
-   (Wf-val (()))]
-  
-  [(Wf-row row) ...
-   (side-condition (Nonempty (row ...)))
-   ------------------------- "populated"
-   (Wf-val (row ...))])
+(define-relation Flexibench
+  Wf-val ⊆ val
+  [(Wf-val ())]
+  [(Wf-val (()))]
+  [(Wf-val (row ...))
+   (Wf-row row) ...
+   (Nonempty (row ...))])
 
 (define-metafunction Flexibench
   Append : (val ...) -> val
@@ -634,7 +622,7 @@
            (((prog ("foo_seq" "foo_seq"))
              (exectime (2665 2279))))))))))
 
-(stepper ⇒ (term (,exp-speedup2 ())))
+;(stepper ⇒ (term (,exp-speedup2 ())))
 
 (define (group xs n)
   (if (null? xs)
