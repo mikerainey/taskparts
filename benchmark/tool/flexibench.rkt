@@ -21,21 +21,25 @@
        ((:= var exp) exp))
   (env ::= ((var val) ...))
 
-  ; todo: define a specification for the behavior of a run
-  ; in particular, define the conversion from a row to a run-record and from the output format to a row
-  ; later: model how we can make these conversions customizable
   (hash ::= string)
-  (run-record ::=
-              ((path-to-executable string)
-               (cmdline-args atom ...)
-               (env-var-args (string atom) ...)
-               (timeout-sec number)
-               (return-code integer)
-               (hostname string)
+  (run-input-key ::=
+                 path-to-executable-key
+                 env-var-key
+                 silent-key
+                 timeout-sec-key
+                 hostname-key)
+  (run-input ::=
+             ((path-to-executable string)
+              (cmdline-args atom ...)
+              (env-var-args (string atom) ...)
+              (timeout-sec number)))
+  (run-output ::=
+              ((return-code integer)
                (stdout string)
                (stderr string)
                (elapsed number)))
-  (trace ::= (run-record ...))
+  (trace-run ::= (run-input run-output))
+  (trace ::= (trace-run ...))
   (store ::=
          (todo ((hash val) ...))
          (done ((hash val) ...))
@@ -50,13 +54,17 @@
           ((run-id ...)
            (var ...))
           ((var exp) ...)))
-  (run-mode ::=
-            overwrite
-            append
-            read-only)
-  (run-cfg ::= ((run-id run-mode) ...))
-  
-  (experiment ::= (bench run-cfg store))
+  (run-execmode ::=
+                overwrite
+                append
+                read-only)
+  (run-config ::=
+              ((silent-keys key ...)
+               (env-var-keys key ...)
+               (path-to-executable-key key)
+               (cwd string)))            
+  (run-configs ::= ((run-id run-config) ...))
+  (experiment ::= (bench run-configs store))
 
   #:binding-forms
   (let (var ... exp_1) exp_2 #:refers-to (shadow var ...))
@@ -81,6 +89,11 @@
   (term
    (((x "a2"))
     ((x "b2")))))
+
+(define-metafunction Flexibench
+  Lookup : ((any any) ...) any -> any or #f
+  [(Lookup (_ ... (any any_0) _ ...) any) any_0]
+  [(Lookup _ _) #f])
 
 (define-relation Flexibench
   Unique ⊆ (any ...)
@@ -349,6 +362,65 @@
   [(substitute* any_o ())
    any_o])
 
+(define-metafunction Flexibench
+  Run-builder : ((key run-input-key) ...) row -> (((run-input-key kcp) ...) row)
+  [(Run-builder _ ())
+   (() ())]
+  [(Run-builder ((key run-input-key) ...) ((key_t cell_t) kcp_a ...))
+   (((run-input-key_t (key_t cell_t)) (run-input-key_r kcp_r) ...) row)
+   (where run-input-key_t (Lookup ((key run-input-key) ...) key_t))
+   (where/error (((run-input-key_r kcp_r) ...) row)
+                (Run-builder ((key run-input-key) ...) (kcp_a ...)))]
+  [(Run-builder ((key run-input-key) ...) ((key_t cell_t) kcp_a ...))
+   (((run-input-key_r kcp_r) ...) ((key_t cell_t) kcp_r2 ...))
+   (where/error (((run-input-key_r kcp_r) ...) (kcp_r2 ...))
+                (Run-builder ((key run-input-key) ...) (kcp_a ...)))])
+
+(test-equal (term (Run-builder ((xxx env-var-key) (prog path-to-executable-key))
+                               ((prog "foo") (aaa 321) (xxx 123) (yyy "zzz"))))
+            (term (((path-to-executable-key (prog "foo"))
+                    (env-var-key (xxx 123)))
+                   ((aaa 321) (yyy "zzz")))))
+
+(define-metafunction Flexibench
+  Cmdline-args : row -> (atom ...)
+  [(Cmdline-args ())
+   ()]
+  [(Cmdline-args ((key cell) kcp_a ...))
+   (,(string-append "-" (symbol->string (term key))) cell atom ...)
+   (where/error (atom ...) (Cmdline-args (kcp_a ...)))])
+
+(define-metafunction Flexibench
+  Env-var-args : ((run-input-key kcp) ...) -> ((string atom) ...)
+  [(Env-var-args ())
+   ()]
+  [(Env-var-args ((env-var-key (key atom)) (run-input-key_a kcp_a) ...))
+   ((string_v atom_v) (string_r atom_r) ...)
+   (where/error (string_v atom_v) (,(symbol->string (term key)) atom))
+   (where/error ((string_r atom_r) ...) (Env-var-args ((run-input-key_a kcp_a) ...)))]
+  [(Env-var-args (_ (run-input-key_a kcp_a) ...))
+   (Env-var-args ((run-input-key_a kcp_a) ...))])
+
+(define-metafunction Flexibench
+  Run-input : ((key run-input-key) ...) row -> run-input
+  [(Run-input ((key run-input-key) ...) row)
+   ((path-to-executable string_pte)
+    (cmdline-args atom_cmdline ...)
+    (env-var-args (string_env atom_env) ...)
+    (timeout-sec number_timeout))
+   (where/error (((run-input-key_r kcp_r) ...) row_r) (Run-builder ((key run-input-key) ...) row))
+   (where/error (_ string_pte) (Lookup ((run-input-key_r kcp_r) ...) path-to-executable-key))
+   (where/error (atom_cmdline ...) (Cmdline-args row_r))
+   (where/error ((string_env atom_env) ...) (Env-var-args ((run-input-key_r kcp_r) ...)))
+   (where/error number_timeout 100)])
+
+(test-equal (term (Run-input ((xxx env-var-key) (prog path-to-executable-key))
+                             ((prog "foo") (aaa 321) (xxx 123) (yyy "zzz"))))
+            (term ((path-to-executable "foo")
+                   (cmdline-args "-aaa" 321 "-yyy" "zzz")
+                   (env-var-args ("xxx" 123))
+                   (timeout-sec 100))))
+                                 
 (define-judgment-form Flexibench
   #:mode (→ I I O O)
   #:contract (→ exp env exp env)
@@ -631,11 +703,6 @@
   Get-mean-of-ys : ((var (atom ...)) ...) var natural -> (atom ...)
   [(Get-mean-of-ys ((var (atom ...)) ...) var_t natural)
    ,(map mean (term (Calculate-result ((var (atom ...)) ...) var_t natural)))])
-
-(define-metafunction Flexibench
-  Lookup : ((any any) ...) any -> any or #f
-  [(Lookup (_ ... (any any_0) _ ...) any) any_0]
-  [(Lookup _ _) #f])
 
 (define-metafunction Flexibench
   Get-speedup : env var var natural -> ((natural ...) (number ...))
