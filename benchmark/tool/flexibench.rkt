@@ -27,12 +27,14 @@
                  env-var-key
                  silent-key
                  timeout-sec-key
-                 hostname-key)
+                 hostname-key
+                 cwd-key)
   (run-input ::=
              ((path-to-executable string)
               (cmdline-args atom ...)
               (env-var-args (string atom) ...)
-              (timeout-sec number)))
+              (timeout-sec number)
+              (cwd string)))
   (run-output ::=
               ((return-code integer)
                (stdout string)
@@ -59,11 +61,10 @@
                 append
                 read-only)
   (run-config ::=
-              ((silent-keys key ...)
-               (env-var-keys key ...)
-               (path-to-executable-key key)
-               (cwd string)))            
-  (run-configs ::= ((run-id run-config) ...))
+              ((path-to-executable-key key)
+               (silent-keys key ...)
+               (env-var-keys key ...)))
+  (run-configs ::= ((run-id run-config run-execmode) ...))
   (experiment ::= (bench run-configs store))
 
   #:binding-forms
@@ -91,9 +92,18 @@
     ((x "b2")))))
 
 (define-metafunction Flexibench
+  Lookup-or-default : ((any any) ...) any any -> any
+  [(Lookup-or-default (_ ... (any any_0) _ ...) any _) any_0]
+  [(Lookup-or-default _ _ any_dflt) any_dflt])
+
+(define-metafunction Flexibench
   Lookup : ((any any) ...) any -> any or #f
-  [(Lookup (_ ... (any any_0) _ ...) any) any_0]
-  [(Lookup _ _) #f])
+  [(Lookup ((any any_0) ...) any_1) (Lookup-or-default ((any any_0) ...) any_1 #f)])
+
+(test-equal (term (Lookup-or-default ((a 1) (b 2)) b 300))
+            (term 2))
+(test-equal (term (Lookup-or-default ((a 1) (b 2)) c 300))
+            (term 300))
 
 (define-relation Flexibench
   Unique ⊆ (any ...)
@@ -407,20 +417,55 @@
    ((path-to-executable string_pte)
     (cmdline-args atom_cmdline ...)
     (env-var-args (string_env atom_env) ...)
-    (timeout-sec number_timeout))
+    (timeout-sec number_timeout)
+    (cwd string_cwd))
    (where/error (((run-input-key_r kcp_r) ...) row_r) (Run-builder ((key run-input-key) ...) row))
    (where/error (_ string_pte) (Lookup ((run-input-key_r kcp_r) ...) path-to-executable-key))
    (where/error (atom_cmdline ...) (Cmdline-args row_r))
    (where/error ((string_env atom_env) ...) (Env-var-args ((run-input-key_r kcp_r) ...)))
-   (where/error number_timeout 100)])
+   (where/error number_timeout (Lookup-or-default ((run-input-key_r kcp_r) ...) timeout-key 200))
+   (where/error string_cwd (Lookup-or-default ((run-input-key_r kcp_r) ...) cwd-key ""))])
 
-(test-equal (term (Run-input ((xxx env-var-key) (prog path-to-executable-key))
-                             ((prog "foo") (aaa 321) (xxx 123) (yyy "zzz"))))
+(define run-input1
+  (term (Run-input ((xxx env-var-key) (prog path-to-executable-key))
+                   ((prog "foo") (aaa 321) (xxx 123) (yyy "zzz")))))
+
+(test-equal run-input1
             (term ((path-to-executable "foo")
                    (cmdline-args "-aaa" 321 "-yyy" "zzz")
                    (env-var-args ("xxx" 123))
-                   (timeout-sec 100))))
-                                 
+                   (timeout-sec 200)
+                   (cwd ""))))
+
+(define-metafunction Flexibench
+  String-of-atom : atom -> string
+  [(String-of-atom string) string]
+  [(String-of-atom number) ,(number->string (term number))])
+
+(define-metafunction Flexibench
+  Make-env-var : string atom -> string
+  [(Make-env-var string atom)
+   ,(string-join (term (string "=" (String-of-atom atom))) "")])
+
+(define-metafunction Flexibench
+  String-of-run-input : run-input -> string
+  [(String-of-run-input ((path-to-executable string_pte)
+                         (cmdline-args atom_cmdline ...)
+                         (env-var-args (string_envvar atom_envval) ...)
+                         (timeout-sec number_timeout)
+                         (cwd string_cwd)))
+   ,(string-append (term string_cwd2) (term string_env) (term string_pte) (term string_cmdline2))
+   (where/error string_cwd2 ,(if (equal? (term string_cwd) "") "" (string-append "cd " (term string_cwd) "; ")))
+   (where/error (string_cmdline ...) ((String-of-atom atom_cmdline) ...))
+   (where/error string_cmdline2 ,(string-join (term (string_cmdline ...)) " " #:before-first " "))
+   (where/error (string_envs ...) ((Make-env-var string_envvar atom_envval) ...))
+   (where/error string_env ,(if (null? (term (string_envs ...)))
+                                ""
+                                (string-append (string-join (term (string_envs ...)) " ") " ")))])
+
+(test-equal (term (String-of-run-input ,run-input1))
+            "xxx=123 foo -aaa 321 -yyy zzz")
+
 (define-judgment-form Flexibench
   #:mode (→ I I O O)
   #:contract (→ exp env exp env)
