@@ -426,8 +426,11 @@
    (where/error number_timeout (Lookup-or-default ((run-input-key_r kcp_r) ...) timeout-key 200))
    (where/error string_cwd (Lookup-or-default ((run-input-key_r kcp_r) ...) cwd-key ""))])
 
+(define run-cfg1
+  (term ((xxx env-var-key) (prog path-to-executable-key))))
+
 (define run-input1
-  (term (Run-input ((xxx env-var-key) (prog path-to-executable-key))
+  (term (Run-input ,run-cfg1
                    ((prog "foo") (aaa 321) (xxx 123) (yyy "zzz")))))
 
 (test-equal run-input1
@@ -436,6 +439,11 @@
                    (env-var-args ("xxx" 123))
                    (timeout-sec 200)
                    (cwd ""))))
+
+(define-metafunction Flexibench
+  Runs-of-rows : ((key run-input-key) ...) val -> (run-input ...)
+  [(Runs-of-rows ((key run-input-key) ...) (row ...))
+   ((Run-input ((key run-input-key) ...) row) ...)])
 
 (define-metafunction Flexibench
   String-of-atom : atom -> string
@@ -465,6 +473,16 @@
 
 (test-equal (term (String-of-run-input ,run-input1))
             "xxx=123 foo -aaa 321 -yyy zzz")
+
+(define-metafunction Flexibench
+  Strings-of-run-inputs : (run-input ...) -> (string ...)
+  [(Strings-of-run-inputs (run-input ...)) ((String-of-run-input run-input) ...)])
+  
+(test-equal (term (Strings-of-run-inputs (Runs-of-rows ,run-cfg1
+                                                       (((prog "foo") (aaa 321) (xxx 123) (yyy "zzz"))
+                                                        ((prog "bar") (aaa 33) (xx1x 123) (yyy "z3z"))))))
+            (term ("xxx=123 foo -aaa 321 -yyy zzz"
+                   "bar -aaa 33 -xx1x 123 -yyy z3z")))
 
 (define-judgment-form Flexibench
   #:mode (→ I I O O)
