@@ -21,7 +21,6 @@
        ((:= var exp) exp))
   (env ::= ((var val) ...))
 
-  (hash ::= string)
   (run-input-key ::=
                  path-to-executable-key
                  env-var-key
@@ -42,11 +41,12 @@
                (elapsed number)))
   (trace-run ::= (run-input run-output))
   (trace ::= (trace-run ...))
+  (hash ::= string)
   (store ::=
          (todo ((hash val) ...))
          (done ((hash val) ...))
-         (done-trace-links (natural natural))
          (failed ((hash val) ...))
+         (done-trace-links (natural natural))
          (failed-trace-links (natural natural)))
 
   ; later: consider how to make an experiment a crdt
@@ -60,10 +60,7 @@
                 overwrite
                 append
                 read-only)
-  (run-config ::=
-              ((path-to-executable-key key)
-               (silent-keys key ...)
-               (env-var-keys key ...)))
+  (run-config ::= ((key run-input-key) ...))
   (run-configs ::= ((run-id run-config run-execmode) ...))
   (experiment ::= (bench run-configs store))
 
@@ -321,6 +318,34 @@
 
 (define (number->sha1 n)
   (bytes->sha1 (string->bytes/utf-8 (number->string n))))
+
+(define-metafunction Flexibench
+  Hash-of-atom : atom -> string
+  [(Hash-of-atom string)
+   ,(bytes->sha1 (string->bytes/utf-8 (term string)))]
+  [(Hash-of-atom number)
+   ,(bytes->sha1 (string->bytes/utf-8 (number->string (term number))))])
+
+(define-metafunction Flexibench
+  Hash-of-cell : cell -> string
+  [(Hash-of-cell atom)
+   (Hash-of-atom atom)]
+  [(Hash-of-cell (atom ...))
+   ,(foldr (λ (v h) (term (Hash-of-atom ,(string-append (term (Hash-of-atom ,v)) h)))) "" (term (atom ...)))])
+
+(define-metafunction Flexibench
+  Hash-of-row : row -> string
+  [(Hash-of-row ((key cell) ...))
+    ,(foldr (λ (v h) (term (Hash-of-atom ,(string-append (term (Hash-of-atom ,(car v))) (term (Hash-of-cell ,(cadr v))) h)))) "" (term ((string cell_2) ...)))
+    (where/error (string_0 ...) ,(map symbol->string (term (key ...))))
+    (where/error ((string cell_2) ...) ,(sort (term ((string_0 cell) ...)) #:key car string<?))])
+
+(define-metafunction Flexibench
+  Hash-of-val : val -> string
+  [(Hash-of-val (row ...))
+   string_1
+   (where/error (string ...) ((Hash-of-row row) ...))
+   (where/error string_1 ,(foldr (λ (v h) (term (Hash-of-atom ,(string-append (term (Hash-of-atom ,v)) h)))) "" (term (string ...))))])
 
 (define (char->hex-digit c)
   ;; Turn a character into a hex digit
