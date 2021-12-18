@@ -28,13 +28,6 @@
      hole)
   (exp-env ::= (exp env))
 
-  (run-input-key ::=
-                 path-to-executable-key
-                 env-var-key
-                 silent-key
-                 timeout-sec-key
-                 hostname-key
-                 cwd-key)
   (run-input ::=
              ((path-to-executable string)
               (cmdline-args atom ...)
@@ -67,6 +60,13 @@
                 overwrite
                 append
                 read-only)
+  (run-input-key ::=
+                 path-to-executable-key
+                 env-var-key
+                 silent-key
+                 timeout-sec-key
+                 hostname-key
+                 cwd-key)
   (run-config ::= ((key run-input-key) ...))
   (run-configs ::= ((run-id run-config run-execmode) ...))
   (experiment ::= (bench run-configs store))
@@ -323,36 +323,104 @@
 (define (bytes->sha1 bs)
   (sha1 (open-input-bytes bs)))
 
+(define-metafunction Flexibench
+  Hash-of-string : string -> string
+  [(Hash-of-string string) ,(bytes->sha1 (string->bytes/utf-8 (term string)))])
+
+(test-equal (term (Hash-of-string "foo"))
+            (term "0beec7b5ea3f0fdbc95d0dd47f3c5bc275da8a33"))
+
 (define (number->sha1 n)
   (bytes->sha1 (string->bytes/utf-8 (number->string n))))
 
 (define-metafunction Flexibench
-  Hash-of-atom : atom -> string
-  [(Hash-of-atom string)
-   ,(bytes->sha1 (string->bytes/utf-8 (term string)))]
-  [(Hash-of-atom number)
-   ,(bytes->sha1 (string->bytes/utf-8 (number->string (term number))))])
+  String-of-atom : atom -> string
+  [(String-of-atom string) string]
+  [(String-of-atom number) ,(number->string (term number))])
 
 (define-metafunction Flexibench
-  Hash-of-cell : cell -> string
-  [(Hash-of-cell atom)
-   (Hash-of-atom atom)]
-  [(Hash-of-cell (atom ...))
-   ,(foldr (λ (v h) (term (Hash-of-atom ,(string-append (term (Hash-of-atom ,v)) h)))) "" (term (atom ...)))])
+  Csv-append : string ... -> string
+  [(Csv-append string ...) ,(string-join (term (string ...)) ",")])
+
+(test-equal (term (Csv-append "a" "b" "c")) (term "a,b,c"))
 
 (define-metafunction Flexibench
-  Hash-of-row : row -> string
-  [(Hash-of-row ((key cell) ...))
-    ,(foldr (λ (v h) (term (Hash-of-atom ,(string-append (term (Hash-of-atom ,(car v))) (term (Hash-of-cell ,(cadr v))) h)))) "" (term ((string cell_2) ...)))
-    (where/error (string_0 ...) ,(map symbol->string (term (key ...))))
-    (where/error ((string cell_2) ...) ,(sort (term ((string_0 cell) ...)) #:key car string<?))])
+  Csv-of-cell : cell -> string
+  [(Csv-of-cell atom)
+   (String-of-atom atom)]
+  [(Csv-of-cell (atom ...))
+   ,(string-join (term (string ...)) ";")
+   (where/error (string ...) ((String-of-atom atom) ...))])
+
+(test-equal (term (Csv-of-cell (1 2 3 "a"))) (term "1;2;3;a"))
 
 (define-metafunction Flexibench
-  Hash-of-val : val -> string
-  [(Hash-of-val (row ...))
-   string_1
-   (where/error (string ...) ((Hash-of-row row) ...))
-   (where/error string_1 ,(foldr (λ (v h) (term (Hash-of-atom ,(string-append (term (Hash-of-atom ,v)) h)))) "" (term (string ...))))])
+  String-of-variable : variable -> string
+  [(String-of-variable variable) ,(symbol->string (term variable))])
+
+(define-metafunction Flexibench
+  Csv-of-kcp : kcp -> string
+  [(Csv-of-kcp (key cell))
+   (Csv-append (String-of-variable key) (Csv-of-cell cell))])
+
+(test-equal (term (Csv-of-kcp (a 1))) (term "a,1"))
+
+(define-metafunction Flexibench
+  Csv-of-row : row -> string
+  [(Csv-of-row (kcp ...))
+   (Csv-append string ...)
+   (where/error (string ...) ((Csv-of-kcp kcp) ...))])
+
+(test-equal (term (Csv-of-row ((a 1) (b "2") (c (3 4)))))
+            (term "a,1,b,2,c,3;4"))
+
+(define-metafunction Flexibench
+  Sort-kvp : ((key any) ...) -> ((key any) ...)
+  [(Sort-kvp ((key any) ...))
+   ,(sort (term ((key any) ...)) #:key (λ (p) (symbol->string (car p))) string<?)])
+
+(test-equal (term (Sort-kvp ((c 34) (a "b") (b "xx3") (x 1))))
+            (term ((a "b") (b "xx3") (c 34) (x 1))))
+
+(define-metafunction Flexibench
+  Csv-of-run-input : (key run-input-key) -> string
+  [(Csv-of-run-input (key run-input-key))
+   (Csv-append (String-of-variable key) (String-of-variable run-input-key))])
+   
+(define-metafunction Flexibench
+  Csv-of-run-config : run-config -> string
+  [(Csv-of-run-config ((key run-input-key) ...))
+   (Csv-append string ...)
+   (where/error (string ...) ((Csv-of-run-input (key run-input-key)) ...))])
+
+(test-equal (term (Csv-of-run-config ((prog path-to-executable-key)
+                                      (foo env-var-key)
+                                      (bar silent-key))))
+            (term "prog,path-to-executable-key,foo,env-var-key,bar,silent-key"))
+
+(define-metafunction Flexibench
+  Csv-of-run : run-config val -> (string ...)
+  [(Csv-of-run run-config (row ...))
+   ((Csv-of-run-config (Sort-kvp run-config)) (Csv-of-row (Sort-kvp row)) ...)])
+
+(test-equal (term (Csv-of-run ((prog path-to-executable-key)
+                               (foo env-var-key)
+                               (bar silent-key))
+                              (((a 1) (b "2") (c (3 4)))
+                               ((a 321) (c (3 4))))))
+            (term ("bar,silent-key,foo,env-var-key,prog,path-to-executable-key"
+                   "a,1,b,2,c,3;4"
+                   "a,321,c,3;4")))
+
+(define-metafunction Flexibench
+  Hash-of-strings : (string ...) -> string
+  [(Hash-of-strings (string ...))
+   ,(foldr (λ (v h) (term (Hash-of-string ,(string-append (term (Hash-of-string ,v)) h))))
+           ""
+           (term (string ...)))])
+
+(test-equal (term (Hash-of-strings ("a" "b" "c")))
+            (term "9025177a9ecc6c6a7bd53c16e25a7a909f9b6e6a"))
 
 (define (char->hex-digit c)
   ;; Turn a character into a hex digit
@@ -476,11 +544,6 @@
   Runs-of-rows : ((key run-input-key) ...) val -> (run-input ...)
   [(Runs-of-rows ((key run-input-key) ...) (row ...))
    ((Run-input ((key run-input-key) ...) row) ...)])
-
-(define-metafunction Flexibench
-  String-of-atom : atom -> string
-  [(String-of-atom string) string]
-  [(String-of-atom number) ,(number->string (term number))])
 
 (define-metafunction Flexibench
   Make-env-var : string atom -> string
