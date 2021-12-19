@@ -65,7 +65,6 @@
                  env-var-key
                  silent-key
                  timeout-sec-key
-                 hostname-key
                  cwd-key)
   (run-config ::= ((key run-input-key) ...))
   (run-configs ::= ((run-id run-config run-execmode) ...))
@@ -644,48 +643,41 @@
 
   )
 
-(define ⇒
+(define ⇒2
   (reduction-relation Flexibench
                       (--> (exp_1 env_1)
                            (exp_2 env_2)
                            (judgment-holds (→ exp_1 env_1 exp_2 env_2)))))
 
-(define ⇒2
+(define ⇒
   (reduction-relation Flexibench
                       #:domain exp-env
-                      (--> ((in-hole E (let (var_1 val_1) exp_2)) env_1)
-                           ((in-hole E exp_3) env_1)
+                      (-~> (let (var_1 val_1) exp_2) exp_3
                            (where/error exp_3 (substitute exp_2 var_1 val_1))
                            "let")
-                      (--> ((in-hole E (++ val_a ...)) env_1)
-                           ((in-hole E (Append (val_a ...))) env_1)
-                           (where/error exp_3 (Append (val_a ...)))
+                      (-~> (++ val_a ...) (Append (val_a ...))
                            "++")
-                      (--> ((in-hole E (× val_a ...)) env_1)
-                           ((in-hole E (Cross-rows (val_a ...))) env_1)
-                           (where/error exp_3 (Append (val_a ...)))
+                      (-~> (× val_a ...) (Cross-rows (val_a ...))
                            "×")
-                      (--> ((in-hole E (let (var_1 ... (÷/kcp val_1 ...)) exp_3)) env_1)
-                           ((in-hole E exp_4) env_1)
+                      (-~> (let (var_1 ... (÷/kcp val_1 ...)) exp_3) exp_4
                            (where/error (val_2 ...) (Split-rows (val_1 ...)))
                            (where/error exp_4 (substitute* exp_3 ((var_1 val_2) ...)))
                            "÷/kcp")
-                      (--> ((in-hole E (implode val_a)) env_1)
-                           ((in-hole E (Implode val_a)) env_1)
+                      (-~> (implode val_a) ((Implode val_a))
                            "implode")
-                      (--> ((in-hole E (explode val_a)) env_1)
-                           ((in-hole E (Explode val_a)) env_1)
+                      (-~> (explode val_a) (Explode val_a)
                            "explode")
                       (--> ((in-hole E ((:= var val_1) exp_2)) env_1)
                            ((in-hole E exp_2) env_1)
                            (where/error env_2 (Merge-envs (((var val_1)) env_1)))
                            ":=")
-                      (--> ((in-hole E (run run-id val_1)) env_1)
-                           ((in-hole E val) env_1)
-                           (where (row_1 ...) val_1)
+                      (-~> (run run-id (row_1 ...)) val
                            (where/error (val_r ...) ((Cross-rows ((row_1) (Output-of-run row_1))) ...))
                            (where/error val (Append (val_r ...)))
-                           "run")))
+                           "run")
+                      with
+                      [(--> (from env_1) (to env_1)) (-+> from to)]
+                      [(-+> (in-hole E_1 from) (in-hole E_1 to)) (-~> from to)]))
 
 (define-judgment-form Flexibench
   #:mode (⇓ I O O)
