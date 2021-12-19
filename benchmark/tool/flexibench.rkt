@@ -26,7 +26,6 @@
      (run run-id E)
      ((:= var E) exp)
      hole)
-  (exp-env ::= (exp env))
 
   (run-input ::=
              ((path-to-executable string)
@@ -43,17 +42,15 @@
   (trace ::= (trace-run ...))
   (hash ::= string)
   (store ::=
-         (todo ((hash val) ...))
-         (done ((hash val) ...))
-         (failed ((hash val) ...))
-         (done-trace-links (natural natural))
-         (failed-trace-links (natural natural)))
+         ((todo ((hash val) ...))
+          (done ((hash val) ...))
+          (failed ((hash val) ...))
+          trace
+          (done-trace-links (natural natural))
+          (failed-trace-links (natural natural))))
 
-  ; later: consider how to make an experiment a crdt
-  ; in particular, it should be possible to make the benchmark expressions modifiable in much the same way as json dictionaries are in the way described by Schlepman et al
   (bench ::=
-         (benchmark
-          ((run-id ...)
+         (((run-id ...)
            (var ...))
           ((var exp) ...)))
   (run-execmode ::=
@@ -68,7 +65,7 @@
                  cwd-key)
   (run-config ::= ((key run-input-key) ...))
   (run-configs ::= ((run-id run-config run-execmode) ...))
-  (experiment ::= (bench run-configs store))
+  (experiment ::= (bench run-configs env store))
 
   #:binding-forms
   (let (var ... exp_1) exp_2 #:refers-to (shadow var ...))
@@ -651,7 +648,7 @@
 
 (define ⇒
   (reduction-relation Flexibench
-                      #:domain exp-env
+                      ;#:domain exp-env
                       (-~> (let (var_1 val_1) exp_2) exp_3
                            (where/error exp_3 (substitute exp_2 var_1 val_1))
                            "let")
@@ -904,9 +901,9 @@
   [(Extend-env ((var val) ...) var_e val_e)
    ((var val) ... (var_e val_e))])
 
-(let ([results (car (judgment-holds (⇓ ,exp-speedup2 val env) (val env)))])
-  (let ([env (term (Extend-env ,(cadr results) out-par ,(car results)))])
-    (let ([results2 (term (Get-speedup ,env out-par out-seq 2))])
-      (printf "proc: ~a~n" (car results2))
-      (printf "speedup: ~a~n" (cadr results2))
-      (plot (lines (map vector (car results2) (cadr results2)))))))
+;(let ([results (car (judgment-holds (⇓ ,exp-speedup2 val env) (val env)))])
+;  (let ([env (term (Extend-env ,(cadr results) out-par ,(car results)))])
+;    (let ([results2 (term (Get-speedup ,env out-par out-seq 2))])
+;      (printf "proc: ~a~n" (car results2))
+;      (printf "speedup: ~a~n" (cadr results2))
+;      (plot (lines (map vector (car results2) (cadr results2)))))))
