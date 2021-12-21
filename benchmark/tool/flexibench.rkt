@@ -676,6 +676,14 @@
                       [(--> (from env_1) (to env_1)) (-+> from to)]
                       [(-+> (in-hole E_1 from) (in-hole E_1 to)) (-~> from to)]))
 
+(define (Result-of-⇒ experiment)
+  (let ([res (apply-reduction-relation* ⇒ experiment #:all? #f)])
+    (match (car res)
+      [`(,exp ,env)
+       ;`(,bench ,run-configs ,env ,store)
+       exp]
+      [_ (error 'Eval "internal error: didn't reduce to a value ~s" res)])))
+
 (define-judgment-form Flexibench
   #:mode (⇓ I O O)
   #:contract (⇓ exp val env)
