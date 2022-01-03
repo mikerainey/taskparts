@@ -54,9 +54,8 @@
            (var ...))
           ((var exp) ...)))
   (run-execmode ::=
-                overwrite
-                append
-                read-only)
+                evict
+                (repeat natural))
   (run-input-key ::=
                  path-to-executable-key
                  env-var-key
@@ -71,8 +70,8 @@
   (let (var ... exp_1) exp_2 #:refers-to (shadow var ...))
   (benchmark
    ((run-id ...)
-    (var ...))
-   ((var exp) ...) #:refers-to (shadow var ... run-id ...))
+    (var_1 ...))
+   ((var_2 exp) ...) #:refers-to (shadow var_1 ... var_2 ... run-id ...))
   )
 
 (define exp1
