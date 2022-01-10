@@ -2,7 +2,7 @@
 
 #include "comparisonsort.hpp"
 //#ifndef PARLAY_SEQUENTIAL
-#include <comparisonSort/sampleSort/sort.h>
+#include <benchmarks/comparisonSort/sampleSort/sort.h>
 //#else
 //#include <comparisonSort/serialSort/sort.h>
 //#endif

@@ -7,7 +7,7 @@
 #include <common/sequenceIO.h>
 #include <testData/graphData/alternatingGraph.h>
 #include <testData/graphData/rMat.h>
-#include <breadthFirstSearch/bench/BFS.h>
+#include <benchmarks/breadthFirstSearch/bench/BFS.h>
 
 using namespace std;
 using namespace benchIO;

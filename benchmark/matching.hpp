@@ -5,9 +5,9 @@
 #include <common/graph.h>
 #include <common/graphIO.h>
 #ifndef PARLAY_SEQUENTIAL
-#include <maximalMatching/serialMatching/matching.C>
+#include <benchmarks/maximalMatching/serialMatching/matching.C>
 #else
-#include <maximalMatching/incrementalMatching/matching.C>
+#include <benchmarks/maximalMatching/incrementalMatching/matching.C>
 #endif
 
 using namespace std;

@@ -4,7 +4,7 @@
 #include <testData/sequenceData/sequenceData.h>
 #include <common/sequenceIO.h>
 //#ifndef PARLAY_SEQUENTIAL
-#include <histogram/parallel/histogram.C>
+#include <benchmarks/histogram/parallel/histogram.C>
 //#else
 //#include <histogram/sequential/histogram.C>
 //#endif

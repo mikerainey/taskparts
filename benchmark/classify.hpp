@@ -4,7 +4,7 @@
 #include <testData/sequenceData/sequenceData.h>
 #include <common/sequenceIO.h>
 //#ifndef PARLAY_SEQUENTIAL
-#include <classify/decisionTree/classify.C>
+#include <benchmarks/classify/decisionTree/classify.C>
 //#else
 //#include <classify/serial/classify.C>
 //#endif

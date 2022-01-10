@@ -3,7 +3,7 @@
 #include "graph.hpp"
 
 //#ifndef PARLAY_SEQUENTIAL
-#include <breadthFirstSearch/simpleBFS/BFS.C>
+#include <benchmarks/breadthFirstSearch/simpleBFS/BFS.C>
 //#else
 //#include <breadthFirstSearch/serialBFS/BFS.C>
 //#endif

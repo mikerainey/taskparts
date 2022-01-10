@@ -4,7 +4,7 @@
 #include <testData/sequenceData/sequenceData.h>
 #include <common/sequenceIO.h>
 //#ifndef PARLAY_SEQUENTIAL
-#include <index/parallel/index.C>
+#include <benchmarks/invertedIndex/parallel/index.C>
 //#else
 //#include <index/sequential/index.C>
 //#endif

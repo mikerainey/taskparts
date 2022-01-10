@@ -6,7 +6,7 @@
 #include <common/geometry.h>
 #include <common/geometryIO.h>
 #include <testData/geometryData/geometryData.h>
-#include <nBody/parallelCK/nbody.C>
+#include <benchmarks/nBody/parallelCK/nbody.C>
 
 using namespace benchIO;
 using namespace dataGen;

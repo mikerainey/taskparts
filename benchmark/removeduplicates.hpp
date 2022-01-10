@@ -5,7 +5,7 @@
 #include <common/sequenceIO.h>
 // later: find out why the serial version is so slow
 //#ifndef PARLAY_SEQUENTIAL
-#include <removeDuplicates/parlayhash/dedup.h>
+#include <benchmarks/removeDuplicates/parlayhash/dedup.h>
 //#else
 //#include <removeDuplicates/serial_sort/dedup.h>
 //#endif

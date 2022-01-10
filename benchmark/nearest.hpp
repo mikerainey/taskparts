@@ -6,7 +6,7 @@
 #include <common/geometry.h>
 #include <common/geometryIO.h>
 #include <testData/geometryData/geometryData.h>
-#include <nearestNeighbors/octTree/neighbors.h>
+#include <benchmarks/nearestNeighbors/octTree/neighbors.h>
 
 using namespace benchIO;
 using namespace dataGen;

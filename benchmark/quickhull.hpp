@@ -7,7 +7,7 @@
 #include <common/geometryIO.h>
 #include <testData/geometryData/geometryData.h>
 //#ifndef PARLAY_SEQUENTIAL
-#include <convexHull/quickHull/hull.C>
+#include <benchmarks/convexHull/quickHull/hull.C>
 //#else
 //#include <convexHull/serialHull/hull.C>
 //#endif

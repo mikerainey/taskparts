@@ -9,9 +9,9 @@
 #include <common/graph.h>
 #include <common/graphIO.h>
 #ifndef PARLAY_SEQUENTIAL
-#include <maximalIndependentSet/serialMIS/MIS.C>
+#include <benchmarks/maximalIndependentSet/serialMIS/MIS.C>
 #else
-#include <maximalIndependentSet/incrementalMIS/MIS.C>
+#include <benchmarks/maximalIndependentSet/incrementalMIS/MIS.C>
 #endif
 #include <testData/graphData/rMat.h>
 #include "../example/fib_serial.hpp"

@@ -6,7 +6,7 @@
 #include <common/geometry.h>
 #include <common/geometryIO.h>
 #include <testData/geometryData/geometryData.h>
-#include <delaunayTriangulation/incrementalDelaunay/delaunay.C>
+#include <benchmarks/delaunayTriangulation/incrementalDelaunay/delaunay.C>
 using namespace benchIO;
 using namespace dataGen;
 using namespace std;

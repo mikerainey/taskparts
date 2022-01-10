@@ -3,8 +3,8 @@
 #include "common.hpp"
 #include <common/IO.h>
 #include <common/sequenceIO.h>
-#include <suffixArray/bench/SA.h>
-#include <suffixArray/parallelKS/SA.C>
+#include <benchmarks/suffixArray/bench/SA.h>
+#include <benchmarks/suffixArray/parallelKS/SA.C>
 
 using uchar = unsigned char;
 

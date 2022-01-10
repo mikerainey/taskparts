@@ -6,7 +6,7 @@
 #include <common/geometry.h>
 #include <common/geometryIO.h>
 #include <testData/geometryData/geometryData.h>
-#include <rayCast/kdTree/ray.C>
+#include <benchmarks/rayCast/kdTree/ray.C>
 
 using namespace benchIO;
 using namespace dataGen;

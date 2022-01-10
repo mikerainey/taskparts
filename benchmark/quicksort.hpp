@@ -2,9 +2,9 @@
 
 #include "comparisonsort.hpp"
 #ifndef PARLAY_SEQUENTIAL
-#include <comparisonSort/quickSort/sort.h>
+#include <benchmarks/comparisonSort/quickSort/sort.h>
 #else
-#include <comparisonSort/quickSort/sort.h>
+#include <benchmarks/comparisonSort/quickSort/sort.h>
 #endif
 
 template <class T, class BinPred>

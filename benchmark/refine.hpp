@@ -6,7 +6,7 @@
 #include <common/geometry.h>
 #include <common/geometryIO.h>
 #include <testData/geometryData/geometryData.h>
-#include <delaunayRefine/incrementalRefine/refine.C>
+#include <benchmarks/delaunayRefine/incrementalRefine/refine.C>
 using namespace benchIO;
 using namespace dataGen;
 using namespace std;
