@@ -15,7 +15,7 @@
 { pkgs   ? import <nixpkgs> {},
   stdenv ? pkgs.stdenv,
   hwloc ? pkgs.hwloc,
-  jemalloc ? pkgs.jemalloc450,
+  jemalloc ? pkgs.jemalloc,
   cilk-stats-rts ? import ../cilk-plus-rts-with-stats {}
 }:
 
