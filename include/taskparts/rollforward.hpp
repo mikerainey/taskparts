@@ -73,7 +73,7 @@ auto reverse_lookup_rollforward_entry(const rollforward_lookup_table_type& t, re
   }
   return dst;
 }
-  
+
 template <class T>
 void try_to_initiate_rollforward(const T& t, register_type* rip) {
   auto ip = *rip;

@@ -455,6 +455,68 @@ perworker::array<int> papi_worker::event_set;
 
 #endif
 
+/*---------------------------------------------------------------------*/
+/* Linux kernel module heartbeat interrupts */
+
+// kernel module available at git@github.com:nickwanninger/heartbeat-linux.git
+  
+#ifdef TASKPARTS_TPALRTS_HBTIMER_KMOD
+
+extern "C" {
+#include <heartbeat.h>
+}
+
+thread_local
+char buf[512] __attribute__((aligned (16)));
+
+ thread_local
+ volatile bool in_callback = false;
+long interval = 10;
+void callback(hb_regs_t *regs) {
+  return;
+  if (in_callback) { return; }
+  in_callback = true;
+  // only works for SSE
+  // eventually use xsave
+  __asm__ __volatile__("fxsave %0" : "=m"(buf) );
+  register_type* rip = (register_type*)&(regs->rip);
+  printf("rsp=%p rip=%p\n",(void*)regs->rsp, (void*)regs->rip);
+  //try_to_initiate_rollforward(rollforward_table, rip);
+  //hb_oneshot(interval, callback);
+  __asm__ __volatile__("fxrstor %0" :: "m"(buf) );
+    in_callback = false;
+}
+  
+class hbtimer_kmod_worker {
+public:
+
+  static
+  auto initialize(size_t nb_workers) { }
+
+  static
+  auto destroy() { }
+  
+  template <typename Body>
+  static
+  auto launch_worker_thread(size_t id, const Body& b) {
+    launch_interrupt_worker_thread(id, b,
+				   [=] { hb_init(id);
+				     hb_repeat(interval, callback);
+				   },
+				   [] { hb_exit(); });
+  }
+
+  using worker_exit_barrier = minimal_worker_exit_barrier;
+  
+  using termination_detection_type = minimal_termination_detection;
+
+};
+
+#endif
+
+/*---------------------------------------------------------------------*/
+/* Selection of global heartbeat timer mechanism, disabled by default */
+
 #if defined(TASKPARTS_TPALRTS_HARDWARE_ALARM_POLLING)
 using tpalrts_worker = hardware_alarm_polling_worker;
 using tpalrts_interrupt = hardware_alarm_polling_interrupt;
@@ -467,6 +529,9 @@ using tpalrts_interrupt = papi_interrupt;
 #elif defined(TASKPARTS_TPALRTS_MINIMAL)
 using tpalrts_worker = minimal_worker;
 using tpalrts_interrupt = minimal_interrupt;
+#elif defined(TASKPARTS_TPALRTS_HBTIMER_KMOD)
+using tpalrts_worker = hbtimer_kmod_worker;
+using tpalrts_interrupt = minimal_interrupt;  
 #else
 using tpalrts_worker = ping_thread_worker;
 using tpalrts_interrupt = ping_thread_interrupt;

@@ -14,7 +14,8 @@ TASKPARTS_PLATFORM?=-DTASKPARTS_POSIX -DTASKPARTS_X64
 #   MINI_UTS_INCLUDE_PREFIX        include directives needed for mini uts benchmark
 #   MINI_UTS_LINKER_FLAGS          linker flags needed for mini uts benchmark
 #   CHUNKEDSEQ_PREFIX              include directives needed for chunked sequence library
-# 
+#   HBTIMER_KMOD_INCLUDE_PREFIX    include directives for linux kernel timer module
+#   HBTIMER_KMOD_LINKER_FLAGS      linker flags needed for linux kernel timer module
 
 # External parameters
 PARLAYLIB_INCLUDE_PREFIX?=-I $(TASKPARTS_PATH)/../parlaylib/include/ -DPARLAY_TASKPARTS
@@ -23,6 +24,8 @@ MINI_UTS_INCLUDE_PREFIX?=-I $(TASKPARTS_PATH)/../mini-uts/
 MINI_UTS_LINKER_FLAGS?=-lm
 CHUNKEDSEQ_PREFIX?=-I $(TASKPARTS_PATH)/../chunkedseq/include
 CILKRTS_STATS_PREFIX?=
+HBTIMER_KMOD_INCLUDE_PREFIX?=-I $(TASKPARTS_PATH)/../heartbeat-linux/include -DTASKPARTS_TPALRTS_HBTIMER_KMOD
+HBTIMER_KMOD_LINKER_FLAGS?=$(TASKPARTS_PATH)/../heartbeat-linux/build/libhb.so
 
 .PHONY: install_folder
 install_folder:
@@ -47,7 +50,8 @@ INCLUDE_PREFIX=\
 	$(PARLAYLIB_INCLUDE_PREFIX) \
 	$(PBBSBENCH_INCLUDE_PREFIX) \
 	$(MINI_UTS_INCLUDE_PREFIX) \
-	$(CHUNKEDSEQ_PREFIX)
+	$(CHUNKEDSEQ_PREFIX) \
+	$(HBTIMER_KMOD_INCLUDE_PREFIX)
 
 ifeq (, $(shell which jemalloc-config))
 JEMALLOC =
@@ -61,6 +65,7 @@ LINKER_PREFIX=\
 	-pthread \
 	$(HWLOC_LIBRARY_PREFIX) \
 	$(MINI_UTS_LINKER_FLAGS) \
+	$(HBTIMER_KMOD_LINKER_FLAGS) \
 	$(JEMALLOC)
 
 # WARNING: flag -fno-stack-protector needed for native fork join to
