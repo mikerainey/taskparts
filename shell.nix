@@ -16,7 +16,8 @@
   stdenv ? pkgs.stdenv,
   hwloc ? pkgs.hwloc,
   jemalloc ? pkgs.jemalloc,
-  cilk-stats-rts ? import ../cilk-plus-rts-with-stats {}
+  cilk-stats-rts ? import ../cilk-plus-rts-with-stats {},
+  hbtimer-kmod ? null #import ../heartbeat-linux { pkgs=pkgs; stdenv=stdenv; }
 }:
 
 let cilk-stats-rts-params =
@@ -38,6 +39,14 @@ stdenv.mkDerivation rec {
   # hwloc configuration
   HWLOC_INCLUDE_PREFIX="-DTASKPARTS_HAVE_HWLOC -I${hwloc.dev}/include/";
   HWLOC_LIBRARY_PREFIX="-L${hwloc.lib}/lib/ -lhwloc";
+
+  HBTIMER_KMOD_INCLUDE_PREFIX=
+    if hbtimer-kmod == null then "" else
+      "-I ${hbtimer-kmod}/include -DTASKPARTS_TPALRTS_HBTIMER_KMOD";
+  HBTIMER_KMOD_LINKER_FLAGS=
+    if hbtimer-kmod == null then "" else
+      "${hbtimer-kmod}/libhb.so";
+  
   shellHook = ''
     # The line below is needed, at present, because otherwise taskparts may 
     # request more workers than there are cores, which would be incompatible 

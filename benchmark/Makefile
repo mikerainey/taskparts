@@ -1,7 +1,9 @@
-# Taskparts-specific parameters
-#   binaries go here:
+# Taskparts parameters
+# ====================
+
+# binaries go here
 INSTALL_PATH?=bin
-#   root folder of taskparts repository:
+# root folder of taskparts repository
 TASKPARTS_PATH?=../
 TASKPARTS_PLATFORM?=-DTASKPARTS_POSIX -DTASKPARTS_X64
 
@@ -14,28 +16,39 @@ TASKPARTS_PLATFORM?=-DTASKPARTS_POSIX -DTASKPARTS_X64
 #   MINI_UTS_INCLUDE_PREFIX        include directives needed for mini uts benchmark
 #   MINI_UTS_LINKER_FLAGS          linker flags needed for mini uts benchmark
 #   CHUNKEDSEQ_PREFIX              include directives needed for chunked sequence library
-#   HBTIMER_KMOD_INCLUDE_PREFIX    include directives for linux kernel timer module
-#   HBTIMER_KMOD_LINKER_FLAGS      linker flags needed for linux kernel timer module
+#   HBTIMER_KMOD_INCLUDE_PREFIX    include directives for linux kernel timer module (optionally empty)
+#   HBTIMER_KMOD_LINKER_FLAGS      linker flags needed for linux kernel timer module (optionally empty)
 
-# External parameters
+# External libraries
+# ------------------
+
 PARLAYLIB_INCLUDE_PREFIX?=-I $(TASKPARTS_PATH)/../parlaylib/include/ -DPARLAY_TASKPARTS
 PBBSBENCH_INCLUDE_PREFIX?=-I $(TASKPARTS_PATH)/../pbbsbench/ -Wno-pragmas
 MINI_UTS_INCLUDE_PREFIX?=-I $(TASKPARTS_PATH)/../mini-uts/
 MINI_UTS_LINKER_FLAGS?=-lm
 CHUNKEDSEQ_PREFIX?=-I $(TASKPARTS_PATH)/../chunkedseq/include
 CILKRTS_STATS_PREFIX?=
-HBTIMER_KMOD_INCLUDE_PREFIX?=-I $(TASKPARTS_PATH)/../heartbeat-linux/include -DTASKPARTS_TPALRTS_HBTIMER_KMOD
-HBTIMER_KMOD_LINKER_FLAGS?=$(TASKPARTS_PATH)/../heartbeat-linux/build/libhb.so
+HBTIMER_KMOD_INCLUDE_PREFIX?=
+HBTIMER_KMOD_LINKER_FLAGS?=
 
-.PHONY: install_folder
-install_folder:
-	mkdir -p $(INSTALL_PATH)
+ifeq (, $(shell which jemalloc-config))
+JEMALLOC =
+else
+JEMALLOCLD = $(shell jemalloc-config --libdir)
+JEMALLOC = -L$(JEMALLOCLD) -ljemalloc
+endif
+
+# Taskparts paths
+# ---------------
 
 TASKPARTS_INCLUDE_PATH=$(TASKPARTS_PATH)/include/
 TASKPARTS_POSIX_INCLUDE_PATH=$(TASKPARTS_INCLUDE_PATH)/taskparts/posix
 TASKPARTS_X64_INCLUDE_PATH=$(TASKPARTS_INCLUDE_PATH)/taskparts/x64
 TASKPARTS_BENCHMARK_PATH=.
 TASKPARTS_EXAMPLE_PATH=../example
+TASKPARTS_TPAL_INCLUDE_PREFIX?=-DTASKPARTS_TPALRTS $(HBTIMER_KMOD_INCLUDE_PREFIX)
+TASKPARTS_TPAL_LINKER_FLAGS?=$(HBTIMER_KMOD_LINKER_FLAGS)
+TASKPARTS_TPAL_PREFIX=$(TASKPARTS_TPAL_INCLUDE_PREFIX) $(TASKPARTS_TPAL_LINKER_FLAGS)
 
 INCLUDE_FILES=\
 	$(wildcard $(TASKPARTS_INCLUDE_PATH)/taskparts/*.hpp) \
@@ -53,20 +66,12 @@ INCLUDE_PREFIX=\
 	$(CHUNKEDSEQ_PREFIX) \
 	$(HBTIMER_KMOD_INCLUDE_PREFIX)
 
-ifeq (, $(shell which jemalloc-config))
-JEMALLOC =
-else
-JEMALLOCLD = $(shell jemalloc-config --libdir)
-JEMALLOC = -L$(JEMALLOCLD) -ljemalloc
-endif
-
-# jemalloc needs to go last
 LINKER_PREFIX=\
 	-pthread \
 	$(HWLOC_LIBRARY_PREFIX) \
 	$(MINI_UTS_LINKER_FLAGS) \
 	$(HBTIMER_KMOD_LINKER_FLAGS) \
-	$(JEMALLOC)
+	$(JEMALLOC) # jemalloc needs to go last, or else it'll not be used
 
 # WARNING: flag -fno-stack-protector needed for native fork join to
 # compile binaries that do not segfault
@@ -98,6 +103,13 @@ DBG_PREFIX=\
 	-g3 \
 	-DTASKPARTS_STATS \
 	-DTASKPARTS_LOG
+
+.PHONY: install_folder
+install_folder:
+	mkdir -p $(INSTALL_PATH)
+
+# Build rules for suported library configurations
+# ===============================================
 
 # Binaries for native fork join
 # -----------------------------
@@ -142,17 +154,17 @@ SERIAL_PREFIX=-DTASKPARTS_SERIAL -DTASKPARTS_SERIAL_ELISION $(PARLAYLIB_SERIAL_P
 # --------------------------------------------------
 
 %.tpal.opt: %.tpal.cpp $(INCLUDE_FILES) install_folder
-	$(CXX) $(OPT_PREFIX) -DTASKPARTS_TPALRTS $(basename $<)_manual.s -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+	$(CXX) $(OPT_PREFIX) $(TASKPARTS_TPAL_PREFIX) $(basename $<)_manual.s -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
 %.tpal.sta: %.tpal.cpp $(INCLUDE_FILES) install_folder
-	$(CXX) $(STA_PREFIX) -DTASKPARTS_TPALRTS $(basename $<)_manual.s -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+	$(CXX) $(STA_PREFIX) $(TASKPARTS_TPAL_PREFIX) $(basename $<)_manual.s -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
 %.tpal.log: %.tpal.cpp $(INCLUDE_FILES) install_folder
-	$(CXX) $(LOG_PREFIX) -DTASKPARTS_TPALRTS $(basename $<)_manual.s -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+	$(CXX) $(LOG_PREFIX) $(TASKPARTS_TPAL_PREFIX) $(basename $<)_manual.s -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
 %.tpal.dbg: %.tpal.cpp $(INCLUDE_FILES) install_folder
-	$(CXX) $(DBG_PREFIX) -DTASKPARTS_TPALRTS $(basename $<)_manual.s -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+	$(CXX) $(DBG_PREFIX) $(TASKPARTS_TPAL_PREFIX) $(basename $<)_manual.s -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
 
 # For hand compiling TPAL programs from assembly output
 %.tpal_orig.s: %.tpal_orig.cpp $(INCLUDE_FILES) install_folder
-	$(CXX) $(OPT_PREFIX) -fno-verbose-asm -mavx2 -mfma -DTASKPARTS_TPALRTS -S  $<
+	$(CXX) $(OPT_PREFIX) -fno-verbose-asm -mavx2 -mfma $(TASKPARTS_TPAL_PREFIX) -S  $<
 
 # Binaries for elastic scheduling
 # -------------------------------
@@ -168,13 +180,13 @@ SERIAL_PREFIX=-DTASKPARTS_SERIAL -DTASKPARTS_SERIAL_ELISION $(PARLAYLIB_SERIAL_P
 	$(CXX) $(DBG_PREFIX) -DTASKPARTS_ELASTIC_FLAT -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
 
 %.elastic_flat_tpal.opt: %.tpal.cpp $(INCLUDE_FILES) install_folder
-	$(CXX) $(OPT_PREFIX) -DTASKPARTS_ELASTIC_FLAT -DTASKPARTS_TPALRTS $(basename $<)_manual.s -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+	$(CXX) $(OPT_PREFIX) -DTASKPARTS_ELASTIC_FLAT $(TASKPARTS_TPAL_PREFIX) $(basename $<)_manual.s -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
 %.elastic_flat_tpal.sta: %.tpal.cpp $(INCLUDE_FILES) install_folder
-	$(CXX) $(STA_PREFIX) -DTASKPARTS_ELASTIC_FLAT -DTASKPARTS_TPALRTS $(basename $<)_manual.s -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+	$(CXX) $(STA_PREFIX) -DTASKPARTS_ELASTIC_FLAT $(TASKPARTS_TPAL_PREFIX) $(basename $<)_manual.s -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
 %.elastic_flat_tpal.log: %.tpal.cpp $(INCLUDE_FILES) install_folder
-	$(CXX) $(LOG_PREFIX) -DTASKPARTS_ELASTIC_FLAT -DTASKPARTS_TPALRTS $(basename $<)_manual.s -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+	$(CXX) $(LOG_PREFIX) -DTASKPARTS_ELASTIC_FLAT $(TASKPARTS_TPAL_PREFIX) $(basename $<)_manual.s -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
 %.elastic_flat_tpal.dbg: %.tpal.cpp $(INCLUDE_FILES) install_folder
-	$(CXX) $(DBG_PREFIX) -DTASKPARTS_ELASTIC_FLAT -DTASKPARTS_TPALRTS $(basename $<)_manual.s -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+	$(CXX) $(DBG_PREFIX) -DTASKPARTS_ELASTIC_FLAT $(TASKPARTS_TPAL_PREFIX) $(basename $<)_manual.s -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
 
 # Flat (spin version)
 %.elastic_flat_spin.opt: %.cpp $(INCLUDE_FILES) install_folder
@@ -187,13 +199,13 @@ SERIAL_PREFIX=-DTASKPARTS_SERIAL -DTASKPARTS_SERIAL_ELISION $(PARLAYLIB_SERIAL_P
 	$(CXX) $(DBG_PREFIX) -DTASKPARTS_ELASTIC_FLAT -DTASKPARTS_USE_SPINNING_SEMAPHORE -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
 
 %.elastic_flat_spin_tpal.opt: %.tpal.cpp $(INCLUDE_FILES) install_folder
-	$(CXX) $(OPT_PREFIX) -DTASKPARTS_ELASTIC_FLAT -DTASKPARTS_USE_SPINNING_SEMAPHORE -DTASKPARTS_TPALRTS $(basename $<)_manual.s -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+	$(CXX) $(OPT_PREFIX) -DTASKPARTS_ELASTIC_FLAT -DTASKPARTS_USE_SPINNING_SEMAPHORE $(TASKPARTS_TPAL_PREFIX) $(basename $<)_manual.s -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
 %.elastic_flat_spin_tpal.sta: %.tpal.cpp $(INCLUDE_FILES) install_folder
-	$(CXX) $(STA_PREFIX) -DTASKPARTS_ELASTIC_FLAT -DTASKPARTS_USE_SPINNING_SEMAPHORE -DTASKPARTS_TPALRTS $(basename $<)_manual.s -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+	$(CXX) $(STA_PREFIX) -DTASKPARTS_ELASTIC_FLAT -DTASKPARTS_USE_SPINNING_SEMAPHORE $(TASKPARTS_TPAL_PREFIX) $(basename $<)_manual.s -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
 %.elastic_flat_spin_tpal.log: %.tpal.cpp $(INCLUDE_FILES) install_folder
-	$(CXX) $(LOG_PREFIX) -DTASKPARTS_ELASTIC_FLAT -DTASKPARTS_USE_SPINNING_SEMAPHORE -DTASKPARTS_TPALRTS $(basename $<)_manual.s -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+	$(CXX) $(LOG_PREFIX) -DTASKPARTS_ELASTIC_FLAT -DTASKPARTS_USE_SPINNING_SEMAPHORE $(TASKPARTS_TPAL_PREFIX) $(basename $<)_manual.s -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
 %.elastic_flat_spin_tpal.dbg: %.tpal.cpp $(INCLUDE_FILES) install_folder
-	$(CXX) $(DBG_PREFIX) -DTASKPARTS_ELASTIC_FLAT -DTASKPARTS_USE_SPINNING_SEMAPHORE -DTASKPARTS_TPALRTS $(basename $<)_manual.s -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+	$(CXX) $(DBG_PREFIX) -DTASKPARTS_ELASTIC_FLAT -DTASKPARTS_USE_SPINNING_SEMAPHORE $(TASKPARTS_TPAL_PREFIX) $(basename $<)_manual.s -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
 
 # Multiprogrammed
 %.multiprogrammed.opt: %.cpp $(INCLUDE_FILES) install_folder
@@ -206,13 +218,13 @@ SERIAL_PREFIX=-DTASKPARTS_SERIAL -DTASKPARTS_SERIAL_ELISION $(PARLAYLIB_SERIAL_P
 	$(CXX) $(DBG_PREFIX) -DTASKPARTS_MULTIPROGRAMMED -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
 
 %.multiprogrammed_tpal.opt: %.tpal.cpp $(INCLUDE_FILES) install_folder
-	$(CXX) $(OPT_PREFIX) -DTASKPARTS_MULTIPROGRAMMED -DTASKPARTS_TPALRTS $(basename $<)_manual.s -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+	$(CXX) $(OPT_PREFIX) -DTASKPARTS_MULTIPROGRAMMED $(TASKPARTS_TPAL_PREFIX) $(basename $<)_manual.s -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
 %.multiprogrammed_tpal.sta: %.tpal.cpp $(INCLUDE_FILES) install_folder
-	$(CXX) $(STA_PREFIX) -DTASKPARTS_MULTIPROGRAMMED -DTASKPARTS_TPALRTS $(basename $<)_manual.s -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+	$(CXX) $(STA_PREFIX) -DTASKPARTS_MULTIPROGRAMMED $(TASKPARTS_TPAL_PREFIX) $(basename $<)_manual.s -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
 %.multiprogrammed_tpal.log: %.tpal.cpp $(INCLUDE_FILES) install_folder
-	$(CXX) $(LOG_PREFIX) -DTASKPARTS_MULTIPROGRAMMED -DTASKPARTS_TPALRTS $(basename $<)_manual.s -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+	$(CXX) $(LOG_PREFIX) -DTASKPARTS_MULTIPROGRAMMED $(TASKPARTS_TPAL_PREFIX) $(basename $<)_manual.s -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
 %.multiprogrammed_tpal.dbg: %.tpal.cpp $(INCLUDE_FILES) install_folder
-	$(CXX) $(DBG_PREFIX) -DTASKPARTS_MULTIPROGRAMMED -DTASKPARTS_TPALRTS $(basename $<)_manual.s -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+	$(CXX) $(DBG_PREFIX) -DTASKPARTS_MULTIPROGRAMMED $(TASKPARTS_TPAL_PREFIX) $(basename $<)_manual.s -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
 
 # Binaries for Cilk
 # -----------------
@@ -233,9 +245,6 @@ CILK_COMMON_PREFIX=-fcilkplus -lcilkrts -DCILK -ldl -DPARLAY_CILK
 %.s: %.cpp $(INCLUDE_FILES) install_folder
 	$(CXX) $(OPT_PREFIX) -fno-verbose-asm -S $<
 
-
-clean:
-	rm -rf bin gen_rollforward
 
 # Benchmarks
 # ----------
@@ -342,3 +351,6 @@ all_multiprogrammed_dbg: $(BENCHMARKS:%=%.multiprogrammed.dbg)
 all_elastic_tpal: all_taskparts_tpal_sta all_elastic_flat_tpal_sta all_elastic_flat_spin_tpal_sta all_tpal_serial #all_tpal_cilk
 
 all_elastic: all_taskparts_sta all_elastic_flat_spin_sta all_elastic_flat_sta all_elastic_tpal all_cilk_sta all_serial_sta all_multiprogrammed_sta
+
+clean:
+	rm -rf bin gen_rollforward

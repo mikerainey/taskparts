@@ -480,7 +480,7 @@ void callback(hb_regs_t *regs) {
   // eventually use xsave
   __asm__ __volatile__("fxsave %0" : "=m"(buf) );
   register_type* rip = (register_type*)&(regs->rip);
-  printf("rsp=%p rip=%p\n",(void*)regs->rsp, (void*)regs->rip);
+  //printf("rsp=%p rip=%p\n",(void*)regs->rsp, (void*)regs->rip);
   //try_to_initiate_rollforward(rollforward_table, rip);
   //hb_oneshot(interval, callback);
   __asm__ __volatile__("fxrstor %0" :: "m"(buf) );
