@@ -40,6 +40,7 @@ stdenv.mkDerivation rec {
   HWLOC_INCLUDE_PREFIX="-DTASKPARTS_HAVE_HWLOC -I${hwloc.dev}/include/";
   HWLOC_LIBRARY_PREFIX="-L${hwloc.lib}/lib/ -lhwloc";
 
+  # heartbeat kernel module to support the tpal runtime
   HBTIMER_KMOD_INCLUDE_PREFIX=
     if hbtimer-kmod == null then "" else
       "-I ${hbtimer-kmod}/include -DTASKPARTS_TPALRTS_HBTIMER_KMOD";
