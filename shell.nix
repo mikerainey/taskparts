@@ -22,7 +22,11 @@
 
 let cilk-stats-rts-params =
       if cilk-stats-rts == null then "" else
-        ''-L ${cilk-stats-rts}/lib -I ${cilk-stats-rts}/include -ldl -DTASKPARTS_CILKRTS_WITH_STATS -Wno-format-zero-length'';
+        let include-flags =
+              "-I ${cilk-stats-rts}/include -DTASKPARTS_CILKRTS_WITH_STATS -Wno-format-zero-length";
+            linker-flags =
+              "-L ${cilk-stats-rts}/lib  -ldl";
+        in "${include-flags} ${linker-flags}";
 in
 
 stdenv.mkDerivation rec {
