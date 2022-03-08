@@ -89,6 +89,22 @@ auto reverse_lookup_rollforward_entry(void* dst) -> void* {
   return (void*)reverse_lookup_rollforward_entry(rollforward_table, (register_type)dst);
 }
 
+#ifdef TASKPARTS_TPALRTS_HBTIMER_KMOD
+extern "C" {
+#include <heartbeat.h>
+}
+void hbtimer_init_tbl() {
+  std::vector<struct hb_rollforward> tbl1;
+  for (auto it : rollforward_table) {
+    struct hb_rollforward tmp;
+    tmp.from = (void*)it.first;
+    tmp.to = (void*)it.second;
+    tbl1.push_back(tmp);
+  }
+  hb_set_rollforwards(tbl1.data(), tbl1.size());
+}
+#endif
+
 auto initialize_rollfoward_table() {
   std::sort(rollforward_table.begin(), rollforward_table.end(), rollforward_edge_less);
 }

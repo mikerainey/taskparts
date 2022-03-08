@@ -38,7 +38,7 @@ void launch_interrupt_worker_thread(size_t id,
 				    const Initialize_worker& initialize_worker,
 				    const Destroy_worker& destroy_worker) {
   // we need this exact initializer list to avoid a segfault
-  auto b2 = [id, &b, &initialize_worker, &destroy_worker] {
+  auto b2 = [id, b, initialize_worker, destroy_worker] {
     perworker::id::initialize_worker(id);
     pin_calling_worker();
     initialize_worker();
@@ -466,27 +466,6 @@ extern "C" {
 #include <heartbeat.h>
 }
 
-thread_local
-char buf[512] __attribute__((aligned (16)));
-
- thread_local
- volatile bool in_callback = false;
-long interval = 10;
-void callback(hb_regs_t *regs) {
-  return;
-  if (in_callback) { return; }
-  in_callback = true;
-  // only works for SSE
-  // eventually use xsave
-  __asm__ __volatile__("fxsave %0" : "=m"(buf) );
-  register_type* rip = (register_type*)&(regs->rip);
-  //printf("rsp=%p rip=%p\n",(void*)regs->rsp, (void*)regs->rip);
-  //try_to_initiate_rollforward(rollforward_table, rip);
-  //hb_oneshot(interval, callback);
-  __asm__ __volatile__("fxrstor %0" :: "m"(buf) );
-    in_callback = false;
-}
-  
 class hbtimer_kmod_worker {
 public:
 
@@ -500,8 +479,10 @@ public:
   static
   auto launch_worker_thread(size_t id, const Body& b) {
     launch_interrupt_worker_thread(id, b,
-				   [=] { hb_init(id);
-				     hb_repeat(interval, callback);
+				   [=] {
+				     hb_init(id);
+				     hbtimer_init_tbl();
+				     hb_repeat(get_kappa_usec(), nullptr);
 				   },
 				   [] { hb_exit(); });
   }

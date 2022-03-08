@@ -17,7 +17,7 @@
   hwloc ? pkgs.hwloc,
   jemalloc ? pkgs.jemalloc,
   cilk-stats-rts ? import ../cilk-plus-rts-with-stats {},
-  hbtimer-kmod ? null #import ../heartbeat-linux { pkgs=pkgs; stdenv=stdenv; }
+  hbtimer-kmod ? import ../heartbeat-linux { pkgs=pkgs; stdenv=stdenv; }
 }:
 
 let cilk-stats-rts-params =
