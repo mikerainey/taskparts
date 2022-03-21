@@ -7,13 +7,21 @@
 
 using _context_pointer = char*;
 
+//extern "C"
+void* _taskparts_ctx_save(_context_pointer) { return nullptr; }
+
+//extern "C"
+void _taskparts_ctx_restore(_context_pointer ctx, void* t) { }
+
+#if 0
+
 // for now, using this file as a guide:
 // https://opensource.apple.com/source/xnu/xnu-4570.1.46/osfmk/arm64/cswitch.s.auto.html
 // reference:
 //   - $0   base pointer of context record
 //   - $1   scratch register
 
-extern "C"
+//extern "C"
 void* _taskparts_ctx_save(_context_pointer);
 asm(R"(
 .globl __taskparts_ctx_save
@@ -65,6 +73,8 @@ __taskparts_ctx_save:
 	ldr		d15,[$0, NS64_D15]
         .cfi_endproc
 )");
+
+#endif
 
 namespace taskparts {
 

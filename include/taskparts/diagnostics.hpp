@@ -1,6 +1,6 @@
 #pragma once
 
-#if defined(TASKPARTS_POSIX)
+#if defined(TASKPARTS_POSIX) || defined(TASKPARTS_DARWIN)
 #include "posix/diagnostics.hpp"
 #elif defined (TASKPARTS_NAUTILUS)
 #include "nautilus/diagnostics.hpp"
