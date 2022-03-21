@@ -22,7 +22,7 @@ auto busywait_pause() {
 #if defined(TASKPARTS_X64)
   __builtin_ia32_pause();
 #elif defined(TASKPARTS_ARM64)
-  __builtin_arm_yield();
+  //__builtin_arm_yield();
 #else
 #error need to declare platform (e.g., TASKPARTS_X64)
 #endif

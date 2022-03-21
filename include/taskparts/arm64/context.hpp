@@ -13,6 +13,9 @@ void* _taskparts_ctx_save(_context_pointer) { return nullptr; }
 //extern "C"
 void _taskparts_ctx_restore(_context_pointer ctx, void* t) { }
 
+extern
+int foo();
+
 #if 0
 
 // for now, using this file as a guide:

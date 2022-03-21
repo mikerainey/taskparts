@@ -22,6 +22,7 @@ auto detect_cpu_frequency_khz() -> uint64_t {
     cpu_frequency_khz = std::stoi(env_p);
     return cpu_frequency_khz;
   }
+  // later: find a way to get cpu frequency in mac/darwin
   FILE *f;
   f = fopen("/sys/devices/system/cpu/cpu0/cpufreq/base_frequency", "r");
   if (f == nullptr) {
