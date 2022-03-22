@@ -48,7 +48,7 @@ __asm__
 int main() {
   printf("x=%d\n", func());
   char ctx[arm64_ctx_szb];
-  printf("y=%p", _taskparts_ctx_save(&ctx[0]));
+  printf("y=%p\n", _taskparts_ctx_save(&ctx[0]));
   taskparts::run();
   return 0;
 }

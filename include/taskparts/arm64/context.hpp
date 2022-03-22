@@ -28,75 +28,33 @@ __asm__
     "    str x29, [x0, 10]\n"
     "    str x30, [x0, 11]\n"
     "    str x31, [x0, 12]\n"
-    "    mov w0, #0\n"
+    "    mov x0, #0\n"
     "    ret\n"
 );
 
-//extern "C"
-void _taskparts_ctx_restore(_context_pointer ctx, void* t) { }
-
-#if 0
-
-// for now, using this file as a guide:
-// https://opensource.apple.com/source/xnu/xnu-4570.1.46/osfmk/arm64/cswitch.s.auto.html
-// reference:
-//   - $0   base pointer of context record
-//   - $1   scratch register
-
-//extern "C"
-void* _taskparts_ctx_save(_context_pointer);
-asm(R"(
-.globl __taskparts_ctx_save
-__taskparts_ctx_save:
-        .cfi_startproc
-        stp		x16, x17, [$0, SS64_X16]
-	stp		x19, x20, [$0, SS64_X19]
-	stp		x21, x22, [$0, SS64_X21]
-	stp		x23, x24, [$0, SS64_X23]
-	stp		x25, x26, [$0, SS64_X25]
-	stp		x27, x28, [$0, SS64_X27]
-	stp		fp, lr, [$0, SS64_FP]
-	mov		$1, sp
-	str		$1, [$0, SS64_SP]
-	str		d8,	[$0, NS64_D8]
-	str		d9,	[$0, NS64_D9]
-	str		d10,[$0, NS64_D10]
-	str		d11,[$0, NS64_D11]
-	str		d12,[$0, NS64_D12]
-	str		d13,[$0, NS64_D13]
-	str		d14,[$0, NS64_D14]
-	str		d15,[$0, NS64_D15]
-        ret
-        .cfi_endproc
-)");
-
-//extern "C"
+extern "C"
 void _taskparts_ctx_restore(_context_pointer ctx, void* t);
-asm(R"(
-.globl __taskparts_ctx_save
-__taskparts_ctx_save:
-        .cfi_startproc
-	ldp		x16, x17, [$0, SS64_X16]
-	ldp		x19, x20, [$0, SS64_X19]
-	ldp		x21, x22, [$0, SS64_X21]
-	ldp		x23, x24, [$0, SS64_X23]
-	ldp		x25, x26, [$0, SS64_X25]
-	ldp		x27, x28, [$0, SS64_X27]
-	ldp		fp, lr, [$0, SS64_FP]
-	ldr		$1, [$0, SS64_SP]
-	mov		sp, $1
-	ldr		d8,	[$0, NS64_D8]
-	ldr		d9,	[$0, NS64_D9]
-	ldr		d10,[$0, NS64_D10]
-	ldr		d11,[$0, NS64_D11]
-	ldr		d12,[$0, NS64_D12]
-	ldr		d13,[$0, NS64_D13]
-	ldr		d14,[$0, NS64_D14]
-	ldr		d15,[$0, NS64_D15]
-        .cfi_endproc
-)");
-
-#endif
+__asm__
+(
+    "__taskparts_ctx_restore:\n"
+    "    ldr x31, [x0, 12]\n"
+    "    ldr x30, [x0, 11]\n"
+    "    ldr x29, [x0, 10]\n"
+    "    ldr x28, [x0, 9]\n"
+    "    ldr x27, [x0, 8]\n"
+    "    ldr x26, [x0, 7]\n"
+    "    ldr x25, [x0, 6]\n"
+    "    ldr x24, [x0, 5]\n"
+    "    ldr x23, [x0, 4]\n"
+    "    ldr x22, [x0, 3]\n"
+    "    ldr x21, [x0, 2]\n"
+    "    ldr x20, [x0, 1]\n"
+    "    ldr x19, [x0, 0]\n"
+    "    mov x2, #1\n"
+    "    cmp x1, #0\n"
+    "    csel x0, x2, x1, eq\n"
+    "    ret\n"
+);
 
 namespace taskparts {
 
@@ -154,7 +112,7 @@ public:
     stack_end -= (size_t)stack_end % stack_alignb;
     void** _ctx = (void**)ctx;
     static constexpr
-    int _ARM_64_SP_OFFSET = 13;
+    int _ARM_64_SP_OFFSET = 12;
     _ctx[_ARM_64_SP_OFFSET] = stack_end;
     return stack;
   }

@@ -31,6 +31,7 @@ _taskparts_ctx_save:
         .cfi_endproc
 )");
 
+// if t (%rsi) is nullptr, then have the matching call to _taskparts_ctx_save() return the value 1.
 extern "C"
 void _taskparts_ctx_restore(_context_pointer ctx, void* t);
 asm(R"(
