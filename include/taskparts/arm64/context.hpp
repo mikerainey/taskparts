@@ -5,16 +5,35 @@
 /*---------------------------------------------------------------------*/
 /* Context switching */
 
+static constexpr
+int arm64_ctx_szb = 13*8;
+
 using _context_pointer = char*;
 
-//extern "C"
-void* _taskparts_ctx_save(_context_pointer) { return nullptr; }
+extern "C"
+void* _taskparts_ctx_save(_context_pointer);
+__asm__
+(
+    "__taskparts_ctx_save:\n"
+    "    str x19, [x0, 0]\n"
+    "    str x20, [x0, 1]\n"
+    "    str x21, [x0, 2]\n"
+    "    str x22, [x0, 3]\n"
+    "    str x23, [x0, 4]\n"
+    "    str x24, [x0, 5]\n"
+    "    str x25, [x0, 6]\n"
+    "    str x26, [x0, 7]\n"
+    "    str x27, [x0, 8]\n"
+    "    str x28, [x0, 9]\n"
+    "    str x29, [x0, 10]\n"
+    "    str x30, [x0, 11]\n"
+    "    str x31, [x0, 12]\n"
+    "    mov w0, #0\n"
+    "    ret\n"
+);
 
 //extern "C"
 void _taskparts_ctx_restore(_context_pointer ctx, void* t) { }
-
-extern
-int foo();
 
 #if 0
 
@@ -90,7 +109,7 @@ size_t thread_stack_szb = stack_alignb * (1<<12);
 class context {  
 public:
   
-  typedef char context_type[8*8];
+  typedef char context_type[arm64_ctx_szb];
   
   using context_pointer = _context_pointer;
   
@@ -134,10 +153,9 @@ public:
     char* stack_end = &stack[thread_stack_szb];
     stack_end -= (size_t)stack_end % stack_alignb;
     void** _ctx = (void**)ctx;
-    /*
     static constexpr
-    int _X86_64_SP_OFFSET = 6;
-    _ctx[_X86_64_SP_OFFSET] = stack_end; */
+    int _ARM_64_SP_OFFSET = 13;
+    _ctx[_ARM_64_SP_OFFSET] = stack_end;
     return stack;
   }
   

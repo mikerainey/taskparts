@@ -36,15 +36,19 @@ void run() {
 
 } // end namespace taskparts
 
-extern "C" int func();
+extern "C"
+int func();
 __asm__
 (
     "_func:\n"
     "    mov w0, #3\n"
     "    ret\n"
 );
+
 int main() {
-  printf("x1=%d\n", func());
+  printf("x=%d\n", func());
+  char ctx[arm64_ctx_szb];
+  printf("y=%p", _taskparts_ctx_save(&ctx[0]));
   taskparts::run();
   return 0;
 }
