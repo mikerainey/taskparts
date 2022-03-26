@@ -5,6 +5,7 @@
 #include "taskparts/logging.hpp"
 #include "taskparts/elastic.hpp"
 #include "taskparts/nativeforkjoin.hpp"
+#include "taskparts/chaselev.hpp"
 
 using ping_thread_status_type = enum ping_thread_status_enum {
   ping_thread_status_active,
@@ -88,4 +89,22 @@ auto dflt_benchmark_setup = [] (bench_scheduler) { };
 auto dflt_benchmark_teardown = [] (bench_scheduler) { };
 auto dflt_benchmark_reset = [] (bench_scheduler) { };
 
+template<typename F>
+auto launch(const F& f) {
+  using scheduler_type = minimal_scheduler<>;
+  scheduler_type sched;
+  auto run = [&] {
+    f(sched);
+  };
+  initialize_machine();
+  nativefj_from_lambda f_body(run, sched);
+  auto f_term = new terminal_fiber<scheduler_type>;
+  fiber<scheduler_type>::add_edge(&f_body, f_term);
+  f_body.release();
+  f_term->release();
+  using cl = chase_lev_work_stealing_scheduler<scheduler_type, fiber>;
+  cl::launch();
+  teardown_machine();
+}
+  
 } // end namespace

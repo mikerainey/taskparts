@@ -3,6 +3,11 @@
 #include "taskparts/cmdline.hpp"
 #include <fib_manualfiber.hpp>
 
+/*
+clang++ -std=c++17 -g3 -O0 -I. -I../include -DTASKPARTS_DARWIN -DTASKPARTS_ARM64 -DTASKPARTS_STATS fib_manualfiber.cpp
+TASKPARTS_CPU_BASE_FREQUENCY_KHZ=3200000 ./a.out
+ */
+
 namespace taskparts {
 
 template <
@@ -36,19 +41,7 @@ void run() {
 
 } // end namespace taskparts
 
-extern "C"
-int func();
-__asm__
-(
-    "_func:\n"
-    "    mov w0, #3\n"
-    "    ret\n"
-);
-
 int main() {
-  printf("x=%d\n", func());
-  char ctx[arm64_ctx_szb];
-  printf("y=%p\n", _taskparts_ctx_save(&ctx[0]));
   taskparts::run();
   return 0;
 }
