@@ -6,7 +6,7 @@
 /* Context switching */
 
 static constexpr
-int arm64_ctx_szb = 13*8;
+int arm64_ctx_szb = 21*8;
 
 using _context_pointer = char*;
 
@@ -29,6 +29,14 @@ __asm__
     "    str lr, [x0, 88]\n"
     "    mov x1, sp\n"
     "    str x1, [x0, 96]\n"
+    "    str d8, [x0, 104]\n"
+    "    str d9, [x0, 112]\n"
+    "    str d10, [x0, 120]\n"
+    "    str d11, [x0, 128]\n"
+    "    str d12, [x0, 136]\n"
+    "    str d13, [x0, 144]\n"
+    "    str d14, [x0, 152]\n"
+    "    str d15, [x0, 160]\n"
     "    mov x0, #0\n"
     "    ret\n"
 );
@@ -38,6 +46,14 @@ void _taskparts_ctx_restore(_context_pointer ctx, void* t);
 __asm__
 (
     "__taskparts_ctx_restore:\n"
+    "    ldr d15, [x0, 160]\n"
+    "    ldr d14, [x0, 152]\n"
+    "    ldr d13, [x0, 144]\n"
+    "    ldr d12, [x0, 136]\n"
+    "    ldr d11, [x0, 128]\n"
+    "    ldr d10, [x0, 120]\n"
+    "    ldr d9, [x0, 112]\n"
+    "    ldr d8, [x0, 104]\n"
     "    ldr x2, [x0, 96]\n"
     "    mov sp, x2\n"
     "    ldr lr, [x0, 88]\n"
