@@ -10,8 +10,7 @@ TASKPARTS_PLATFORM?=-DTASKPARTS_POSIX -DTASKPARTS_X64
 # Other parameters (all nil by default):
 #   HWLOC_INCLUDE_PREFIX           include directives for hwloc (optionally empty)
 #   HWLOC_LIBRARY_PREFIX           linker directives for hwloc (optionally empty)
-#   PARLAYLIB_INCLUDE_PREFIX       include directives needed for parlay
-#   PARLAYLIB_SERIAL_PREFIX        include directives needed for parlay
+#   PARLAYLIB_INCLUDE_path         include path needed for parlay
 #   PBBSBENCH_INCLUDE_PREFIX       include directives needed for pbbs
 #   MINI_UTS_INCLUDE_PREFIX        include directives needed for mini uts benchmark
 #   MINI_UTS_LINKER_FLAGS          linker flags needed for mini uts benchmark
@@ -22,7 +21,7 @@ TASKPARTS_PLATFORM?=-DTASKPARTS_POSIX -DTASKPARTS_X64
 # External libraries
 # ------------------
 
-PARLAYLIB_INCLUDE_PREFIX?=-I $(TASKPARTS_PATH)/../parlaylib/include/ -DPARLAY_TASKPARTS
+PARLAYLIB_INCLUDE_PATH?=$(TASKPARTS_PATH)/../parlaylib/include/
 PBBSBENCH_INCLUDE_PREFIX?=-I $(TASKPARTS_PATH)/../pbbsbench/ -Wno-pragmas
 MINI_UTS_INCLUDE_PREFIX?=-I $(TASKPARTS_PATH)/../mini-uts/
 MINI_UTS_LINKER_FLAGS?=-lm
@@ -35,11 +34,12 @@ ifeq (, $(shell which jemalloc-config))
 JEMALLOC =
 else
 JEMALLOCLD = $(shell jemalloc-config --libdir)
-JEMALLOC = -L$(JEMALLOCLD) -ljemalloc
+JEMALLOCLS = $(shell jemalloc-config --libs)
+JEMALLOC = -L$(JEMALLOCLD) -Wl,-rpath,$(JEMALLOCLD) -ljemalloc $(JEMALLOCLS)
 endif
 
-# Taskparts paths
-# ---------------
+# Common build flags
+# ------------------
 
 TASKPARTS_INCLUDE_PATH=$(TASKPARTS_PATH)/include/
 TASKPARTS_POSIX_INCLUDE_PATH=$(TASKPARTS_INCLUDE_PATH)/taskparts/posix
@@ -59,8 +59,8 @@ INCLUDE_FILES=\
 
 INCLUDE_PREFIX=\
 	-I $(TASKPARTS_INCLUDE_PATH) \
+	-I $(PARLAYLIB_INCLUDE_PATH) \
 	$(HWLOC_INCLUDE_PREFIX) \
-	$(PARLAYLIB_INCLUDE_PREFIX) \
 	$(PBBSBENCH_INCLUDE_PREFIX) \
 	$(MINI_UTS_INCLUDE_PREFIX) \
 	$(CHUNKEDSEQ_PREFIX) \
@@ -89,16 +89,25 @@ OPT_COMPILE_PREFIX=\
 	-fomit-frame-pointer \
 	-DNDEBUG
 
+# Taskparts-specific flags
+# ------------------------
+
+TASKPARTS_COMPILE_PREFIX=\
+	-DPARLAY_TASKPARTS
+
 OPT_PREFIX=\
-	$(OPT_COMPILE_PREFIX)
+	$(OPT_COMPILE_PREFIX) \
+	$(TASKPARTS_COMPILE_PREFIX)
 STA_PREFIX=\
 	$(OPT_COMPILE_PREFIX) \
+	$(TASKPARTS_COMPILE_PREFIX)\
 	-DTASKPARTS_STATS
 LOG_PREFIX=\
 	$(STA_PREFIX) \
 	-DTASKPARTS_LOG
 DBG_PREFIX=\
 	$(COMMON_COMPILE_PREFIX) \
+	$(TASKPARTS_COMPILE_PREFIX)\
 	-Og \
 	-g3 \
 	-DTASKPARTS_STATS \
@@ -229,13 +238,12 @@ SERIAL_PREFIX=-DTASKPARTS_SERIAL -DTASKPARTS_SERIAL_ELISION $(PARLAYLIB_SERIAL_P
 # Binaries for Cilk
 # -----------------
 
-CILK_COMMON_PREFIX=-fcilkplus -lcilkrts -DCILK -ldl -DPARLAY_CILK
+CILK_COMMON_PREFIX=-fcilkplus -lcilkrts -DCILK -ldl -DPARLAY_CILKPLUS
 
 %.cilk.opt: %.cilk.cpp $(INCLUDE_FILES) install_folder
-	$(CXX) $(OPT_PREFIX) $(CILK_COMMON_PREFIX) -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
-# TODO: enable cilk w/ stats
+	$(CXX) $(OPT_COMPILE_PREFIX) $(CILK_COMMON_PREFIX) -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
 %.cilk.sta: %.cilk.cpp $(INCLUDE_FILES) install_folder
-	$(CXX) $(OPT_PREFIX) -o $(INSTALL_PATH)/$@ $< $(CILKRTS_STATS_PREFIX) $(CILK_COMMON_PREFIX) $(LINKER_PREFIX)
+	$(CXX) $(OPT_COMPILE_PREFIX) -o $(INSTALL_PATH)/$@ $< $(CILKRTS_STATS_PREFIX) $(CILK_COMMON_PREFIX) $(LINKER_PREFIX)
 %.cilk.dbg: %.cilk.cpp $(INCLUDE_FILES) install_folder
 	$(CXX) $(DBG_PREFIX) $(CILK_COMMON_PREFIX) -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
 
