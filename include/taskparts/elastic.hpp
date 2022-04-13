@@ -57,6 +57,7 @@ public:
 #else
 #error need to declare platform (e.g., TASKPARTS_POSIX)
 #endif
+#include "combtree.hpp"
 
 namespace taskparts {
 
@@ -276,6 +277,7 @@ public:
     auto& operator[](size_t i) const { return field[i].sem; }
   } sem{};
 
+
   // concurrent random set for tracking awake processors
   class crs {
   public:
@@ -285,7 +287,7 @@ public:
     void initialize() { }
 
     static
-    void add(size_t p) { }
+    void add(size_t p) {  }
 
     static
     void remove(size_t p) { }
@@ -302,6 +304,56 @@ public:
     }
   };
 
+#if 0
+  class crs {
+  public:
+
+    static
+    combtree* ct;
+
+    static constexpr
+    int nb_per_leaf = 2;
+
+    // Init, Add and Remove are dummy methods as it is backed by status words
+    static 
+    void initialize() {
+      size_t nb_workers = perworker::id::get_nb_workers();
+      int height = 0;
+      {
+	while (nb_workers >>= 1) ++height;
+      }
+      height = std::max(1, height - nb_per_leaf);
+      ct = new combtree(height);
+    }
+
+    static
+    size_t leaf_of(size_t p) {
+      return p % nb_per_leaf;
+    }
+
+    static
+    void add(size_t p) {
+      ct->increment_leaf_counter(leaf_of(p), 1);
+    }
+
+    static
+    void remove(size_t p) {
+      ct->increment_leaf_counter(leaf_of(p), -1);
+    }
+
+    static
+    size_t sample(size_t& nb_sa, size_t nb_workers, size_t my_id) {
+      assert(nb_workers != 1);
+      auto id = (size_t)((hash(my_id) + hash(nb_sa)) % (nb_workers - 1));
+      if (id >= my_id) {
+        id++;
+      }
+      nb_sa++;
+      return id;
+    }
+  };
+#endif
+  
   // worker pool for tracking asleep processors
   class pool {
   public:
@@ -332,6 +384,7 @@ public:
 
   static
   auto initialize() {
+    crs::initialize();
     assert(status[0].is_lock_free());
     // Semaphore and spinlocks are initialized on construction
     for (size_t i = 0; i < field.size(); ++i) {
@@ -438,5 +491,9 @@ public:
 template <typename Stats, typename Logging, typename Semaphore, typename Spinlock>
 perworker::array<typename elastic_flat<Stats,Logging,Semaphore,Spinlock>::fields> 
 elastic_flat<Stats,Logging,Semaphore,Spinlock>::field;
+
+template <typename Stats, typename Logging, typename Semaphore, typename Spinlock>
+combtree*
+elastic_flat<Stats,Logging,Semaphore,Spinlock>::crs::ct;
 
 } // end namespace
