@@ -22,7 +22,7 @@ public:
 
   using index_type = size_t;
 
-private:
+  //private:
 
   // we use level order indexing of tree nodes
   
@@ -103,9 +103,6 @@ public:
   }
 
   auto increment_leaf_counter(index_type l, int64_t i) {
-    if (l >= get_nb_leaves()) {
-      printf("l=%lu n=%lu\n",l, get_nb_leaves());
-    }
     assert(l < get_nb_leaves());
     increment_counter(get_first_leaf() + l, i);
   }

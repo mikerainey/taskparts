@@ -279,6 +279,7 @@ public:
 
 
   // concurrent random set for tracking awake processors
+#ifndef TASKPARTS_USE_CRS_COMBTREE
   class crs {
   public:
 
@@ -304,15 +305,15 @@ public:
     }
   };
 
-#if 0
+#else
   class crs {
   public:
 
     static
     combtree* ct;
 
-    static constexpr
-    int nb_per_leaf = 2;
+    //static constexpr
+    //    int nb_per_leaf = 2;
 
     // Init, Add and Remove are dummy methods as it is backed by status words
     static 
@@ -322,13 +323,13 @@ public:
       {
 	while (nb_workers >>= 1) ++height;
       }
-      height = std::max(1, height - nb_per_leaf);
+      height = std::max(1, height /*- nb_per_leaf*/);
       ct = new combtree(height);
     }
 
     static
     size_t leaf_of(size_t p) {
-      return p % nb_per_leaf;
+      return p; // % nb_per_leaf;
     }
 
     static
@@ -344,7 +345,22 @@ public:
     static
     size_t sample(size_t& nb_sa, size_t nb_workers, size_t my_id) {
       assert(nb_workers != 1);
-      auto id = (size_t)((hash(my_id) + hash(nb_sa)) % (nb_workers - 1));
+      auto f = [&] (size_t n) {
+	if (ct->is_leaf(n)) {
+	  return n;
+	}
+	auto sl = ct->read_counter(ct->left_child_of(n));
+	auto sr = ct->read_counter(ct->right_child_of(n));
+	auto s = sl + sr;
+	auto c = (size_t)((hash(my_id) + hash(nb_sa) + hash(n)) % s);
+	if (c < sl) {
+	  return f(ct->left_child_of(n));
+	} else {
+	  return f(ct->right_child_of(n));
+	}
+      };
+      auto id0 = f(0);
+      auto id = id0 - ct->get_first_leaf() % (nb_workers - 1);
       if (id >= my_id) {
         id++;
       }
@@ -492,8 +508,10 @@ template <typename Stats, typename Logging, typename Semaphore, typename Spinloc
 perworker::array<typename elastic_flat<Stats,Logging,Semaphore,Spinlock>::fields> 
 elastic_flat<Stats,Logging,Semaphore,Spinlock>::field;
 
+#ifdef TASKPARTS_USE_CRS_COMBTREE
 template <typename Stats, typename Logging, typename Semaphore, typename Spinlock>
 combtree*
 elastic_flat<Stats,Logging,Semaphore,Spinlock>::crs::ct;
+#endif
 
 } // end namespace
