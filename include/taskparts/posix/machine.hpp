@@ -16,6 +16,7 @@ namespace taskparts {
 /*---------------------------------------------------------------------*/
 /* Detect CPU frequency */
 
+static
 auto detect_cpu_frequency_khz() -> uint64_t {
   uint64_t cpu_frequency_khz = 0;
   if (const auto env_p = std::getenv("TASKPARTS_CPU_BASE_FREQUENCY_KHZ")) {
