@@ -480,7 +480,7 @@ public:
   auto launch_worker_thread(size_t id, const Body& b) {
     launch_interrupt_worker_thread(id, b,
 				   [=] {
-				     hb_init(id);
+				     hb_init();
 				     hbtimer_init_tbl();
 				     hb_repeat(get_kappa_usec(), nullptr);
 				   },
