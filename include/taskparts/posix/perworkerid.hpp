@@ -77,6 +77,7 @@ int id::nb_workers = -1;
 thread_local
 int id::my_id = uninitialized_id;
 
+static
 auto nb_workers_requested() -> size_t {
 #ifndef TASKPARTS_SERIAL
   if (const auto env_p = std::getenv("TASKPARTS_NUM_WORKERS")) {
@@ -89,15 +90,18 @@ auto nb_workers_requested() -> size_t {
 #endif
 }
   
+static
 __attribute__((constructor))
 void init() {
   id::initialize(nb_workers_requested());
 }
 
+static
 auto my_id() -> size_t {
   return id::get_my_id();
 }
 
+static
 auto nb_workers() -> size_t {
   return id::get_nb_workers();
 }

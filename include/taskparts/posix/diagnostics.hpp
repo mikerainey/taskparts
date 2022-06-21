@@ -8,31 +8,38 @@
 namespace taskparts {
 
 namespace perworker {
+static
 auto my_id() -> size_t;
 } // end namespace
   
+static
 pthread_mutex_t print_lock;
 
+static
 __attribute__((constructor))
 void init_print_lock() {
   auto r = pthread_mutex_init(&print_lock, nullptr);
   assert(r == 0);
 }
 
+static
 __attribute__((destructor))
 void destroy_print_lock() {
   auto r = pthread_mutex_destroy(&print_lock);
   assert(r == 0);
 }
 
+static
 void acquire_print_lock() {
   pthread_mutex_lock(&print_lock);
 }
 
+static
 void release_print_lock() {
   pthread_mutex_unlock(&print_lock);
 }
 
+static
 void die(const char *fmt, ...) {
   va_list ap;
   va_start(ap, fmt);
@@ -48,6 +55,7 @@ void die(const char *fmt, ...) {
   exit(-1);
 }
 
+static
 void afprintf(FILE* stream, const char *fmt, ...) {
   va_list ap;
   va_start(ap, fmt);
@@ -59,6 +67,7 @@ void afprintf(FILE* stream, const char *fmt, ...) {
   va_end(ap);
 }
 
+static
 void aprintf(const char *fmt, ...) {
   acquire_print_lock(); {
     fprintf(stdout, "[%lu] ", perworker::my_id());

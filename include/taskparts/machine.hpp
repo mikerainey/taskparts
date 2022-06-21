@@ -16,6 +16,7 @@ namespace {
 uint64_t cpu_frequency_khz = 0;
 }
 
+static
 auto detect_cpu_frequency_khz() -> uint64_t;
   
 static inline
