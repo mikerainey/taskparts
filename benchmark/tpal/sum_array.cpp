@@ -23,48 +23,8 @@ void __attribute__((preserve_all, noinline)) __rf_handle_sum_array_heartbeat(dou
     tpalrts_promote_via_nativefj(f1, f2, fj, taskparts::bench_scheduler());
     promoted = true;
   }
-  void* ra_dst = __builtin_return_address(0);
-  void* ra_src = NULL;
-  // Binary search over the rollbackwards
-  {
-    int64_t i = 0, j = (int64_t)rollforward_table_size - 1;
-    int64_t k;
-    while (i <= j) {
-      k = i + ((j - i) / 2);
-      if ((uint64_t)rollback_table[k].from == (uint64_t)ra_dst) {
-	ra_src = rollback_table[k].to;
-	break;
-      } else if ((uint64_t)rollback_table[k].from < (uint64_t)ra_dst) {
-	i = k + 1;
-      } else {
-	j = k - 1;
-      }
-    }
-  }
-  if (ra_src != NULL) {
-    void* fa = __builtin_frame_address(0);
-    void** rap = (void**)((char*)fa + 8);
-    *rap = ra_src;
-  } else {
-    printf("oops! %lx %lu\n\n",ra_dst, rollback_table_size);
-
-    
-    for (uint64_t i = 0; i < rollback_table_size; i++) {
-      if (rollforward_table[i].from == ra_dst) {
-	ra_src = rollforward_table[i].to;
-	break;
-      }
-    }
-
-    if (ra_src == NULL) {
-      printf("found no entry in rollforward table!\n");
-    }
-    //    dump_table();
-    exit(1);
-  }
+  taskparts_tpal_rollbackward
 }
-
-#define unlikely(x)    __builtin_expect(!!(x), 0)
 
 #define D 64
 
@@ -84,7 +44,7 @@ void sum_array_heartbeat(double* a, uint64_t lo, uint64_t hi, double r, double* 
     }
     bool promoted = false;
     __rf_handle_sum_array_heartbeat(a, lo, hi, r, dst, promoted);
-    if (promoted) {
+    if (taskparts_tpal_unlikely(promoted)) {
       return;
     }
   }

@@ -30,7 +30,7 @@ struct hb_rollforward rollback_table[];
 
 namespace taskparts {
 
-void try_to_initiate_rollforward(void** rip) {
+auto try_to_initiate_rollforward(void** rip) {
   void* ra_src = *rip;
   void* ra_dst = nullptr;
   // Binary search over the rollforward keys
@@ -49,9 +49,30 @@ void try_to_initiate_rollforward(void** rip) {
       }
     }
   } 
-  if (ra_dst != NULL) {
+  if (ra_dst != nullptr) {
     *rip = ra_dst;
   }
+}
+
+auto try_to_initiate_rollbackward(void* ra_dst) -> void* {
+  void* ra_src = nullptr;
+  // Binary search over the rollbackwards
+  {
+    int64_t i = 0, j = (int64_t)rollforward_table_size - 1;
+    int64_t k;
+    while (i <= j) {
+      k = i + ((j - i) / 2);
+      if ((uint64_t)rollback_table[k].from == (uint64_t)ra_dst) {
+	ra_src = rollback_table[k].to;
+	break;
+      } else if ((uint64_t)rollback_table[k].from < (uint64_t)ra_dst) {
+	i = k + 1;
+      } else {
+	j = k - 1;
+      }
+    }
+  }
+  return ra_src;
 }
 
 auto rf_well_formed_check() {
@@ -97,6 +118,29 @@ void __initialize(int argc, char **argv) {
 }
     
 } // end namespace
+
+#define taskparts_tpal_rollbackward \
+  void* ra_dst = __builtin_return_address(0); \
+  void* ra_src = taskparts::try_to_initiate_rollbackward(ra_dst); \
+  if (ra_src != nullptr) { \
+    void* fa = __builtin_frame_address(0); \
+    void** rap = (void**)((char*)fa + 8); \
+    *rap = ra_src; \
+  } else { \
+    for (uint64_t i = 0; i < rollback_table_size; i++) { \
+      if (rollforward_table[i].from == ra_dst) { \
+	ra_src = rollforward_table[i].to; \
+	break; \
+      } \
+    } \
+    if (ra_src == nullptr) { \
+      printf("found no entry in rollforward table!\n"); \
+    } \
+    exit(1); \
+  }
+
+
+#define taskparts_tpal_unlikely(x)    __builtin_expect(!!(x), 0)
 
 #if defined(TASKPARTS_POSIX)
 #include "posix/rollforward.hpp"
