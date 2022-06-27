@@ -481,7 +481,7 @@ public:
     launch_interrupt_worker_thread(id, b,
 				   [=] {
 				     hb_init();
-				     hbtimer_init_tbl();
+				     hb_set_rollforwards(&rollforward_table[0], rollforward_table_size);
 				     hb_repeat(get_kappa_usec(), nullptr);
 				   },
 				   [] { hb_exit(); });
@@ -510,7 +510,7 @@ using tpalrts_interrupt = papi_interrupt;
 #elif defined(TASKPARTS_TPALRTS_MINIMAL)
 using tpalrts_worker = minimal_worker;
 using tpalrts_interrupt = minimal_interrupt;
-#elif defined(TASKPARTS_TPALRTS_HBTIMER_KMOD)
+#elif defined(TASKPARTS_TPALRTS_HBTIMER_KMOD) && defined(TASKPARTS_TPALRTS_HBTIMER_KMOD_HEARTBEAT)
 using tpalrts_worker = hbtimer_kmod_worker;
 using tpalrts_interrupt = minimal_interrupt;  
 #else

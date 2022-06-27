@@ -12,7 +12,7 @@
 
 # later: investigate idiomatic way to share code between this file and debug.nix
 
-{ pkgs   ? import <nixpkgs> {},
+{ pkgs ? import <nixpkgs> {},
   stdenv ? pkgs.stdenv,
   hwloc ? pkgs.hwloc,
   jemalloc ? pkgs.jemalloc,
@@ -44,10 +44,12 @@ stdenv.mkDerivation rec {
   # heartbeat kernel module to support the tpal runtime
   HBTIMER_KMOD_INCLUDE_PREFIX=
     if hbtimer-kmod == null then "" else
-      "-I ${hbtimer-kmod}/include -DTASKPARTS_TPALRTS_HBTIMER_KMOD";
+b      "-I ${hbtimer-kmod}/include -DTASKPARTS_TPALRTS_HBTIMER_KMOD";
   HBTIMER_KMOD_LINKER_FLAGS=
     if hbtimer-kmod == null then "" else
       "${hbtimer-kmod}/libhb.so";
+  HBTIMER_KMOD_RF_COMPILER= if hbtimer-kmod == null then "" else
+    "${hbtimer-kmod}/rf_compiler";
   
   shellHook = ''
     # The line below is needed, at present, because otherwise taskparts may 

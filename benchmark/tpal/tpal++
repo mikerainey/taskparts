@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+
+RF_COMPILER=$HBTIMER_KMOD_RF_COMPILER/transform.pl
+
+trap 'rm -f "$ORIG_ASM_TMPFILE"' EXIT
+ORIG_ASM_TMPFILE=$(mktemp --suffix .s) || exit 1
+trap 'rm -f "$RF_ASM_TMPFILE"' EXIT
+RF_ASM_TMPFILE=$(mktemp --suffix .s) || exit 1
+
+echo
+
+# Split CXX build command into subcommands: (1) C++ to assembly and (2) assembly to binary
+t="$@"
+searchstring=" -DTASKPARTS_TPALRTS "
+rest=${t#*$searchstring}
+
+# Compile C++ to x64 assembly
+
+n=$(( ${#t} - ${#rest} ))
+TO_ASM="${t:0:$n} -S -o $ORIG_ASM_TMPFILE"
+echo "$TO_ASM"
+$TO_ASM
+
+# Compile x64 assembly to rollforward x64 assembly
+
+echo
+RF_COMPILER_CMD="$RF_COMPILER $ORIG_ASM_TMPFILE $RF_ASM_TMPFILE"
+echo "$RF_COMPILER_CMD"
+$RF_COMPILER_CMD
+cp $ORIG_ASM_TMPFILE bin/asm_tmpfile.s
+cp $RF_ASM_TMPFILE bin/rf_asm_tmpfile.s
+echo
+
+# Compile x64 rollforward assembly to binary
+
+m=$(( ${#t} - $n ))
+TO_BIN="$CXX $HBTIMER_KMOD_RF_COMPILER/entry.S $RF_ASM_TMPFILE ${t:$n:$m}"
+echo "$TO_BIN"
+$TO_BIN
