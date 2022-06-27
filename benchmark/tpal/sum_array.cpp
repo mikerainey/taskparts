@@ -92,49 +92,10 @@ void sum_array_heartbeat(double* a, uint64_t lo, uint64_t hi, double r, double* 
   *dst = r;
 }
 
-auto rf_well_formed_check() {
-  if (rollforward_table_size == 0) {
-    return;
-  }
-  
-  uint64_t rff1 = (uint64_t)rollforward_table[0].from;
-  for (uint64_t i = 1; i < rollforward_table_size; i++) {
-    uint64_t rff2 = (uint64_t)rollforward_table[i].from;
-    // check increasing order of 'from' keys in rollforwad table
-    if (rff2 < rff1) {
-      printf("bogus ordering in rollforward table rff2=%lx rff1=%lx\n",rff2,rff1);
-      //      exit(1);
-    }
-    // check that rollback table is an inverse mapping of the
-    // rollforward table
-    uint64_t rft2 = (uint64_t)rollforward_table[i].to;
-    uint64_t rbf2 = (uint64_t)rollback_table[i].from;
-    uint64_t rbt2 = (uint64_t)rollback_table[i].to;
-    if (rft2 != rbf2) {
-      printf("bogus mapping rft2=%lx rbf2=%lx\n",rft2,rbf2);
-      exit(1);
-    }
-    if (rff2 != rbt2) {
-      printf("bogus mapping!\n");
-      exit(1);
-    }
-    rff1 = rff2;
-  }
-  //  printf("passed rf table checks\n");
-}
-
-int sorter(const void* v1,const void* v2) {
-  return *((uint64_t*)v1)-*((uint64_t*)v2);
-}
-
 int main() {
   uint64_t n = taskparts::cmdline::parse_or_default_long("n", 1000 * 1000 * 1000);
   double result = 0.0;
   double* a;
-
-  qsort(rollforward_table, rollforward_table_size, 16, sorter);
-  qsort(rollback_table, rollforward_table_size, 16, sorter);
-  rf_well_formed_check();
   
   taskparts::benchmark_nativeforkjoin([&] (auto sched) {
     sum_array_heartbeat(a, 0, n, 0.0, &result);
