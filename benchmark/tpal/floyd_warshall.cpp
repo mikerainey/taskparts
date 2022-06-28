@@ -52,12 +52,11 @@ void to_loop_handler(int* dist, int vertices, int via_lo, int via_hi, int from_l
     promoted = true; return;
   }
   assert(nb_from >= 2);
-  auto ff = [=] {
-    floyd_warshall_interrupt_to(dist, vertices, via_lo, via_hi2, from_lo, from_hi, to_lo, to_hi);
-  };
   auto from_mid = (from_lo + from_hi) / 2;
   tpalrts_promote_via_nativefj([=] {
-    tpalrts_promote_via_nativefj(ff, [=] {
+    tpalrts_promote_via_nativefj([=] {
+      floyd_warshall_interrupt_to(dist, vertices, via_lo, via_hi2, from_lo, from_hi, to_lo, to_hi);
+    }, [=] {
       floyd_warshall_interrupt_from(dist, vertices, via_lo, via_hi2, from_lo, from_mid);
     }, [=] { }, taskparts::bench_scheduler());
   }, [=] {
@@ -205,7 +204,7 @@ void floyd_warshall_interrupt_to(int* dist, int vertices, int via_lo, int via_hi
   }
 }
 
-int vertices = 1024;
+int vertices = 3000;
 int* dist = nullptr;
 
 auto init_input(int vertices) {
