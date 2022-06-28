@@ -32,7 +32,7 @@ void mandelbrot_interrupt_row_loop(double x0, double y0, double x1, double y1,
 /* Handler functions */
 /* ================= */
 
-void __rf_handle_col_loop(
+void taskparts_tpal_handler __rf_handle_col_loop(
   double x0, double y0, double x1, double y1,
   int width, int height, int max_depth,
   unsigned char* output, double xstep, double ystep,
@@ -51,7 +51,7 @@ void __rf_handle_col_loop(
   taskparts_tpal_rollbackward
 }
 
-void __rf_handle_row_loop(
+void taskparts_tpal_handler __rf_handle_row_loop(
   double x0, double y0, double x1, double y1,
   int width, int height, int max_depth,
   unsigned char* output, double xstep, double ystep,
@@ -90,7 +90,7 @@ void __rf_handle_row_loop(
   taskparts_tpal_rollbackward
 }
 
-void __rf_handle_row_row_loop(
+void taskparts_tpal_handler __rf_handle_row_row_loop(
   double x0, double y0, double x1, double y1,
   int width, int height, int max_depth,
   unsigned char* output, double xstep, double ystep,
