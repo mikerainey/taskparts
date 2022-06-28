@@ -5,6 +5,9 @@
 
 void sum_array_heartbeat(double* a, uint64_t lo, uint64_t hi, double r, double* dst);
 
+/* Handler functions */
+/* ================= */
+
 void taskparts_tpal_handler __rf_handle_sum_array_heartbeat(double* a, uint64_t lo, uint64_t hi, double r, double* dst, bool& promoted) {
   if ((hi - lo) <= 1) {
     promoted = false;
@@ -25,6 +28,9 @@ void taskparts_tpal_handler __rf_handle_sum_array_heartbeat(double* a, uint64_t 
   }
   taskparts_tpal_rollbackward
 }
+
+/* Outlined-loop functions */
+/* ======================= */
 
 #define D 64
 
