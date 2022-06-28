@@ -119,7 +119,11 @@ void __initialize(int argc, char **argv) {
     
 } // end namespace
 
+#define taskparts_tpal_handler \
+   __attribute__((preserve_all, noinline))
+
 #define taskparts_tpal_rollbackward \
+  { \
   void* ra_dst = __builtin_return_address(0); \
   void* ra_src = taskparts::try_to_initiate_rollbackward(ra_dst); \
   if (ra_src != nullptr) { \
@@ -137,7 +141,7 @@ void __initialize(int argc, char **argv) {
       printf("found no entry in rollforward table!\n"); \
     } \
     exit(1); \
-  }
+  } }
 
 
 #define taskparts_tpal_unlikely(x)    __builtin_expect(!!(x), 0)
