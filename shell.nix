@@ -44,7 +44,7 @@ stdenv.mkDerivation rec {
   # heartbeat kernel module to support the tpal runtime
   HBTIMER_KMOD_INCLUDE_PREFIX=
     if hbtimer-kmod == null then "" else
-b      "-I ${hbtimer-kmod}/include -DTASKPARTS_TPALRTS_HBTIMER_KMOD";
+      "-I ${hbtimer-kmod}/include -DTASKPARTS_TPALRTS_HBTIMER_KMOD";
   HBTIMER_KMOD_LINKER_FLAGS=
     if hbtimer-kmod == null then "" else
       "${hbtimer-kmod}/libhb.so";
