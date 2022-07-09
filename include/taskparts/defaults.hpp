@@ -7,6 +7,8 @@
 #include "taskparts/nativeforkjoin.hpp"
 #include "taskparts/chaselev.hpp"
 
+#ifdef TASKPARTS_TPALRTS
+
 using ping_thread_status_type = enum ping_thread_status_enum {
   ping_thread_status_active,
   ping_thread_status_exit_launch,
@@ -26,6 +28,8 @@ using promote_status_type = enum promote_status_enum {
 #include "nautilus/tpalrts.hpp"
 #else
 #error need to declare platform (e.g., TASKPARTS_POSIX)
+#endif
+
 #endif
 
 namespace taskparts {

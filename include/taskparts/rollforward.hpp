@@ -10,6 +10,8 @@ using register_type = ulong_t*;
 #error need to declare platform (e.g., TASKPARTS_POSIX)
 #endif
 
+#ifdef TASKPARTS_TPALRTS
+
 /*---------------------------------------------------------------------*/
 /* Rollforward table and lookup */
 
@@ -152,4 +154,6 @@ void __initialize(int argc, char **argv) {
 #include "nautilus/rollforward.hpp"
 #else
 #error need to declare platform (e.g., TASKPARTS_POSIX)
+#endif
+
 #endif
