@@ -235,6 +235,15 @@ public:
   static
   auto initialize() { }
   
+  static
+  auto check_for_surplus_increase(bool) { }
+  
+  static
+  auto check_for_surplus_decrease(bool) { }
+  
+  static
+  auto try_to_wake_one_worker() -> bool { return false; } 
+  
 };
 
 /*---------------------------------------------------------------------*/

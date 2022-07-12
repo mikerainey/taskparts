@@ -20,8 +20,17 @@ namespace taskparts {
   
 template <typename Fiber>
 class chase_lev_deque {
-
+public:
+  
   using index_type = long;
+  using pop_result_tag = enum pop_result_enum {
+      pop_failed, pop_emptied_deque, pop_left_surplus
+  };
+  
+  using pop_result_type = struct pop_result_struct {
+    pop_result_tag t;
+    Fiber* f;
+  };
   
   class circular_array {
   private:
@@ -60,8 +69,6 @@ class chase_lev_deque {
   std::atomic<circular_array*> array;
   
   std::atomic<index_type> top, bottom;
-
-public:
   
   chase_lev_deque()
     : array(new circular_array(64)), top(0), bottom(0) {}
@@ -96,28 +103,37 @@ public:
     bottom.store(b + 1, std::memory_order_relaxed);
   }
 
-  auto pop() -> Fiber* {
+  auto pop() -> pop_result_type {
+    pop_result_type r;
     auto b = bottom.load(std::memory_order_relaxed) - 1;
     circular_array* a = array.load(std::memory_order_relaxed);
     bottom.store(b, std::memory_order_relaxed);
     std::atomic_thread_fence(std::memory_order_seq_cst);
     auto t = top.load(std::memory_order_relaxed);
     if (t <= b) {
+      r.t = pop_left_surplus;
       auto x = a->get(b);
       if (t == b) {
         if (!top.compare_exchange_strong(t, t + 1, std::memory_order_seq_cst, std::memory_order_relaxed)) {
+          r.t = pop_failed;
           x = nullptr;
+        } else {
+          r.t = pop_emptied_deque;
         }
         bottom.store(b + 1, std::memory_order_relaxed);
       }
-      return x;
+      r.f = x;
+      return r;
     } else {
       bottom.store(b + 1, std::memory_order_relaxed);
-      return nullptr;
+      r.t = pop_failed;
+      return r;
     }
   }
 
-  auto steal() -> Fiber* {
+  auto steal() -> pop_result_type {
+    pop_result_type r;
+    r.t = pop_left_surplus;
     auto t = top.load(std::memory_order_acquire);
     std::atomic_thread_fence(std::memory_order_seq_cst);
     auto b = bottom.load(std::memory_order_acquire);
@@ -126,10 +142,14 @@ public:
       circular_array* a = array.load(std::memory_order_relaxed);
       x = a->get(t);
       if (!top.compare_exchange_strong(t, t + 1, std::memory_order_seq_cst, std::memory_order_relaxed)) {
-        return nullptr;
+        r.t = pop_failed;
+        return r;
+      } else {
+        r.t = pop_emptied_deque;
       }
     }
-    return x;
+    r.f = x;
+    return r;
   }
   
 };
@@ -159,7 +179,36 @@ public:
 
   static
   perworker::array<deque_type> deques;
-
+  
+  static
+  auto push(deque_type& d, fiber_type* f) {
+    elastic_type::check_for_surplus_increase(d.empty());
+    d.push(f);
+    elastic_type::try_to_wake_one_worker();
+  }
+  
+  static
+  auto pop(deque_type& d) -> fiber_type* {
+    fiber_type* r = nullptr;
+    auto r1 = d.pop();
+    if (r1.t != deque_type::pop_failed) {
+      r = r1.f;
+    }
+    elastic_type::check_for_surplus_decrease(r1.t == deque_type::pop_emptied_deque);
+    return r;
+  }
+  
+  static
+  auto steal(deque_type& d) -> fiber_type* {
+    fiber_type* r = nullptr;
+    auto r1 = d.steal();
+    if (r1.t != deque_type::pop_failed) {
+      r = r1.f;
+    }
+    elastic_type::check_for_surplus_decrease(r1.t == deque_type::pop_emptied_deque);
+    return r;
+  }
+  
   static
   auto flush() -> fiber_type* {
     auto& my_buffer = buffers.mine();
@@ -173,7 +222,7 @@ public:
     while (! my_buffer.empty()) {
       auto f = my_buffer.front();
       my_buffer.pop_front();
-      my_deque.push(f);
+      push(my_deque, f);
     }
     assert(my_buffer.empty());
     return current;
@@ -227,7 +276,7 @@ public:
         auto target = random_other_worker(nb_workers, my_id);
         do {
           termination_barrier.set_active(true);
-          current = deques[target].steal();
+          current = steal(deques[target]);
           if (current == nullptr) {
             termination_barrier.set_active(false);
           } else {
@@ -245,7 +294,7 @@ public:
           Logging::log_event(exit_wait);
           return scheduler_status_finish;
         }
-	if (current == nullptr) {
+        if (current == nullptr) {
           elastic_type::try_to_sleep(target);
         } else {
           elastic_type::wake_children();
@@ -266,11 +315,11 @@ public:
       while (status == scheduler_status_active) {
         current = flush();
         while ((current != nullptr) || !my_deque.empty()) {
-          current = (current == nullptr) ? my_deque.pop() : current;
+          current = (current == nullptr) ? pop(my_deque) : current;
           if (current != nullptr) {
             auto s = current->exec();
             if (s == fiber_status_continue) {
-	      schedule(current);
+              schedule(current);
             } else if (s == fiber_status_pause) {
               // do nothing
             } else if (s == fiber_status_finish) {
@@ -326,7 +375,7 @@ public:
     assert(my_buffer.empty());
     auto& my_deque = deques.mine();
     fiber_type* current = nullptr;
-    current = my_deque.pop();
+    current = pop(my_deque);
     if (current != nullptr) {
       schedule(current);
     }
@@ -349,7 +398,7 @@ public:
   auto commit() {
     auto f = flush();
     if (f != nullptr) {
-      deques.mine().push(f);
+      push(deques.mine(), f);
     }
   }
 

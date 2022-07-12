@@ -232,6 +232,14 @@ public:
     }
   }
   
+  static
+  auto check_for_surplus_increase(bool) { }
+  
+  static
+  auto check_for_surplus_decrease(bool) { }
+  
+  static
+  auto try_to_wake_one_worker() -> bool { return false; }
 };
 
 template <typename Stats, typename Logging, typename Semaphore>
@@ -463,13 +471,13 @@ public:
         pool::add(p);
         unlock2(v, p);
         crs::remove(p);
-	Stats::on_exit_acquire();
-	Logging::log_enter_sleep(p, 0l, 0l);	
-	Stats::on_enter_sleep();
+        Stats::on_exit_acquire();
+        Logging::log_enter_sleep(p, 0l, 0l);
+        Stats::on_enter_sleep();
         sem[p].wait();
-	Stats::on_exit_sleep(); 
-	Logging::log_event(exit_sleep);
-	Stats::on_enter_acquire();
+        Stats::on_exit_sleep();
+        Logging::log_event(exit_sleep);
+        Stats::on_enter_acquire();
         status[p].store(status_t::Stealing);
         //fprintf(stderr, "[%ld] Stealing: Woken up.\n", p);
         crs::add(p);
@@ -502,6 +510,15 @@ public:
     status[p].store(status_t::Stealing);
     //fprintf(stderr, "[%ld] Stealing: Attempting to acquire work.\n", p);
   }
+  
+  static
+  auto check_for_surplus_increase(bool) { }
+  
+  static
+  auto check_for_surplus_decrease(bool) { }
+  
+  static
+  auto try_to_wake_one_worker() -> bool { return false; }
 };
 
 template <typename Stats, typename Logging, typename Semaphore, typename Spinlock>
@@ -522,10 +539,8 @@ class elastic_surplus {
 public:
   
   using cell_type = struct cell_struct {
-    union {
-      int64_t n;
-      struct { int32_t surplus; int32_t sleeping; } s;
-    };
+    int32_t surplus;
+    int32_t sleeping;
   };
   
   static
@@ -542,19 +557,19 @@ public:
     auto& my_status = worker_status.mine();
     do {
       auto my_status_val = my_status.load();
-      if (my_status_val.s.surplus == 1) {
+      if (my_status_val.surplus == 1) {
         return;
       }
-      assert(my_status_val.s.surplus == 0);
-      assert(my_status_val.s.sleeping == 0);
+      assert(my_status_val.surplus == 0);
+      assert(my_status_val.sleeping == 0);
       auto my_orig = my_status_val;
       auto my_nxt = my_orig;
-      my_nxt.s.surplus = 1;
+      my_nxt.surplus = 1;
       if (my_status.compare_exchange_strong(my_orig, my_nxt)) {
         do {
           auto gc_orig = global_status.load();
           auto gc_nxt = gc_orig;
-          gc_nxt.s.surplus++;
+          gc_nxt.surplus++;
           if (global_status.compare_exchange_strong(gc_orig, gc_nxt)) {
             return;
           }
@@ -568,19 +583,19 @@ public:
   auto decr_surplus(size_t target_id) -> bool {
     auto& tgt_status = worker_status[target_id];
     auto tgt_status_val = tgt_status.load();
-    if (tgt_status_val.s.surplus == 0) {
+    if (tgt_status_val.surplus == 0) {
       return false;
     }
-    assert(tgt_status_val.s.surplus == 1);
-    assert(tgt_status_val.s.sleeping == 0);
+    assert(tgt_status_val.surplus == 1);
+    assert(tgt_status_val.sleeping == 0);
     auto tgt_orig = tgt_status_val;
     auto tgt_nxt = tgt_orig;
-    tgt_nxt.s.surplus = 0;
+    tgt_nxt.surplus = 0;
     if (tgt_status.compare_exchange_strong(tgt_orig, tgt_nxt)) {
       do {
         auto gc_orig = global_status.load();
         auto gc_nxt = gc_orig;
-        gc_nxt.s.surplus--;
+        gc_nxt.surplus--;
         if (global_status.compare_exchange_strong(gc_orig, gc_nxt)) {
           return true;
         }
@@ -595,21 +610,21 @@ public:
     auto& my_status = worker_status.mine();
     do {
       auto my_status_val = my_status.load();
-      assert(my_status_val.s.surplus == 0);
-      assert(my_status_val.s.sleeping == 0);
+      assert(my_status_val.surplus == 0);
+      assert(my_status_val.sleeping == 0);
       auto my_orig = my_status_val;
       auto my_nxt = my_orig;
-      my_nxt.s.sleeping = 1;
+      my_nxt.sleeping = 1;
       if (my_status.compare_exchange_strong(my_orig, my_nxt)) {
         do {
           auto gc_orig = global_status.load();
-          if (gc_orig.s.surplus > 0) {
-            my_nxt.s.sleeping = 0;
+          if (gc_orig.surplus > 0) {
+            my_nxt.sleeping = 0;
             my_status.store(my_nxt);
             return false;
           }
           auto gc_nxt = gc_orig;
-          gc_nxt.s.sleeping++;
+          gc_nxt.sleeping++;
           if (global_status.compare_exchange_strong(gc_orig, gc_nxt)) {
             return true;
           }
@@ -624,7 +639,7 @@ public:
     do {
       auto gc_orig = global_status.load();
       auto gc_nxt = gc_orig;
-      gc_nxt.s.sleeping--;
+      gc_nxt.sleeping--;
       if (global_status.compare_exchange_strong(gc_orig, gc_nxt)) {
         return;
       }
@@ -636,12 +651,12 @@ public:
     auto& tgt_status = worker_status[target_id];
     auto tgt_status_val = tgt_status.load();
     do {
-      if (tgt_status_val.s.sleeping != 1) {
+      if (tgt_status_val.sleeping != 1) {
         return false;
       }
       auto tgt_orig = tgt_status_val;
       auto tgt_nxt = tgt_orig;
-      tgt_nxt.s.sleeping = 0;
+      tgt_nxt.sleeping = 0;
       if (tgt_status.compare_exchange_strong(tgt_orig, tgt_nxt)) {
         break;
       }
@@ -654,7 +669,7 @@ public:
   auto try_to_wake_one_worker() -> bool {
     size_t target_id = 0;
     do {
-      if (global_status.load().s.sleeping == 0) {
+      if (global_status.load().sleeping == 0) {
         return false;
       }
       target_id++;
@@ -685,15 +700,32 @@ public:
   auto wake_children() { }
 
   static
-  auto try_to_sleep(size_t) {
-    auto& my_status = worker_status.mine();
+  auto try_to_sleep(size_t my_id) {
+    auto& my_status = worker_status[my_id];
     auto my_status_val = my_status.load();
-    assert(my_status_val.s.surplus == 0);
-    assert(my_status_val.s.sleeping == 0);
+    assert(my_status_val.surplus == 0);
+    assert(my_status_val.sleeping == 0);
     decr_sleeping();
-    semaphores.mine().wait();
+    semaphores[my_id].wait();
   }
 
+  static
+  auto check_for_surplus_increase(bool is_soon_nonempty) {
+    if (! is_soon_nonempty) {
+      return;
+    }
+    incr_surplus();
+  }
+  
+  static
+  auto check_for_surplus_decrease(bool is_soon_empty) {
+    if (! is_soon_empty) {
+      return;
+    }
+    auto my_id = perworker::my_id();
+    decr_surplus(my_id);
+  }
+  
   static
   auto accept_lifelines() { }
 
@@ -701,5 +733,14 @@ public:
   auto initialize() { }
   
 };
+
+template <typename Stats, typename Logging, typename semaphore>
+perworker::array<std::atomic<typename elastic_surplus<Stats, Logging, semaphore>::cell_type>> elastic_surplus<Stats, Logging, semaphore>::worker_status;
+
+template <typename Stats, typename Logging, typename semaphore>
+std::atomic<typename elastic_surplus<Stats, Logging, semaphore>::cell_type> elastic_surplus<Stats, Logging, semaphore>::global_status;
+
+template <typename Stats, typename Logging, typename semaphore>
+perworker::array<semaphore> elastic_surplus<Stats, Logging, semaphore>::semaphores;
 
 } // end namespace
