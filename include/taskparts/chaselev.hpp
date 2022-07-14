@@ -119,7 +119,6 @@ public:
           x = nullptr;
         } else {
           r.t = pop_emptied_deque;
-          assert(empty());
         }
         bottom.store(b + 1, std::memory_order_relaxed);
       }
