@@ -119,6 +119,7 @@ public:
           x = nullptr;
         } else {
           r.t = pop_emptied_deque;
+          assert(empty());
         }
         bottom.store(b + 1, std::memory_order_relaxed);
       }
@@ -182,8 +183,12 @@ public:
   
   static
   auto push(deque_type& d, fiber_type* f) {
-    elastic_type::check_for_surplus_increase(d.empty());
+    auto e = d.empty();
+    elastic_type::check_for_surplus_increase(e);
     d.push(f);
+    if (! e) {
+      return;
+    }
     elastic_type::try_to_wake_one_worker();
   }
   
@@ -206,6 +211,7 @@ public:
       r = r1.f;
     }
     elastic_type::check_for_surplus_decrease(r1.t == deque_type::pop_emptied_deque);
+    elastic_type::try_to_wake_one_worker();
     return r;
   }
   

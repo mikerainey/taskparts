@@ -25,6 +25,10 @@ class spinning_binary_semaphore {
 public:
   
   spinning_binary_semaphore() : flag(0) {}
+  
+  ~spinning_binary_semaphore() {
+    assert(flag.load() == 0); // The semaphore has to be balanced
+  }
 
   auto post() {
     int old_value = flag++;
@@ -37,9 +41,6 @@ public:
     while (flag.load() < 0); // Spinning
   }
 
-  ~spinning_binary_semaphore() {
-    assert(flag.load() == 0); // The semaphore has to be balanced
-  }
 };
 } // end namespace
 
@@ -557,14 +558,10 @@ public:
     auto& my_status = worker_status.mine();
     do {
       auto my_status_val = my_status.load();
-      if (my_status_val.surplus == 1) {
-        return;
-      }
-      assert(my_status_val.surplus == 0);
       assert(my_status_val.sleeping == 0);
       auto my_orig = my_status_val;
       auto my_nxt = my_orig;
-      my_nxt.surplus = 1;
+      my_nxt.surplus++;
       if (my_status.compare_exchange_strong(my_orig, my_nxt)) {
         do {
           auto gc_orig = global_status.load();
@@ -578,48 +575,42 @@ public:
     } while (true);
   }
   
-  // returns true iff the decrement was needed
   static
-  auto decr_surplus(size_t target_id) -> bool {
+  auto decr_surplus(size_t target_id) {
     auto& tgt_status = worker_status[target_id];
     auto tgt_status_val = tgt_status.load();
-    if (tgt_status_val.surplus == 0) {
-      return false;
-    }
-    assert(tgt_status_val.surplus == 1);
-    assert(tgt_status_val.sleeping == 0);
     auto tgt_orig = tgt_status_val;
     auto tgt_nxt = tgt_orig;
-    tgt_nxt.surplus = 0;
+    tgt_nxt.surplus--;
     if (tgt_status.compare_exchange_strong(tgt_orig, tgt_nxt)) {
       do {
         auto gc_orig = global_status.load();
         auto gc_nxt = gc_orig;
         gc_nxt.surplus--;
         if (global_status.compare_exchange_strong(gc_orig, gc_nxt)) {
-          return true;
+          return;
         }
       } while (true);
     }
-    return false;
   }
   
-  // returns true iff the increment was needed
+  // returns true iff the operation was *not* invalidated by the discovery of globally positive surplus
   static
-  auto incr_sleeping() -> bool {
-    auto& my_status = worker_status.mine();
+  auto incr_sleeping(size_t my_id) -> bool {
+    auto& my_status = worker_status[my_id];
     do {
       auto my_status_val = my_status.load();
       assert(my_status_val.surplus == 0);
       assert(my_status_val.sleeping == 0);
       auto my_orig = my_status_val;
       auto my_nxt = my_orig;
-      my_nxt.sleeping = 1;
+      my_nxt.sleeping++;
       if (my_status.compare_exchange_strong(my_orig, my_nxt)) {
         do {
           auto gc_orig = global_status.load();
           if (gc_orig.surplus > 0) {
-            my_nxt.sleeping = 0;
+            my_nxt.sleeping--;
+            assert(my_nxt.sleeping == 0);
             my_status.store(my_nxt);
             return false;
           }
@@ -629,19 +620,6 @@ public:
             return true;
           }
         } while (true);
-        return true;
-      }
-    } while (true);
-  }
-  
-  static
-  auto decr_sleeping() {
-    do {
-      auto gc_orig = global_status.load();
-      auto gc_nxt = gc_orig;
-      gc_nxt.sleeping--;
-      if (global_status.compare_exchange_strong(gc_orig, gc_nxt)) {
-        return;
       }
     } while (true);
   }
@@ -651,12 +629,13 @@ public:
     auto& tgt_status = worker_status[target_id];
     auto tgt_status_val = tgt_status.load();
     do {
-      if (tgt_status_val.sleeping != 1) {
+      if (tgt_status_val.sleeping < 1) {
         return false;
       }
       auto tgt_orig = tgt_status_val;
       auto tgt_nxt = tgt_orig;
-      tgt_nxt.sleeping = 0;
+      tgt_nxt.sleeping--;
+      assert(tgt_nxt.sleeping == 0);
       if (tgt_status.compare_exchange_strong(tgt_orig, tgt_nxt)) {
         break;
       }
@@ -666,22 +645,26 @@ public:
   }
   
   static
-  auto try_to_wake_one_worker() -> bool {
+  auto try_to_wake_one_worker() {
     size_t target_id = 0;
     do {
       if (global_status.load().sleeping == 0) {
-        return false;
+        return;
       }
       target_id++;
+      if (target_id >= perworker::nb_workers()) {
+        target_id = 0;
+      }
       if (try_to_wake_target(target_id)) {
-        return true;
+        return;
       }
     } while (true);
   }
 
   static constexpr
-  bool override_rand_worker = true;
+  bool override_rand_worker = false;
   
+  /*
   static
   auto random_other_worker(size_t& nb_sa, size_t nb_workers, size_t my_id) -> size_t {
     assert(nb_workers != 1);
@@ -694,43 +677,55 @@ public:
       nb_sa++;
     } while(true);
     return id;
-  }
+  } */
 
   static
   auto wake_children() { }
 
   static
-  auto try_to_sleep(size_t my_id) {
-    auto& my_status = worker_status[my_id];
-    auto my_status_val = my_status.load();
-    assert(my_status_val.surplus == 0);
-    assert(my_status_val.sleeping == 0);
-    decr_sleeping();
+  auto try_to_sleep(size_t __tgt_id) {
+    auto my_id = perworker::my_id();
+    if (! incr_sleeping(my_id)) {
+      return;
+    }
     semaphores[my_id].wait();
+    do {
+      auto gc_orig = global_status.load();
+      assert(gc_orig.sleeping > 0);
+      auto gc_nxt = gc_orig;
+      gc_nxt.sleeping--;
+      if (global_status.compare_exchange_strong(gc_orig, gc_nxt)) {
+        break;
+      }
+    } while (true);
   }
 
   static
-  auto check_for_surplus_increase(bool is_soon_nonempty) {
-    if (! is_soon_nonempty) {
+  auto check_for_surplus_increase(bool is_now_nonempty) {
+    if (! is_now_nonempty) {
       return;
     }
     incr_surplus();
   }
   
   static
-  auto check_for_surplus_decrease(bool is_soon_empty) {
-    if (! is_soon_empty) {
+  auto check_for_surplus_decrease(bool is_now_empty) {
+    if (! is_now_empty) {
       return;
     }
-    auto my_id = perworker::my_id();
-    decr_surplus(my_id);
+    decr_surplus(perworker::my_id());
   }
   
   static
   auto accept_lifelines() { }
 
   static
-  auto initialize() { }
+  auto initialize() {
+    for (size_t i = 0; i < perworker::nb_workers(); i++) {
+      assert(worker_status[i].load().surplus == 0);
+      assert(worker_status[i].load().sleeping == 0);
+    }
+  }
   
 };
 
