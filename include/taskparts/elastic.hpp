@@ -237,7 +237,7 @@ public:
   auto check_for_surplus_increase(bool) { }
   
   static
-  auto check_for_surplus_decrease(bool) { }
+  auto check_for_surplus_decrease(size_t, bool) { }
   
   static
   auto try_to_wake_one_worker() -> bool { return false; }
@@ -516,7 +516,7 @@ public:
   auto check_for_surplus_increase(bool) { }
   
   static
-  auto check_for_surplus_decrease(bool) { }
+  auto check_for_surplus_decrease(size_t, bool) { }
   
   static
   auto try_to_wake_one_worker() -> bool { return false; }
@@ -563,14 +563,15 @@ public:
       auto my_nxt = my_orig;
       my_nxt.surplus++;
       if (my_status.compare_exchange_strong(my_orig, my_nxt)) {
-        do {
-          auto gc_orig = global_status.load();
-          auto gc_nxt = gc_orig;
-          gc_nxt.surplus++;
-          if (global_status.compare_exchange_strong(gc_orig, gc_nxt)) {
-            return;
-          }
-        } while (true);
+	break;
+      }
+    } while (true);
+    do {
+      auto gc_orig = global_status.load();
+      auto gc_nxt = gc_orig;
+      gc_nxt.surplus++;
+      if (global_status.compare_exchange_strong(gc_orig, gc_nxt)) {
+	break;
       }
     } while (true);
   }
@@ -578,83 +579,96 @@ public:
   static
   auto decr_surplus(size_t target_id) {
     auto& tgt_status = worker_status[target_id];
-    auto tgt_status_val = tgt_status.load();
-    auto tgt_orig = tgt_status_val;
-    auto tgt_nxt = tgt_orig;
-    tgt_nxt.surplus--;
-    if (tgt_status.compare_exchange_strong(tgt_orig, tgt_nxt)) {
-      do {
-        auto gc_orig = global_status.load();
-        auto gc_nxt = gc_orig;
-        gc_nxt.surplus--;
-        if (global_status.compare_exchange_strong(gc_orig, gc_nxt)) {
-          return;
-        }
-      } while (true);
-    }
+    do {
+      auto tgt_status_val = tgt_status.load();
+      assert(tgt_status_val.surplus > 0);
+      auto tgt_orig = tgt_status_val;
+      auto tgt_nxt = tgt_orig;
+      tgt_nxt.surplus--;
+      if (tgt_status.compare_exchange_strong(tgt_orig, tgt_nxt)) {
+	break;
+      }
+    } while (true);
+    do {
+      auto gc_orig = global_status.load();
+      auto gc_nxt = gc_orig;
+      gc_nxt.surplus--;
+      if (global_status.compare_exchange_strong(gc_orig, gc_nxt)) {
+	break;
+      }
+    } while (true);
   }
   
   // returns true iff the operation was *not* invalidated by the discovery of globally positive surplus
   static
   auto incr_sleeping(size_t my_id) -> bool {
     auto& my_status = worker_status[my_id];
-    do {
-      auto my_status_val = my_status.load();
-      assert(my_status_val.surplus == 0);
-      assert(my_status_val.sleeping == 0);
-      auto my_orig = my_status_val;
-      auto my_nxt = my_orig;
-      my_nxt.sleeping++;
-      if (my_status.compare_exchange_strong(my_orig, my_nxt)) {
-        do {
-          auto gc_orig = global_status.load();
-          if (gc_orig.surplus > 0) {
-            my_nxt.sleeping--;
-            assert(my_nxt.sleeping == 0);
-            my_status.store(my_nxt);
-            return false;
-          }
-          auto gc_nxt = gc_orig;
-          gc_nxt.sleeping++;
-          if (global_status.compare_exchange_strong(gc_orig, gc_nxt)) {
-            return true;
-          }
-        } while (true);
-      }
-    } while (true);
+    auto my_status_val = my_status.load();
+    assert(my_status_val.surplus == 0);
+    if (my_status_val.sleeping != 0) { aprintf("sleeping=%d\n", my_status_val.sleeping); }
+    assert(my_status_val.sleeping == 0);
+    auto my_orig = my_status_val;
+    auto my_nxt = my_orig;
+    my_nxt.sleeping++;
+    if (! my_status.compare_exchange_strong(my_orig, my_nxt)) {
+      return false;
+    }
+    auto gc_orig = global_status.load();
+    auto gc_nxt = gc_orig;
+    gc_nxt.sleeping++;
+    if ((gc_orig.surplus > 0) || (! global_status.compare_exchange_strong(gc_orig, gc_nxt))) {
+      do {
+	my_status_val = my_status.load();
+	my_orig = my_status_val;
+	if (my_orig.sleeping == 0) {
+	  break;
+	}
+	assert(my_orig.sleeping == 1);
+	my_nxt = my_orig;
+	my_nxt.sleeping--;
+	assert(my_nxt.sleeping == 0);
+	if (my_status.compare_exchange_strong(my_orig, my_nxt)) {
+	  break;
+	}
+      } while (true);
+      assert(my_status.load().sleeping == 0);
+      return false;
+    }
+    return true;
   }
   
   static
   auto try_to_wake_target(size_t target_id) -> bool {
     auto& tgt_status = worker_status[target_id];
     auto tgt_status_val = tgt_status.load();
-    do {
-      if (tgt_status_val.sleeping < 1) {
-        return false;
-      }
-      auto tgt_orig = tgt_status_val;
-      auto tgt_nxt = tgt_orig;
-      tgt_nxt.sleeping--;
-      assert(tgt_nxt.sleeping == 0);
-      if (tgt_status.compare_exchange_strong(tgt_orig, tgt_nxt)) {
-        break;
-      }
-    } while (true);
+    if ((tgt_status_val.sleeping < 1)) {
+      return false;
+    }
+    if (tgt_status_val.surplus > 0) {
+      return false;  // uncertain if this branch is redundant after the previous early exit
+    }
+    auto tgt_orig = tgt_status_val;
+    auto tgt_nxt = tgt_orig;
+    tgt_nxt.sleeping--;
+    assert(tgt_nxt.sleeping == 0);
+    assert(tgt_nxt.surplus == 0);
+    if (! tgt_status.compare_exchange_strong(tgt_orig, tgt_nxt)) {
+      return false;
+    }
     semaphores[target_id].post();
     return true;
   }
   
   static
   auto try_to_wake_one_worker() {
+    size_t nb_sa = 0;
+    auto my_id = perworker::my_id();
     size_t target_id = 0;
     do {
       if (global_status.load().sleeping == 0) {
         return;
       }
-      target_id++;
-      if (target_id >= perworker::nb_workers()) {
-        target_id = 0;
-      }
+      auto target_id = random_other_worker(nb_sa, perworker::nb_workers(), my_id);
       if (try_to_wake_target(target_id)) {
         return;
       }
@@ -663,27 +677,22 @@ public:
 
   static constexpr
   bool override_rand_worker = false;
-  
-  /*
+
   static
   auto random_other_worker(size_t& nb_sa, size_t nb_workers, size_t my_id) -> size_t {
-    assert(nb_workers != 1);
-    size_t id;
-    do {
-      id = (size_t)((hash(my_id) + hash(nb_sa)) % (nb_workers - 1));
-      if (id >= my_id) {
-        id++;
-      }
-      nb_sa++;
-    } while(true);
+    size_t id = (size_t)((hash(my_id) + hash(nb_sa)) % (nb_workers - 1));
+    if (id >= my_id) {
+      id++;
+    }
+    nb_sa++;
     return id;
-  } */
+  }
 
   static
   auto wake_children() { }
 
   static
-  auto try_to_sleep(size_t __tgt_id) {
+  auto try_to_sleep(size_t) {
     auto my_id = perworker::my_id();
     if (! incr_sleeping(my_id)) {
       return;
@@ -701,23 +710,33 @@ public:
   }
 
   static
-  auto check_for_surplus_increase(bool is_now_nonempty) {
-    if (! is_now_nonempty) {
+  auto check_for_surplus_increase(bool was_empty) {
+    if (! was_empty) {
       return;
     }
     incr_surplus();
   }
   
   static
-  auto check_for_surplus_decrease(bool is_now_empty) {
-    if (! is_now_empty) {
+  auto check_for_surplus_decrease(size_t target_id, bool was_nonempty) {
+    if (! was_nonempty) {
       return;
     }
-    decr_surplus(perworker::my_id());
+    decr_surplus(target_id);
   }
   
   static
-  auto accept_lifelines() { }
+  auto accept_lifelines() {
+    {
+          auto my_id = perworker::my_id();
+          auto my_status_val = worker_status[my_id].load();
+	  if (my_status_val.surplus != 0) { aprintf ("surplus=%d\n", my_status_val.surplus); }
+      assert(my_status_val.surplus == 0);
+      assert(my_status_val.sleeping == 0);
+    }
+    
+
+  }
 
   static
   auto initialize() {

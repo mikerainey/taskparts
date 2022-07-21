@@ -222,6 +222,39 @@ public:
 };
 
 /*---------------------------------------------------------------------*/
+/* Exit-worker fibers */
+
+template <typename Scheduler=minimal_scheduler<>>
+class exit_worker_fiber : public fiber<Scheduler> {
+public:
+
+  size_t lo, hi;
+  
+  exit_worker_fiber(size_t lo, size_t hi, Scheduler sched=Scheduler()) : fiber<Scheduler>(), lo(lo), hi(hi) { }
+  
+  auto run() -> fiber_status_type {
+    assert(lo < hi);
+    lo++;
+    if (hi == lo) {
+      // nothing to do
+    } else if ((lo + 1) == hi) {
+      assert((hi - lo) == 1);
+      auto t = new exit_worker_fiber(lo, lo + 1);
+      t->release();
+    } else {
+      assert((hi - lo) >= 2);
+      auto m = (lo + hi) / 2;
+      auto t1 = new exit_worker_fiber(lo, m);
+      auto t2 = new exit_worker_fiber(m, hi);
+      t1->release();
+      t2->release();
+    }
+    return fiber_status_exit_worker;
+  }
+  
+};
+
+/*---------------------------------------------------------------------*/
 /* Terminal fibers */
 /* A fiber that, when executed, initiates the teardown of the 
  * scheduler. 
@@ -234,9 +267,11 @@ public:
   terminal_fiber(Scheduler sched=Scheduler()) : fiber<Scheduler>() { }
   
   auto run() -> fiber_status_type {
+    auto t = new exit_worker_fiber<Scheduler>(0, perworker::nb_workers());
+    t->release();
     return fiber_status_exit_launch;
   }
   
 };
-  
+
 } // end namespace

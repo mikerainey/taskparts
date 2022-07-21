@@ -93,8 +93,8 @@ public:
   auto push(Fiber* x) {
     auto b = bottom.load(std::memory_order_relaxed);
     auto t = top.load(std::memory_order_acquire);
-    circular_array* a = array.load(std::memory_order_relaxed);
-    if (b - t > a->size() - 1) {
+    auto a = array.load(std::memory_order_relaxed);
+    if ((b - t) > (a->size() - 1)) {
       a = a->grow(t, b);
       array.store(a, std::memory_order_relaxed);
     }
@@ -106,52 +106,51 @@ public:
   auto pop() -> pop_result_type {
     pop_result_type r;
     auto b = bottom.load(std::memory_order_relaxed) - 1;
-    circular_array* a = array.load(std::memory_order_relaxed);
+    auto a = array.load(std::memory_order_relaxed);
     bottom.store(b, std::memory_order_relaxed);
     std::atomic_thread_fence(std::memory_order_seq_cst);
     auto t = top.load(std::memory_order_relaxed);
     if (t <= b) {
-      r.t = pop_left_surplus;
-      auto x = a->get(b);
+      r.f = a->get(b);
       if (t == b) {
-        if (!top.compare_exchange_strong(t, t + 1, std::memory_order_seq_cst, std::memory_order_relaxed)) {
+        if (! top.compare_exchange_strong(t, t + 1, std::memory_order_seq_cst, std::memory_order_relaxed)) {
           r.t = pop_failed;
-          x = nullptr;
         } else {
           r.t = pop_emptied_deque;
         }
         bottom.store(b + 1, std::memory_order_relaxed);
+	assert(empty());
+      } else {
+	r.t = pop_left_surplus;
       }
-      r.f = x;
-      return r;
     } else {
       bottom.store(b + 1, std::memory_order_relaxed);
       r.t = pop_failed;
-      return r;
+      assert(empty());
     }
+    return r;
   }
 
   auto steal() -> pop_result_type {
     pop_result_type r;
-    r.t = pop_left_surplus;
     auto t = top.load(std::memory_order_acquire);
     std::atomic_thread_fence(std::memory_order_seq_cst);
     auto b = bottom.load(std::memory_order_acquire);
-    Fiber* x = nullptr;
     if (t < b) {
-      circular_array* a = array.load(std::memory_order_relaxed);
-      x = a->get(t);
-      if (!top.compare_exchange_strong(t, t + 1, std::memory_order_seq_cst, std::memory_order_relaxed)) {
+      auto a = array.load(std::memory_order_relaxed);
+      r.f = a->get(t);
+      if (! top.compare_exchange_strong(t, t + 1, std::memory_order_seq_cst, std::memory_order_relaxed)) {
         r.t = pop_failed;
-        return r;
       } else {
-        r.t = pop_emptied_deque;
+        r.t = ((b - t) == 1) ? pop_emptied_deque : pop_left_surplus;
+	assert(r.f != nullptr);
       }
+    } else {
+      r.t = pop_failed;
     }
-    r.f = x;
     return r;
   }
-  
+
 };
   
 /*---------------------------------------------------------------------*/
@@ -192,26 +191,42 @@ public:
   }
   
   static
-  auto pop(deque_type& d) -> fiber_type* {
+  auto pop(size_t my_id) -> fiber_type* {
+    auto& d = deques[my_id];
     fiber_type* r = nullptr;
     auto r1 = d.pop();
     if (r1.t != deque_type::pop_failed) {
       r = r1.f;
     }
-    elastic_type::check_for_surplus_decrease(r1.t == deque_type::pop_emptied_deque);
+    elastic_type::check_for_surplus_decrease(my_id, r1.t == deque_type::pop_emptied_deque);
     return r;
   }
   
   static
-  auto steal(deque_type& d) -> fiber_type* {
+  auto steal(size_t target_id) -> fiber_type* {
+    auto& d = deques[target_id];
     fiber_type* r = nullptr;
     auto r1 = d.steal();
     if (r1.t != deque_type::pop_failed) {
       r = r1.f;
     }
-    elastic_type::check_for_surplus_decrease(r1.t == deque_type::pop_emptied_deque);
-    elastic_type::try_to_wake_one_worker();
+    elastic_type::check_for_surplus_decrease(target_id, r1.t == deque_type::pop_emptied_deque);
+    if (r1.t != deque_type::pop_failed) {
+      elastic_type::try_to_wake_one_worker();
+    }
     return r;
+  }
+
+  static
+  auto flush2() {
+    auto& my_buffer = buffers.mine();
+    auto& my_deque = deques.mine();
+    while (! my_buffer.empty()) {
+      auto f = my_buffer.front();
+      my_buffer.pop_front();
+      push(my_deque, f);
+    }
+    assert(my_buffer.empty());
   }
   
   static
@@ -224,12 +239,7 @@ public:
     }
     current = my_buffer.back();
     my_buffer.pop_back();
-    while (! my_buffer.empty()) {
-      auto f = my_buffer.front();
-      my_buffer.pop_front();
-      push(my_deque, f);
-    }
-    assert(my_buffer.empty());
+    flush2();
     return current;
   }
 
@@ -241,7 +251,7 @@ public:
     };
 
     auto nb_workers = perworker::nb_workers();
-    bool should_terminate = false;
+    //bool should_terminate = false;
     typename Worker::termination_detection_type termination_barrier;
     typename Worker::worker_exit_barrier worker_exit_barrier(nb_workers);
     perworker::array<size_t> nb_steal_attempts_so_far(0);
@@ -274,14 +284,14 @@ public:
       Stats::on_enter_acquire();
       termination_barrier.set_active(false);
       elastic_type::accept_lifelines();
-      fiber_type *current = nullptr;
+      fiber_type* current = nullptr;
       while (current == nullptr) {
         assert(nb_steal_attempts >= 1);
         auto i = nb_steal_attempts;
         auto target = random_other_worker(nb_workers, my_id);
         do {
           termination_barrier.set_active(true);
-          current = steal(deques[target]);
+          current = steal(target);
           if (current == nullptr) {
             termination_barrier.set_active(false);
           } else {
@@ -291,20 +301,23 @@ public:
           i--;
           target = random_other_worker(nb_workers, my_id);
         } while (i > 0);
-        if (termination_barrier.is_terminated() || should_terminate) {
+        if (termination_barrier.is_terminated() /* || should_terminate */) {
           assert(current == nullptr);
+	  auto t = new terminal_fiber<Scheduler>();
+	  t->release();
+	  /*
           Logging::log_event(worker_exit);
           elastic_type::wake_children();
           Stats::on_exit_acquire();
-          Logging::log_event(exit_wait);
-          return scheduler_status_finish;
+          Logging::log_event(exit_wait); */
+          return scheduler_status_active;
         }
         if (current == nullptr) {
           elastic_type::try_to_sleep(target);
         } else {
           elastic_type::wake_children();
         }
-       }
+      }
       assert(current != nullptr);
       schedule(current);
       Stats::on_exit_acquire();
@@ -313,33 +326,44 @@ public:
     };
 
     auto worker_loop = [&] (size_t my_id) {
-      auto &my_deque = deques.mine();
+      auto& my_deque = deques.mine();
       scheduler_status_type status = scheduler_status_active;
-      fiber_type *current = nullptr;
+      fiber_type* current = nullptr;
       Stats::on_enter_work();
       while (status == scheduler_status_active) {
         current = flush();
-        while ((current != nullptr) || !my_deque.empty()) {
-          current = (current == nullptr) ? pop(my_deque) : current;
+        while ((current != nullptr) || ! my_deque.empty()) {
+          current = (current == nullptr) ? pop(my_id) : current;
           if (current != nullptr) {
             auto s = current->exec();
             if (s == fiber_status_continue) {
               schedule(current);
             } else if (s == fiber_status_pause) {
-              // do nothing
+	      // nothing to do
             } else if (s == fiber_status_finish) {
               current->finish();
+	    } else if (s == fiber_status_exit_worker) {
+	      Logging::log_event(worker_exit);
+	      elastic_type::wake_children();
+	      Stats::on_exit_acquire();
+	      Logging::log_event(exit_wait);
+              status = scheduler_status_finish;
+	      flush2();
+	      break;
             } else {
               assert(s == fiber_status_exit_launch);
               current->finish();
               status = scheduler_status_finish;
               Logging::log_event(initiate_teardown);
-              should_terminate = true;
+              //should_terminate = true;
             }
             current = flush();
           }
         }
-        assert((current == nullptr) && my_deque.empty());
+	if (status == scheduler_status_finish) {
+	  continue;
+	}
+	assert((current == nullptr) && my_deque.empty());
         Stats::on_exit_work();
         status = acquire();
         Stats::on_enter_work();
@@ -376,11 +400,11 @@ public:
 
   static
   auto take() -> fiber_type* {
-    auto& my_buffer = buffers.mine();
+    auto my_id = perworker::my_id();
+    auto& my_buffer = buffers[my_id];
     assert(my_buffer.empty());
-    auto& my_deque = deques.mine();
     fiber_type* current = nullptr;
-    current = pop(my_deque);
+    current = pop(my_id);
     if (current != nullptr) {
       schedule(current);
     }

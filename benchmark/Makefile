@@ -187,6 +187,16 @@ SERIAL_PREFIX=-DTASKPARTS_SERIAL -DTASKPARTS_SERIAL_ELISION $(PARLAYLIB_SERIAL_P
 %.elastic_flat.dbg: %.cpp $(INCLUDE_FILES) install_folder
 	$(CXX) $(DBG_PREFIX) -DTASKPARTS_ELASTIC_FLAT -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
 
+# Surplus
+%.elastic_surplus.opt: %.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(OPT_PREFIX) -DTASKPARTS_ELASTIC_SURPLUS -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+%.elastic_surplus.sta: %.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(STA_PREFIX) -DTASKPARTS_ELASTIC_SURPLUS -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+%.elastic_surplus.log: %.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(LOG_PREFIX) -DTASKPARTS_ELASTIC_SURPLUS -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+%.elastic_surplus.dbg: %.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(DBG_PREFIX) -DTASKPARTS_ELASTIC_SURPLUS -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+
 # %.elastic_flat_tpal.opt: %.tpal.cpp $(INCLUDE_FILES) install_folder
 # 	$(CXX) $(OPT_PREFIX) -DTASKPARTS_ELASTIC_FLAT $(TASKPARTS_TPAL_PREFIX) $(basename $<)_manual.s -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
 # %.elastic_flat_tpal.sta: %.tpal.cpp $(INCLUDE_FILES) install_folder

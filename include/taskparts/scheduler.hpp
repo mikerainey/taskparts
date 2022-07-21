@@ -239,7 +239,7 @@ public:
   auto check_for_surplus_increase(bool) { }
   
   static
-  auto check_for_surplus_decrease(bool) { }
+  auto check_for_surplus_decrease(size_t, bool) { }
   
   static
   auto try_to_wake_one_worker() -> bool { return false; } 
@@ -337,6 +337,7 @@ using fiber_status_type = enum fiber_status_enum {
   fiber_status_continue,
   fiber_status_pause,
   fiber_status_finish,
+  fiber_status_exit_worker,
   fiber_status_exit_launch
 };
 
