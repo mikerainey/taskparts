@@ -218,7 +218,7 @@ public:
   }
 
   static
-  auto flush2() {
+  auto flush_buffer() {
     auto& my_buffer = buffers.mine();
     auto& my_deque = deques.mine();
     while (! my_buffer.empty()) {
@@ -239,7 +239,7 @@ public:
     }
     current = my_buffer.back();
     my_buffer.pop_back();
-    flush2();
+    flush_buffer();
     return current;
   }
 
@@ -251,7 +251,6 @@ public:
     };
 
     auto nb_workers = perworker::nb_workers();
-    //bool should_terminate = false;
     typename Worker::termination_detection_type termination_barrier;
     typename Worker::worker_exit_barrier worker_exit_barrier(nb_workers);
     perworker::array<size_t> nb_steal_attempts_so_far(0);
@@ -301,15 +300,11 @@ public:
           i--;
           target = random_other_worker(nb_workers, my_id);
         } while (i > 0);
-        if (termination_barrier.is_terminated() /* || should_terminate */) {
+        if (termination_barrier.is_terminated()) {
           assert(current == nullptr);
 	  auto t = new terminal_fiber<Scheduler>();
-	  t->release();
-	  /*
-          Logging::log_event(worker_exit);
-          elastic_type::wake_children();
-          Stats::on_exit_acquire();
-          Logging::log_event(exit_wait); */
+	  t->incounter.store(0);
+	  current = t;
           return scheduler_status_active;
         }
         if (current == nullptr) {
@@ -343,19 +338,19 @@ public:
             } else if (s == fiber_status_finish) {
               current->finish();
 	    } else if (s == fiber_status_exit_worker) {
+	      current->finish();
 	      Logging::log_event(worker_exit);
 	      elastic_type::wake_children();
 	      Stats::on_exit_acquire();
 	      Logging::log_event(exit_wait);
               status = scheduler_status_finish;
-	      flush2();
+	      flush_buffer();
 	      break;
             } else {
               assert(s == fiber_status_exit_launch);
               current->finish();
               status = scheduler_status_finish;
               Logging::log_event(initiate_teardown);
-              //should_terminate = true;
             }
             current = flush();
           }
