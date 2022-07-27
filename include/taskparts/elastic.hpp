@@ -552,7 +552,10 @@ public:
   
   static
   perworker::array<semaphore> semaphores;
-  
+
+  static
+  perworker::array<std::atomic<int64_t>> epochs;
+
   static
   auto incr_surplus() {
     auto& my_status = worker_status.mine();
@@ -561,6 +564,10 @@ public:
       assert(my_status_val.sleeping == 0);
       auto my_orig = my_status_val;
       auto my_nxt = my_orig;
+      if (my_nxt.surplus == 1) {
+	return;
+      }
+      assert(my_nxt.surplus == 0);
       my_nxt.surplus++;
       if (my_status.compare_exchange_strong(my_orig, my_nxt)) {
 	break;
@@ -577,10 +584,22 @@ public:
   }
   
   static
-  auto decr_surplus(size_t target_id) {
+  auto decr_surplus(size_t target_id, int64_t epoch) {
+    auto my_id = perworker::my_id();
+    auto is_thief = (target_id != my_id);
     auto& tgt_status = worker_status[target_id];
     do {
       auto tgt_status_val = tgt_status.load();
+      if (is_thief && (epoch != epochs[target_id].load())) {
+	//aprintf("abort/thief t=%lu v=%lu e1=%ld e2=%ld\n",my_id,target_id,epoch,epochs[target_id].load());
+	return;
+      } else if (is_thief && (tgt_status_val.surplus == 0)) {
+	//aprintf("abort/thief2 t=%lu v=%lu e1=%ld e2=%ld\n",my_id,target_id,epoch,epochs[target_id].load());
+	return;
+      } else if ((! is_thief) && (tgt_status_val.surplus == 0)) {
+	//aprintf("abort\n");
+	return;
+      }
       assert(tgt_status_val.surplus > 0);
       auto tgt_orig = tgt_status_val;
       auto tgt_nxt = tgt_orig;
@@ -597,6 +616,12 @@ public:
 	break;
       }
     } while (true);
+    /*
+    if (is_thief) {
+      aprintf("thief/decr t=%lu\n", target_id);
+    } else {
+      aprintf("victim/decr v=%lu\n", target_id);
+      } */
   }
   
   // returns true iff the operation was *not* invalidated by the discovery of globally positive surplus
@@ -641,7 +666,7 @@ public:
   auto try_to_wake_target(size_t target_id) -> bool {
     auto& tgt_status = worker_status[target_id];
     auto tgt_status_val = tgt_status.load();
-    if ((tgt_status_val.sleeping < 1)) {
+    if (tgt_status_val.sleeping < 1) {
       return false;
     }
     if (tgt_status_val.surplus > 0) {
@@ -655,6 +680,8 @@ public:
     if (! tgt_status.compare_exchange_strong(tgt_orig, tgt_nxt)) {
       return false;
     }
+    assert(worker_status[target_id].load().sleeping == 0);
+    //aprintf("going to wake %lu\n",target_id);
     semaphores[target_id].post();
     return true;
   }
@@ -692,12 +719,35 @@ public:
   auto wake_children() { }
 
   static
+  auto update_status(std::function<bool(cell_type)> should_exit,
+		     std::function<cell_type(cell_type)> update,
+		     size_t id = perworker::my_id()) {
+    auto& status = worker_status[id];
+    do {
+      auto status_val = status.load();
+      if (should_exit(status_val)) {
+	return;
+      }
+      auto orig = status_val;
+      auto next = update(orig);
+      if (status.compare_exchange_strong(orig, next)) {
+	return;
+      }
+    } while (true);
+  }
+
+  static
   auto try_to_sleep(size_t) {
     auto my_id = perworker::my_id();
     if (! incr_sleeping(my_id)) {
       return;
     }
     semaphores[my_id].wait();
+    update_status([=] (cell_type status) { return status.sleeping == 0; },
+		  [=] (cell_type status) { assert(status.sleeping == 1); status.sleeping = 0; return status; },
+		  my_id);
+    if (worker_status[my_id].load().sleeping != 0) { aprintf("oops %lu\n",worker_status[my_id].load().sleeping); }
+    assert(worker_status[my_id].load().sleeping == 0);
     do {
       auto gc_orig = global_status.load();
       assert(gc_orig.sleeping > 0);
@@ -710,32 +760,34 @@ public:
   }
 
   static
-  auto check_for_surplus_increase(bool was_empty) {
+  auto check_for_surplus_increase(bool was_empty) -> int64_t {
     if (! was_empty) {
-      return;
+      return -1;
     }
+    auto& my_epoch = epochs.mine();
+    auto e = my_epoch.load() + 1;
+    my_epoch.store(e);
     incr_surplus();
+    return e;
   }
   
   static
-  auto check_for_surplus_decrease(size_t target_id, bool was_nonempty) {
+  auto check_for_surplus_decrease(size_t target_id, bool was_nonempty, int64_t epoch) {
     if (! was_nonempty) {
       return;
     }
-    decr_surplus(target_id);
+    decr_surplus(target_id, epoch);
   }
   
   static
   auto accept_lifelines() {
-    {
-          auto my_id = perworker::my_id();
-          auto my_status_val = worker_status[my_id].load();
-	  if (my_status_val.surplus != 0) { aprintf ("surplus=%d\n", my_status_val.surplus); }
-      assert(my_status_val.surplus == 0);
-      assert(my_status_val.sleeping == 0);
-    }
-    
-
+    auto my_id = perworker::my_id();
+    auto my_status_val = worker_status[my_id].load();
+    //if (my_status_val.surplus != 0) { aprintf ("surplus=%d\n", my_status_val.surplus); }
+    decr_surplus(my_id, -1);
+    my_status_val = worker_status[my_id].load();
+    assert(my_status_val.surplus == 0);
+    assert(my_status_val.sleeping == 0);
   }
 
   static
@@ -743,6 +795,7 @@ public:
     for (size_t i = 0; i < perworker::nb_workers(); i++) {
       assert(worker_status[i].load().surplus == 0);
       assert(worker_status[i].load().sleeping == 0);
+      epochs[i].store(0);
     }
   }
   
@@ -756,5 +809,8 @@ std::atomic<typename elastic_surplus<Stats, Logging, semaphore>::cell_type> elas
 
 template <typename Stats, typename Logging, typename semaphore>
 perworker::array<semaphore> elastic_surplus<Stats, Logging, semaphore>::semaphores;
+
+template <typename Stats, typename Logging, typename semaphore>
+perworker::array<std::atomic<int64_t>> elastic_surplus<Stats, Logging, semaphore>::epochs;
 
 } // end namespace

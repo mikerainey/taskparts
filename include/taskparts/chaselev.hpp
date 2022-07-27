@@ -182,7 +182,12 @@ public:
   static
   auto push(deque_type& d, fiber_type* f) {
     auto e = d.empty();
-    elastic_type::check_for_surplus_increase(e);
+#ifdef TASKPARTS_ELASTIC_SURPLUS
+    auto epoch = elastic_type::check_for_surplus_increase(e);
+    if (epoch >= 0) {
+      f->epoch = epoch;
+    }
+#endif
     d.push(f);
     if (! e) {
       return;
@@ -198,7 +203,11 @@ public:
     if (r1.t != deque_type::pop_failed) {
       r = r1.f;
     }
-    elastic_type::check_for_surplus_decrease(my_id, r1.t == deque_type::pop_emptied_deque);
+    auto epoch = -1;
+#ifdef TASKPARTS_ELASTIC_SURPLUS
+    epoch = (r1.t != deque_type::pop_failed) ? r->epoch : epoch;
+#endif
+    elastic_type::check_for_surplus_decrease(my_id, r1.t == deque_type::pop_emptied_deque, epoch);
     return r;
   }
   
@@ -210,7 +219,11 @@ public:
     if (r1.t != deque_type::pop_failed) {
       r = r1.f;
     }
-    elastic_type::check_for_surplus_decrease(target_id, r1.t == deque_type::pop_emptied_deque);
+    auto epoch = -1;
+#ifdef TASKPARTS_ELASTIC_SURPLUS
+    epoch = (r1.t != deque_type::pop_failed) ? r->epoch : epoch;
+#endif
+    elastic_type::check_for_surplus_decrease(target_id, r1.t == deque_type::pop_emptied_deque, epoch);
     if (r1.t != deque_type::pop_failed) {
       elastic_type::try_to_wake_one_worker();
     }

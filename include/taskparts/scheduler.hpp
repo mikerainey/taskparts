@@ -236,10 +236,10 @@ public:
   auto initialize() { }
   
   static
-  auto check_for_surplus_increase(bool) { }
+  auto check_for_surplus_increase(bool) -> int64_t { return -1; }
   
   static
-  auto check_for_surplus_decrease(size_t, bool) { }
+  auto check_for_surplus_decrease(size_t, bool, int64_t) { }
   
   static
   auto try_to_wake_one_worker() -> bool { return false; } 
