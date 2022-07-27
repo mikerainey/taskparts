@@ -4,6 +4,8 @@
 #include <optional>
 #include <atomic>
 
+#include "timing.hpp"
+
 namespace taskparts {
 /*---------------------------------------------------------------------*/
 /* Spinning binary semaphore (for performance debugging) */
@@ -42,6 +44,27 @@ public:
   }
 
 };
+
+class spinning_counting_semaphore {
+public:
+  std::atomic<int32_t> count;
+  spinning_counting_semaphore() : count(0) { }
+  auto post() {
+    count++;
+  }
+  auto wait() {
+    assert(count.load() >= 0);
+    auto c = --count;
+    do {
+      if (c >= 0) {
+        break;
+      }
+      cycles::spin_for(1000);
+      c = count.load();
+    } while (true);
+    assert(count.load() >= 0);
+  }
+};
 } // end namespace
 
 #include "perworker.hpp"
@@ -63,7 +86,8 @@ public:
 namespace taskparts {
 
 #if defined(TASKPARTS_USE_SPINNING_SEMAPHORE) || defined(TASKPARTS_DARWIN)
-using dflt_semaphore = spinning_binary_semaphore;
+//using dflt_semaphore = spinning_binary_semaphore;
+using dflt_semaphore = spinning_counting_semaphore;
 #else
 using dflt_semaphore = semaphore;
 #endif
