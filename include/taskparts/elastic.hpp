@@ -3,7 +3,6 @@
 #include <assert.h>
 #include <optional>
 #include <atomic>
-#include <functional>
 
 #include "timing.hpp"
 #include "perworker.hpp"
@@ -25,7 +24,6 @@
 namespace taskparts {
 
 #if defined(TASKPARTS_USE_SPINNING_SEMAPHORE) || defined(TASKPARTS_DARWIN)
-//using dflt_semaphore = spinning_binary_semaphore;
 using dflt_semaphore = spinning_counting_semaphore;
 #else
 using dflt_semaphore = semaphore;
@@ -511,10 +509,11 @@ public:
     update_cell_failed
   };
 
+  template <typename Update, typename Early_exit>
   static
   auto try_to_update_cell(std::atomic<cell_type>& status,
-			  std::function<cell_type(cell_type)> update,
-			  std::function<bool(cell_type)> should_exit) -> update_cell_result_type {
+			  const Update& update,
+			  const Early_exit& should_exit) -> update_cell_result_type {
     auto v = status.load();
     if (should_exit(v)) {
       return update_cell_exited_early;
@@ -525,10 +524,11 @@ public:
     return b ? update_cell_succeeded : update_cell_failed;
   }
 
+  template <typename Update, typename Early_exit>
   static
   auto update_cell_or_exit_early(std::atomic<cell_type>& status,
-				 std::function<cell_type(cell_type)> update,
-				 std::function<bool(cell_type)> should_exit) -> update_cell_result_type {
+				 const Update& update,
+				 const Early_exit& should_exit) -> update_cell_result_type {
     auto r = try_to_update_cell(status, update, should_exit);
     while (r == update_cell_failed) {
       r = try_to_update_cell(status, update, should_exit);
@@ -536,16 +536,23 @@ public:
     return r;
   }
 
+  template <typename Update, typename Early_exit>
   static
   auto update_cell(std::atomic<cell_type>& status,
-		   std::function<cell_type(cell_type)> update,
-		   std::function<bool(cell_type)> should_exit = [] (cell_type) { return false; }) {
+		   const Update& update,
+		   const Early_exit& should_exit) {
     auto r = try_to_update_cell(status, update, should_exit);
     while (r != update_cell_succeeded) {
       r = try_to_update_cell(status, update, should_exit);
     }
   }
-  
+
+  template <typename Update>
+  static
+  auto update_cell(std::atomic<cell_type>& status, const Update& update) {
+    return update_cell(status, update, [] (cell_type) { return false; });
+  }
+
   static
   auto try_to_wake_target(size_t target_id) -> bool {
     auto& tgt_status = worker_status[target_id]; 
