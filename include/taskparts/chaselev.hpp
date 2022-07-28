@@ -183,16 +183,20 @@ public:
   auto push(deque_type& d, fiber_type* f) {
     auto e = d.empty();
 #ifdef TASKPARTS_ELASTIC_SURPLUS
-    auto epoch = elastic_type::before_surplus_increase(e);
-    if (epoch >= 0) {
-      f->epoch = epoch;
+    if (e) {
+      auto epoch = elastic_type::before_surplus_increase();
+      if (epoch >= 0) {
+	f->epoch = epoch;
+      }
     }
 #endif
     d.push(f);
     if (! e) {
       return;
     }
+#ifdef TASKPARTS_ELASTIC_SURPLUS
     elastic_type::after_surplus_increase();
+#endif
   }
   
   static
@@ -203,11 +207,12 @@ public:
     if (r1.t != deque_type::pop_failed) {
       r = r1.f;
     }
-    auto epoch = -1;
 #ifdef TASKPARTS_ELASTIC_SURPLUS
-    epoch = (r1.t != deque_type::pop_failed) ? r->epoch : epoch;
+    auto epoch = (r1.t != deque_type::pop_failed) ? r->epoch : -1;
+    if (r1.t == deque_type::pop_maybe_emptied_deque) {
+      elastic_type::after_surplus_decrease(my_id, epoch);
+    }
 #endif
-    elastic_type::check_for_surplus_decrease(my_id, r1.t == deque_type::pop_maybe_emptied_deque, epoch);
     return r;
   }
   
@@ -219,14 +224,15 @@ public:
     if (r1.t != deque_type::pop_failed) {
       r = r1.f;
     }
-    auto epoch = -1;
 #ifdef TASKPARTS_ELASTIC_SURPLUS
-    epoch = (r1.t != deque_type::pop_failed) ? r->epoch : epoch;
-#endif
-    elastic_type::check_for_surplus_decrease(target_id, r1.t == deque_type::pop_maybe_emptied_deque, epoch);
+    auto epoch = (r1.t != deque_type::pop_failed) ? r->epoch : -1;
+    if (r1.t == deque_type::pop_maybe_emptied_deque) {
+      elastic_type::after_surplus_decrease(target_id, epoch);
+    }
     if (r1.t != deque_type::pop_failed) {
       elastic_type::after_surplus_increase();
     }
+#endif
     return r;
   }
 
@@ -295,7 +301,7 @@ public:
       Logging::log_event(enter_wait);
       Stats::on_enter_acquire();
       termination_barrier.set_active(false);
-      elastic_type::accept_lifelines();
+      elastic_type::on_enter_acquire();
       fiber_type* current = nullptr;
       while (current == nullptr) {
         assert(nb_steal_attempts >= 1);

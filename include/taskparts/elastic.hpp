@@ -174,7 +174,7 @@ public:
   }
 
   static
-  auto accept_lifelines() {
+  auto on_enter_acquire() {
     // 1) Clear the children list 
     // 2) Start to accept lifelines by unsetting busy bit
     // 3) Randomly choose a new priority
@@ -195,12 +195,6 @@ public:
       // We don't really care what next points to at this moment
     }
   }
-  
-  static
-  auto check_for_surplus_increase(bool) { }
-  
-  static
-  auto check_for_surplus_decrease(size_t, bool) { }
   
   static
   auto try_to_wake_one_worker() -> bool { return false; }
@@ -469,20 +463,12 @@ public:
 
   // This is called once every time processor start to acquire work
   static
-  auto accept_lifelines() {
+  auto on_enter_acquire() {
     auto p = perworker::my_id();
     status[p].store(status_t::Stealing);
     //fprintf(stderr, "[%ld] Stealing: Attempting to acquire work.\n", p);
   }
   
-  static
-  auto before_surplus_increase(bool) { }
-  
-  static
-  auto check_for_surplus_decrease(size_t, bool) { }
-  
-  static
-  auto try_to_wake_one_worker() -> bool { return false; }
 };
 
 template <typename Stats, typename Logging, typename Semaphore, typename Spinlock>
@@ -664,10 +650,7 @@ public:
   }
 
   static
-  auto before_surplus_increase(bool was_empty) -> int64_t {
-    if (! was_empty) {
-      return -1;
-    }
+  auto before_surplus_increase() -> int64_t {
     auto& my_epoch = epochs.mine();
     auto e = my_epoch.load() + 1;
     my_epoch.store(e);
@@ -690,7 +673,7 @@ public:
   }
 
   static
-  auto decr_surplus(size_t target_id, int64_t epoch) {
+  auto after_surplus_decrease(size_t target_id, int64_t epoch) {
     auto my_id = perworker::my_id();
     auto is_thief = (target_id != my_id);
     auto& tgt_status = worker_status[target_id];
@@ -714,17 +697,9 @@ public:
   }
   
   static
-  auto check_for_surplus_decrease(size_t target_id, bool was_nonempty, int64_t epoch) {
-    if (! was_nonempty) {
-      return;
-    }
-    decr_surplus(target_id, epoch);
-  }
-  
-  static
-  auto accept_lifelines() {
+  auto on_enter_acquire() {
     auto my_id = perworker::my_id();
-    decr_surplus(my_id, -1);
+    after_surplus_decrease(my_id, -1);
     auto my_status_val = worker_status[my_id].load();
     assert(my_status_val.surplus == 0);
     assert(my_status_val.sleeping == 0);

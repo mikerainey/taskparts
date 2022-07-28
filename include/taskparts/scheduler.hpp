@@ -230,16 +230,16 @@ public:
   }
 
   static
-  auto accept_lifelines() { }
+  auto on_enter_acquire() { }
 
   static
   auto initialize() { }
   
   static
-  auto before_surplus_increase(bool) -> int64_t { return -1; }
+  auto before_surplus_increase() -> int64_t { return -1; }
   
   static
-  auto check_for_surplus_decrease(size_t, bool, int64_t) { }
+  auto after_surplus_decrease(size_t, int64_t) { }
   
   static
   auto after_surplus_increase() -> bool { return false; } 
