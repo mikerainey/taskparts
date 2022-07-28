@@ -186,7 +186,7 @@ public:
     if (e) {
       auto epoch = elastic_type::before_surplus_increase();
       if (epoch >= 0) {
-	f->epoch = epoch;
+        f->epoch = epoch;
       }
     }
 #endif
@@ -321,9 +321,9 @@ public:
         } while (i > 0);
         if (termination_barrier.is_terminated()) {
           assert(current == nullptr);
-	  auto t = new terminal_fiber<Scheduler>();
-	  t->incounter.store(0);
-	  current = t;
+          auto t = new terminal_fiber<Scheduler>();
+          t->incounter.store(0);
+          current = t;
           return scheduler_status_active;
         }
         if (current == nullptr) {
@@ -353,31 +353,31 @@ public:
             if (s == fiber_status_continue) {
               schedule(current);
             } else if (s == fiber_status_pause) {
-	      // nothing to do
+              // nothing to do
             } else if (s == fiber_status_finish) {
               current->finish();
-	    } else if (s == fiber_status_exit_worker) {
-	      current->finish();
-	      Logging::log_event(worker_exit);
-	      elastic_type::wake_children();
-	      Stats::on_exit_acquire();
-	      Logging::log_event(exit_wait);
-              status = scheduler_status_finish;
-	      flush_buffer();
-	      break;
-            } else {
-              assert(s == fiber_status_exit_launch);
-              current->finish();
-              status = scheduler_status_finish;
-              Logging::log_event(initiate_teardown);
-            }
+          } else if (s == fiber_status_exit_worker) {
+            current->finish();
+            Logging::log_event(worker_exit);
+            elastic_type::wake_children();
+            Stats::on_exit_acquire();
+            Logging::log_event(exit_wait);
+            status = scheduler_status_finish;
+            flush_buffer();
+            break;
+          } else {
+            assert(s == fiber_status_exit_launch);
+            current->finish();
+            status = scheduler_status_finish;
+            Logging::log_event(initiate_teardown);
+          }
             current = flush();
           }
         }
-	if (status == scheduler_status_finish) {
-	  continue;
-	}
-	assert((current == nullptr) && my_deque.empty());
+        if (status == scheduler_status_finish) {
+          continue;
+        }
+        assert((current == nullptr) && my_deque.empty());
         Stats::on_exit_work();
         status = acquire();
         Stats::on_enter_work();

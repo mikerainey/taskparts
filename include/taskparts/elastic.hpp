@@ -556,8 +556,8 @@ public:
       return s;
     }, [=] (cell_type s) {
       return
-	(s.sleeping < 1) ||
-	(s.surplus > 0); // is this predicate needed?
+        (s.sleeping < 1) ||
+        (s.surplus > 0); // is this predicate needed?
     });
     if (r != update_cell_succeeded) {
       return false;
@@ -581,7 +581,6 @@ public:
   auto after_surplus_increase() {
     size_t nb_sa = 0;
     auto my_id = perworker::my_id();
-    size_t target_id = 0;
     do {
       if (global_status.load().sleeping == 0) {
         return;
@@ -622,11 +621,11 @@ public:
     });
     if (r2 != update_cell_succeeded) {
       update_cell_or_exit_early(my_status, [=] (cell_type s) {
-	assert(s.sleeping == 1);
-	s.sleeping--;
-	return s;
+        assert(s.sleeping == 1);
+        s.sleeping--;
+        return s;
       }, [=] (cell_type s) {
-	return s.sleeping == 0;
+        return s.sleeping == 0;
       });
       assert(my_status.load().sleeping == 0);
       return;
@@ -683,9 +682,9 @@ public:
       return s;
     }, [=] (cell_type s) {
       return
-	(is_thief && (epoch != epochs[target_id].load())) ||
-	(is_thief && (s.surplus == 0)) ||
-	((! is_thief) && (s.surplus == 0));
+        (is_thief && (epoch != epochs[target_id].load())) ||
+        (is_thief && (s.surplus == 0)) ||
+        ((! is_thief) && (s.surplus == 0));
     });
     if (r1 == update_cell_exited_early) {
       return;
