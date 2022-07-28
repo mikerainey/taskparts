@@ -486,16 +486,16 @@ template <typename Stats, typename Logging, typename Semaphore=dflt_semaphore>
 class elastic_surplus {
 public:
   
-  using cell_type = struct cell_struct {
+  using counters_type = struct counters_struct {
     int32_t surplus;
     int32_t sleeping;
   };
   
   static
-  perworker::array<std::atomic<cell_type>> worker_status;
+  perworker::array<std::atomic<counters_type>> worker_status;
 
   static
-  std::atomic<cell_type> global_status;
+  std::atomic<counters_type> global_status;
   
   static
   perworker::array<Semaphore> semaphores;
@@ -503,70 +503,70 @@ public:
   static
   perworker::array<std::atomic<int64_t>> epochs;
 
-  using update_cell_result_type = enum update_cell_result_enum {
-    update_cell_exited_early,
-    update_cell_succeeded,
-    update_cell_failed
+  using update_counters_result_type = enum update_counters_result_enum {
+    update_counters_exited_early,
+    update_counters_succeeded,
+    update_counters_failed
   };
 
   template <typename Update, typename Early_exit>
   static
-  auto try_to_update_cell(std::atomic<cell_type>& status,
-			  const Update& update,
-			  const Early_exit& should_exit) -> update_cell_result_type {
+  auto try_to_update_counters(std::atomic<counters_type>& status,
+			      const Update& update,
+			      const Early_exit& should_exit) -> update_counters_result_type {
     auto v = status.load();
     if (should_exit(v)) {
-      return update_cell_exited_early;
+      return update_counters_exited_early;
     }
     auto orig = v;
     auto next = update(orig);
     auto b = status.compare_exchange_strong(orig, next);
-    return b ? update_cell_succeeded : update_cell_failed;
+    return b ? update_counters_succeeded : update_counters_failed;
   }
 
   template <typename Update, typename Early_exit>
   static
-  auto update_cell_or_exit_early(std::atomic<cell_type>& status,
-				 const Update& update,
-				 const Early_exit& should_exit) -> update_cell_result_type {
-    auto r = try_to_update_cell(status, update, should_exit);
-    while (r == update_cell_failed) {
-      r = try_to_update_cell(status, update, should_exit);
+  auto update_counters_or_exit_early(std::atomic<counters_type>& status,
+				     const Update& update,
+				     const Early_exit& should_exit) -> update_counters_result_type {
+    auto r = try_to_update_counters(status, update, should_exit);
+    while (r == update_counters_failed) {
+      r = try_to_update_counters(status, update, should_exit);
     };
     return r;
   }
 
   template <typename Update, typename Early_exit>
   static
-  auto update_cell(std::atomic<cell_type>& status,
-		   const Update& update,
-		   const Early_exit& should_exit) {
-    auto r = try_to_update_cell(status, update, should_exit);
-    while (r != update_cell_succeeded) {
-      r = try_to_update_cell(status, update, should_exit);
+  auto update_counters(std::atomic<counters_type>& status,
+		       const Update& update,
+		       const Early_exit& should_exit) {
+    auto r = try_to_update_counters(status, update, should_exit);
+    while (r != update_counters_succeeded) {
+      r = try_to_update_counters(status, update, should_exit);
     }
   }
 
   template <typename Update>
   static
-  auto update_cell(std::atomic<cell_type>& status, const Update& update) {
-    return update_cell(status, update, [] (cell_type) { return false; });
+  auto update_counters(std::atomic<counters_type>& status, const Update& update) {
+    return update_counters(status, update, [] (counters_type) { return false; });
   }
 
   static
   auto try_to_wake_target(size_t target_id) -> bool {
     auto& tgt_status = worker_status[target_id]; 
-    auto r = update_cell_or_exit_early(tgt_status, [=] (cell_type s) {
+    auto r = update_counters_or_exit_early(tgt_status, [=] (counters_type s) {
       s.sleeping--;
       assert(s.sleeping == 0);
       assert(s.surplus == 0);
       return s;
-    }, [=] (cell_type s) {
+    }, [=] (counters_type s) {
       return
         (s.sleeping < 1) ||
         (s.surplus > 0); // is this predicate needed?
     });
-    if (r != update_cell_succeeded) {
+    if (r != update_counters_succeeded) {
       return false;
     }
     assert(tgt_status.load().sleeping == 0);
@@ -609,48 +609,48 @@ public:
   auto try_to_sleep(size_t) {
     auto my_id = perworker::my_id();
     auto& my_status = worker_status[my_id];
-    auto r1 = try_to_update_cell(my_status, [=] (cell_type s) {
+    auto r1 = try_to_update_counters(my_status, [=] (counters_type s) {
       s.sleeping++;
       return s;
-    }, [=] (cell_type s) {
+    }, [=] (counters_type s) {
       assert(s.surplus == 0);
       assert(s.sleeping == 0);
       return false;
     });
-    if (r1 == update_cell_failed) {
+    if (r1 == update_counters_failed) {
       return;
     }
-    auto r2 = try_to_update_cell(global_status, [=] (cell_type s) {
+    auto r2 = try_to_update_counters(global_status, [=] (counters_type s) {
       s.sleeping++;
       return s;
-    }, [=] (cell_type s) {
+    }, [=] (counters_type s) {
       return s.surplus > 0;
     });
-    if (r2 != update_cell_succeeded) {
-      update_cell_or_exit_early(my_status, [=] (cell_type s) {
+    if (r2 != update_counters_succeeded) {
+      update_counters_or_exit_early(my_status, [=] (counters_type s) {
         assert(s.sleeping == 1);
         s.sleeping--;
         return s;
-      }, [=] (cell_type s) {
+      }, [=] (counters_type s) {
         return s.sleeping == 0;
       });
       assert(my_status.load().sleeping == 0);
       return;
     }
     semaphores[my_id].wait();
-    update_cell_or_exit_early(my_status, [=] (cell_type status) {
+    update_counters_or_exit_early(my_status, [=] (counters_type status) {
       assert(status.sleeping == 1);
       status.sleeping--;
       return status;
-    }, [=] (cell_type status) {
+    }, [=] (counters_type status) {
       return status.sleeping == 0;
     });
     assert(my_status.load().sleeping == 0);
-    update_cell(global_status, [=] (cell_type status) {
+    update_counters(global_status, [=] (counters_type status) {
       assert(status.sleeping > 0);
       status.sleeping--;
       return status;
-    }, [=] (cell_type status) {
+    }, [=] (counters_type status) {
       return false;
     });
   }
@@ -661,17 +661,17 @@ public:
     auto e = my_epoch.load() + 1;
     my_epoch.store(e);
     auto& my_status = worker_status.mine();
-    auto r1 = try_to_update_cell(my_status, [=] (cell_type s) {
+    auto r1 = try_to_update_counters(my_status, [=] (counters_type s) {
       s.surplus++;
       return s;
-    }, [=] (cell_type s) {
+    }, [=] (counters_type s) {
       assert(s.sleeping == 0);
       return s.surplus == 1;
     });
-    if (r1 == update_cell_exited_early) {
+    if (r1 == update_counters_exited_early) {
       return e;
     }
-    update_cell(global_status, [=] (cell_type s) {
+    update_counters(global_status, [=] (counters_type s) {
       s.surplus++;
       return s;
     });
@@ -683,20 +683,20 @@ public:
     auto my_id = perworker::my_id();
     auto is_thief = (target_id != my_id);
     auto& tgt_status = worker_status[target_id];
-    auto r1 = update_cell_or_exit_early(tgt_status, [=] (cell_type s) {
+    auto r1 = update_counters_or_exit_early(tgt_status, [=] (counters_type s) {
       assert(s.surplus > 0);
       s.surplus--;
       return s;
-    }, [=] (cell_type s) {
+    }, [=] (counters_type s) {
       return
         (is_thief && (epoch != epochs[target_id].load())) ||
         (is_thief && (s.surplus == 0)) ||
         ((! is_thief) && (s.surplus == 0));
     });
-    if (r1 == update_cell_exited_early) {
+    if (r1 == update_counters_exited_early) {
       return;
     }
-    update_cell(global_status, [=] (cell_type s) {
+    update_counters(global_status, [=] (counters_type s) {
       s.surplus--;
       return s;
     });
@@ -723,10 +723,10 @@ public:
 };
 
 template <typename Stats, typename Logging, typename Semaphore>
-perworker::array<std::atomic<typename elastic_surplus<Stats, Logging, Semaphore>::cell_type>> elastic_surplus<Stats, Logging, Semaphore>::worker_status;
+perworker::array<std::atomic<typename elastic_surplus<Stats, Logging, Semaphore>::counters_type>> elastic_surplus<Stats, Logging, Semaphore>::worker_status;
 
 template <typename Stats, typename Logging, typename Semaphore>
-std::atomic<typename elastic_surplus<Stats, Logging, Semaphore>::cell_type> elastic_surplus<Stats, Logging, Semaphore>::global_status;
+std::atomic<typename elastic_surplus<Stats, Logging, Semaphore>::counters_type> elastic_surplus<Stats, Logging, Semaphore>::global_status;
 
 template <typename Stats, typename Logging, typename Semaphore>
 perworker::array<Semaphore> elastic_surplus<Stats, Logging, Semaphore>::semaphores;
