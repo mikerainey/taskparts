@@ -24,7 +24,7 @@ public:
   
   using index_type = long;
   using pop_result_tag = enum pop_result_enum {
-      pop_failed, pop_emptied_deque, pop_left_surplus
+      pop_failed, pop_maybe_emptied_deque, pop_left_surplus
   };
   
   using pop_result_type = struct pop_result_struct {
@@ -116,7 +116,7 @@ public:
         if (! top.compare_exchange_strong(t, t + 1, std::memory_order_seq_cst, std::memory_order_relaxed)) {
           r.t = pop_failed;
         } else {
-          r.t = pop_emptied_deque;
+          r.t = pop_maybe_emptied_deque;
         }
         bottom.store(b + 1, std::memory_order_relaxed);
 	assert(empty());
@@ -142,7 +142,7 @@ public:
       if (! top.compare_exchange_strong(t, t + 1, std::memory_order_seq_cst, std::memory_order_relaxed)) {
         r.t = pop_failed;
       } else {
-        r.t = ((b - t) == 1) ? pop_emptied_deque : pop_left_surplus;
+        r.t = ((b - t) == 1) ? pop_maybe_emptied_deque : pop_left_surplus;
 	assert(r.f != nullptr);
       }
     } else {
@@ -207,7 +207,7 @@ public:
 #ifdef TASKPARTS_ELASTIC_SURPLUS
     epoch = (r1.t != deque_type::pop_failed) ? r->epoch : epoch;
 #endif
-    elastic_type::check_for_surplus_decrease(my_id, r1.t == deque_type::pop_emptied_deque, epoch);
+    elastic_type::check_for_surplus_decrease(my_id, r1.t == deque_type::pop_maybe_emptied_deque, epoch);
     return r;
   }
   
@@ -223,7 +223,7 @@ public:
 #ifdef TASKPARTS_ELASTIC_SURPLUS
     epoch = (r1.t != deque_type::pop_failed) ? r->epoch : epoch;
 #endif
-    elastic_type::check_for_surplus_decrease(target_id, r1.t == deque_type::pop_emptied_deque, epoch);
+    elastic_type::check_for_surplus_decrease(target_id, r1.t == deque_type::pop_maybe_emptied_deque, epoch);
     if (r1.t != deque_type::pop_failed) {
       elastic_type::try_to_wake_one_worker();
     }

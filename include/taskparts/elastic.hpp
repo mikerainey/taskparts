@@ -3,6 +3,7 @@
 #include <assert.h>
 #include <optional>
 #include <atomic>
+#include <functional>
 
 namespace taskparts {
 /*---------------------------------------------------------------------*/
