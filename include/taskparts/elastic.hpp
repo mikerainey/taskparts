@@ -476,7 +476,7 @@ public:
   }
   
   static
-  auto check_for_surplus_increase(bool) { }
+  auto before_surplus_increase(bool) { }
   
   static
   auto check_for_surplus_decrease(size_t, bool) { }
@@ -559,25 +559,6 @@ public:
       r = try_to_update_cell(status, update, should_exit);
     }
   }
-
-  static
-  auto incr_surplus() {
-    auto& my_status = worker_status.mine();
-    auto r1 = try_to_update_cell(my_status, [=] (cell_type s) {
-      s.surplus++;
-      return s;
-    }, [=] (cell_type s) {
-      assert(s.sleeping == 0);
-      return s.surplus == 1;
-    });
-    if (r1 == update_cell_exited_early) {
-      return;
-    }
-    update_cell(global_status, [=] (cell_type s) {
-      s.surplus++;
-      return s;
-    });
-  }
   
   static
   auto try_to_wake_target(size_t target_id) -> bool {
@@ -601,7 +582,17 @@ public:
   }
   
   static
-  auto try_to_wake_one_worker() {
+  auto random_other_worker(size_t& nb_sa, size_t nb_workers, size_t my_id) -> size_t {
+    size_t id = (size_t)((hash(my_id) + hash(nb_sa)) % (nb_workers - 1));
+    if (id >= my_id) {
+      id++;
+    }
+    nb_sa++;
+    return id;
+  }
+
+  static
+  auto after_surplus_increase() {
     size_t nb_sa = 0;
     auto my_id = perworker::my_id();
     size_t target_id = 0;
@@ -618,16 +609,6 @@ public:
 
   static constexpr
   bool override_rand_worker = false;
-
-  static
-  auto random_other_worker(size_t& nb_sa, size_t nb_workers, size_t my_id) -> size_t {
-    size_t id = (size_t)((hash(my_id) + hash(nb_sa)) % (nb_workers - 1));
-    if (id >= my_id) {
-      id++;
-    }
-    nb_sa++;
-    return id;
-  }
 
   static
   auto wake_children() { }
@@ -683,14 +664,28 @@ public:
   }
 
   static
-  auto check_for_surplus_increase(bool was_empty) -> int64_t {
+  auto before_surplus_increase(bool was_empty) -> int64_t {
     if (! was_empty) {
       return -1;
     }
     auto& my_epoch = epochs.mine();
     auto e = my_epoch.load() + 1;
     my_epoch.store(e);
-    incr_surplus();
+    auto& my_status = worker_status.mine();
+    auto r1 = try_to_update_cell(my_status, [=] (cell_type s) {
+      s.surplus++;
+      return s;
+    }, [=] (cell_type s) {
+      assert(s.sleeping == 0);
+      return s.surplus == 1;
+    });
+    if (r1 == update_cell_exited_early) {
+      return e;
+    }
+    update_cell(global_status, [=] (cell_type s) {
+      s.surplus++;
+      return s;
+    });
     return e;
   }
 
