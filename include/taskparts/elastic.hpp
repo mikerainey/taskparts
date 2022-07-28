@@ -724,9 +724,8 @@ public:
   static
   auto accept_lifelines() {
     auto my_id = perworker::my_id();
-    auto my_status_val = worker_status[my_id].load();
     decr_surplus(my_id, -1);
-    my_status_val = worker_status[my_id].load();
+    auto my_status_val = worker_status[my_id].load();
     assert(my_status_val.surplus == 0);
     assert(my_status_val.sleeping == 0);
   }
