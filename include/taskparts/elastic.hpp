@@ -519,121 +519,83 @@ public:
   static
   perworker::array<std::atomic<int64_t>> epochs;
 
+  using update_cell_result_type = enum update_cell_result_enum {
+    update_cell_exited_early,
+    update_cell_succeeded,
+    update_cell_failed
+  };
+
+  static
+  auto try_to_update_cell(std::atomic<cell_type>& status,
+			  std::function<cell_type(cell_type)> update,
+			  std::function<bool(cell_type)> should_exit) -> update_cell_result_type {
+    auto v = status.load();
+    if (should_exit(v)) {
+      return update_cell_exited_early;
+    }
+    auto orig = v;
+    auto next = update(orig);
+    auto b = status.compare_exchange_strong(orig, next);
+    return b ? update_cell_succeeded : update_cell_failed;
+  }
+
+  static
+  auto update_cell_or_exit_early(std::atomic<cell_type>& status,
+				 std::function<cell_type(cell_type)> update,
+				 std::function<bool(cell_type)> should_exit) -> update_cell_result_type {
+    auto r = try_to_update_cell(status, update, should_exit);
+    while (r == update_cell_failed) {
+      r = try_to_update_cell(status, update, should_exit);
+    };
+    return r;
+  }
+
+  static
+  auto update_cell(std::atomic<cell_type>& status,
+		   std::function<cell_type(cell_type)> update,
+		   std::function<bool(cell_type)> should_exit = [] (cell_type) { return false; }) {
+    auto r = try_to_update_cell(status, update, should_exit);
+    while (r != update_cell_succeeded) {
+      r = try_to_update_cell(status, update, should_exit);
+    }
+  }
+
   static
   auto incr_surplus() {
     auto& my_status = worker_status.mine();
-    do {
-      auto my_status_val = my_status.load();
-      assert(my_status_val.sleeping == 0);
-      auto my_orig = my_status_val;
-      auto my_nxt = my_orig;
-      if (my_nxt.surplus == 1) {
-	return;
-      }
-      assert(my_nxt.surplus == 0);
-      my_nxt.surplus++;
-      if (my_status.compare_exchange_strong(my_orig, my_nxt)) {
-	break;
-      }
-    } while (true);
-    do {
-      auto gc_orig = global_status.load();
-      auto gc_nxt = gc_orig;
-      gc_nxt.surplus++;
-      if (global_status.compare_exchange_strong(gc_orig, gc_nxt)) {
-	break;
-      }
-    } while (true);
-  }
-  
-  static
-  auto decr_surplus(size_t target_id, int64_t epoch) {
-    auto my_id = perworker::my_id();
-    auto is_thief = (target_id != my_id);
-    auto& tgt_status = worker_status[target_id];
-    do {
-      auto tgt_status_val = tgt_status.load();
-      if (is_thief && (epoch != epochs[target_id].load())) {
-	return;
-      } else if (is_thief && (tgt_status_val.surplus == 0)) {
-	return;
-      } else if ((! is_thief) && (tgt_status_val.surplus == 0)) {
-	return;
-      }
-      assert(tgt_status_val.surplus > 0);
-      auto tgt_orig = tgt_status_val;
-      auto tgt_nxt = tgt_orig;
-      tgt_nxt.surplus--;
-      if (tgt_status.compare_exchange_strong(tgt_orig, tgt_nxt)) {
-	break;
-      }
-    } while (true);
-    do {
-      auto gc_orig = global_status.load();
-      auto gc_nxt = gc_orig;
-      gc_nxt.surplus--;
-      if (global_status.compare_exchange_strong(gc_orig, gc_nxt)) {
-	break;
-      }
-    } while (true);
-  }
-  
-  // returns true iff the operation was *not* invalidated by the discovery of globally positive surplus
-  static
-  auto incr_sleeping(size_t my_id) -> bool {
-    auto& my_status = worker_status[my_id];
-    auto my_status_val = my_status.load();
-    assert(my_status_val.surplus == 0);
-    assert(my_status_val.sleeping == 0);
-    auto my_orig = my_status_val;
-    auto my_nxt = my_orig;
-    my_nxt.sleeping++;
-    if (! my_status.compare_exchange_strong(my_orig, my_nxt)) {
-      return false;
+    auto r1 = try_to_update_cell(my_status, [=] (cell_type s) {
+      s.surplus++;
+      return s;
+    }, [=] (cell_type s) {
+      assert(s.sleeping == 0);
+      return s.surplus == 1;
+    });
+    if (r1 == update_cell_exited_early) {
+      return;
     }
-    auto gc_orig = global_status.load();
-    auto gc_nxt = gc_orig;
-    gc_nxt.sleeping++;
-    if ((gc_orig.surplus > 0) || (! global_status.compare_exchange_strong(gc_orig, gc_nxt))) {
-      do {
-	my_status_val = my_status.load();
-	my_orig = my_status_val;
-	if (my_orig.sleeping == 0) {
-	  break;
-	}
-	assert(my_orig.sleeping == 1);
-	my_nxt = my_orig;
-	my_nxt.sleeping--;
-	assert(my_nxt.sleeping == 0);
-	if (my_status.compare_exchange_strong(my_orig, my_nxt)) {
-	  break;
-	}
-      } while (true);
-      assert(my_status.load().sleeping == 0);
-      return false;
-    }
-    return true;
+    update_cell(global_status, [=] (cell_type s) {
+      s.surplus++;
+      return s;
+    });
   }
   
   static
   auto try_to_wake_target(size_t target_id) -> bool {
-    auto& tgt_status = worker_status[target_id];
-    auto tgt_status_val = tgt_status.load();
-    if (tgt_status_val.sleeping < 1) {
+    auto& tgt_status = worker_status[target_id]; 
+    auto r = update_cell_or_exit_early(tgt_status, [=] (cell_type s) {
+      s.sleeping--;
+      assert(s.sleeping == 0);
+      assert(s.surplus == 0);
+      return s;
+    }, [=] (cell_type s) {
+      return
+	(s.sleeping < 1) ||
+	(s.surplus > 0); // is this predicate needed?
+    });
+    if (r != update_cell_succeeded) {
       return false;
     }
-    if (tgt_status_val.surplus > 0) {
-      return false;  // uncertain if this branch is redundant after the previous early exit
-    }
-    auto tgt_orig = tgt_status_val;
-    auto tgt_nxt = tgt_orig;
-    tgt_nxt.sleeping--;
-    assert(tgt_nxt.sleeping == 0);
-    assert(tgt_nxt.surplus == 0);
-    if (! tgt_status.compare_exchange_strong(tgt_orig, tgt_nxt)) {
-      return false;
-    }
-    assert(worker_status[target_id].load().sleeping == 0);
+    assert(tgt_status.load().sleeping == 0);
     semaphores[target_id].post();
     return true;
   }
@@ -669,45 +631,55 @@ public:
 
   static
   auto wake_children() { }
-
-  static
-  auto update_status(std::function<bool(cell_type)> should_exit,
-		     std::function<cell_type(cell_type)> update,
-		     size_t id = perworker::my_id()) {
-    auto& status = worker_status[id];
-    do {
-      auto status_val = status.load();
-      if (should_exit(status_val)) {
-	return;
-      }
-      auto orig = status_val;
-      auto next = update(orig);
-      if (status.compare_exchange_strong(orig, next)) {
-	return;
-      }
-    } while (true);
-  }
-
+  
   static
   auto try_to_sleep(size_t) {
     auto my_id = perworker::my_id();
-    if (! incr_sleeping(my_id)) {
+    auto& my_status = worker_status[my_id];
+    auto r1 = try_to_update_cell(my_status, [=] (cell_type s) {
+      s.sleeping++;
+      return s;
+    }, [=] (cell_type s) {
+      assert(s.surplus == 0);
+      assert(s.sleeping == 0);
+      return false;
+    });
+    if (r1 == update_cell_failed) {
+      return;
+    }
+    auto r2 = try_to_update_cell(global_status, [=] (cell_type s) {
+      s.sleeping++;
+      return s;
+    }, [=] (cell_type s) {
+      return s.surplus > 0;
+    });
+    if (r2 != update_cell_succeeded) {
+      update_cell_or_exit_early(my_status, [=] (cell_type s) {
+	assert(s.sleeping == 1);
+	s.sleeping--;
+	return s;
+      }, [=] (cell_type s) {
+	return s.sleeping == 0;
+      });
+      assert(my_status.load().sleeping == 0);
       return;
     }
     semaphores[my_id].wait();
-    update_status([=] (cell_type status) { return status.sleeping == 0; },
-		  [=] (cell_type status) { assert(status.sleeping == 1); status.sleeping = 0; return status; },
-		  my_id);
-    assert(worker_status[my_id].load().sleeping == 0);
-    do {
-      auto gc_orig = global_status.load();
-      assert(gc_orig.sleeping > 0);
-      auto gc_nxt = gc_orig;
-      gc_nxt.sleeping--;
-      if (global_status.compare_exchange_strong(gc_orig, gc_nxt)) {
-        break;
-      }
-    } while (true);
+    update_cell_or_exit_early(my_status, [=] (cell_type status) {
+      assert(status.sleeping == 1);
+      status.sleeping--;
+      return status;
+    }, [=] (cell_type status) {
+      return status.sleeping == 0;
+    });
+    assert(my_status.load().sleeping == 0);
+    update_cell(global_status, [=] (cell_type status) {
+      assert(status.sleeping > 0);
+      status.sleeping--;
+      return status;
+    }, [=] (cell_type status) {
+      return false;
+    });
   }
 
   static
@@ -720,6 +692,30 @@ public:
     my_epoch.store(e);
     incr_surplus();
     return e;
+  }
+
+  static
+  auto decr_surplus(size_t target_id, int64_t epoch) {
+    auto my_id = perworker::my_id();
+    auto is_thief = (target_id != my_id);
+    auto& tgt_status = worker_status[target_id];
+    auto r1 = update_cell_or_exit_early(tgt_status, [=] (cell_type s) {
+      assert(s.surplus > 0);
+      s.surplus--;
+      return s;
+    }, [=] (cell_type s) {
+      return
+	(is_thief && (epoch != epochs[target_id].load())) ||
+	(is_thief && (s.surplus == 0)) ||
+	((! is_thief) && (s.surplus == 0));
+    });
+    if (r1 == update_cell_exited_early) {
+      return;
+    }
+    update_cell(global_status, [=] (cell_type s) {
+      s.surplus--;
+      return s;
+    });
   }
   
   static
