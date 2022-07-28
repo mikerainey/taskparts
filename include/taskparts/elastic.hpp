@@ -6,68 +6,6 @@
 #include <functional>
 
 #include "timing.hpp"
-
-namespace taskparts {
-/*---------------------------------------------------------------------*/
-/* Spinning binary semaphore (for performance debugging) */
-
-/* An implementation of semaphore that is binary (0 or 1) with spinning wait 
- * - Crashes when POSTing to a non-zero valued semaphore
- * - Crashes when WAITint on a zero     valued semaphore
- * It should be fine for use in the elastic scheduler since 
- * - Only the processor owning the semaphore will ever wait on it
- * - Every WATI is paired with exactly one POST and vice versa.
- */
-class spinning_binary_semaphore {
-  
-   // 0  -> No processor is waiting on the semaphore
-   // 1  -> A post has been issued to the semaphore
-   // -1 -> A processor is waiting on the semaphore 
-   std::atomic<int> flag;
-  
-public:
-  
-  spinning_binary_semaphore() : flag(0) {}
-  
-  ~spinning_binary_semaphore() {
-    assert(flag.load() == 0); // The semaphore has to be balanced
-  }
-
-  auto post() {
-    int old_value = flag++;
-    assert(old_value <= 0);
-  }
-
-  auto wait() {
-    int old_value = flag--;
-    assert(old_value >= 0);
-    while (flag.load() < 0); // Spinning
-  }
-
-};
-
-class spinning_counting_semaphore {
-public:
-  std::atomic<int32_t> count;
-  spinning_counting_semaphore() : count(0) { }
-  auto post() {
-    count++;
-  }
-  auto wait() {
-    assert(count.load() >= 0);
-    auto c = --count;
-    do {
-      if (c >= 0) {
-        break;
-      }
-      cycles::spin_for(1000);
-      c = count.load();
-    } while (true);
-    assert(count.load() >= 0);
-  }
-};
-} // end namespace
-
 #include "perworker.hpp"
 #include "atomic.hpp"
 #include "hash.hpp"
@@ -560,7 +498,7 @@ elastic_flat<Stats,Logging,Semaphore,Spinlock>::crs::ct;
 /*---------------------------------------------------------------------*/
 /* Elastic work stealing (driven by surplus) */
 
-template <typename Stats, typename Logging, typename semaphore=dflt_semaphore>
+template <typename Stats, typename Logging, typename Semaphore=dflt_semaphore>
 class elastic_surplus {
 public:
   
@@ -576,7 +514,7 @@ public:
   std::atomic<cell_type> global_status;
   
   static
-  perworker::array<semaphore> semaphores;
+  perworker::array<Semaphore> semaphores;
 
   static
   perworker::array<std::atomic<int64_t>> epochs;
@@ -616,13 +554,10 @@ public:
     do {
       auto tgt_status_val = tgt_status.load();
       if (is_thief && (epoch != epochs[target_id].load())) {
-	//aprintf("abort/thief t=%lu v=%lu e1=%ld e2=%ld\n",my_id,target_id,epoch,epochs[target_id].load());
 	return;
       } else if (is_thief && (tgt_status_val.surplus == 0)) {
-	//aprintf("abort/thief2 t=%lu v=%lu e1=%ld e2=%ld\n",my_id,target_id,epoch,epochs[target_id].load());
 	return;
       } else if ((! is_thief) && (tgt_status_val.surplus == 0)) {
-	//aprintf("abort\n");
 	return;
       }
       assert(tgt_status_val.surplus > 0);
@@ -641,12 +576,6 @@ public:
 	break;
       }
     } while (true);
-    /*
-    if (is_thief) {
-      aprintf("thief/decr t=%lu\n", target_id);
-    } else {
-      aprintf("victim/decr v=%lu\n", target_id);
-      } */
   }
   
   // returns true iff the operation was *not* invalidated by the discovery of globally positive surplus
@@ -655,7 +584,6 @@ public:
     auto& my_status = worker_status[my_id];
     auto my_status_val = my_status.load();
     assert(my_status_val.surplus == 0);
-    if (my_status_val.sleeping != 0) { aprintf("sleeping=%d\n", my_status_val.sleeping); }
     assert(my_status_val.sleeping == 0);
     auto my_orig = my_status_val;
     auto my_nxt = my_orig;
@@ -706,7 +634,6 @@ public:
       return false;
     }
     assert(worker_status[target_id].load().sleeping == 0);
-    //aprintf("going to wake %lu\n",target_id);
     semaphores[target_id].post();
     return true;
   }
@@ -771,7 +698,6 @@ public:
     update_status([=] (cell_type status) { return status.sleeping == 0; },
 		  [=] (cell_type status) { assert(status.sleeping == 1); status.sleeping = 0; return status; },
 		  my_id);
-    if (worker_status[my_id].load().sleeping != 0) { aprintf("oops %lu\n",worker_status[my_id].load().sleeping); }
     assert(worker_status[my_id].load().sleeping == 0);
     do {
       auto gc_orig = global_status.load();
@@ -808,7 +734,6 @@ public:
   auto accept_lifelines() {
     auto my_id = perworker::my_id();
     auto my_status_val = worker_status[my_id].load();
-    //if (my_status_val.surplus != 0) { aprintf ("surplus=%d\n", my_status_val.surplus); }
     decr_surplus(my_id, -1);
     my_status_val = worker_status[my_id].load();
     assert(my_status_val.surplus == 0);
@@ -826,16 +751,16 @@ public:
   
 };
 
-template <typename Stats, typename Logging, typename semaphore>
-perworker::array<std::atomic<typename elastic_surplus<Stats, Logging, semaphore>::cell_type>> elastic_surplus<Stats, Logging, semaphore>::worker_status;
+template <typename Stats, typename Logging, typename Semaphore>
+perworker::array<std::atomic<typename elastic_surplus<Stats, Logging, Semaphore>::cell_type>> elastic_surplus<Stats, Logging, Semaphore>::worker_status;
 
-template <typename Stats, typename Logging, typename semaphore>
-std::atomic<typename elastic_surplus<Stats, Logging, semaphore>::cell_type> elastic_surplus<Stats, Logging, semaphore>::global_status;
+template <typename Stats, typename Logging, typename Semaphore>
+std::atomic<typename elastic_surplus<Stats, Logging, Semaphore>::cell_type> elastic_surplus<Stats, Logging, Semaphore>::global_status;
 
-template <typename Stats, typename Logging, typename semaphore>
-perworker::array<semaphore> elastic_surplus<Stats, Logging, semaphore>::semaphores;
+template <typename Stats, typename Logging, typename Semaphore>
+perworker::array<Semaphore> elastic_surplus<Stats, Logging, Semaphore>::semaphores;
 
-template <typename Stats, typename Logging, typename semaphore>
-perworker::array<std::atomic<int64_t>> elastic_surplus<Stats, Logging, semaphore>::epochs;
+template <typename Stats, typename Logging, typename Semaphore>
+perworker::array<std::atomic<int64_t>> elastic_surplus<Stats, Logging, Semaphore>::epochs;
 
 } // end namespace
