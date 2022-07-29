@@ -18,10 +18,10 @@ namespace taskparts {
 
 static
 auto detect_cpu_frequency_khz() -> uint64_t {
-  uint64_t cpu_frequency_khz = 0;
+  unsigned long cpu_frequency_khz = 0;
   if (const auto env_p = std::getenv("TASKPARTS_CPU_BASE_FREQUENCY_KHZ")) {
     cpu_frequency_khz = std::stoi(env_p);
-    return cpu_frequency_khz;
+    return (uint64_t)cpu_frequency_khz;
   }
   // later: find a way to get cpu frequency in mac/darwin
   FILE *f;
@@ -36,7 +36,7 @@ auto detect_cpu_frequency_khz() -> uint64_t {
     }
     fclose(f);
   }
-  return cpu_frequency_khz;
+  return (uint64_t)cpu_frequency_khz;
 }
 
 /*---------------------------------------------------------------------*/

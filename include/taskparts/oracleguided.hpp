@@ -54,15 +54,14 @@ public:
       state_type _ls;
       _ls.u = s.load();
       auto ls = _ls.f;
-      auto c = ls.c;
       auto nmax = (complexity_type)ls.nmax;
       if ((t <= kappa) && (n > nmax)) {
-	auto c2 = (float)t / (float)n;
-	state_type ls2;
-	ls2.f = {.c = c2, .nmax = (int)n};
-	done = compare_exchange_with_backoff(s, _ls.u, ls2.u);
+        auto c2 = (float)t / (float)n;
+        state_type ls2;
+        ls2.f = {.c = c2, .nmax = (int)n};
+        done = compare_exchange_with_backoff(s, _ls.u, ls2.u);
       } else {
-	done = true;
+        done = true;
       }
     } while (! done);
   }

@@ -181,7 +181,6 @@ public:
     timestamp_type total_work_time = 0;
     timestamp_type total_idle_time = 0;
     timestamp_type total_sleep_time = 0;
-    auto my_id = perworker::my_id();
     for (size_t i = 0; i < nb_workers; ++i) {
       auto& t = all_timers[i];
       total_work_time += t.total_work_time;
@@ -216,7 +215,7 @@ public:
       }
     };
     auto output_uint64_value = [&] (const char* n, uint64_t v, bool not_last = true) {
-      fprintf(f, "\"%s\": %lu", n, v);
+      fprintf(f, "\"%s\": %lu", n, (unsigned long)v);
       output_after(not_last);
     };
     auto output_double_value = [&] (const char* n, double v, bool not_last = true) {

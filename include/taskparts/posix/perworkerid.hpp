@@ -47,7 +47,7 @@ public:
 		    _nb_workers, default_max_nb_workers);
     }
     initialize_worker(0);
-    nb_workers = _nb_workers;
+    nb_workers = (int)_nb_workers;
   }
 
   static
@@ -55,7 +55,7 @@ public:
     if (my_id == id) {
       return;
     }
-    my_id = id;
+    my_id = (int)id;
   }
 
   static inline

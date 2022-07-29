@@ -251,7 +251,6 @@ public:
   static
   auto flush() -> fiber_type* {
     auto& my_buffer = buffers.mine();
-    auto& my_deque = deques.mine();
     fiber_type* current = nullptr;
     if (my_buffer.empty()) {
       return nullptr;
