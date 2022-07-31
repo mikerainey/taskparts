@@ -512,8 +512,8 @@ public:
   template <typename Update, typename Early_exit>
   static
   auto try_to_update_counters(std::atomic<counters_type>& status,
-			      const Update& update,
-			      const Early_exit& should_exit) -> update_counters_result_type {
+                              const Update& update,
+                              const Early_exit& should_exit) -> update_counters_result_type {
     auto v = status.load();
     if (should_exit(v)) {
       return update_counters_exited_early;
@@ -527,8 +527,8 @@ public:
   template <typename Update, typename Early_exit>
   static
   auto update_counters_or_exit_early(std::atomic<counters_type>& status,
-				     const Update& update,
-				     const Early_exit& should_exit) -> update_counters_result_type {
+                                     const Update& update,
+                                     const Early_exit& should_exit) -> update_counters_result_type {
     auto r = try_to_update_counters(status, update, should_exit);
     while (r == update_counters_failed) {
       r = try_to_update_counters(status, update, should_exit);
@@ -539,8 +539,8 @@ public:
   template <typename Update, typename Early_exit>
   static
   auto update_counters(std::atomic<counters_type>& status,
-		       const Update& update,
-		       const Early_exit& should_exit) {
+                       const Update& update,
+                       const Early_exit& should_exit) {
     auto r = try_to_update_counters(status, update, should_exit);
     while (r != update_counters_succeeded) {
       r = try_to_update_counters(status, update, should_exit);
@@ -552,58 +552,105 @@ public:
   auto update_counters(std::atomic<counters_type>& status, const Update& update) {
     return update_counters(status, update, [] (counters_type) { return false; });
   }
-
-  static
-  auto try_to_wake_target(size_t target_id) -> bool {
-    auto& tgt_status = worker_status[target_id]; 
-    auto r = update_counters_or_exit_early(tgt_status, [=] (counters_type s) {
-      s.sleeping--;
-      assert(s.sleeping == 0);
-      assert(s.surplus == 0);
-      return s;
-    }, [=] (counters_type s) {
-      return
-        (s.sleeping < 1) ||
-        (s.surplus > 0); // is this predicate needed?
-    });
-    if (r != update_counters_succeeded) {
-      return false;
-    }
-    assert(tgt_status.load().sleeping == 0);
-    semaphores[target_id].post();
-    return true;
-  }
   
   static
-  auto random_other_worker(size_t& nb_sa, size_t nb_workers, size_t my_id) -> size_t {
-    size_t id = (size_t)((hash(my_id) + hash(nb_sa)) % (nb_workers - 1));
-    if (id >= my_id) {
-      id++;
+  auto before_surplus_increase() -> int64_t {
+    auto& my_epoch = epochs.mine();
+    auto e = my_epoch.load() + 1;
+    my_epoch.store(e);
+    auto& my_status = worker_status.mine();
+    auto r1 = try_to_update_counters(my_status, [=] (counters_type s) {
+      s.surplus++;
+      return s;
+    }, [=] (counters_type s) {
+      assert(s.sleeping == 0);
+      return s.surplus == 1;
+    });
+    if (r1 == update_counters_exited_early) {
+      return e;
     }
-    nb_sa++;
-    return id;
+    update_counters(global_status, [=] (counters_type s) {
+      s.surplus++;
+      return s;
+    });
+    return e;
   }
 
   static
-  auto after_surplus_increase() {
+  auto after_surplus_increase(size_t my_id) {
     size_t nb_sa = 0;
-    auto my_id = perworker::my_id();
+    auto random_other_worker = [&] (size_t my_id) -> size_t {
+      auto nb_workers = perworker::nb_workers();
+      size_t id = (size_t)((hash(my_id) + hash(nb_sa)) % (nb_workers - 1));
+      if (id >= my_id) {
+        id++;
+      }
+      nb_sa++;
+      return id;
+    };
+    auto try_to_wake_target = [] (size_t target_id) -> bool {
+      auto& tgt_status = worker_status[target_id];
+      auto r = update_counters_or_exit_early(tgt_status, [=] (counters_type s) {
+        s.sleeping--;
+        assert(s.sleeping == 0);
+        assert(s.surplus == 0);
+        return s;
+      }, [=] (counters_type s) {
+        return (s.sleeping < 1) || (s.surplus > 0);
+      });
+      if (r != update_counters_succeeded) {
+        return false;
+      }
+      assert(tgt_status.load().sleeping == 0);
+      semaphores[target_id].post();
+      return true;
+    };
     do {
       if (global_status.load().sleeping == 0) {
         return;
       }
-      auto target_id = random_other_worker(nb_sa, perworker::nb_workers(), my_id);
+      auto target_id = random_other_worker(my_id);
       if (try_to_wake_target(target_id)) {
         return;
       }
     } while (true);
   }
-
-  static constexpr
-  bool override_rand_worker = false;
+  
+  static
+  auto after_surplus_increase() {
+    after_surplus_increase(perworker::my_id());
+  }
 
   static
-  auto wake_children() { }
+  auto after_surplus_decrease(size_t target_id, int64_t epoch) {
+    auto my_id = perworker::my_id();
+    auto is_thief = (target_id != my_id);
+    auto& tgt_status = worker_status[target_id];
+    auto r1 = update_counters_or_exit_early(tgt_status, [=] (counters_type s) {
+      assert(s.surplus > 0);
+      s.surplus--;
+      return s;
+    }, [=] (counters_type s) {
+      return (is_thief && (epoch != epochs[target_id].load())) || (s.surplus == 0);
+    });
+    if (r1 == update_counters_exited_early) {
+      return;
+    }
+    update_counters(global_status, [=] (counters_type s) {
+      assert(s.surplus > 0);
+      s.surplus--;
+      return s;
+    });
+  }
+  
+  static
+  auto on_enter_acquire() {
+    auto my_id = perworker::my_id();
+    after_surplus_decrease(my_id, -1);
+    auto my_status_val = worker_status[my_id].load();
+    assert(my_status_val.surplus == 0);
+    assert(my_status_val.sleeping == 0);
+  }
   
   static
   auto try_to_sleep(size_t) {
@@ -656,62 +703,6 @@ public:
   }
 
   static
-  auto before_surplus_increase() -> int64_t {
-    auto& my_epoch = epochs.mine();
-    auto e = my_epoch.load() + 1;
-    my_epoch.store(e);
-    auto& my_status = worker_status.mine();
-    auto r1 = try_to_update_counters(my_status, [=] (counters_type s) {
-      s.surplus++;
-      return s;
-    }, [=] (counters_type s) {
-      assert(s.sleeping == 0);
-      return s.surplus == 1;
-    });
-    if (r1 == update_counters_exited_early) {
-      return e;
-    }
-    update_counters(global_status, [=] (counters_type s) {
-      s.surplus++;
-      return s;
-    });
-    return e;
-  }
-
-  static
-  auto after_surplus_decrease(size_t target_id, int64_t epoch) {
-    auto my_id = perworker::my_id();
-    auto is_thief = (target_id != my_id);
-    auto& tgt_status = worker_status[target_id];
-    auto r1 = update_counters_or_exit_early(tgt_status, [=] (counters_type s) {
-      assert(s.surplus > 0);
-      s.surplus--;
-      return s;
-    }, [=] (counters_type s) {
-      return
-        (is_thief && (epoch != epochs[target_id].load())) ||
-        (is_thief && (s.surplus == 0)) ||
-        ((! is_thief) && (s.surplus == 0));
-    });
-    if (r1 == update_counters_exited_early) {
-      return;
-    }
-    update_counters(global_status, [=] (counters_type s) {
-      s.surplus--;
-      return s;
-    });
-  }
-  
-  static
-  auto on_enter_acquire() {
-    auto my_id = perworker::my_id();
-    after_surplus_decrease(my_id, -1);
-    auto my_status_val = worker_status[my_id].load();
-    assert(my_status_val.surplus == 0);
-    assert(my_status_val.sleeping == 0);
-  }
-
-  static
   auto initialize() {
     for (size_t i = 0; i < perworker::nb_workers(); i++) {
       assert(worker_status[i].load().surplus == 0);
@@ -719,6 +710,12 @@ public:
       epochs[i].store(0);
     }
   }
+  
+  static constexpr
+  bool override_rand_worker = false;
+  
+  static
+  auto wake_children() { }
   
 };
 
