@@ -605,15 +605,14 @@ public:
       semaphores[target_id].post();
       return true;
     };
-    do {
+    while (true) {
       if (global_status.load().sleeping == 0) {
         return;
       }
-      auto target_id = random_other_worker(my_id);
-      if (try_to_wake_target(target_id)) {
+      if (try_to_wake_target(random_other_worker(my_id))) {
         return;
       }
-    } while (true);
+    }
   }
   
   static
@@ -697,8 +696,6 @@ public:
       assert(status.sleeping > 0);
       status.sleeping--;
       return status;
-    }, [=] (counters_type status) {
-      return false;
     });
   }
 
