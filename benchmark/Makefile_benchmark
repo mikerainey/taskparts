@@ -8,11 +8,11 @@ TASKPARTS_PATH?=../
 TASKPARTS_PLATFORM?=-DTASKPARTS_POSIX -DTASKPARTS_X64
 
 ifeq (, $(shell which jemalloc-config))
-JEMALLOC =
+CUSTOM_MALLOC =
 else
 JEMALLOCLD = $(shell jemalloc-config --libdir)
 JEMALLOCLS = $(shell jemalloc-config --libs)
-JEMALLOC = -L$(JEMALLOCLD) -Wl,-rpath,$(JEMALLOCLD) -ljemalloc $(JEMALLOCLS)
+CUSTOM_MALLOC = -L$(JEMALLOCLD) -Wl,-rpath,$(JEMALLOCLD) $(JEMALLOCLS) -ljemalloc
 endif
 
 # Common build flags
@@ -38,7 +38,7 @@ INCLUDE_PREFIX=\
 LINKER_PREFIX=\
 	-pthread \
 	$(HWLOC_LIBRARY_PREFIX) \
-	$(JEMALLOC) # jemalloc needs to go last, or else it'll not be used
+	$(CUSTOM_MALLOC) # needs to go last, or else it won't be used
 
 # WARNING: flag -fno-stack-protector needed for native fork join to
 # compile binaries that do not segfault

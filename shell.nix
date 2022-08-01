@@ -17,7 +17,8 @@
   hwloc ? pkgs.hwloc,
   jemalloc ? pkgs.jemalloc,
   cilk-stats-rts ? import ../cilk-plus-rts-with-stats {},
-  hbtimer-kmod ? import ../heartbeat-linux { pkgs=pkgs; stdenv=stdenv; }
+  hbtimer-kmod ? import ../heartbeat-linux { pkgs=pkgs; stdenv=stdenv; },
+  parlaylib ? import ../parlaylib {}
 }:
 
 let cilk-stats-rts-params =
@@ -50,6 +51,8 @@ stdenv.mkDerivation rec {
       "${hbtimer-kmod}/libhb.so";
   HBTIMER_KMOD_RF_COMPILER= if hbtimer-kmod == null then "" else
     "${hbtimer-kmod}/rf_compiler";
+
+  PARLAYLIB_PATH="${parlaylib}";
   
   shellHook = ''
     # The line below is needed, at present, because otherwise taskparts may 
