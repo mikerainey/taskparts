@@ -683,7 +683,13 @@ public:
       assert(my_status.load().sleeping == 0);
       return;
     }
+    Stats::on_exit_acquire();
+    Logging::log_enter_sleep(my_id, 0l, 0l);
+    Stats::on_enter_sleep();
     semaphores[my_id].wait();
+    Stats::on_exit_sleep();
+    Logging::log_event(exit_sleep);
+    Stats::on_enter_acquire();
     update_counters_or_exit_early(my_status, [=] (counters_type status) {
       assert(status.sleeping == 1);
       status.sleeping--;
