@@ -1,6 +1,8 @@
 #pragma once
 
 #include <taskparts/benchmark.hpp>
+
+#include <parlay/sequence.h>
 #include <parlay/delayed_sequence.h>
 #include <parlay/monoid.h>
 #include <parlay/primitives.h>
