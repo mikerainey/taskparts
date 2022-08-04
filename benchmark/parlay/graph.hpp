@@ -15,7 +15,6 @@ using utils = graph_utils<vertex>;
 
 long n = 0;
 graph G, GT;
-nested_seq result;
 vertex source = 0;
 
 /*
@@ -57,6 +56,8 @@ auto gen_input() {
   } else {
     G = utils::rmat_graph(n, 20*n);
   }
+#ifndef NDEBUG
   utils::print_graph_stats(G);
+#endif
 }
 

@@ -1,6 +1,8 @@
 #include "graph.hpp"
 #include "BFS.h"
 
+nested_seq result;
+
 auto benchmark_dflt() {
   if (include_infile_load) {
     gen_input();

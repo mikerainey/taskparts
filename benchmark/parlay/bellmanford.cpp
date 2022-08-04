@@ -1,13 +1,16 @@
 #include "graph.hpp"
-#include "BFS_ligra.h"
+#include "bellman_ford.h"
 
-nested_seq result;
+using utils = graph_utils<vertex>;
+using wtype = float;
+utils::weighted_graph<wtype> WG;
+parlay::sequence<wtype> result;
 
 auto benchmark_dflt() {
   if (include_infile_load) {
     gen_input();
   }
-  result = BFS(source, G, GT);
+  result = *bellman_ford_lazy<wtype>(1, WG, WG);
 }
 
 auto benchmark() {
@@ -23,7 +26,7 @@ int main() {
     benchmark();
   }, [&] (auto sched) { // setup
     gen_input();
-    GT = utils::transpose(G);
+    WG = utils::add_weights<wtype>(G, 1.0, 20.0);
   }, [&] (auto sched) { // teardown
     std::cout << "result " << result.size() << std::endl;
   }, [&] (auto sched) { // reset
