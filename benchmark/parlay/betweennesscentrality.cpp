@@ -1,13 +1,14 @@
 #include "graph.hpp"
-#include "BFS_ligra.h"
+#include "betweenness_centrality.h"
 
-nested_seq result;
+parlay::sequence<float> result;
 
 auto benchmark_dflt() {
   if (include_infile_load) {
     gen_input();
   }
-  result = BFS(source, G, GT);
+  result = BC_single_source(source, G, GT);
+  
 }
 
 auto benchmark() {
@@ -30,7 +31,10 @@ int main() {
       GT = utils::transpose(G);
     }
   }, [&] (auto sched) { // teardown
-    std::cout << "result " << result.size() << std::endl;
+#ifndef NDEBUG
+    long max_centrality = parlay::reduce(result, parlay::maximum<float>());
+    std::cout << "max betweenness centrality " << max_centrality << std::endl;
+#endif
   }, [&] (auto sched) { // reset
 
   });

@@ -15,7 +15,7 @@ using utils = graph_utils<vertex>;
 
 long n = 0;
 graph G, GT;
-vertex source = 0;
+vertex source = 1;
 
 /*
 auto gen_alternating() {
