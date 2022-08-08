@@ -622,8 +622,7 @@ public:
 
   static
   auto after_surplus_decrease(size_t target_id = perworker::my_id(), int64_t epoch = -1l) {
-    auto my_id = perworker::my_id();
-    auto is_thief = (target_id != my_id);
+    auto is_thief = (target_id != perworker::my_id());
     auto& tgt_status = worker_status[target_id];
     auto r1 = update_counters_or_exit_early(tgt_status, [=] (counters_type s) {
       assert(s.surplus > 0);
