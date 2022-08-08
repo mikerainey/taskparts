@@ -181,20 +181,19 @@ public:
   
   static
   auto push(deque_type& d, fiber_type* f) {
-    auto e = d.empty();
 #ifdef TASKPARTS_ELASTIC_SURPLUS
+    auto e = d.empty();
     if (e) {
       auto epoch = elastic_type::before_surplus_increase();
-      if (epoch >= 0) {
-        f->epoch = epoch;
-      }
+      assert(epoch >= 0);
+      f->epoch = epoch;
     }
 #endif
     d.push(f);
+#ifdef TASKPARTS_ELASTIC_SURPLUS
     if (! e) {
       return;
     }
-#ifdef TASKPARTS_ELASTIC_SURPLUS
     elastic_type::after_surplus_increase();
 #endif
   }
@@ -225,8 +224,8 @@ public:
       r = r1.f;
     }
 #ifdef TASKPARTS_ELASTIC_SURPLUS
-    auto epoch = (r1.t != deque_type::pop_failed) ? r->epoch : -1;
     if (r1.t == deque_type::pop_maybe_emptied_deque) {
+      auto epoch = (r1.t != deque_type::pop_failed) ? r->epoch : -1;
       elastic_type::after_surplus_decrease(target_id, epoch);
     }
     if (r1.t != deque_type::pop_failed) {
