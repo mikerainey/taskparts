@@ -32,7 +32,7 @@ int main() {
   }, [&] (auto sched) { // teardown
     std::cout << "result " << result.size() << std::endl;
   }, [&] (auto sched) { // reset
-
+    result.clear();
   });
   return 0;
 }

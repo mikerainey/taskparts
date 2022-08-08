@@ -57,7 +57,7 @@ int main() {
   }, [&] (auto sched) { // teardown
     std::cout << "forest_sz " << result.size() << std::endl;
   }, [&] (auto sched) { // reset
-
+    result.clear();
   });
   return 0;
 }

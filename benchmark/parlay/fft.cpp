@@ -60,7 +60,7 @@ int main() {
       std::cout << results2[i] << std::endl;
 #endif
   }, [&] (auto sched) { // reset
-
+    results2.clear();
   });
   return 0;
 }
