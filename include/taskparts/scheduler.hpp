@@ -242,8 +242,11 @@ public:
   auto after_surplus_decrease(size_t, int64_t) { }
   
   static
-  auto after_surplus_increase() -> bool { return false; } 
-  
+  auto after_surplus_increase() -> void { } 
+
+  static
+  auto try_to_wake_other(size_t my_id = perworker::my_id()) -> void { } 
+
 };
 
 /*---------------------------------------------------------------------*/

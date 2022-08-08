@@ -577,7 +577,7 @@ public:
   }
 
   static
-  auto after_surplus_increase(size_t my_id) {
+  auto try_to_wake_other(size_t my_id = perworker::my_id()) {
     size_t nb_sa = 0;
     auto random_other_worker = [&] (size_t my_id) -> size_t {
       auto nb_workers = perworker::nb_workers();
@@ -614,10 +614,10 @@ public:
       }
     }
   }
-  
+
   static
   auto after_surplus_increase() {
-    after_surplus_increase(perworker::my_id());
+    try_to_wake_other();
   }
 
   static

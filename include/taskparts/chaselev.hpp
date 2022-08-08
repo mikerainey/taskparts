@@ -191,10 +191,9 @@ public:
 #endif
     d.push(f);
 #ifdef TASKPARTS_ELASTIC_SURPLUS
-    if (! e) {
-      return;
+    if (e) {
+      elastic_type::after_surplus_increase();
     }
-    elastic_type::after_surplus_increase();
 #endif
   }
   
@@ -207,8 +206,8 @@ public:
       r = r1.f;
     }
 #ifdef TASKPARTS_ELASTIC_SURPLUS
-    auto epoch = (r1.t != deque_type::pop_failed) ? r->epoch : -1;
     if (r1.t == deque_type::pop_maybe_emptied_deque) {
+      auto epoch = (r1.t != deque_type::pop_failed) ? r->epoch : -1;
       elastic_type::after_surplus_decrease(my_id, epoch);
     }
 #endif
@@ -229,7 +228,7 @@ public:
       elastic_type::after_surplus_decrease(target_id, epoch);
     }
     if (r1.t != deque_type::pop_failed) {
-      elastic_type::after_surplus_increase();
+      elastic_type::try_to_wake_other();
     }
 #endif
     return r;
