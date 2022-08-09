@@ -9,7 +9,7 @@ auto benchmark_dflt() {
   if (include_infile_load) {
     gen_input();
   }
-  result = bucketed_dijkstra(1, GW);
+  result = bucketed_dijkstra(source, GW);
 }
 
 auto benchmark() {
@@ -29,7 +29,7 @@ int main() {
   }, [&] (auto sched) { // teardown
     std::cout << "result " << result.size() << std::endl;
   }, [&] (auto sched) { // reset
-
+    result.clear();
   });
   return 0;
 }

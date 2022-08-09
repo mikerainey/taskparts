@@ -1,5 +1,5 @@
 #include <taskparts/benchmark.hpp>
-#include "bignumadd.hpp"
+#include "bigintadd.hpp"
 
 int main() {
   parlay::benchmark_taskparts([&] (auto sched) { // benchmark
@@ -9,7 +9,7 @@ int main() {
   }, [&] (auto sched) { // teardown
     std::cout << "result " << result.size() << std::endl;
   }, [&] (auto sched) { // reset
-
+    result.clear();
   });
   return 0;
 }

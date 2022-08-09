@@ -8,7 +8,6 @@ auto benchmark_dflt() {
     gen_input();
   }
   result = BC_single_source(source, G, GT);
-  
 }
 
 auto benchmark() {
@@ -36,7 +35,7 @@ int main() {
     std::cout << "max betweenness centrality " << max_centrality << std::endl;
 #endif
   }, [&] (auto sched) { // reset
-
+    result.clear();
   });
   return 0;
 }

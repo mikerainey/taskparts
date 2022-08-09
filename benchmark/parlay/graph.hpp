@@ -15,6 +15,7 @@ using utils = graph_utils<vertex>;
 
 long n = 0;
 graph G, GT;
+utils::edges E;
 vertex source = 1;
 
 /*

@@ -55,7 +55,7 @@ int main() {
               << std::endl;
 #endif
   }, [&] (auto sched) { // reset
-
+    parents.clear();
   });
   return 0;
 }

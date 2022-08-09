@@ -577,7 +577,7 @@ public:
   }
 
   static
-  auto after_surplus_increase(size_t my_id) {
+  auto try_to_wake_other(size_t my_id = perworker::my_id()) {
     size_t nb_sa = 0;
     auto random_other_worker = [&] (size_t my_id) -> size_t {
       auto nb_workers = perworker::nb_workers();
@@ -614,16 +614,15 @@ public:
       }
     }
   }
-  
+
   static
   auto after_surplus_increase() {
-    after_surplus_increase(perworker::my_id());
+    try_to_wake_other();
   }
 
   static
-  auto after_surplus_decrease(size_t target_id, int64_t epoch) {
-    auto my_id = perworker::my_id();
-    auto is_thief = (target_id != my_id);
+  auto after_surplus_decrease(size_t target_id = perworker::my_id(), int64_t epoch = -1l) {
+    auto is_thief = (target_id != perworker::my_id());
     auto& tgt_status = worker_status[target_id];
     auto r1 = update_counters_or_exit_early(tgt_status, [=] (counters_type s) {
       assert(s.surplus > 0);
@@ -644,11 +643,12 @@ public:
   
   static
   auto on_enter_acquire() {
-    auto my_id = perworker::my_id();
-    after_surplus_decrease(my_id, -1);
-    auto my_status_val = worker_status[my_id].load();
+    after_surplus_decrease();
+#ifndef NDEBUG
+    auto my_status_val = worker_status.mine().load();
     assert(my_status_val.surplus == 0);
     assert(my_status_val.sleeping == 0);
+#endif
   }
   
   static
