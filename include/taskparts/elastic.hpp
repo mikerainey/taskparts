@@ -695,7 +695,7 @@ public:
       status.sleeping--;
       return status;
     }, [=] (counters_type status) {
-      return status.sleeping == 0;
+      return status.sleeping == 0; // is this early exit needed?
     });
     assert(my_status.load().sleeping == 0);
     update_counters(global_status, [=] (counters_type status) {
