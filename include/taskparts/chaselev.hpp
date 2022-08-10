@@ -259,7 +259,7 @@ public:
   }
 
   static
-  auto launch(size_t nb_steal_attempts = (perworker::nb_workers() * 8)) {
+  auto launch() {
     using scheduler_status_type = enum scheduler_status_enum {
       scheduler_status_active,
       scheduler_status_finish
@@ -268,6 +268,10 @@ public:
     auto nb_workers = perworker::nb_workers();
     typename Worker::termination_detection_type termination_barrier;
     typename Worker::worker_exit_barrier worker_exit_barrier(nb_workers);
+    size_t nb_steal_attempts = (perworker::nb_workers() * 8);
+    if (const auto env_p = std::getenv("TASKPARTS_NB_STEAL_ATTEMPTS")) {
+      nb_steal_attempts = std::stoi(env_p);
+    }
     perworker::array<size_t> nb_steal_attempts_so_far(0);
 
     auto random_other_worker = [&] (size_t nb_workers, size_t my_id) -> size_t {
@@ -352,21 +356,21 @@ public:
               // nothing to do
             } else if (s == fiber_status_finish) {
               current->finish();
-          } else if (s == fiber_status_exit_worker) {
-            current->finish();
-            Logging::log_event(worker_exit);
-            elastic_type::wake_children();
-            Stats::on_exit_acquire();
-            Logging::log_event(exit_wait);
-            status = scheduler_status_finish;
-            flush_buffer();
-            break;
-          } else {
-            assert(s == fiber_status_exit_launch);
-            current->finish();
-            status = scheduler_status_finish;
-            Logging::log_event(initiate_teardown);
-          }
+            } else if (s == fiber_status_exit_worker) {
+              current->finish();
+              Logging::log_event(worker_exit);
+              elastic_type::wake_children();
+              Stats::on_exit_acquire();
+              Logging::log_event(exit_wait);
+              status = scheduler_status_finish;
+              flush_buffer();
+              break;
+            } else {
+              assert(s == fiber_status_exit_launch);
+              current->finish();
+              status = scheduler_status_finish;
+              Logging::log_event(initiate_teardown);
+            }
             current = flush();
           }
         }
