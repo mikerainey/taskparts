@@ -577,7 +577,7 @@ public:
   }
 
   static
-  auto try_to_wake_other(size_t my_id = perworker::my_id()) {
+  auto try_to_wake_others(size_t my_id = perworker::my_id()) {
     size_t nb_sa = 0;
     auto random_other_worker = [&] (size_t my_id) -> size_t {
       auto nb_workers = perworker::nb_workers();
@@ -605,19 +605,20 @@ public:
       semaphores[target_id].post();
       return true;
     };
-    while (true) {
+    int nb_to_wake = 2;
+    while (nb_to_wake > 0) {
       if (global_status.load().sleeping == 0) {
         return;
       }
       if (try_to_wake_target(random_other_worker(my_id))) {
-        return;
+        nb_to_wake--;
       }
     }
   }
 
   static
   auto after_surplus_increase() {
-    try_to_wake_other();
+    try_to_wake_others();
   }
 
   static
