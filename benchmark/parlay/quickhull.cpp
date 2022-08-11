@@ -47,7 +47,9 @@ int main() {
   }, [&] (auto sched) { // setup
     gen_input();
   }, [&] (auto sched) { // teardown
-    std::cout << "nb_upper_hull = " << results.size() << std::endl;
+#ifndef NDEBUG
+    std::cout << "nb_upper_hull " << results.size() << std::endl;
+#endif
   }, [&] (auto sched) { // reset
     results.clear();
   });
