@@ -245,7 +245,7 @@ public:
   auto after_surplus_increase() -> void { } 
 
   static
-  auto try_to_wake_other(size_t my_id = perworker::my_id()) -> void { } 
+  auto try_to_wake_others(size_t my_id = perworker::my_id()) -> void { } 
 
 };
 

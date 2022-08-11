@@ -227,7 +227,7 @@ public:
       elastic_type::after_surplus_decrease(target_id, epoch);
     }
     if (r1.t != deque_type::pop_failed) {
-      elastic_type::try_to_wake_other();
+      elastic_type::try_to_wake_others();
     }
 #endif
     return r;
