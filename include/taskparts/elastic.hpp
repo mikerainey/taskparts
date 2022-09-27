@@ -510,6 +510,9 @@ public:
     update_counters_failed
   };
 
+  static
+  size_t nb_to_wake_on_surplus_increase;
+
   template <typename Update, typename Early_exit>
   static
   auto try_to_update_counters(std::atomic<counters_type>& status,
@@ -607,7 +610,7 @@ public:
       semaphores[target_id].post();
       return true;
     };
-    int nb_to_wake = 2;
+    int nb_to_wake = nb_to_wake_on_surplus_increase;
     while (nb_to_wake > 0) {
       if (global_status.load().sleeping == 0) {
         return;
@@ -715,6 +718,11 @@ public:
       assert(worker_status[i].load().sleeping == 0);
       epochs[i].store(0);
     }
+    if (const auto env_p = std::getenv("TASKPARTS_NB_TO_WAKE_ON_SURPLUS_INCREASE")) {
+      nb_to_wake_on_surplus_increase = std::stoi(env_p);
+    } else {
+      nb_to_wake_on_surplus_increase = 2;
+    }
   }
   
   static constexpr
@@ -737,20 +745,8 @@ perworker::array<Semaphore> elastic_surplus<Stats, Logging, Semaphore>::semaphor
 template <typename Stats, typename Logging, typename Semaphore>
 perworker::array<std::atomic<int64_t>> elastic_surplus<Stats, Logging, Semaphore>::epochs;
 
-/*---------------------------------------------------------------------*/
-/* Elastic work stealing (driven by the tree-based concurrent random set) */
-
-/*
-using gamma = struct gamma_struct {
-  int a; // asleep
-  int s; // surplus
-};
-
-using delta = struct delta_struct {
-  unsigned int l : 1;  // lock bit (node_locked/node_unlocked)
-  int a : 31;          // asleep
-  int s;               // surplus
-}; */
+template <typename Stats, typename Logging, typename Semaphore>
+size_t elastic_surplus<Stats, Logging, Semaphore>::nb_to_wake_on_surplus_increase;
 
 template <typename Stats, typename Logging, typename Semaphore=dflt_semaphore,
           size_t max_lg_P=perworker::default_max_nb_workers_lg>

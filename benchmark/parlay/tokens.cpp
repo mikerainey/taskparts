@@ -1,36 +1,31 @@
 #include <iostream>
 #include <string>
 #include <random>
+#include <limits>
 
+#include <parlay/io.h>
 #include <parlay/primitives.h>
 #include <parlay/random.h>
-#include <parlay/internal/get_time.h>
 
-#include "quickhull.h"
+#include "tokens.h"
 #include "common.hpp"
 
-long n;
-parlay::sequence<point> points;
-intseq results;
+parlay::chars str;
+parlay::sequence<parlay::chars> r;
 
 auto gen_input() {
   force_sequential = taskparts::cmdline::parse_or_default_bool("force_sequential", false);
   parlay::override_granularity = taskparts::cmdline::parse_or_default_long("override_granularity", 0);
   include_infile_load = taskparts::cmdline::parse_or_default_bool("include_infile_load", false);
-  n = std::max((size_t)1, (size_t)taskparts::cmdline::parse_or_default_long("n", 50 * 1000 * 1000));
-  parlay::random_generator gen(0);
-  std::uniform_real_distribution<> dis(0.0,1.0);
-  // generate n random points in a unit square
-  points = parlay::tabulate(n, [&] (long i) -> point {
-    auto r = gen[i];
-    return point{dis(r), dis(r)};});
+  auto input = taskparts::cmdline::parse_or_default_string("input", "tokens.txt");
+  str = parlay::chars_from_file(input.c_str());
 }
 
 auto benchmark_dflt() {
   if (include_infile_load) {
     gen_input();
   }
-  results = upper_hull(points);
+  r = tokens(str, [&] (char c) { return c == ' '; });
 }
 
 auto benchmark() {
@@ -47,11 +42,9 @@ int main() {
   }, [&] (auto sched) { // setup
     gen_input();
   }, [&] (auto sched) { // teardown
-#ifndef NDEBUG
-    std::cout << "nb_upper_hull " << results.size() << std::endl;
-#endif
+    std::cout << "nb_tokens " << r.size() << std::endl;
   }, [&] (auto sched) { // reset
-    results.clear();
+    r.clear();
   });
   return 0;
 }
