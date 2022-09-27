@@ -748,6 +748,9 @@ perworker::array<std::atomic<int64_t>> elastic_surplus<Stats, Logging, Semaphore
 template <typename Stats, typename Logging, typename Semaphore>
 size_t elastic_surplus<Stats, Logging, Semaphore>::nb_to_wake_on_surplus_increase;
 
+/*---------------------------------------------------------------------*/
+/* Elastic work stealing (driven by concurrent tree, based on tracking surplus) */
+
 template <typename Stats, typename Logging, typename Semaphore=dflt_semaphore,
           size_t max_lg_P=perworker::default_max_nb_workers_lg>
 class elastic_tree {
@@ -796,11 +799,6 @@ public:
   
   static
   perworker::array<size_t> random_number_generator;
-  
-  static
-  auto cas(std::atomic<delta>& d, delta o, delta n) -> bool {
-    return d.compare_exchange_strong(o, n);
-  }
   
   static
   auto is_empty_delta(delta d) -> bool {
@@ -896,7 +894,7 @@ public:
           d2.s = 0;
           d2.a = 0;
         }
-        if (cas(n->d, d_o, d2)) {
+        if (n->d.compare_exchange_strong(d_o, d2)) {
           d_n = d;
           break;
         }
@@ -927,7 +925,7 @@ public:
         }
         auto d_n = d_o;
         d_n.l = node_unlocked;
-        if (cas(n->d, d_o, d_n)) {
+        if (n->d.compare_exchange_strong(d_o, d_n)) {
           break;
         }
       }
@@ -937,14 +935,13 @@ public:
 
   static
   auto take_delta_from(size_t id, int i) -> delta {
-    delta d_o;
     auto n = paths[id][i];
+    auto d_o = n->d.load();
     while (true) {
-      d_o = n->d.load();
       assert(d_o.l == node_locked);
       delta d_n;
       d_n.l = node_locked;
-      if (cas(n->d, d_o, d_n)) {
+      if (n->d.compare_exchange_strong(d_o, d_n)) {
         apply_changes(n, d_o);
         break;
       }
@@ -1192,10 +1189,6 @@ public:
       auto n1 = &heap[child_of(i, 1)];
       auto n2 = &heap[child_of(i, 2)];
       d = flip(my_id, f(n1->g.load()), f(n2->g.load()));
-      if (d == -1) {
-        // failed to reach a leaf node
-        return -1;
-      }
     }
     // reached a leaf node
     assert(is_leaf_node(i));
