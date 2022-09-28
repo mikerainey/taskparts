@@ -1006,6 +1006,7 @@ public:
       auto n = position_of_leaf_node_at(i);
       paths[i] = mk_path_from_leaf_to_root(n);
       assert(paths[i].size() == path_size());
+      paths[path_size() - 1].id = i;
     }
   }
   
@@ -1192,7 +1193,12 @@ public:
     }
     // reached a leaf node
     assert(is_leaf_node(i));
-    return (f(heap[i].g.load()) <= 0) ? -1 : i;
+    auto ni = &heap[i];
+    if (f(ni->g.load()) <= 0) {
+      return -1;
+    }
+    assert(ni->id >= 0);
+    return ni->id;
   }
   
   static
