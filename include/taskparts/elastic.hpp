@@ -1210,5 +1210,29 @@ public:
   }
   
 };
+  
+template <typename Stats, typename Logging, typename Semaphore,
+          size_t max_lg_P>
+size_t elastic_tree<Stats, Logging, Semaphore, max_lg_P>::lg_P;
+
+template <typename Stats, typename Logging, typename Semaphore,
+          size_t max_lg_P>
+cache_aligned_fixed_capacity_array<typename elastic_tree<Stats, Logging, Semaphore, max_lg_P>::node, 1 << max_lg_P> elastic_tree<Stats, Logging, Semaphore, max_lg_P>::heap;
+
+template <typename Stats, typename Logging, typename Semaphore,
+          size_t max_lg_P>
+perworker::array<std::vector<typename elastic_tree<Stats, Logging, Semaphore, max_lg_P>::node*>> elastic_tree<Stats, Logging, Semaphore, max_lg_P>::paths;
+
+template <typename Stats, typename Logging, typename Semaphore,
+          size_t max_lg_P>
+perworker::array<Semaphore> elastic_tree<Stats, Logging, Semaphore, max_lg_P>::semaphores;
+
+template <typename Stats, typename Logging, typename Semaphore,
+          size_t max_lg_P>
+perworker::array<std::atomic<int64_t>> elastic_tree<Stats, Logging, Semaphore, max_lg_P>::epochs;
+
+template <typename Stats, typename Logging, typename Semaphore,
+          size_t max_lg_P>
+perworker::array<size_t> elastic_tree<Stats, Logging, Semaphore, max_lg_P>::random_number_generator;
 
 } // end namespace

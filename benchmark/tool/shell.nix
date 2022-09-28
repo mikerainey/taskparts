@@ -8,13 +8,14 @@ let
 #                  pkgs.python38Packages.pathvalidate
                   pkgs.python38Packages.tabulate
                   pkgs.python38Packages.psutil
+#                  pkgs.python38Packages.pysondb
 #                  pkgs.python38Packages.pandas
                 ];
   };
-  jemalloc = pkgs.jemalloc450;
+#  jemalloc = pkgs.jemalloc450;
 in
 
 pkgs.mkShell {
   buildInputs = [ customPython pkgs.pandoc pkgs.texlive.combined.scheme-small pkgs.hwloc ];
-  LD_PRELOAD="${jemalloc}/lib/libjemalloc.so";
+ # LD_PRELOAD="${jemalloc}/lib/libjemalloc.so";
 }
