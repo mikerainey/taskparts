@@ -76,7 +76,7 @@ using bench_elastic = elastic_flat<Stats, Logging>;
 #elif defined(TASKPARTS_ELASTIC_SURPLUS)
 template <typename Stats, typename Logging>
 using bench_elastic = elastic_surplus<Stats, Logging>;
-#elif defined(TASKPARTS_ELASTIC_TREE
+#elif defined(TASKPARTS_ELASTIC_TREE)
 template <typename Stats, typename Logging>
 using bench_elastic = elastic_tree<Stats, Logging>;
 #else
