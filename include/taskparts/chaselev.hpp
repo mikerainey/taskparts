@@ -119,9 +119,9 @@ public:
           r.t = pop_maybe_emptied_deque;
         }
         bottom.store(b + 1, std::memory_order_relaxed);
-	assert(empty());
+        assert(empty());
       } else {
-	r.t = pop_left_surplus;
+        r.t = pop_left_surplus;
       }
     } else {
       bottom.store(b + 1, std::memory_order_relaxed);
@@ -143,7 +143,7 @@ public:
         r.t = pop_failed;
       } else {
         r.t = ((b - t) == 1) ? pop_maybe_emptied_deque : pop_left_surplus;
-	assert(r.f != nullptr);
+        assert(r.f != nullptr);
       }
     } else {
       r.t = pop_failed;
@@ -221,7 +221,7 @@ public:
     if (r1.t != deque_type::pop_failed) {
       r = r1.f;
     }
-#ifdef TASKPARTS_ELASTIC_SURPLUS
+#if defined(TASKPARTS_ELASTIC_SURPLUS) || defined(TASKPARTS_ELASTIC_TREE)
     if (r1.t == deque_type::pop_maybe_emptied_deque) {
       auto epoch = (r1.t != deque_type::pop_failed) ? r->epoch : -1;
       elastic_type::after_surplus_decrease(target_id, epoch);
