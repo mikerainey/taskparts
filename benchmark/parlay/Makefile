@@ -69,6 +69,34 @@ SS_SURPLUS_FLGS=$(ELASTIC_SURPLUS_FLAGS) -DTASKPARTS_USE_SPINNING_SEMAPHORE
 %.elastic_surplus_spin.dbg: %.cpp $(INCLUDE_FILES) install_folder
 	$(CXX) $(DBG_PREFIX) $(SS_SURPLUS_FLGS) -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
 
+# Tree (using native semaphores)
+# -------
+
+ELASTIC_TREE_FLAGS=-DTASKPARTS_ELASTIC_TREE
+
+%.elastic_tree.opt: %.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(OPT_PREFIX) $(ELASTIC_TREE_FLAGS) -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+%.elastic_tree.sta: %.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(STA_PREFIX) $(ELASTIC_TREE_FLAGS) -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+%.elastic_tree.log: %.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(LOG_PREFIX) $(ELASTIC_TREE_FLAGS) -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+%.elastic_tree.dbg: %.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(DBG_PREFIX) $(ELASTIC_TREE_FLAGS) -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+
+# Tree (using spinning semaphores)
+# -------
+
+SS_TREE_FLGS=$(ELASTIC_TREE_FLAGS) -DTASKPARTS_USE_SPINNING_SEMAPHORE
+
+%.elastic_tree_spin.opt: %.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(OPT_PREFIX) $(SS_TREE_FLGS) -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+%.elastic_tree_spin.sta: %.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(STA_PREFIX) $(SS_TREE_FLGS) -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+%.elastic_tree_spin.log: %.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(LOG_PREFIX) $(SS_TREE_FLGS) -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+%.elastic_tree_spin.dbg: %.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(DBG_PREFIX) $(SS_TREE_FLGS) -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+
 # Cleanup
 # =======
 

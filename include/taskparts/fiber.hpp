@@ -21,7 +21,7 @@ public:
   alignas(TASKPARTS_CACHE_LINE_SZB)
   fiber* outedge;
 
-#ifdef TASKPARTS_ELASTIC_SURPLUS
+#if defined(TASKPARTS_ELASTIC_SURPLUS) || defined(TASKPARTS_ELASTIC_TREE)
   int64_t epoch;
 #endif
 

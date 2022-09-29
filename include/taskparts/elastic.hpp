@@ -934,23 +934,21 @@ public:
   }
 
   static
-  auto take_delta_from(size_t id, int i) -> delta {
-    auto n = paths[id][i];
-    auto d_o = n->d.load();
-    while (true) {
-      assert(d_o.l == node_locked);
-      delta d_n;
-      d_n.l = node_locked;
-      if (n->d.compare_exchange_strong(d_o, d_n)) {
-        apply_changes(n, d_o);
-        break;
-      }
-    }
-    return d_o;
-  }
-
-  static
   auto update_path_to_root(size_t id, int i, delta d) {
+    auto take_delta_from = [] (size_t id, int i) -> delta {
+      auto n = paths[id][i];
+      auto d_o = n->d.load();
+      while (true) {
+	assert(d_o.l == node_locked);
+	delta d_n;
+	d_n.l = node_locked;
+	if (n->d.compare_exchange_strong(d_o, d_n)) {
+	  apply_changes(n, d_o);
+	  break;
+	}
+      }
+      return d_o;
+    };
     assert(i < path_size());
     while (true) {
       i = up(id, i, d);
@@ -1184,7 +1182,7 @@ public:
   
   template <typename F>
   static
-  auto sample_leaf(size_t my_id, const F& f) -> int {
+  auto sample_path(size_t my_id, const F& f) -> int {
     int i, d;
     for (i = 0; ! is_leaf_node(i); i = child_of(i, d)) {
       auto n1 = &heap[child_of(i, 1)];
@@ -1203,14 +1201,14 @@ public:
   
   static
   auto sample_by_surplus(size_t my_id = perworker::my_id()) -> int {
-    return sample_leaf(my_id, [&] (gamma g) {
+    return sample_path(my_id, [&] (gamma g) {
       return g.s;
     });
   }
   
   static
   auto sample_by_sleeping(size_t my_id = perworker::my_id()) -> int {
-    return sample_leaf([&] (gamma g) {
+    return sample_path([&] (gamma g) {
       return g.a;
     });
   }
