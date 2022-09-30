@@ -815,7 +815,7 @@ public:
 
   static
   auto apply_changes(node* n, delta d) {
-    auto g = n->g;
+    auto g = n->g.load();
     g.a += d.a;
     g.s += d.s;
     n->g.store(g);
@@ -986,7 +986,7 @@ public:
     }
     // initialize tree nodes
     for (size_t i = 0; i < nb_nodes(); i++) {
-      new (&heap[i]) node(&(heap[i]));
+      new (&heap[i]) node;
     }
     // initialize all arrays in paths s.t. each such array stores its
     // leaf-to-root path in the tree
@@ -1001,10 +1001,9 @@ public:
       return r;
     };
     for (auto i = 0; i < nb_leaves(); i++) {
-      auto n = position_of_leaf_node_at(i);
-      paths[i] = mk_path_from_leaf_to_root(n);
+      paths[i] = mk_path_from_leaf_to_root(position_of_leaf_node_at(i));
       assert(paths[i].size() == path_size());
-      paths[path_size() - 1].id = i;
+      paths[i][path_size() - 1]->id = i;
     }
   }
   
@@ -1208,7 +1207,7 @@ public:
   
   static
   auto sample_by_sleeping(size_t my_id = perworker::my_id()) -> int {
-    return sample_path([&] (gamma g) {
+    return sample_path(my_id, [&] (gamma g) {
       return g.a;
     });
   }
