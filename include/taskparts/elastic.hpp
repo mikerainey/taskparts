@@ -842,16 +842,16 @@ public:
   }
   
   static
-  auto position_of_first_leaf() -> size_t {
-    return nb_nodes(lg_P);
-  }
-
-  static
   auto parent_of(int n) -> int {
     assert(! is_root(n));
     return (n - 1) / 2;
   }
   
+  static
+  auto position_of_first_leaf() -> size_t {
+    return nb_nodes(lg_P);
+  }
+
   static
   auto position_of_leaf_node_at(size_t i) -> size_t {
     if (lg_P == 0) {
@@ -994,10 +994,10 @@ public:
     for (size_t i = 0; i < nb_nodes(); i++) {
       new (&heap[i]) node;
     }
-    // initialize all arrays in paths s.t. each such array stores its
+    // initialize each array in the paths structure s.t. each such array stores its
     // leaf-to-root path in the tree
+    // n: index of a leaf node in the heap array
     auto mk_path_from_leaf_to_root = [] (int n) -> std::vector<node*> {
-      // n: index of a leaf node in the heap array
       std::vector<node*> r;
       if (lg_P == 0) {
         assert(nb_nodes() == 1);
@@ -1008,6 +1008,8 @@ public:
         r.push_back(&heap[n]);
         n = parent_of(n);
       } while (! is_root(n));
+      assert(is_root(n));
+      r.push_back(&heap[n]);
       std::reverse(r.begin(), r.end());
       return r;
     };
