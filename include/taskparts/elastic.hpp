@@ -840,6 +840,11 @@ public:
   auto is_root(int n) -> bool {
     return n == 0;
   }
+  
+  static
+  auto position_of_first_leaf() -> size_t {
+    return nb_nodes(lg_P);
+  }
 
   static
   auto parent_of(int n) -> int {
@@ -849,19 +854,20 @@ public:
   
   static
   auto position_of_leaf_node_at(size_t i) -> size_t {
-    auto k = nb_leaves() + (i & (nb_leaves() - 1));
-    assert(k >= 2 && k < nb_nodes());
+    if (lg_P == 0) {
+      assert(i == 0);
+      return 0;
+    }
+    auto l = position_of_first_leaf();
+    auto k = l + (i & (l - 1));
+    auto n = nb_nodes();
+    assert(k >= 0 && k < n);
     return k;
   }
   
   static
   auto leaf_node_at(size_t i) -> node* {
     return &heap[position_of_leaf_node_at(i)];
-  }
-  
-  static
-  auto position_of_first_leaf() -> size_t {
-    return nb_nodes(lg_P);
   }
   
   static
@@ -939,13 +945,13 @@ public:
       auto n = paths[id][i];
       auto d_o = n->d.load();
       while (true) {
-	assert(d_o.l == node_locked);
-	delta d_n;
-	d_n.l = node_locked;
-	if (n->d.compare_exchange_strong(d_o, d_n)) {
-	  apply_changes(n, d_o);
-	  break;
-	}
+        assert(d_o.l == node_locked);
+        delta d_n;
+        d_n.l = node_locked;
+        if (n->d.compare_exchange_strong(d_o, d_n)) {
+          apply_changes(n, d_o);
+          break;
+        }
       }
       return d_o;
     };
@@ -980,7 +986,7 @@ public:
     }
     // find the nearest setting of lg_P s.t. lg_P is the smallest
     // number for which 2^{lg_P} < perworker::nb_workers()
-    lg_P = 1;
+    lg_P = 0;
     while ((1 << lg_P) < perworker::nb_workers()) {
       lg_P++;
     }
@@ -993,6 +999,11 @@ public:
     auto mk_path_from_leaf_to_root = [] (int n) -> std::vector<node*> {
       // n: index of a leaf node in the heap array
       std::vector<node*> r;
+      if (lg_P == 0) {
+        assert(nb_nodes() == 1);
+        r.push_back(&heap[0]);
+        return r;
+      }
       do {
         r.push_back(&heap[n]);
         n = parent_of(n);
