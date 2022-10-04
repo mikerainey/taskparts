@@ -783,7 +783,7 @@ public:
   };
   
   static
-  size_t lg_P;
+  int lg_P;
 
   static
   cache_aligned_fixed_capacity_array<node, 1 << max_lg_P> heap;
@@ -848,25 +848,25 @@ public:
   }
   
   static
-  auto position_of_first_leaf() -> size_t {
+  auto position_of_first_leaf() -> int {
     return nb_nodes(lg_P);
   }
 
   static
-  auto position_of_leaf_node_at(size_t i) -> size_t {
+  auto position_of_leaf_node_at(int i) -> int {
     if (lg_P == 0) {
       assert(i == 0);
       return 0;
     }
-    auto l = position_of_first_leaf();
-    auto k = l + (i & (l - 1));
-    auto n = nb_nodes();
-    assert(k >= 0 && k < n);
+    assert((i >= 0) && (i < nb_leaves()));
+    uint32_t l = (uint32_t)position_of_first_leaf();
+    auto k = l + i;
+    assert(k > 0 && k < nb_nodes());
     return k;
   }
   
   static
-  auto leaf_node_at(size_t i) -> node* {
+  auto leaf_node_at(int i) -> node* {
     return &heap[position_of_leaf_node_at(i)];
   }
   
@@ -979,11 +979,6 @@ public:
 
   static
   auto initialize() {
-    // write ids of workers in their leaf nodes
-    auto j = position_of_first_leaf();
-    for (auto i = 0; i < nb_leaves(); i++, j++) {
-      heap[j].id = i;
-    }
     // find the nearest setting of lg_P s.t. lg_P is the smallest
     // number for which 2^{lg_P} < perworker::nb_workers()
     lg_P = 0;
@@ -994,10 +989,19 @@ public:
     for (size_t i = 0; i < nb_nodes(); i++) {
       new (&heap[i]) node;
     }
+    { // write ids of workers in their leaf nodes
+      auto j = position_of_first_leaf();
+      for (auto i = 0; i < nb_leaves(); i++, j++) {
+        heap[j].id = i;
+      }
+    }
+    for (auto i = 0; i < perworker::nb_workers(); i++) {
+      epochs[i].store(0);
+    }
     // initialize each array in the paths structure s.t. each such array stores its
     // leaf-to-root path in the tree
     // n: index of a leaf node in the heap array
-    auto mk_path_from_leaf_to_root = [] (int n) -> std::vector<node*> {
+    auto mk_path = [] (int n) -> std::vector<node*> {
       std::vector<node*> r;
       if (lg_P == 0) {
         assert(nb_nodes() == 1);
@@ -1013,10 +1017,13 @@ public:
       std::reverse(r.begin(), r.end());
       return r;
     };
+    //aprintf("nb_nodes=%d nb_leaves=%d fl=%d\n", nb_nodes(), nb_leaves(), position_of_first_leaf());
     for (auto i = 0; i < nb_leaves(); i++) {
-      paths[i] = mk_path_from_leaf_to_root(position_of_leaf_node_at(i));
+      auto nd = position_of_leaf_node_at(i);
+      paths[i] = mk_path(nd);
       assert(paths[i].size() == path_size());
       paths[i][path_size() - 1]->id = i;
+      //aprintf("leaf=%d node=%d\n", i, nd);
     }
   }
   
@@ -1029,14 +1036,19 @@ public:
     auto i = path_size() - 1;
     { // update the leaf node
       auto n = paths[my_id][i];
+      auto g_o = n->g.load();
       while (true) {
-        auto g_o = n->g.load();
+        if (g_o.s == 1) {
+          return e;
+        }
         assert(g_o.s == 0);
+        assert(g_o.a == 0);
         auto g_n = g_o;
         g_n.s = 1;
         if (n->g.compare_exchange_strong(g_o, g_n)) {
           break;
         }
+        g_o = n->g.load();
       }
     }
     // update interior nodes on the path from the
@@ -1054,24 +1066,29 @@ public:
   
   static
   auto after_surplus_decrease(size_t target_id = perworker::my_id(), int64_t epoch = -1l) {
-    auto epoch_expired = [&] {
-      auto is_thief = (target_id != perworker::my_id());
-      auto new_epoch = (epoch != epochs[target_id].load());
-      return is_thief && new_epoch;
+    auto is_thief = (target_id != perworker::my_id());
+    auto has_epoch_expired = [&] {
+      return is_thief && (epoch != epochs[target_id].load());
     };
     auto i = path_size() - 1;
     auto n = paths[target_id][i];
     { // update the leaf node
       auto g_o = n->g.load();
       while (true) {
-        if (epoch_expired() || (g_o.s == 0)) {
-          // lost the race
+        if (g_o.s == 0) {
+          //aprintf("sd0 t=%d id=%d s=%d e=%d e1=%d\n",target_id,n->id, g_o.s, epoch, epochs[target_id].load());
+          return;
+        }
+        if (has_epoch_expired()) {
+          // lost the race to update the leaf node
+          //aprintf("sd1 t=%d id=%d s=%d e=%d e1=%d\n",target_id,n->id, g_o.s, epoch, epochs[target_id].load());
           return;
         }
         assert(g_o.s == 1);
         auto g_n = g_o;
         g_n.s = 0;
         if (n->g.compare_exchange_strong(g_o, g_n)) {
+          //aprintf("sd2 t=%d\n",target_id);
           break;
         }
         g_o = n->g.load();
@@ -1111,7 +1128,7 @@ public:
         return;
       }
       auto i = sample_by_sleeping(my_id);
-      if (i == -1) {
+      if ((i == -1) || (i == my_id)) {
         continue;
       }
       if (try_to_wake(i)) {
@@ -1128,12 +1145,15 @@ public:
     auto my_id = perworker::my_id();
     auto i = path_size() - 1;
     auto n = paths[my_id][i];
+    //aprintf("i=%d lg_P=%d id=%d\n",i,lg_P,n->id);
+    assert(n->g.load().s == 0);
     while (true) {
       if (surplus_exists()) {
         return;
       }
       auto g_o = n->g.load();
       assert(g_o.a == 0);
+      assert(g_o.s == 0);
       auto g_n = g_o;
       g_n.a = 1;
       if (n->g.compare_exchange_strong(g_o, g_n)) {
@@ -1152,20 +1172,12 @@ public:
     Stats::on_exit_sleep();
     Logging::log_event(exit_sleep);
     Stats::on_enter_acquire();
-    while (true) {
-      auto g_o = n->g.load();
-      assert(g_o.a == 0);
-      auto g_n = g_o;
-      g_n.a = 0;
-      if (n->g.compare_exchange_strong(g_o, g_n)) {
-        break;
-      }
-    }
-    {
-      delta d;
-      d.a = -1;
-      update_path_to_root(my_id, i - 1, d);
-    }
+    auto g_o = n->g.load();
+    assert(g_o.a == 0);
+    assert(g_o.s == 0);
+    delta d;
+    d.a = -1;
+    update_path_to_root(my_id, i - 1, d);
   }
   
   static
@@ -1189,7 +1201,7 @@ public:
   auto flip(size_t my_id, int w1, int w2) -> int {
     auto w = w1 + w2;
     auto n = random_number(my_id, w);
-    return (n < w1) ? 0 : 1;
+    return (n < w1) ? 1 : 2;
   }
   
   template <typename F>
@@ -1229,7 +1241,7 @@ public:
   
 template <typename Stats, typename Logging, typename Semaphore,
           size_t max_lg_P>
-size_t elastic_tree<Stats, Logging, Semaphore, max_lg_P>::lg_P;
+int elastic_tree<Stats, Logging, Semaphore, max_lg_P>::lg_P;
 
 template <typename Stats, typename Logging, typename Semaphore,
           size_t max_lg_P>

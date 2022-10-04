@@ -22,7 +22,16 @@ template <typename Fiber>
 class chase_lev_deque {
 public:
   
-  using index_type = long;
+  // We use signed integer values to index items in the deque. But why
+  // do we use signed integers given that negative index values never
+  // point to items. The blog post linked here explains why.
+  //   https://wingolog.org/archives/2022/10/03/on-correct-and-efficient-work-stealing-for-weak-memory-models
+  // It turns out that there's a paper that presents a version of the
+  // Chase & Lev deque structure and its formal verification using a
+  // proof assistant (Le et al; 2013). But this version uses
+  // unsigned integers (size_t) to index into the deque, which is the
+  // source of the nasty bug as described in the blog post above.
+  using index_type = long; // must be signed!
   using pop_result_tag = enum pop_result_enum {
       pop_failed, pop_maybe_emptied_deque, pop_left_surplus
   };
