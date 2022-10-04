@@ -1173,11 +1173,19 @@ public:
     Logging::log_event(exit_sleep);
     Stats::on_enter_acquire();
     auto g_o = n->g.load();
-    assert(g_o.a == 0);
-    assert(g_o.s == 0);
-    delta d;
-    d.a = -1;
-    update_path_to_root(my_id, i - 1, d);
+    while (g_o.a != 0) {
+      auto g_n = g_o;
+      g_n.a = 0;
+      if (n->g.compare_exchange_strong(g_o, g_n)) {
+	break;
+      }
+      g_o = n->g.load();
+    }
+    { // propagate up the tree
+      delta d;
+      d.a = -1;
+      update_path_to_root(my_id, i - 1, d);
+    }
   }
   
   static
@@ -1207,20 +1215,22 @@ public:
   template <typename F>
   static
   auto sample_path(size_t my_id, const F& f) -> int {
+    auto sample_node_at = [&] (int i) -> int {
+      return f(heap[i].g.load());
+    };
     int i, d;
     for (i = 0; ! is_leaf_node(i); i = child_of(i, d)) {
-      auto n1 = &heap[child_of(i, 1)];
-      auto n2 = &heap[child_of(i, 2)];
-      d = flip(my_id, f(n1->g.load()), f(n2->g.load()));
+      auto w1 = sample_node_at(child_of(i, 1));
+      auto w2 = sample_node_at(child_of(i, 2));
+      if ((w1 + w2) < 1) {
+	return -1;
+      }
+      d = flip(my_id, w1, w2);
     }
-    // reached a leaf node
-    assert(is_leaf_node(i));
-    auto ni = &heap[i];
-    if (f(ni->g.load()) <= 0) {
+    if (sample_node_at(i) <= 0) {
       return -1;
     }
-    assert(ni->id >= 0);
-    return ni->id;
+    return heap[i].id;
   }
   
   static
