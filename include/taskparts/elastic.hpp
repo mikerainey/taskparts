@@ -881,67 +881,60 @@ public:
     return lg_P + 1;
   }
   
-  // returns position j s.t.
-  //  (1) j = -1, if the call propagated up to and including the root node
-  //  (2) j = either i or the position of the parent of the previously updated node, otherwise
+  using update_gamma_result_type = enum update_gamma_result_enum {
+    update_gamma_exited_early,
+    update_gamma_succeeded,
+    update_gamma_failed
+  };
+  
+  template <typename Should_exit, typename Update>
   static
-  auto up(size_t id, int i, delta d_n) -> int {
-    for (; i >= 0; i--) {
-      if (is_empty_delta(d_n)) {
-        break;
-      }
-      auto n = paths[id][i];
-      delta d_o;
-      while (true) {
-        d_o = n->d.load();
-        auto d = combine_changes(d_o, d_n);
-        auto d2 = d;
-        if (d_o.l == node_unlocked) {
-          d2.s = 0;
-          d2.a = 0;
-        }
-        if (n->d.compare_exchange_strong(d_o, d2)) {
-          d_n = d;
-          break;
-        }
-      }
-      if (d_o.l == node_locked) {
-        break;
-      }
-      assert(d_o.l == node_unlocked);
-      apply_changes(n, d_n);
+  auto try_to_update_gamma(std::atomic<gamma>& g,
+                           const Should_exit& should_exit,
+                           const Update& update) -> update_gamma_result_type {
+    auto v = g.load();
+    if (should_exit(v)) {
+      return update_gamma_exited_early;
     }
-    return i;
+    auto orig = v;
+    auto next = update(orig);
+    auto b = g.compare_exchange_strong(orig, next);
+    return b ? update_gamma_succeeded : update_gamma_failed;
   }
-
-  // returns position j s.t.
-  //   (1) j = path_size(), if the call propagated all the way down to the leaf
-  //   (2) 0 < j < path_size(), if there's a pending change to the node at
-  //       position j in the path
+  
+  template <typename Should_exit, typename Update>
   static
-  auto down(size_t id, int i) -> int {
-    i++;
-    for (; (i + 1) < path_size(); i++) {
-      auto n = paths[id][i];
-      auto d_o = n->d.load();
-      assert(d_o.l == node_locked);
-      while (true) {
-        if (! is_empty_delta(d_o)) {
-          return i;
-        }
-        auto d_n = d_o;
-        d_n.l = node_unlocked;
-        if (n->d.compare_exchange_strong(d_o, d_n)) {
-          break;
-        }
-      }
+  auto update_gamma_or_abort(std::atomic<gamma>& g,
+                             const Should_exit& should_exit,
+                             const Update& update) -> update_gamma_result_type {
+    auto r = try_to_update_gamma(g, should_exit, update);
+    while (r == update_gamma_failed) {
+      r = try_to_update_gamma(g, should_exit, update);
     }
-    return i;
+    return r;
+  }
+  
+  template <typename Should_exit, typename Update>
+  static
+  auto update_gamma(std::atomic<gamma>& g,
+                    const Should_exit& should_exit,
+                    const Update& update) -> void {
+    auto r = try_to_update_gamma(g, should_exit, update);
+    while (r != update_gamma_succeeded) {
+      r = try_to_update_gamma(g, should_exit, update);
+    }
+  }
+  
+  template <typename Update>
+  static
+  auto update_gamma(std::atomic<gamma>& g,
+                    const Update& update) -> void {
+    return update_gamma(g, [&] (update_gamma_result_type) { return false; }, update);
   }
 
   static
   auto update_path_to_root(size_t id, int i, delta d) {
-    auto take_delta_from = [] (size_t id, int i) -> delta {
+    auto take_delta_from = [=] (int i) -> delta {
       auto n = paths[id][i];
       auto d_o = n->d.load();
       while (true) {
@@ -955,14 +948,68 @@ public:
       }
       return d_o;
     };
+    // returns position j s.t.
+    //  (1) j = -1, if the call propagated up to and including the root node
+    //  (2) j = either i or the position of the parent of the previously updated node, otherwise
+    auto up = [=] (int i, delta d_n) -> int {
+      for (; i >= 0; i--) {
+        if (is_empty_delta(d_n)) {
+          break;
+        }
+        auto n = paths[id][i];
+        delta d_o;
+        while (true) {
+          d_o = n->d.load();
+          auto d = combine_changes(d_o, d_n);
+          auto d2 = d;
+          if (d_o.l == node_unlocked) {
+            d2.s = 0;
+            d2.a = 0;
+          }
+          if (n->d.compare_exchange_strong(d_o, d2)) {
+            d_n = d;
+            break;
+          }
+        }
+        if (d_o.l == node_locked) {
+          break;
+        }
+        assert(d_o.l == node_unlocked);
+        apply_changes(n, d_n);
+      }
+      return i;
+    };
+    // returns position j s.t.
+    //   (1) j = path_size(), if the call propagated all the way down to the leaf
+    //   (2) 0 < j < path_size(), if there's a pending change to the node at
+    //       position j in the path
+    auto down = [=] (int i) -> int {
+      i++;
+      for (; (i + 1) < path_size(); i++) {
+        auto n = paths[id][i];
+        auto d_o = n->d.load();
+        assert(d_o.l == node_locked);
+        while (true) {
+          if (! is_empty_delta(d_o)) {
+            return i;
+          }
+          auto d_n = d_o;
+          d_n.l = node_unlocked;
+          if (n->d.compare_exchange_strong(d_o, d_n)) {
+            break;
+          }
+        }
+      }
+      return i;
+    };
     assert(i < path_size());
     while (true) {
-      i = up(id, i, d);
-      i = down(id, i);
+      i = up(i, d);
+      i = down(i);
       if ((i + 1) >= path_size()) {
         break;
       }
-      d = take_delta_from(id, i);
+      d = take_delta_from(i);
     }
   }
   
@@ -1128,7 +1175,7 @@ public:
         return;
       }
       auto i = sample_by_sleeping(my_id);
-      if ((i == -1) || (i == my_id)) {
+      if ((i == not_found) || (i == my_id)) {
         continue;
       }
       if (try_to_wake(i)) {
@@ -1177,7 +1224,7 @@ public:
       auto g_n = g_o;
       g_n.a = 0;
       if (n->g.compare_exchange_strong(g_o, g_n)) {
-	break;
+        break;
       }
       g_o = n->g.load();
     }
@@ -1188,9 +1235,17 @@ public:
     }
   }
   
+  static constexpr
+  int first_child = 1;
+  static constexpr
+  int second_child = 2;
+  
+  static constexpr
+  int not_found = -1;
+  
   static
   auto child_of(int n, int d) -> int {
-    assert((d == 1) || (d == 2));
+    assert((d == first_child) || (d == second_child));
     assert(n < nb_nodes());
     auto c = n * 2 + d;
     assert(c < nb_nodes());
@@ -1200,16 +1255,16 @@ public:
   static
   auto random_number(size_t my_id, size_t hi) -> size_t {
     auto& rng = random_number_generator[my_id];
-    auto n = (hash(my_id) + hash(rng)) % hi;
-    rng++;
-    return n;
+    auto n = (hash(my_id) + hash(rng));
+    rng = n;
+    return n % hi;;
   }
   
   static
   auto flip(size_t my_id, int w1, int w2) -> int {
     auto w = w1 + w2;
-    auto n = random_number(my_id, w);
-    return (n < w1) ? 1 : 2;
+    auto n = (int)random_number(my_id, w);
+    return (n < w1) ? first_child : second_child;
   }
   
   template <typename F>
@@ -1220,25 +1275,26 @@ public:
     };
     int i, d;
     for (i = 0; ! is_leaf_node(i); i = child_of(i, d)) {
-      auto w1 = sample_node_at(child_of(i, 1));
-      auto w2 = sample_node_at(child_of(i, 2));
+      auto w1 = sample_node_at(child_of(i, first_child));
+      auto w2 = sample_node_at(child_of(i, second_child));
       if ((w1 + w2) < 1) {
-	return -1;
+        return not_found;
       }
       d = flip(my_id, w1, w2);
     }
     if (sample_node_at(i) <= 0) {
-      return -1;
+      return not_found;
     }
     return heap[i].id;
   }
   
+  /*
   static
   auto sample_by_surplus(size_t my_id = perworker::my_id()) -> int {
     return sample_path(my_id, [&] (gamma g) {
       return g.s;
     });
-  }
+  } */
   
   static
   auto sample_by_sleeping(size_t my_id = perworker::my_id()) -> int {
