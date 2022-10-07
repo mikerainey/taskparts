@@ -92,9 +92,7 @@ public:
 /*---------------------------------------------------------------------*/
 /* Reset fibers */
 /* We use reset fibers to reset worker-local and global memory, e.g.,
- * stats and logging. Such mechanisms require worker threads to be
- * in their busy state, and *not* performing scheduler actions, which
- * would be affecting worker-local and global scheduler memory.
+ * stats and logging.
  */
 
 template <typename Worker_reset, typename Global_reset, typename Scheduler=minimal_scheduler<>>
@@ -148,9 +146,9 @@ public:
     switch (trampoline) {
     case reset_enter: {
       if (perworker::nb_workers() == 1) {
-	worker_reset();
-	global_reset();
-	return fiber_status_finish;
+        worker_reset();
+        global_reset();
+        return fiber_status_finish;
       }
       auto f = new reset_fiber(*this);
       nb_workers_spawned->store(2);
@@ -162,56 +160,56 @@ public:
     }
     case reset_try_to_spawn: {
       while (true) {
-	auto n = nb_workers_spawned->load();
-	assert(n <= perworker::nb_workers());
-	if (n == perworker::nb_workers()) {
-	  trampoline = reset_pause;
-	  return fiber_status_continue;
-	}
-	if (nb_workers_spawned->compare_exchange_strong(n, n + 1)) {
-	  auto f = new reset_fiber(*this);
-	  f->release();
-	  trampoline = reset_pause;
-	  return fiber_status_continue;
-	}
+        auto n = nb_workers_spawned->load();
+        assert(n <= perworker::nb_workers());
+        if (n == perworker::nb_workers()) {
+          trampoline = reset_pause;
+          return fiber_status_continue;
+        }
+        if (nb_workers_spawned->compare_exchange_strong(n, n + 1)) {
+          auto f = new reset_fiber(*this);
+          f->release();
+          trampoline = reset_pause;
+          return fiber_status_continue;
+        }
       }
     }      
     case reset_pause: {
       if (worker_first) {
-	worker_reset();
+        worker_reset();
       }
       (*nb_workers_paused)++;
       while (nb_workers_finished->load() == 0) {
-	// wait for the initial fiber to finish
-	busywait_pause();
+        // wait for the initial fiber to finish
+        busywait_pause();
       }
       if (! worker_first) {
-	worker_reset();
+        worker_reset();
       }
       (*nb_workers_finished)++;
       return fiber_status_finish;
     }
     case reset_pause0: {
       while (true) {
-	if (nb_workers_paused->load() + 1 == perworker::nb_workers()) {
-	  // all other workers are busy waiting in the loop above
-	  if (worker_first) {
-	    worker_reset();
-	    global_reset();
-	  } else {
-	    global_reset();
-	    worker_reset();
-	  }
-	  (*nb_workers_finished)++;
-	  trampoline = reset_wait_for_all;
-	  return fiber_status_continue;
-	}
+        if (nb_workers_paused->load() + 1 == perworker::nb_workers()) {
+          // all other workers are busy waiting in the loop above
+          if (worker_first) {
+            worker_reset();
+            global_reset();
+          } else {
+            global_reset();
+            worker_reset();
+          }
+          (*nb_workers_finished)++;
+          trampoline = reset_wait_for_all;
+          return fiber_status_continue;
+        }
       }
     }
     case reset_wait_for_all: {
       while (nb_workers_finished->load() != perworker::nb_workers()) {
-	// wait for the other workers to finish
-	busywait_pause();
+        // wait for the other workers to finish
+        busywait_pause();
       }
       delete nb_workers_spawned;
       delete nb_workers_paused;
