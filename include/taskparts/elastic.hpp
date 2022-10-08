@@ -801,12 +801,12 @@ public:
   perworker::array<size_t> random_number_generator;
   
   static
-  auto is_empty_delta(delta d) -> bool {
+  auto is_delta_empty(delta d) -> bool {
     return ((d.s == 0) && (d.a == 0));
   }
   
   static
-  auto combine_changes(delta d_o, delta d_n) -> delta {
+  auto combine_deltas(delta d_o, delta d_n) -> delta {
     d_o.l = node_locked;
     d_o.a += d_n.a;
     d_o.s += d_n.s;
@@ -818,7 +818,9 @@ public:
     g.a += d.a;
     g.s += d.s;
     assert(g.s >= 0);
+    assert(g.s <= perworker::nb_workers());
     assert(g.a >= 0);
+    assert(g.a <= perworker::nb_workers());
     return g;
   }
 
@@ -940,91 +942,94 @@ public:
 
   static
   auto update_path_to_root(size_t id, int i, delta d) {
-    auto take_delta_from = [=] (int i) -> delta {
-      auto n = paths[id][i];
-      auto d_o = n->d.load();
-      while (true) {
-        assert(d_o.l == node_locked);
-        delta d_n;
-        d_n.l = node_locked;
-        if (n->d.compare_exchange_strong(d_o, d_n)) {
-          apply_changes(n, d_o);
-          break;
-        }
-      }
-      return d_o;
-    };
     // returns position j s.t.
-    //  (1) j = 0, if the call propagated up to, but not including the root node
-    //  (2) j = the index of the parent of the previously updated node, otherwise
-    auto up = [=] (int i, delta d_n) -> std::pair<int, delta> {
+    //  (1) j = 1, if the call updated one of the children of the root node
+    //  (2) j = the path index of the parent of the previously updated node, otherwise
+    auto up = [id] (int i, delta d_n) -> int {
       int j;
       for (j = i; j >= 1; j--) {
-        if (is_empty_delta(d_n)) {
-          break;
-        }
         auto n = paths[id][j];
         delta d_o;
         while (true) {
           d_o = n->d.load();
-          auto d = combine_changes(d_o, d_n);
-          auto d2 = d;
+          delta d_n2;
+          d_n2.l = node_locked;
           if (d_o.l == node_unlocked) {
-            d2.s = 0;
-            d2.a = 0;
-          }
-          if (n->d.compare_exchange_strong(d_o, d2)) {
-            d_n = d;
-            break;
-          }
-        }
-        if (d_o.l == node_locked) {
-          break;
-        }
-        assert(d_o.l == node_unlocked);
-        apply_changes(n, d_n);
-      }
-      return std::make_pair(j, d_n);
-    };
-    // returns position j s.t.
-    //   (1) j = path_size(), if the call propagated all the way down to the leaf
-    //   (2) 0 < j < path_size(), if there's a pending change to the node at
-    //       position j in the path
-    auto down = [=] (int i) -> int {
-      int j;
-      for (j = (i + 1); (j + 1) <= path_index_of_leaf(); j++) {
-        auto n = paths[id][j];
-        auto d_o = n->d.load();
-        assert(d_o.l == node_locked);
-        while (true) {
-          if (! is_empty_delta(d_o)) {
-            return j;
-          }
-          auto d_n = d_o;
-          d_n.l = node_unlocked;
-          if (n->d.compare_exchange_strong(d_o, d_n)) {
-            break;
+            if (n->d.compare_exchange_strong(d_o, d_n2)) {
+              apply_changes(n, d_n);
+              break;
+            }
+          } else {
+            assert(d_o.l == node_locked);
+            d_n2 = d_o;
+            d_n2.a += d_n.a;
+            d_n2.s += d_n.s;
+            if (n->d.compare_exchange_strong(d_o, d_n2)) {
+              // delegate the update of d_n to the worker holding the lock on d_o
+              return j;
+            }
+            
           }
         }
       }
       return j;
     };
+    // returns position j s.t.
+    //   (1) (j + 1) >= path_index_of_leaf(), if the worker unlocked all
+    //       interior nodes on its path
+    //   (2) 0 < (j + 1) < path_index_of_leaf(), if there is a pending change
+    //       to the node at position j in the path
+    auto down = [id] (int i) -> std::pair<int, delta> {
+      int j;
+      delta d_n;
+      for (j = (i + 1); j < path_index_of_leaf(); j++) {
+        auto n = paths[id][j];
+        delta d_o;
+        while (true) {
+          d_o = n->d.load();
+          assert(d_o.l == node_locked);
+          if (is_delta_empty(d_o)) {
+            d_n.l = node_unlocked;
+            if (n->d.compare_exchange_strong(d_o, d_n)) {
+              break;
+            }
+          } else {
+            // the calling worker was delegated the change in d_o by
+            // some other worker
+            d_n.l = node_locked;
+            assert(is_delta_empty(d_n));
+            if (n->d.compare_exchange_strong(d_o, d_n)) {
+              assert(! is_delta_empty(d_o));
+              return std::make_pair(j, d_o);
+            }
+          }
+        }
+      }
+      assert(is_delta_empty(d_n));
+      return std::make_pair(j, d_n);
+    };
+    if (i < 0) {
+      assert(perworker::nb_workers() == 1);
+      return;
+    }
     assert(i < path_size());
     while (true) {
-      auto [j, _d_n] = up(i, d);
-      i = j;
-      auto d_n = _d_n;
+      i = up(i, d);
       if (is_root(i)) {
-        update_gamma(nodes_array[i].g, [=] (gamma g) {
-          return apply_delta(g, d_n);
+        update_gamma(nodes_array[0].g, [=] (gamma g) {
+          return apply_delta(g, d);
         });
       }
-      i = down(i);
-      if (path_index_of_leaf() <= (i + 1)) {
+      auto [_i, _d] = down(i);
+      i = _i;
+      if (! (i < path_index_of_leaf())) {
+        assert(is_delta_empty(_d));
         break;
       }
-      d = take_delta_from(i);
+      d = _d;
+      assert(! is_delta_empty(d));
     }
+    assert(i == path_index_of_leaf());
   }
   
   static constexpr
@@ -1074,7 +1079,6 @@ public:
     auto mk_path = [] (int n) -> std::vector<node*> {
       std::vector<node*> r;
       if (lg_P == 0) {
-        assert(nb_nodes() == 1);
         r.push_back(&nodes_array[0]);
         return r;
       }
@@ -1082,7 +1086,6 @@ public:
         r.push_back(&nodes_array[n]);
         n = parent_of(n);
       } while (! is_root(n));
-      assert(is_root(n));
       r.push_back(&nodes_array[n]);
       std::reverse(r.begin(), r.end());
       return r;
@@ -1105,6 +1108,7 @@ public:
     auto i = path_index_of_leaf();
     // update the leaf node (of the calling worker)
     auto r = update_gamma_or_abort(paths[my_id][i]->g, [&] (gamma g) {
+      assert(g.a == 0);
       return g.s == 1; // abort if the surplus count is already positive
     }, [&] (gamma g) {
       g.s = 1;
@@ -1114,11 +1118,10 @@ public:
       // surplus was already positive => skip updating the tree
       return e;
     }
-    { // update the interior nodes
-      delta d;
-      d.s = +1;
-      update_path_to_root(my_id, i - 1, d);
-    }
+    // update the interior nodes
+    delta d;
+    d.s = +1;
+    update_path_to_root(my_id, i - 1, d);
     return e;
   }
   
@@ -1138,6 +1141,7 @@ public:
     auto n = paths[target_id][i];
     // update the leaf node
     auto r = update_gamma_or_abort(n->g, [&] (gamma g) {
+      assert(g.a == 0);
       return (g.s == 0) || has_epoch_expired();
     }, [&] (gamma g) {
       g.s = 0;
@@ -1146,7 +1150,7 @@ public:
     if (r == update_gamma_aborted) {
       return;
     }
-    // make the update propagate up the tree
+    // send the update up the tree
     delta d;
     d.s = -1;
     update_path_to_root(target_id, i - 1, d);
@@ -1154,12 +1158,13 @@ public:
 
   static
   auto try_to_wake_others(size_t my_id = perworker::my_id()) -> void {
-//    print_tree();
     auto try_to_wake = [&] (size_t target_id) {
       assert(target_id != my_id);
       auto i = path_index_of_leaf();
-      auto r = update_gamma_or_abort(paths[target_id][i]->g, [&] (gamma g) {
-        return (g.a != 1) || (g.s != 0);
+      auto n = paths[target_id][i];
+      auto r = update_gamma_or_abort(n->g, [&] (gamma g) {
+        if (g.a == 1) { assert(g.s == 0); }
+        return g.a == 0;
       }, [&] (gamma g) {
         g.a = 0;
         return g;
@@ -1210,7 +1215,7 @@ public:
       g.a = 1;
       return g;
     });
-    if (r == update_gamma_failed) {
+    if (r != update_gamma_succeeded) {
       return;
     }
     {
@@ -1234,7 +1239,7 @@ public:
       g.a = 0;
       return g;
     });
-    // make the update propagate up the tree
+    // send the update up the tree
     delta d;
     d.a = -1;
     update_path_to_root(my_id, i - 1, d);
