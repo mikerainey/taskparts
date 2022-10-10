@@ -22,6 +22,11 @@
 #endif
 #include "combtree.hpp"
 
+std::function<void()> f;
+void foo() {
+  f();
+}
+
 namespace taskparts {
 
 #if defined(TASKPARTS_USE_SPINNING_SEMAPHORE) || defined(TASKPARTS_DARWIN)
@@ -807,7 +812,6 @@ public:
   
   static
   auto combine_deltas(delta d_o, delta d_n) -> delta {
-    d_o.l = node_locked;
     d_o.a += d_n.a;
     d_o.s += d_n.s;
     return d_o;
@@ -815,13 +819,16 @@ public:
   
   static
   auto apply_delta(gamma g, delta d) -> gamma {
-    g.a += d.a;
-    g.s += d.s;
-    assert(g.s >= 0);
-    assert(g.s <= perworker::nb_workers());
-    assert(g.a >= 0);
-    assert(g.a <= perworker::nb_workers());
-    return g;
+    auto a = g.a + d.a;
+    auto s = g.s + d.s;
+    gamma g2;
+    g2.a = a;
+    g2.s = s;
+    assert(g2.s >= 0);
+    assert(g2.s <= perworker::nb_workers());
+    assert(g2.a >= 0);
+    assert(g2.a <= perworker::nb_workers());
+    return g2;
   }
 
   static
@@ -867,7 +874,7 @@ public:
       return 0;
     }
     assert((i >= 0) && (i < nb_leaves()));
-    uint32_t l = (uint32_t)tree_index_of_first_leaf();
+    auto l = tree_index_of_first_leaf();
     auto k = l + i;
     assert(k > 0 && k < nb_nodes());
     return k;
@@ -941,44 +948,42 @@ public:
   }
 
   static
-  auto update_path_to_root(size_t id, int i, delta d) {
-    // returns position j s.t.
-    //  (1) j = 1, if the call updated one of the children of the root node
-    //  (2) j = the path index of the parent of the previously updated node, otherwise
-    auto up = [id] (int i, delta d_n) -> int {
+  auto update_path_to_root(size_t id, delta d) {
+    auto update_root = [id] (delta d) {
+      update_gamma(paths[id][0]->g, [=] (gamma g) {
+        return apply_delta(g, d);
+      });
+    };
+    auto up = [id, update_root] (int i, delta d) -> int {
       int j;
-      for (j = i; j >= 1; j--) {
+      for (j = i; j > 0; j--) {
         auto n = paths[id][j];
         delta d_o;
         while (true) {
           d_o = n->d.load();
-          delta d_n2;
-          d_n2.l = node_locked;
-          if (d_o.l == node_unlocked) {
-            if (n->d.compare_exchange_strong(d_o, d_n2)) {
-              apply_changes(n, d_n);
+          delta d_n;
+          d_n.l = node_locked;
+          if (d_o.l == node_unlocked) { // no delegation
+            if (n->d.compare_exchange_strong(d_o, d_n)) {
+              apply_changes(n, d);
               break;
             }
-          } else {
+          } else { // delegation
             assert(d_o.l == node_locked);
-            d_n2 = d_o;
-            d_n2.a += d_n.a;
-            d_n2.s += d_n.s;
-            if (n->d.compare_exchange_strong(d_o, d_n2)) {
+            d_n = combine_deltas(d_o, d);
+            if (n->d.compare_exchange_strong(d_o, d_n)) {
               // delegate the update of d_n to the worker holding the lock on d_o
+              assert(j >= 1);
+              assert(d_n.l == node_locked);
               return j;
             }
-            
           }
         }
       }
+      assert(j == 0);
+      update_root(d);
       return j;
     };
-    // returns position j s.t.
-    //   (1) (j + 1) >= path_index_of_leaf(), if the worker unlocked all
-    //       interior nodes on its path
-    //   (2) 0 < (j + 1) < path_index_of_leaf(), if there is a pending change
-    //       to the node at position j in the path
     auto down = [id] (int i) -> std::pair<int, delta> {
       int j;
       delta d_n;
@@ -988,48 +993,48 @@ public:
         while (true) {
           d_o = n->d.load();
           assert(d_o.l == node_locked);
-          if (is_delta_empty(d_o)) {
+          if (is_delta_empty(d_o)) { // no delegation to handle
             d_n.l = node_unlocked;
             if (n->d.compare_exchange_strong(d_o, d_n)) {
               break;
             }
-          } else {
-            // the calling worker was delegated the change in d_o by
-            // some other worker
+          } else { // handle delegation
             d_n.l = node_locked;
-            assert(is_delta_empty(d_n));
             if (n->d.compare_exchange_strong(d_o, d_n)) {
-              assert(! is_delta_empty(d_o));
-              return std::make_pair(j, d_o);
+              return std::make_pair(j - 1, d_o);
             }
           }
         }
       }
       assert(is_delta_empty(d_n));
+      assert(j == path_index_of_leaf());
       return std::make_pair(j, d_n);
     };
-    if (i < 0) {
-      assert(perworker::nb_workers() == 1);
+    if (perworker::nb_workers() == 1) {
       return;
     }
-    assert(i < path_size());
+    if (perworker::nb_workers() == 2) {
+      update_root(d);
+      return;
+    }
+    print_tree("before");
+    int i = path_index_of_leaf() - 1;
+    assert(0 < i);
+    assert((i + 1) < path_size());
     while (true) {
       i = up(i, d);
-      if (is_root(i)) {
-        update_gamma(nodes_array[0].g, [=] (gamma g) {
-          return apply_delta(g, d);
-        });
-      }
       auto [_i, _d] = down(i);
       i = _i;
-      if (! (i < path_index_of_leaf())) {
-        assert(is_delta_empty(_d));
+      d = _d;
+      if (i == path_index_of_leaf()) {
+        assert(is_delta_empty(d));
         break;
       }
-      d = _d;
       assert(! is_delta_empty(d));
+      assert(i < path_index_of_leaf());
     }
     assert(i == path_index_of_leaf());
+    print_tree("after");
   }
   
   static constexpr
@@ -1044,16 +1049,21 @@ public:
   }
   
   static
-  auto print_tree() {
+  auto print_tree(const char* s0) {
+    std::string s;
     for (size_t i = 0; i < nb_nodes(); i++) {
       auto g = nodes_array[i].g.load();
-      aprintf("(%d) a=%d s=%d ", i, g.a, g.s);
+      auto d = nodes_array[i].d.load();
+      s += "[n=" + std::to_string(i)
+      + " g=(a=" + std::to_string(g.a) + " s=" + std::to_string(g.s) + ")"
+      + " d=(a=" + std::to_string(d.a) + " s=" + std::to_string(d.s) + ")]\n";
     }
-    aprintf("\n");
+    aprintf("%s\n%s\n", s0, s.c_str());
   }
 
   static
   auto initialize() {
+    f = [] { print_tree(""); };
     // find the nearest setting of lg_P s.t. lg_P is the smallest
     // number for which 2^{lg_P} < perworker::nb_workers()
     lg_P = 0;
@@ -1116,12 +1126,14 @@ public:
     });
     if (r == update_gamma_aborted) {
       // surplus was already positive => skip updating the tree
+      //aprintf("before_surplus_increase aborted\n");
       return e;
     }
+    assert(r == update_gamma_succeeded);
     // update the interior nodes
     delta d;
     d.s = +1;
-    update_path_to_root(my_id, i - 1, d);
+    update_path_to_root(my_id, d);
     return e;
   }
   
@@ -1141,19 +1153,19 @@ public:
     auto n = paths[target_id][i];
     // update the leaf node
     auto r = update_gamma_or_abort(n->g, [&] (gamma g) {
-      assert(g.a == 0);
       return (g.s == 0) || has_epoch_expired();
-    }, [&] (gamma g) {
+    }, [] (gamma g) {
       g.s = 0;
       return g;
     });
     if (r == update_gamma_aborted) {
       return;
     }
+    assert(r == update_gamma_succeeded);
     // send the update up the tree
     delta d;
     d.s = -1;
-    update_path_to_root(target_id, i - 1, d);
+    update_path_to_root(target_id, d);
   }
 
   static
@@ -1221,7 +1233,10 @@ public:
     {
       delta d;
       d.a = +1;
-      update_path_to_root(my_id, i - 1, d);
+      update_path_to_root(my_id, d);
+    }
+    if (surplus_exists()) {
+      semaphores[my_id].post();
     }
     Stats::on_exit_acquire();
     Logging::log_enter_sleep(my_id, 0l, 0l);
@@ -1242,7 +1257,7 @@ public:
     // send the update up the tree
     delta d;
     d.a = -1;
-    update_path_to_root(my_id, i - 1, d);
+    update_path_to_root(my_id, d);
   }
   
   static constexpr

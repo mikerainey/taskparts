@@ -216,6 +216,7 @@ public:
     }
 #if defined(TASKPARTS_ELASTIC_SURPLUS) || defined(TASKPARTS_ELASTIC_TREE)
     if (r1.t == deque_type::pop_maybe_emptied_deque) {
+      //aprintf("popped t=%p\n",r);
       elastic_type::after_surplus_decrease(my_id, r->epoch);
     }
 #endif
@@ -233,6 +234,7 @@ public:
 #if defined(TASKPARTS_ELASTIC_SURPLUS) || defined(TASKPARTS_ELASTIC_TREE)
     if (r1.t == deque_type::pop_maybe_emptied_deque) {
       auto epoch = (r1.t != deque_type::pop_failed) ? r->epoch : -1;
+      //aprintf("stole t=%p from %lu\n",r,target_id);
       elastic_type::after_surplus_decrease(target_id, epoch);
     }
     if (r1.t != deque_type::pop_failed) {
