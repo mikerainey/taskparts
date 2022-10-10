@@ -770,7 +770,7 @@ public:
   public:
     int a; // asleep
     int s; // surplus
-    gamma() : a(0), s(0) { }
+    gamma() noexcept : a(0), s(0) { }
   };
   
   class delta {
@@ -778,7 +778,7 @@ public:
     unsigned int l : 1;  // lock bit (node_locked/node_unlocked)
     int a : 31;          // asleep
     int s;               // surplus
-    delta() : l(node_unlocked), a(0), s(0) { }
+    delta() noexcept : l(node_unlocked), a(0), s(0) { }
   };
 
   using node = struct node_struct {
