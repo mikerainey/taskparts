@@ -782,7 +782,8 @@ public:
   };
 
   using node = struct node_struct {
-    int id = -1;
+    int i = -1;
+    int id = -1; // worker id
     std::atomic<gamma> g;
     std::atomic<delta> d;
   };
@@ -833,7 +834,7 @@ public:
 
   static
   auto apply_changes(node* n, delta d) {
-    n->g.store(apply_delta(n->g, d));
+    n->g.store(apply_delta(n->g.load(), d));
   }
 
   static
@@ -965,6 +966,20 @@ public:
           d_n.l = node_locked;
           if (d_o.l == node_unlocked) { // no delegation
             if (n->d.compare_exchange_strong(d_o, d_n)) {
+              /*
+              auto g = n->g.load();
+              auto a = g.a + d.a;
+              auto s = g.s + d.s;
+              gamma g2;
+              g2.a = a;
+              g2.s = s;
+              aprintf("up/nodelegation n=%d j=%d d_o=(%d %d) d_n=(%d %d) d=(%d %d) g=(%d %d)\n",n->i,j,
+                      d_o.a,d_o.s,d_n.a,d_n.s,d.a,d.s,g.a,g.s);
+              assert(g2.s >= 0);
+              assert(g2.s <= perworker::nb_workers());
+              assert(g2.a >= 0);
+              assert(g2.a <= perworker::nb_workers());
+              n->g.store(g2); */
               apply_changes(n, d);
               break;
             }
@@ -975,6 +990,8 @@ public:
               // delegate the update of d_n to the worker holding the lock on d_o
               assert(j >= 1);
               assert(d_n.l == node_locked);
+              //aprintf("up/delegation n=%d j=%d d_o=(%d %d) d_n=(%d %d) d=(%d %d) \n",n->i,j,
+              //        d_o.a,d_o.s,d_n.a,d_n.s,d.a,d.s);
               return j;
             }
           }
@@ -996,11 +1013,16 @@ public:
           if (is_delta_empty(d_o)) { // no delegation to handle
             d_n.l = node_unlocked;
             if (n->d.compare_exchange_strong(d_o, d_n)) {
+              //aprintf("down/nodelegation n=%d j=%d d_o=(%d %d) d_n=(%d %d)\n",n->i,j,
+              //        d_o.a,d_o.s,d_n.a,d_n.s);
               break;
             }
           } else { // handle delegation
             d_n.l = node_locked;
             if (n->d.compare_exchange_strong(d_o, d_n)) {
+              //aprintf("down/delegation n=%d j=%d d_o=(%d %d) d_n=(%d %d)\n",n->i,j,
+              //        d_o.a,d_o.s,d_n.a,d_n.s);
+              apply_changes(n, d_o);
               return std::make_pair(j - 1, d_o);
             }
           }
@@ -1017,7 +1039,7 @@ public:
       update_root(d);
       return;
     }
-    print_tree("before");
+    //print_tree("before");
     int i = path_index_of_leaf() - 1;
     assert(0 < i);
     assert((i + 1) < path_size());
@@ -1034,7 +1056,7 @@ public:
       assert(i < path_index_of_leaf());
     }
     assert(i == path_index_of_leaf());
-    print_tree("after");
+    //print_tree("after");
   }
   
   static constexpr
@@ -1054,7 +1076,7 @@ public:
     for (size_t i = 0; i < nb_nodes(); i++) {
       auto g = nodes_array[i].g.load();
       auto d = nodes_array[i].d.load();
-      s += "[n=" + std::to_string(i)
+      s += "[n=" + std::to_string(i) + " id=" + std::to_string(nodes_array[i].id)
       + " g=(a=" + std::to_string(g.a) + " s=" + std::to_string(g.s) + ")"
       + " d=(a=" + std::to_string(d.a) + " s=" + std::to_string(d.s) + ")]\n";
     }
@@ -1071,8 +1093,9 @@ public:
       lg_P++;
     }
     // initialize tree nodes
-    for (size_t i = 0; i < nb_nodes(); i++) {
+    for (int i = 0; i < nb_nodes(); i++) {
       new (&nodes_array[i]) node;
+      nodes_array[i].i = i;
     }
     { // write ids of workers in their leaf nodes
       auto j = tree_index_of_first_leaf();
@@ -1116,8 +1139,10 @@ public:
     auto e = my_epoch.load() + 1;
     my_epoch.store(e);
     auto i = path_index_of_leaf();
+    auto n = paths[my_id][i];
+    //aprintf("s++ t=%d n=%d\n", my_id,n->i);
     // update the leaf node (of the calling worker)
-    auto r = update_gamma_or_abort(paths[my_id][i]->g, [&] (gamma g) {
+    auto r = update_gamma_or_abort(n->g, [&] (gamma g) {
       assert(g.a == 0);
       return g.s == 1; // abort if the surplus count is already positive
     }, [&] (gamma g) {
@@ -1126,7 +1151,7 @@ public:
     });
     if (r == update_gamma_aborted) {
       // surplus was already positive => skip updating the tree
-      //aprintf("before_surplus_increase aborted\n");
+      //aprintf("s++/abort n=%d\n",n->i);
       return e;
     }
     assert(r == update_gamma_succeeded);
@@ -1146,11 +1171,12 @@ public:
   auto after_surplus_decrease(size_t target_id = perworker::my_id(),
                               int64_t epoch = -1l) {
     auto is_thief = (target_id != perworker::my_id());
-    auto has_epoch_expired = [&] {
+    auto has_epoch_expired = [=] {
       return is_thief && (epoch != epochs[target_id].load());
     };
     auto i = path_index_of_leaf();
     auto n = paths[target_id][i];
+    //aprintf("s-- t=%d n=%d\n",target_id,n->i);
     // update the leaf node
     auto r = update_gamma_or_abort(n->g, [&] (gamma g) {
       return (g.s == 0) || has_epoch_expired();
@@ -1159,6 +1185,7 @@ public:
       return g;
     });
     if (r == update_gamma_aborted) {
+      //aprintf("s--/abort t=%d n=%d\n",target_id,n->i);
       return;
     }
     assert(r == update_gamma_succeeded);
@@ -1174,14 +1201,18 @@ public:
       assert(target_id != my_id);
       auto i = path_index_of_leaf();
       auto n = paths[target_id][i];
+      //aprintf("a-- t=%d n=%d\n",target_id,n->i);
       auto r = update_gamma_or_abort(n->g, [&] (gamma g) {
         if (g.a == 1) { assert(g.s == 0); }
+        //return (g.a == 0) || (g.s > 0);
         return g.a == 0;
       }, [&] (gamma g) {
         g.a = 0;
+        assert(g.s == 0);
         return g;
       });
       if (r != update_gamma_succeeded) {
+        //aprintf("a--/failed t=%d n=%d\n",target_id,n->i);
         return false;
       }
       semaphores[target_id].post();
@@ -1221,6 +1252,7 @@ public:
     auto my_id = perworker::my_id();
     auto i = path_index_of_leaf();
     auto n = paths[my_id][i];
+    //aprintf("a++ n=%d\n",n->i);
     auto r = update_gamma_or_abort(n->g, [&] (gamma) {
       return surplus_exists();
     }, [&] (gamma g) {
@@ -1228,6 +1260,7 @@ public:
       return g;
     });
     if (r != update_gamma_succeeded) {
+      //aprintf("a++/failed1 n=%d\n", n->i);
       return;
     }
     {
@@ -1236,6 +1269,7 @@ public:
       update_path_to_root(my_id, d);
     }
     if (surplus_exists()) {
+      //aprintf("a++/failed2 n=%d\n",n->i);
       semaphores[my_id].post();
     }
     Stats::on_exit_acquire();
@@ -1245,6 +1279,7 @@ public:
     Stats::on_exit_sleep();
     Logging::log_event(exit_sleep);
     Stats::on_enter_acquire();
+    //aprintf("a-- n=%d\n",n->i);
     update_gamma_or_abort(n->g, [&] (gamma g) {
       // needed b/c the wait() above may return as a consequence
       // of either (1) another worker successfully woke up the calling
