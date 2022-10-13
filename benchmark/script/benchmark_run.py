@@ -56,11 +56,13 @@ class Nonzero_return_code(Exception):
 # the None value)
 # timeout_sec: a number of seconds to allow the benchmark to run,
 # after which we kill the benchmark run (if not the None value)
-def run_benchmark(br_i, cwd = None, timeout_sec = None):
+def run_benchmark(br_i, cwd = None, timeout_sec = None, verbose = False):
     # check that the input describes a valid benchmark run
     validate_benchmark_run(br_i)
     # build the command string and create a corresponding subprocess, which is ready to run
-    cmd = string_of_benchmark_run(br_i)    
+    cmd = string_of_benchmark_run(br_i)
+    if verbose:
+        print(cmd)
     os_env = os.environ.copy()
     env_args = { a['var']: str(a['val']) for a in br_i['benchmark_run']['env_args'] }
     env = {**os_env, **env_args}

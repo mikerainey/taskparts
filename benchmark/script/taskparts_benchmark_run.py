@@ -30,7 +30,7 @@ taskparts_env_vars = [
 ]
 
 def run_taskparts_benchmark(br, num_repeat = None, warmup_secs = None,
-                            cwd = None, timeout_sec = None):
+                            cwd = None, timeout_sec = None, verbose = False):
     br_i = deepcopy(br)
     # generate a temporary file in which to store the stats output
     stats_fd, stats_path = tempfile.mkstemp(suffix = '.json', text = True)
@@ -42,6 +42,8 @@ def run_taskparts_benchmark(br, num_repeat = None, warmup_secs = None,
         br_i['benchmark_run']['env_args'] += [{'var': taskparts_benchmark_num_repeat_key, 'val': num_repeat}]
     if warmup_secs != None:
         br_i['benchmark_run']['env_args'] += [{'var': taskparts_benchmark_warmup_secs_key, 'val': warmup_secs}]
+    if verbose:
+        print(string_of_benchmark_run(br))
     # run the benchmark
     br_o = run_benchmark(br_i, cwd, timeout_sec)
     # collect the stats output of the benchmark run
@@ -54,6 +56,6 @@ def run_taskparts_benchmark(br, num_repeat = None, warmup_secs = None,
     return stats
 
 br_i = read_benchmark_from_file_path('taskparts_benchmark_run_example1.json')
-stats = run_taskparts_benchmark(br_i,num_repeat=3)
+stats = run_taskparts_benchmark(br_i,num_repeat=3,verbose=True)
 print(br_i)
 print(stats)
