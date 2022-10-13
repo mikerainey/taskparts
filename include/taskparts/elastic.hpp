@@ -966,20 +966,6 @@ public:
           d_n.l = node_locked;
           if (d_o.l == node_unlocked) { // no delegation
             if (n->d.compare_exchange_strong(d_o, d_n)) {
-              /*
-              auto g = n->g.load();
-              auto a = g.a + d.a;
-              auto s = g.s + d.s;
-              gamma g2;
-              g2.a = a;
-              g2.s = s;
-              aprintf("up/nodelegation n=%d j=%d d_o=(%d %d) d_n=(%d %d) d=(%d %d) g=(%d %d)\n",n->i,j,
-                      d_o.a,d_o.s,d_n.a,d_n.s,d.a,d.s,g.a,g.s);
-              assert(g2.s >= 0);
-              assert(g2.s <= perworker::nb_workers());
-              assert(g2.a >= 0);
-              assert(g2.a <= perworker::nb_workers());
-              n->g.store(g2); */
               apply_changes(n, d);
               break;
             }
