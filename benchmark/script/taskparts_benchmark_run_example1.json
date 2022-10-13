@@ -1,0 +1,6 @@
+{"benchmark_run": {
+    "path_to_executable": "../parlay/bin/fft.sta",
+    "cl_args": [],
+    "env_args": [{"var": "TASKPARTS_NUM_WORKERS", "val": "16"}
+		]
+}}
