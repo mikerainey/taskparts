@@ -2,6 +2,7 @@
 
 #include <assert.h>
 
+#include "posix/perworkerid.hpp"
 #include "scheduler.hpp"
 #include "aligned.hpp"
 #include "atomic.hpp"

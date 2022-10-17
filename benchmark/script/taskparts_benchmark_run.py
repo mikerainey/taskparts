@@ -2,11 +2,34 @@ import os, tempfile
 from copy import deepcopy
 from benchmark_run import *
 
+# Inputs
+# ======
+
+# Environment variables
+# ---------------------
+
 taskparts_benchmark_num_repeat_key = 'TASKPARTS_BENCHMARK_NUM_REPEAT'
 taskparts_benchmark_warmup_secs_key = 'TASKPARTS_BENCHMARK_WARMUP_SECS'
 taskparts_outfile_key = 'TASKPARTS_STATS_OUTFILE'
 taskparts_cilk_outfile_key = 'CILK_STATS_OUTFILE'
 taskparts_num_workers_key = 'TASKPARTS_NUM_WORKERS'
+taskparts_resource_binding_key = 'TASKPARTS_RESOURCE_BINDING'
+
+taskparts_env_vars = [
+    taskparts_num_workers_key,
+    taskparts_outfile_key,
+    taskparts_benchmark_num_repeat_key,
+    taskparts_benchmark_warmup_secs_key,
+    taskparts_cilk_outfile_key,
+    taskparts_resource_binding_key
+]
+
+# Outputs
+# =======
+
+# Stats
+# =====
+
 taskparts_exectime_key = 'exectime'
 taskparts_usertime_key = 'usertime'
 taskparts_systime_key = 'systime'
@@ -18,16 +41,6 @@ taskparts_total_sleep_time_key = 'total_sleep_time'
 taskparts_utilization_key = 'utilization'
 taskparts_nb_fibers_key = 'nb_fibers'
 taskparts_nb_steals_key = 'nb_steals'
-taskparts_resource_binding_key = 'TASKPARTS_RESOURCE_BINDING'
-
-taskparts_env_vars = [
-    taskparts_num_workers_key,
-    taskparts_outfile_key,
-    taskparts_benchmark_num_repeat_key,
-    taskparts_benchmark_warmup_secs_key,
-    taskparts_cilk_outfile_key,
-    taskparts_resource_binding_key
-]
 
 def run_taskparts_benchmark(br, num_repeat = None, warmup_secs = None,
                             cwd = None, timeout_sec = None, verbose = False):
@@ -53,9 +66,5 @@ def run_taskparts_benchmark(br, num_repeat = None, warmup_secs = None,
     # remove the temporary file we used for the stats output
     open(stats_path, 'w').close()
     os.unlink(stats_path)
-    return stats
+    return {'benchmark_run': br_o, 'stats': stats }
 
-br_i = read_benchmark_from_file_path('taskparts_benchmark_run_example1.json')
-stats = run_taskparts_benchmark(br_i,num_repeat=3,verbose=True)
-print(br_i)
-print(stats)

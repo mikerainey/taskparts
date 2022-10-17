@@ -46,7 +46,7 @@ def string_of_benchmark_run(r):
     br = r['benchmark_run']
     cl_args = (' ' if br['cl_args'] != [] else '') + string_of_cl_args(br['cl_args'])
     env_args = string_of_env_args(br['env_args']) + (' ' if br['env_args'] != [] else '')
-    return env_args + br['path_to_executable'] + cl_args
+    return env_args + './' + br['path_to_executable'] + cl_args
 
 class Nonzero_return_code(Exception):
     pass

@@ -46,13 +46,13 @@ MULTIPROGRAMMED_FLGS=-DTASKPARTS_MULTIPROGRAMMED
 
 ELASTIC_SURPLUS_FLAGS=-DTASKPARTS_ELASTIC_SURPLUS
 
-%.elastic_surplus.opt: %.cpp $(INCLUDE_FILES) install_folder
+%.surplus.elastic.opt: %.cpp $(INCLUDE_FILES) install_folder
 	$(CXX) $(OPT_PREFIX) $(ELASTIC_SURPLUS_FLAGS) -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
-%.elastic_surplus.sta: %.cpp $(INCLUDE_FILES) install_folder
+%.surplus.elastic.sta: %.cpp $(INCLUDE_FILES) install_folder
 	$(CXX) $(STA_PREFIX) $(ELASTIC_SURPLUS_FLAGS) -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
-%.elastic_surplus.log: %.cpp $(INCLUDE_FILES) install_folder
+%.surplus.elastic.log: %.cpp $(INCLUDE_FILES) install_folder
 	$(CXX) $(LOG_PREFIX) $(ELASTIC_SURPLUS_FLAGS) -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
-%.elastic_surplus.dbg: %.cpp $(INCLUDE_FILES) install_folder
+%.surplus.elastic.dbg: %.cpp $(INCLUDE_FILES) install_folder
 	$(CXX) $(DBG_PREFIX) $(ELASTIC_SURPLUS_FLAGS) -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
 
 # Surplus (using spinning semaphores)
@@ -60,13 +60,13 @@ ELASTIC_SURPLUS_FLAGS=-DTASKPARTS_ELASTIC_SURPLUS
 
 SS_SURPLUS_FLGS=$(ELASTIC_SURPLUS_FLAGS) -DTASKPARTS_USE_SPINNING_SEMAPHORE
 
-%.elastic_surplus_spin.opt: %.cpp $(INCLUDE_FILES) install_folder
+%.spin.surplus.elastic.opt: %.cpp $(INCLUDE_FILES) install_folder
 	$(CXX) $(OPT_PREFIX) $(SS_SURPLUS_FLGS) -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
-%.elastic_surplus_spin.sta: %.cpp $(INCLUDE_FILES) install_folder
+%.spin.surplus.elastic.sta: %.cpp $(INCLUDE_FILES) install_folder
 	$(CXX) $(STA_PREFIX) $(SS_SURPLUS_FLGS) -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
-%.elastic_surplus_spin.log: %.cpp $(INCLUDE_FILES) install_folder
+%.spin.surplus.elastic.log: %.cpp $(INCLUDE_FILES) install_folder
 	$(CXX) $(LOG_PREFIX) $(SS_SURPLUS_FLGS) -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
-%.elastic_surplus_spin.dbg: %.cpp $(INCLUDE_FILES) install_folder
+%.spin.surplus.elastic.dbg: %.cpp $(INCLUDE_FILES) install_folder
 	$(CXX) $(DBG_PREFIX) $(SS_SURPLUS_FLGS) -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
 
 # Tree (using native semaphores)
@@ -74,13 +74,13 @@ SS_SURPLUS_FLGS=$(ELASTIC_SURPLUS_FLAGS) -DTASKPARTS_USE_SPINNING_SEMAPHORE
 
 ELASTIC_TREE_FLAGS=-DTASKPARTS_ELASTIC_TREE
 
-%.elastic_tree.opt: %.cpp $(INCLUDE_FILES) install_folder
+%.multilevel.surplus.elastic.opt: %.cpp $(INCLUDE_FILES) install_folder
 	$(CXX) $(OPT_PREFIX) $(ELASTIC_TREE_FLAGS) -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
-%.elastic_tree.sta: %.cpp $(INCLUDE_FILES) install_folder
+%.multilevel.surplus.elastic.sta: %.cpp $(INCLUDE_FILES) install_folder
 	$(CXX) $(STA_PREFIX) $(ELASTIC_TREE_FLAGS) -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
-%.elastic_tree.log: %.cpp $(INCLUDE_FILES) install_folder
+%.multilevel.surplus.elastic.log: %.cpp $(INCLUDE_FILES) install_folder
 	$(CXX) $(LOG_PREFIX) $(ELASTIC_TREE_FLAGS) -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
-%.elastic_tree.dbg: %.cpp $(INCLUDE_FILES) install_folder
+%.multilevel.surplus.elastic.dbg: %.cpp $(INCLUDE_FILES) install_folder
 	$(CXX) $(DBG_PREFIX) $(ELASTIC_TREE_FLAGS) -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
 
 # Tree (using spinning semaphores)
@@ -88,14 +88,25 @@ ELASTIC_TREE_FLAGS=-DTASKPARTS_ELASTIC_TREE
 
 SS_TREE_FLGS=$(ELASTIC_TREE_FLAGS) -DTASKPARTS_USE_SPINNING_SEMAPHORE
 
-%.elastic_tree_spin.opt: %.cpp $(INCLUDE_FILES) install_folder
+%.spin.multilevel.surplus.elastic.opt: %.cpp $(INCLUDE_FILES) install_folder
 	$(CXX) $(OPT_PREFIX) $(SS_TREE_FLGS) -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
-%.elastic_tree_spin.sta: %.cpp $(INCLUDE_FILES) install_folder
+%.spin.multilevel.surplus.elastic.sta: %.cpp $(INCLUDE_FILES) install_folder
 	$(CXX) $(STA_PREFIX) $(SS_TREE_FLGS) -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
-%.elastic_tree_spin.log: %.cpp $(INCLUDE_FILES) install_folder
+%.spin.multilevel.surplus.elastic.log: %.cpp $(INCLUDE_FILES) install_folder
 	$(CXX) $(LOG_PREFIX) $(SS_TREE_FLGS) -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
-%.elastic_tree_spin.dbg: %.cpp $(INCLUDE_FILES) install_folder
+%.spin.multilevel.surplus.elastic.dbg: %.cpp $(INCLUDE_FILES) install_folder
 	$(CXX) $(DBG_PREFIX) $(SS_TREE_FLGS) -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+
+# Benchmarks
+# ==========
+
+BENCHMARKS=$(basename $(wildcard *.cpp))
+
+BENCHMARK_STA=$(addsuffix .sta,$(BENCHMARKS))
+
+foo:
+	echo $(BENCHMARKS)
+	echo $(TASKPARTS_BINARY_EXTS)
 
 # Cleanup
 # =======

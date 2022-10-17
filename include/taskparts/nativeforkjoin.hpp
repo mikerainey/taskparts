@@ -1,6 +1,8 @@
 #pragma once
 
 #include "fiber.hpp"
+#include "posix/diagnostics.hpp"
+#include "scheduler.hpp"
 
 #if defined(TASKPARTS_X64)
 #include "x64/context.hpp"
@@ -182,7 +184,19 @@ public:
     f->_reset(worker_reset, global_reset, worker_first);
   }
 
+  auto yield() -> void {
+    auto s = status;
+    status = fiber_status_continue;
+    swap_with_scheduler();
+    status = s;
+  }
+
 };
+
+template <typename Scheduler>
+auto yield(Scheduler sched) -> void {
+  nativefj_fiber<Scheduler>::current_fiber.mine()->yield();
+}
 
 template <typename Scheduler>
 char nativefj_fiber<Scheduler>::marker1;
@@ -250,5 +264,129 @@ auto fork2join(const F1& f1, const F2& f2, Scheduler sched=Scheduler()) {
   f2();
 #endif
 }
+
+/*---------------------------------------------------------------------*/
+/* Lazy parallel futures */
+
+template <typename F, typename Scheduler=minimal_scheduler<>>
+class lazy_future : public fiber<Scheduler> {
+public:
+
+  using status_type = enum status_enum {
+    initial_state, local_run_state, remote_run_state, remote_ran_state, remote_notify_state, remote_notified_state
+  };
+  
+  std::atomic<status_type> status;  
+
+  F f;
+  nativefj_fiber<Scheduler>* cf;
+
+  lazy_future(const F& f, Scheduler sched=Scheduler())
+    : fiber<Scheduler>(), f(std::move(f)), status(initial_state) {
+    cf = nativefj_fiber<Scheduler>::current_fiber.mine();
+  }
+
+  void finish() {
+    auto s = status.load();
+    if (s == remote_notified_state) {
+      assert(false);
+    } else if (s == local_run_state) {
+      //aprintf("finish/local\n");
+    } else if (s == remote_ran_state) {
+      //aprintf("finish/ran\n");
+    } else {
+      assert(false);
+    }
+  }
+
+  fiber_status_type run() {
+    //aprintf("run\n");
+    while (true) {
+      auto s = status.load();
+      if (s == initial_state) {
+	if (status.compare_exchange_strong(s, remote_run_state)) {
+	  //aprintf("starting remote run\n");
+	  break;
+	}
+      } else if (s == local_run_state) {
+	//aprintf("local_ran\n");
+	return fiber_status_finish;
+      } else {
+	assert(false);
+      }
+    }
+    auto fb = new nativefj_from_lambda([&] {
+      //aprintf("future body\n");
+      f();
+      while (true) {
+	auto s = status.load();
+	if (s == remote_run_state) {
+	  if (status.compare_exchange_strong(s, remote_ran_state)) {
+	    //aprintf("remote/ran\n");
+	    break;
+	  }
+	} else if (s == remote_notify_state) {
+	  continue;
+	} else if (s == remote_notified_state) {
+	  auto i = --cf->incounter;
+	  	    //aprintf("remote_notified_State\n");
+	  if (i == 0) {
+	    //aprintf("finish/remote\n");
+	    cf->schedule();
+	  } else {
+	    //aprintf("i=%d\n",i);
+	    assert(false);
+	  }
+	  break;
+	} else {
+	  assert(false);
+	}
+      }
+      //aprintf("fb exit\n");
+    }, Scheduler());
+    fb->release();
+    return fiber_status_pause;
+  }
+
+  void force() {
+    while (true) {
+      auto s = status.load();
+      if (s == initial_state) {
+	if (status.compare_exchange_strong(s, local_run_state)) {
+	  break;
+	}
+      } else if (s == remote_run_state) {
+	//aprintf("force/remote_run\n");
+	assert(cf == nativefj_fiber<Scheduler>::current_fiber.mine());
+	if (! status.compare_exchange_strong(s, remote_notify_state)) {
+	  continue;
+	}
+	//aprintf("remote_notify\n");
+	cf->incounter++;
+	auto st = cf->status;
+	cf->status = fiber_status_pause;
+	if (context::capture<nativefj_fiber<Scheduler>*>(context::addr(cf->ctx))) {
+	  //aprintf("force final exit\n");
+	  cf->status = st;
+	  return;
+	}
+	//aprintf("force/remote_notified\n");
+	status.store(remote_notified_state);
+	cf->exit_to_scheduler();
+	assert(false);
+      } else if (s == remote_ran_state) {
+	//aprintf("remote_ran/force %p %d\n", cf->outedge,cf->incounter.load());
+	return;
+      } else {
+	//aprintf("error %d\n",s);
+	assert(false);
+      }
+    }
+    //aprintf("local_run/state\n");
+    f();
+    //aprintf("local_run/state2\n");
+  }
+
+};
   
 } // end namespace
