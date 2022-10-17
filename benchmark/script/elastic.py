@@ -64,17 +64,25 @@ def run_of_row(row):
             "env_args": es } }
     return r
 
-br_i = run_of_row([ {"key": "benchmark", "val": "fft"},
-                    {"key": "binary", "val": "sta"},
-                    {"key": "elastic", "val": "surplus"},
-                    {"key": "n1", "val": 123},
-                    {"key": "m", "val": 456},
-                    {"key": "m2", "val": 4567},
-                    {"key": "scheduler", "val": "elastic"},
-                    {"key": taskparts_num_workers_key, "val": 16}
-                   ])
-pretty_print_json(br_i)
-validate_benchmark_run(br_i)
-#br_i = read_benchmark_from_file_path('taskparts_benchmark_run_example1.json')
-r = run_taskparts_benchmark(br_i,num_repeat=3,verbose=True,cwd='../parlay/bin')
-pretty_print_json(r)
+# br_i = run_of_row([ {"key": "benchmark", "val": "fft"},
+#                     {"key": "binary", "val": "sta"},
+#                     {"key": "elastic", "val": "surplus"},
+#                     {"key": "n1", "val": 123},
+#                     {"key": "m", "val": 456},
+#                     {"key": "m2", "val": 4567},
+#                     {"key": "scheduler", "val": "elastic"},
+#                     {"key": taskparts_num_workers_key, "val": 16}
+#                    ])
+# pretty_print_json(br_i)
+# validate_benchmark_run(br_i)
+# #br_i = read_benchmark_from_file_path('taskparts_benchmark_run_example1.json')
+# r = run_taskparts_benchmark(br_i,num_repeat=3,verbose=True,cwd='../parlay/bin')
+# pretty_print_json(r)
+
+mypath = '../parlay/'
+import glob
+g = glob.glob(mypath + "*.cpp")
+g = [os.path.basename(x).split('.')[0] for x in g]
+skips = [ 'cyclecount' ]
+g = [ x for x in g if x not in skips ]
+print(g)
