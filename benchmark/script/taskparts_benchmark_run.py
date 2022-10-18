@@ -66,5 +66,5 @@ def run_taskparts_benchmark(br, num_repeat = None, warmup_secs = None,
     # remove the temporary file we used for the stats output
     open(stats_path, 'w').close()
     os.unlink(stats_path)
-    return {'benchmark_run': br_o, 'stats': stats }
+    return {'benchmark_results': br_o, 'stats': stats }
 
