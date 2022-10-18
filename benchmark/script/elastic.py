@@ -25,6 +25,8 @@ args = parser.parse_args()
 num_workers = args.num_workers
 print(num_workers)
 
+outfile = 'results.json'
+
 num_benchmark_repeat = 2
 
 # Elastic scheduling
@@ -186,4 +188,28 @@ def run_elastic_benchmarks(e):
         results = mk_append(row_of_benchmark_results(br), results)
     return eval(results)
 
-pretty_print_json(run_elastic_benchmarks(r1))
+#pretty_print_json(run_elastic_benchmarks(r1))
+
+def json_dumps(thing):
+    return json.dumps(
+        thing,
+        ensure_ascii=False,
+        sort_keys=True,
+        indent=2,
+        separators=(',', ':'),
+    )
+
+def write_string_to_file_path(bstr, file_path = './results.json', verbose = True):
+    with open(file_path, 'w', encoding='utf-8') as fd:
+        fd.write(bstr)
+        fd.close()
+        if verbose:
+            print('Wrote benchmark to file: ' + file_path)
+
+def write_benchmark_to_file_path(benchmark, file_path = '', verbose = True):
+    bstr = json_dumps(benchmark)
+    file_path = file_path if file_path != '' else 'results-' + get_hash(bstr) + '.json'
+    write_string_to_file_path(bstr, file_path, verbose)
+    return file_path
+
+write_benchmark_to_file_path(run_elastic_benchmarks(r1), file_path = outfile)
