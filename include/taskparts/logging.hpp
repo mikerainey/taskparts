@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <memory>
 
+#include "posix/diagnostics.hpp"
 #include "scheduler.hpp" // logging events are defined here
 #include "machine.hpp"
 #include "diagnostics.hpp"
@@ -66,9 +67,8 @@ public:
   } extra;
             
   void print_text(FILE* f) {
-    auto ns = cycles::nanoseconds_since(cycles::diff(base_time, cycle_count));
-    auto s = cycles::seconds_of_nanoseconds(ns);
-    fprintf(f, "%.3f\t%ld\t%s\t", s, worker_id, name_of(tag).c_str());
+    auto ns = cycles::nanoseconds_of(cycles::diff(base_time, cycle_count)) / 1000;
+    fprintf(f, "%.9f\t%ld\t%s\t", ((double)ns) / 1.0e6, worker_id, name_of(tag).c_str());
     switch (tag) {
       case program_point: {
         fprintf(f, "%s \t %d \t %p",
@@ -334,4 +334,6 @@ bool logging_base<enabled>::tracking_kind[nb_kinds];
 template <bool enabled>
 bool logging_base<enabled>::real_time;
 
-} // end namespace
+} // namespace taskparts
+
+  

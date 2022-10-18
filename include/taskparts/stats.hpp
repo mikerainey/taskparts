@@ -252,6 +252,9 @@ public:
     output_cycles_in_seconds("total_idle_time", summary.total_idle_time);
     output_cycles_in_seconds("total_sleep_time", summary.total_sleep_time);
     output_double_value("total_time", summary.total_time);
+#ifndef NDEBUG
+    output_uint64_value("cpufreq_khz", get_cpu_frequency_khz());
+#endif
     output_double_value("utilization", summary.utilization, false);
   }
 

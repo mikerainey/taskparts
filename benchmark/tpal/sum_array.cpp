@@ -1,3 +1,4 @@
+#include "taskparts/nativeforkjoin.hpp"
 #ifndef TASKPARTS_TPALRTS
 #error "need to compile with tpal flags, e.g., TASKPARTS_TPALRTS"
 #endif
@@ -8,7 +9,7 @@ void sum_array_heartbeat(double* a, uint64_t lo, uint64_t hi, double r, double* 
 /* Handler functions */
 /* ================= */
 
-void taskparts_tpal_handler __rf_handle_sum_array_heartbeat(double* a, uint64_t lo, uint64_t hi, double r, double* dst, bool& promoted) {
+void sum_array_handler(double* a, uint64_t lo, uint64_t hi, double r, double* dst, bool& promoted) {
   if ((hi - lo) <= 1) {
     promoted = false;
   } else {
@@ -26,6 +27,11 @@ void taskparts_tpal_handler __rf_handle_sum_array_heartbeat(double* a, uint64_t 
     tpalrts_promote_via_nativefj(f1, f2, fj, taskparts::bench_scheduler());
     promoted = true;
   }
+}
+
+void taskparts_tpal_handler __rf_handle_sum_array_heartbeat(double* a, uint64_t lo, uint64_t hi,
+							    double r, double* dst, bool& promoted) {
+  sum_array_handler(a, lo, hi, r, dst, promoted);
   taskparts_tpal_rollbackward
 }
 
@@ -62,7 +68,6 @@ int main() {
   uint64_t n = taskparts::cmdline::parse_or_default_long("n", 1000 * 1000 * 1000);
   double result = 0.0;
   double* a;
-  
   taskparts::benchmark_nativeforkjoin([&] (auto sched) {
     sum_array_heartbeat(a, 0, n, 0.0, &result);
   }, [&] (auto sched) {
