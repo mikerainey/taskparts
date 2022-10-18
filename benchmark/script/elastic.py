@@ -1,13 +1,34 @@
+#!/usr/bin/env python
+
 from taskparts_benchmark_run import *
 from parameter import *
 import glob
+import argparse
+
+# Usage:
+# ./elastic.py -num_workers <P>
+# where P is the number of worker threads you want the benchmarks to use
 
 # Parameters
 # ==========
 
+# Taskparts
+# ---------
+
 path_to_benchmarks = '../parlay/'
 
 path_to_binaries = path_to_benchmarks + 'bin/'
+
+parser = argparse.ArgumentParser()
+parser.add_argument('-num_workers', type=str, required=True)
+args = parser.parse_args()
+num_workers = args.num_workers
+print(num_workers)
+
+num_benchmark_repeat = 2
+
+# Elastic scheduling
+# ------------------
 
 benchmark_skips = [ 'cyclecount' ]
 
@@ -15,10 +36,6 @@ benchmarks = [ x for x
                in [os.path.basename(x).split('.')[0] for x
                    in glob.glob(path_to_benchmarks + "*.cpp")]
                if x not in benchmark_skips ]
-
-num_workers = 16
-
-num_benchmark_repeat = 3
 
 # Benchmark keys
 # ==============
@@ -40,6 +57,20 @@ benchmark_values = [ 'cyclecount', 'fft' ]
 
 prog_keys = [ binary_key, scheduler_key, elastic_key,
               semaphore_key, benchmark_key ]
+
+override_granularity_key = 'override_granularity'
+
+# Impact of low parallelism experiment
+# ------------------------------------
+
+# Impact of phased workload experiment
+# ------------------------------------
+
+force_sequential_key = 'force_sequential'
+
+k_key = 'k'
+
+m_key = 'm'
 
 # Benchmark runs
 # ==============
@@ -98,7 +129,10 @@ def run_of_row(row):
 # r = run_taskparts_benchmark(br_i,num_repeat=num_benchmark_repeat,verbose=True,cwd=path_to_binaries)
 # pretty_print_json(r)
 
-def runs_of_rows(rows):
+# Run a number of benchmarks given as rows
+# ----------------------------------------
+
+def run_benchmarks_of_rows(rows):
     brs = []
     for row in rows:
         br_i = run_of_row(row)
@@ -110,7 +144,7 @@ def runs_of_rows(rows):
         brs += [br_o]
     return brs
 
-# r = runs_of_rows([
+# r = run_benchmarks_of_rows([
 #     [ {"key": "benchmark", "val": "fft"},
 #       {"key": "binary", "val": "sta"},
 #       {"key": "elastic", "val": "surplus"},
@@ -121,6 +155,9 @@ def runs_of_rows(rows):
 #       {"key": taskparts_num_workers_key, "val": num_workers}
 #      ] ])
 # pretty_print_json(r)
+
+# Run a batch of benchmarks given by a parameter expression
+# ---------------------------------------------------------
 
 mk_scheds = mk_append_sequence(
     [ mk_parameter('binary', 'sta'),
@@ -134,7 +171,7 @@ r1 = mk_cross_sequence(
       mk_parameter(taskparts_num_workers_key, num_workers) ])
 
 #r = eval(r1)
-#pretty_print_json(runs_of_rows(rows_of(r)))
+#pretty_print_json(run_benchmarks_of_rows(rows_of(r)))
 
 def row_of_benchmark_results(br):
     stats = {'value': [ dictionary_to_row(row) for row in br['stats'] ] }
@@ -143,7 +180,7 @@ def row_of_benchmark_results(br):
 
 def run_elastic_benchmarks(e):
     rows = rows_of(eval(e))
-    brs = runs_of_rows(rows)
+    brs = run_benchmarks_of_rows(rows)
     results = mk_unit()
     for br in brs:
         results = mk_append(row_of_benchmark_results(br), results)

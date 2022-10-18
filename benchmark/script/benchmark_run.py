@@ -66,7 +66,7 @@ def run_benchmark(br_i, cwd = None, timeout_sec = None, verbose = False):
     os_env = os.environ.copy()
     env_args = { a['var']: str(a['val']) for a in br_i['benchmark_run']['env_args'] }
     env = {**os_env, **env_args}
-    current_child = subprocess.Popen(cmd, shell = True, env = env_args,
+    current_child = subprocess.Popen(cmd, shell = True, env = env,
                                      stdout = subprocess.PIPE, stderr = subprocess.PIPE,
                                      cwd = cwd)
     # initialize output data

@@ -14,6 +14,7 @@ taskparts_outfile_key = 'TASKPARTS_STATS_OUTFILE'
 taskparts_cilk_outfile_key = 'CILK_STATS_OUTFILE'
 taskparts_num_workers_key = 'TASKPARTS_NUM_WORKERS'
 taskparts_resource_binding_key = 'TASKPARTS_RESOURCE_BINDING'
+taskparts_nb_steal_attempts_key = 'TASKPARTS_NB_STEAL_ATTEMPTS'
 
 taskparts_env_vars = [
     taskparts_num_workers_key,
@@ -28,7 +29,7 @@ taskparts_env_vars = [
 # =======
 
 # Stats
-# =====
+# -----
 
 taskparts_exectime_key = 'exectime'
 taskparts_usertime_key = 'usertime'
@@ -41,6 +42,9 @@ taskparts_total_sleep_time_key = 'total_sleep_time'
 taskparts_utilization_key = 'utilization'
 taskparts_nb_fibers_key = 'nb_fibers'
 taskparts_nb_steals_key = 'nb_steals'
+
+# Benchmark-run driver
+# ====================
 
 def run_taskparts_benchmark(br, num_repeat = None, warmup_secs = None,
                             cwd = None, timeout_sec = None, verbose = False):
