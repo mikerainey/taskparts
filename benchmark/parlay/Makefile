@@ -46,13 +46,13 @@ MULTIPROGRAMMED_FLGS=-DTASKPARTS_MULTIPROGRAMMED
 
 ELASTIC_SURPLUS_FLAGS=-DTASKPARTS_ELASTIC_SURPLUS
 
-%.surplus.elastic.opt: %.cpp $(INCLUDE_FILES) install_folder
+%.surplus2.elastic.opt: %.cpp $(INCLUDE_FILES) install_folder
 	$(CXX) $(OPT_PREFIX) $(ELASTIC_SURPLUS_FLAGS) -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
-%.surplus.elastic.sta: %.cpp $(INCLUDE_FILES) install_folder
+%.surplus2.elastic.sta: %.cpp $(INCLUDE_FILES) install_folder
 	$(CXX) $(STA_PREFIX) $(ELASTIC_SURPLUS_FLAGS) -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
-%.surplus.elastic.log: %.cpp $(INCLUDE_FILES) install_folder
+%.surplus2.elastic.log: %.cpp $(INCLUDE_FILES) install_folder
 	$(CXX) $(LOG_PREFIX) $(ELASTIC_SURPLUS_FLAGS) -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
-%.surplus.elastic.dbg: %.cpp $(INCLUDE_FILES) install_folder
+%.surplus2.elastic.dbg: %.cpp $(INCLUDE_FILES) install_folder
 	$(CXX) $(DBG_PREFIX) $(ELASTIC_SURPLUS_FLAGS) -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
 
 # Surplus (using spinning semaphores)
@@ -60,13 +60,13 @@ ELASTIC_SURPLUS_FLAGS=-DTASKPARTS_ELASTIC_SURPLUS
 
 SS_SURPLUS_FLGS=$(ELASTIC_SURPLUS_FLAGS) -DTASKPARTS_USE_SPINNING_SEMAPHORE
 
-%.spin.surplus.elastic.opt: %.cpp $(INCLUDE_FILES) install_folder
+%.spin.surplus2.elastic.opt: %.cpp $(INCLUDE_FILES) install_folder
 	$(CXX) $(OPT_PREFIX) $(SS_SURPLUS_FLGS) -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
-%.spin.surplus.elastic.sta: %.cpp $(INCLUDE_FILES) install_folder
+%.spin.surplus2.elastic.sta: %.cpp $(INCLUDE_FILES) install_folder
 	$(CXX) $(STA_PREFIX) $(SS_SURPLUS_FLGS) -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
-%.spin.surplus.elastic.log: %.cpp $(INCLUDE_FILES) install_folder
+%.spin.surplus2.elastic.log: %.cpp $(INCLUDE_FILES) install_folder
 	$(CXX) $(LOG_PREFIX) $(SS_SURPLUS_FLGS) -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
-%.spin.surplus.elastic.dbg: %.cpp $(INCLUDE_FILES) install_folder
+%.spin.surplus2.elastic.dbg: %.cpp $(INCLUDE_FILES) install_folder
 	$(CXX) $(DBG_PREFIX) $(SS_SURPLUS_FLGS) -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
 
 # Tree (using native semaphores)
@@ -74,13 +74,13 @@ SS_SURPLUS_FLGS=$(ELASTIC_SURPLUS_FLAGS) -DTASKPARTS_USE_SPINNING_SEMAPHORE
 
 ELASTIC_TREE_FLAGS=-DTASKPARTS_ELASTIC_TREE
 
-%.multilevel.surplus.elastic.opt: %.cpp $(INCLUDE_FILES) install_folder
+%.surplus.elastic.opt: %.cpp $(INCLUDE_FILES) install_folder
 	$(CXX) $(OPT_PREFIX) $(ELASTIC_TREE_FLAGS) -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
-%.multilevel.surplus.elastic.sta: %.cpp $(INCLUDE_FILES) install_folder
+%.surplus.elastic.sta: %.cpp $(INCLUDE_FILES) install_folder
 	$(CXX) $(STA_PREFIX) $(ELASTIC_TREE_FLAGS) -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
-%.multilevel.surplus.elastic.log: %.cpp $(INCLUDE_FILES) install_folder
+%.surplus.elastic.log: %.cpp $(INCLUDE_FILES) install_folder
 	$(CXX) $(LOG_PREFIX) $(ELASTIC_TREE_FLAGS) -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
-%.multilevel.surplus.elastic.dbg: %.cpp $(INCLUDE_FILES) install_folder
+%.surplus.elastic.dbg: %.cpp $(INCLUDE_FILES) install_folder
 	$(CXX) $(DBG_PREFIX) $(ELASTIC_TREE_FLAGS) -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
 
 # Tree (using spinning semaphores)
@@ -88,13 +88,13 @@ ELASTIC_TREE_FLAGS=-DTASKPARTS_ELASTIC_TREE
 
 SS_TREE_FLGS=$(ELASTIC_TREE_FLAGS) -DTASKPARTS_USE_SPINNING_SEMAPHORE
 
-%.spin.multilevel.surplus.elastic.opt: %.cpp $(INCLUDE_FILES) install_folder
+%.spin.surplus.elastic.opt: %.cpp $(INCLUDE_FILES) install_folder
 	$(CXX) $(OPT_PREFIX) $(SS_TREE_FLGS) -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
-%.spin.multilevel.surplus.elastic.sta: %.cpp $(INCLUDE_FILES) install_folder
+%.spin.surplus.elastic.sta: %.cpp $(INCLUDE_FILES) install_folder
 	$(CXX) $(STA_PREFIX) $(SS_TREE_FLGS) -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
-%.spin.multilevel.surplus.elastic.log: %.cpp $(INCLUDE_FILES) install_folder
+%.spin.surplus.elastic.log: %.cpp $(INCLUDE_FILES) install_folder
 	$(CXX) $(LOG_PREFIX) $(SS_TREE_FLGS) -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
-%.spin.multilevel.surplus.elastic.dbg: %.cpp $(INCLUDE_FILES) install_folder
+%.spin.surplus.elastic.dbg: %.cpp $(INCLUDE_FILES) install_folder
 	$(CXX) $(DBG_PREFIX) $(SS_TREE_FLGS) -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
 
 # Benchmarks

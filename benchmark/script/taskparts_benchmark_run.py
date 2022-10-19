@@ -2,6 +2,12 @@ import os, tempfile
 from copy import deepcopy
 from benchmark_run import *
 
+# later: using the code below, try to detect the cpu frequency
+# import cpuinfo
+# current_cpu_info = cpuinfo.get_cpu_info()
+# if 'hz_actual' in current_cpu_info.keys():
+#     print(current_cpu_info['hz_actual'][0])
+
 # Inputs
 # ======
 
