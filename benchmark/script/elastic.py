@@ -4,6 +4,14 @@ from taskparts_benchmark_run import *
 from parameter import *
 import glob, argparse, psutil, pathlib
 
+# ===========================================
+# Elastic task scheduling benchmarking script
+# ===========================================
+
+# TODOs:
+#   - incremental snapshots of experiments
+#   - save benchmark-run history in addition to the output table
+
 # Parameters
 # ==========
 
@@ -82,7 +90,9 @@ prog_keys = [ binary_key, chaselev_key, elastic_key, semaphore_key,
               benchmark_key ]
 
 scheduler_key = 'scheduler'
-scheduler_values = [ 'nonelastic', 'multiprogrammed', 'elastic2', 'elastic' ]
+scheduler_values = [ 'nonelastic', 'multiprogrammed',
+                     'elastic2', 'elastic',
+                     'elastic2_spin', 'elastic_spin' ]
 
 # Impact of low parallelism experiment
 # ------------------------------------
@@ -136,10 +146,28 @@ mk_sched_elastic = mk_cross_sequence(
       mk_parameter(binary_key, 'sta'),
       mk_parameter(chaselev_key, 'elastic'),
       mk_parameter(elastic_key, 'surplus') ] )
+# versions of the two schedulers above, in which the semaphore is
+# replaced by our own version that blocks by spinning instead of via
+# the OS/semaphore mechanism
+mk_sched_elastic2_spin = mk_cross_sequence(
+    [ mk_parameter(scheduler_key, 'elastic2_spin'),
+      mk_parameter(binary_key, 'sta'),
+      mk_parameter(chaselev_key, 'elastic'),
+      mk_parameter(elastic_key, 'surplus2'),
+      mk_parameter(semaphore_key, 'spin') ])
+mk_sched_elastic_spin = mk_cross_sequence(
+    [ mk_parameter(scheduler_key, 'elastic_spin'),
+      mk_parameter(binary_key, 'sta'),
+      mk_parameter(chaselev_key, 'elastic'),
+      mk_parameter(elastic_key, 'surplus'),
+      mk_parameter(semaphore_key, 'spin')  ] )
+
 # all schedulers
 mk_scheds = mk_append_sequence(
-    [ mk_sched_chaselev, mk_sched_elastic2, mk_sched_elastic ])
-
+    [ mk_sched_chaselev,
+      mk_sched_elastic2, mk_sched_elastic,
+      mk_sched_elastic2_spin, mk_sched_elastic_spin ])
+# high-parallelism experiment
 mk_high_parallelism = mk_cross_sequence(
     [ mk_parameters(benchmark_key, benchmarks),
       mk_scheds,
