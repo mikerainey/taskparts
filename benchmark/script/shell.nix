@@ -5,6 +5,7 @@ let
     extraLibs = [ pkgs.python310Packages.jsonschema
                   pkgs.python310Packages.simplejson
                   pkgs.python310Packages.psutil
+                  pkgs.python310Packages.py-cpuinfo
                 ];
   };
 in
