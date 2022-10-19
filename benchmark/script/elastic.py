@@ -11,6 +11,8 @@ import glob, argparse, psutil, pathlib
 # TODOs:
 #   - incremental snapshots of experiments
 #   - save benchmark-run history in addition to the output table
+#   - fix tokens benchmark
+#   - make it possible to configure warmup secs
 
 # Parameters
 # ==========
@@ -45,14 +47,6 @@ path_to_benchmarks = '../parlay/'
 
 path_to_binaries = path_to_benchmarks + 'bin/'
 
-num_workers = args.num_workers
-
-results_outfile = args.results_outfile
-
-num_benchmark_repeat = args.num_benchmark_repeat
-
-virtual_run = args.virtual_run
-
 # Elastic scheduling
 # ------------------
 
@@ -66,7 +60,8 @@ benchmarks = [ x for x
                if x not in benchmark_skips ]
 
 # uncomment to override the list of benchmarks above
-benchmarks = [ 'fft', 'bigintadd' ]
+benchmarks = [ 'fft', 'bigintadd', 'bellmanford', 'quickhull',
+               'samplesort', 'suffixarray', 'karatsuba', 'setcover' ] # todo: fix 'tokens', 
 
 # Benchmark keys
 # ==============
@@ -171,7 +166,7 @@ mk_scheds = mk_append_sequence(
 mk_high_parallelism = mk_cross_sequence(
     [ mk_parameters(benchmark_key, benchmarks),
       mk_scheds,
-      mk_parameter(taskparts_num_workers_key, num_workers) ])
+      mk_parameter(taskparts_num_workers_key, args.num_workers) ])
 
 # Benchmark runs
 # ==============
@@ -197,7 +192,7 @@ def maybe_build_benchmark(b):
         return
     cmd = 'make ' + b
     print(cmd)
-    if virtual_run:
+    if args.virtual_run:
         return
     os_env = os.environ.copy()
     env_args = { }
@@ -246,11 +241,11 @@ def run_of_row(row):
 #                     {"key": "m", "val": 456},
 #                     {"key": "m2", "val": 4567},
 #                     {"key": "scheduler", "val": "elastic"},
-#                     {"key": taskparts_num_workers_key, "val": num_workers}
+#                     {"key": taskparts_num_workers_key, "val": args.num_workers}
 #                    ])
 # pretty_print_json(br_i)
 # #br_i = read_benchmark_from_file_path('taskparts_benchmark_run_example1.json')
-# r = run_taskparts_benchmark(br_i,num_repeat=num_benchmark_repeat,verbose=True,cwd=path_to_binaries)
+# r = run_taskparts_benchmark(br_i,num_repeat=args.num_benchmark_repeat,verbose=True,cwd=path_to_binaries)
 # pretty_print_json(r)
 
 # Run a number of benchmarks given as rows
@@ -261,7 +256,7 @@ def run_benchmarks_of_rows(rows):
     for row in rows:
         br_i = run_of_row(row)
         br_o = run_taskparts_benchmark(br_i,
-                                       num_repeat=num_benchmark_repeat,
+                                       num_repeat=args.num_benchmark_repeat,
                                        verbose=True,
                                        cwd=path_to_binaries)
         br_o['row'] = row
@@ -281,7 +276,7 @@ def virtual_run_benchmarks_of_rows(rows):
 #       {"key": "m", "val": 456},
 #       {"key": "m2", "val": 4567},
 #       {"key": "scheduler", "val": "elastic"},
-#       {"key": taskparts_num_workers_key, "val": num_workers}
+#       {"key": taskparts_num_workers_key, "val": args.num_workers}
 #      ] ])
 # pretty_print_json(r)
 
@@ -322,7 +317,7 @@ def json_dumps(thing):
         separators=(',', ':'),
     )
 
-def write_string_to_file_path(bstr, file_path = results_outfile, verbose = True):
+def write_string_to_file_path(bstr, file_path = args.results_outfile, verbose = True):
     with open(file_path, 'w', encoding='utf-8') as fd:
         fd.write(bstr)
         fd.close()
@@ -338,7 +333,7 @@ def write_benchmark_to_file_path(benchmark, file_path = '', verbose = True):
 # Driver
 # ======
 
-if not(virtual_run):
-    write_benchmark_to_file_path(run_elastic_benchmarks(mk_high_parallelism), file_path = results_outfile)
+if not(args.virtual_run):
+    write_benchmark_to_file_path(run_elastic_benchmarks(mk_high_parallelism), file_path = args.results_outfile)
 else:
     virtual_run_elastic_benchmarks(mk_high_parallelism)
