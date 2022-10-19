@@ -386,7 +386,7 @@ public:
     do {
       id = (size_t)((hash(my_id) + hash(nb_sa)) % (nb_workers - 1));
       if (id >= my_id) {
-	id++;
+        id++;
       }
       nb_sa++;
       // fprintf(stderr, "[%ld] Stealing: Attempting %ld. \n", my_id, id);
@@ -1044,9 +1044,6 @@ public:
     assert(i == path_index_of_leaf());
     //print_tree("after");
   }
-  
-  static constexpr
-  bool override_rand_worker = false;
 
   static
   auto wake_children() { }
@@ -1331,14 +1328,6 @@ public:
     return nodes_array[i].id;
   }
   
-  /*
-  static
-  auto sample_by_surplus(size_t my_id = perworker::my_id()) -> int {
-    return sample_path(my_id, [&] (gamma g) {
-      return g.s;
-    });
-  } */
-  
   // returns either:
   // (1) the id of some worker that the tree sees as asleep
   // (2) -1 if there are no workers that the tree sees as asleep
@@ -1348,6 +1337,39 @@ public:
       return g.a;
     });
   }
+  
+#if defined(TASKPARTS_ELASTIC_TREE_VICTIM_SELECTION_BY_TREE)
+  
+  static constexpr
+  bool override_rand_worker = true;
+  
+  static
+  auto sample_by_surplus(size_t my_id = perworker::my_id()) -> int {
+    return sample_path(my_id, [&] (gamma g) {
+      return g.s;
+    });
+  }
+  
+  static
+  auto random_other_worker(size_t& nb_sa, size_t nb_workers, size_t my_id) -> size_t {
+    assert(nb_workers != 1);
+    auto id_maybe = sample_by_surplus(my_id);
+    if (id_maybe == not_found) {
+      auto id = (size_t)((hash(my_id) + hash(nb_sa)) % (nb_workers - 1));
+      if (id >= my_id) {
+        id++;
+      }
+      nb_sa++;
+      return id;
+    }
+    return (size_t)id_maybe;
+  }
+#else
+  
+  static constexpr
+  bool override_rand_worker = false;
+  
+#endif
   
 };
   

@@ -33,8 +33,8 @@ auto loop(int lo, int hi, Scheduler sched) -> void {
 }
 
 int main() {
-  int64_t n = cmdline::parse_or_default_long("n", 44);
-  m = cmdline::parse_or_default_long("m", 40);
+  int64_t n = cmdline::parse_or_default_long("n", 29);
+  m = cmdline::parse_or_default_long("m", 10);
   a = new int64_t[n];
   benchmark_nativeforkjoin([&] (auto sched){
     loop(0, n, sched);
