@@ -323,9 +323,9 @@ public:
           assert(false);
         }
       }
-      TASKPARTS_LOG_PPT(Scheduler, cf);
+      //TASKPARTS_LOG_PPT(Scheduler, cf);
       f();
-      TASKPARTS_LOG_PPT(Scheduler, cf);
+      //TASKPARTS_LOG_PPT(Scheduler, cf);
       while (true) {
         auto s = status.load();
         if (s == remote_run_state) {
@@ -335,7 +335,7 @@ public:
         } else if (s == remote_notify_state) {
           continue;
         } else if (s == remote_notified_state) {
-          TASKPARTS_LOG_PPT(Scheduler, cf);
+          //TASKPARTS_LOG_PPT(Scheduler, cf);
           auto i = --cf->incounter;
           assert(i == 0);
           cf->schedule();
@@ -354,13 +354,13 @@ public:
       auto s = status.load();
       if ((s == initial_state) || (s == remote_try_state)) {
         if (status.compare_exchange_strong(s, local_run_state)) {
-          TASKPARTS_LOG_PPT(Scheduler, cf);
+          //TASKPARTS_LOG_PPT(Scheduler, cf);
           break;
         }
       } else if (s == remote_run_state) {
         assert(cf == nativefj_fiber<Scheduler>::current_fiber.mine());
         if (! status.compare_exchange_strong(s, remote_notify_state)) {
-          TASKPARTS_LOG_PPT(Scheduler, cf);
+          //TASKPARTS_LOG_PPT(Scheduler, cf);
           continue;
         }
         cf->incounter++;
@@ -368,11 +368,11 @@ public:
         cf->status = fiber_status_pause;
         if (context::capture<nativefj_fiber<Scheduler>*>(context::addr(cf->ctx))) {
           cf->status = st;
-          TASKPARTS_LOG_PPT(Scheduler, cf);
+          //TASKPARTS_LOG_PPT(Scheduler, cf);
 	  decr_refcount();
           return;
         }
-        TASKPARTS_LOG_PPT(Scheduler, cf);
+        //TASKPARTS_LOG_PPT(Scheduler, cf);
         status.store(remote_notified_state);
         cf->exit_to_scheduler();
         assert(false);
@@ -383,9 +383,9 @@ public:
         assert(false);
       }
     }
-    TASKPARTS_LOG_PPT(Scheduler, cf);
+    //TASKPARTS_LOG_PPT(Scheduler, cf);
     f();
-    TASKPARTS_LOG_PPT(Scheduler, cf);
+    //TASKPARTS_LOG_PPT(Scheduler, cf);
     decr_refcount();
   }
 

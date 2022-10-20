@@ -413,13 +413,13 @@ public:
       worker_loop(i);
     });
     Worker::destroy();
-#ifndef NDEBUG
+#ifndef NDEBUG /*
     for (size_t i = 0; i < buffers.size(); i++) {
       assert(buffers[i].empty());
     }
     for (size_t i = 0; i < deques.size(); i++) {
       assert(deques[i].empty());
-    }
+      } */
 #endif
   }
 
