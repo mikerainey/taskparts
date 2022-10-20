@@ -25,9 +25,7 @@ auto loop(int lo, int hi, Scheduler sched) -> void {
   }
   assert(lo < hi); 
   auto mid = (lo + hi) / 2;
-  auto fut = new lazy_future([&] { loop(mid, hi, sched); }, sched);
-  fut->release();
-  yield(sched);
+  auto fut = spawn_lazy_future([&] { loop(mid, hi, sched); }, sched);
   loop(lo, mid, sched);
   fut->force();
 }

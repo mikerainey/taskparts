@@ -393,5 +393,13 @@ public:
   }
 
 };
+
+template <typename F, typename Scheduler>
+auto spawn_lazy_future(const F& f, Scheduler sched) -> lazy_future<F, Scheduler>* {
+  auto fut = new lazy_future(f, sched);
+  fut->release();
+  yield(sched);
+  return fut;
+}
   
 } // end namespace
