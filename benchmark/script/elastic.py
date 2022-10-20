@@ -9,10 +9,17 @@ import glob, argparse, psutil, pathlib
 # ===========================================
 
 # TODOs:
-#   - incremental snapshots of experiments
+#   - increase the input size of benchmarks
+#   - incremental snapshots of experiments and output of results to git
+#   - ensure numa interleaving
+#   - experiment to vary the minimum nb of steal attempts before going to sleep TASKPARTS_NB_STEAL_ATTEMPTS
+#   - try the version of scalable elastic that uses the tree to sample for victim workers
 #   - save benchmark-run history in addition to the output table
 #   - fix tokens benchmark
 #   - make it possible to configure warmup secs
+#   - print to stdout exectime preview and counter value of each benchmark
+#   - much later: experiment with idea of a parameter expression that expresses
+#     a key waiting for a value
 
 # Parameters
 # ==========
@@ -60,8 +67,14 @@ benchmarks = [ x for x
                if x not in benchmark_skips ]
 
 # uncomment to override the list of benchmarks above
-benchmarks = [ 'fft', 'bigintadd', 'bellmanford', 'quickhull',
-               'samplesort', 'suffixarray', 'karatsuba', 'setcover' ] # todo: fix 'tokens', 
+benchmarks = [ 'fft', 'bellmanford', 'knn',
+               'samplesort', 'suffixarray', 'karatsuba', 'setcover',
+               # maybe needs a larger input size
+               'filterkruskal', 'bigintadd', 'quickhull',
+               # definitely needs a larger input size
+               'kcore', 'betweennesscentrality', 'bucketeddijkstra',
+               'cartesiantree', 'graphcolor'
+              ]
 
 # Benchmark keys
 # ==============
@@ -88,6 +101,9 @@ scheduler_key = 'scheduler'
 scheduler_values = [ 'nonelastic', 'multiprogrammed',
                      'elastic2', 'elastic',
                      'elastic2_spin', 'elastic_spin' ]
+
+experiment_key = 'experiment'
+experiment_values = [ 'high-parallelism', 'low-parallelism', 'parallel-serial-mix' ]
 
 # Impact of low parallelism experiment
 # ------------------------------------
@@ -164,7 +180,8 @@ mk_scheds = mk_append_sequence(
       mk_sched_elastic2_spin, mk_sched_elastic_spin ])
 # high-parallelism experiment
 mk_high_parallelism = mk_cross_sequence(
-    [ mk_parameters(benchmark_key, benchmarks),
+    [ mk_parameter(experiment_key, 'high-parallelism'),
+      mk_parameters(benchmark_key, benchmarks),
       mk_scheds,
       mk_parameter(taskparts_num_workers_key, args.num_workers) ])
 
@@ -282,9 +299,6 @@ def virtual_run_benchmarks_of_rows(rows):
 
 # Run a batch of benchmarks given by a parameter expression
 # ---------------------------------------------------------
-
-#r = eval(r1)
-#pretty_print_json(run_benchmarks_of_rows(rows_of(r)))
 
 def row_of_benchmark_results(br):
     stats = {'value': [ dictionary_to_row(row) for row in br['stats'] ] }
