@@ -299,48 +299,48 @@ public:
     while (true) {
       auto s = status.load();
       if (s == initial_state) {
-	if (status.compare_exchange_strong(s, remote_try_state)) {
-	  break;
-	}
+        if (status.compare_exchange_strong(s, remote_try_state)) {
+          break;
+        }
       } else if (s == local_run_state) {
-	return fiber_status_pause;
+        return fiber_status_pause;
       } else {
-	assert(false);
+        assert(false);
       }
     }
     auto fb = new nativefj_from_lambda([&] {
       while (true) {
-	auto s = status.load();
-	if (s == local_run_state) {
-	  return;
-	} else if (s == remote_try_state) {
-	  if (status.compare_exchange_strong(s, remote_run_state)) {
-	    break;
-	  }
-	} else {
-	  assert(false);
-	}
+        auto s = status.load();
+        if (s == local_run_state) {
+          return;
+        } else if (s == remote_try_state) {
+          if (status.compare_exchange_strong(s, remote_run_state)) {
+            break;
+          }
+        } else {
+          assert(false);
+        }
       }
       TASKPARTS_LOG_PPT(Scheduler, cf);
       f();
       TASKPARTS_LOG_PPT(Scheduler, cf);
       while (true) {
-	auto s = status.load();
-	if (s == remote_run_state) {
-	  if (status.compare_exchange_strong(s, remote_ran_state)) {
-	    break;
-	  }
-	} else if (s == remote_notify_state) {
-	  continue;
-	} else if (s == remote_notified_state) {
-	  TASKPARTS_LOG_PPT(Scheduler, cf);
-	  auto i = --cf->incounter;
-	  assert(i == 0);
-	  cf->schedule();
-	  break;
-	} else {
-	  assert(false);
-	}
+        auto s = status.load();
+        if (s == remote_run_state) {
+          if (status.compare_exchange_strong(s, remote_ran_state)) {
+            break;
+          }
+        } else if (s == remote_notify_state) {
+          continue;
+        } else if (s == remote_notified_state) {
+          TASKPARTS_LOG_PPT(Scheduler, cf);
+          auto i = --cf->incounter;
+          assert(i == 0);
+          cf->schedule();
+          break;
+        } else {
+          assert(false);
+        }
       }
     }, Scheduler());
     fb->release();
@@ -351,32 +351,32 @@ public:
     while (true) {
       auto s = status.load();
       if ((s == initial_state) || (s == remote_try_state)) {
-	if (status.compare_exchange_strong(s, local_run_state)) {
-	  TASKPARTS_LOG_PPT(Scheduler, cf);
-	  break;
-	}
+        if (status.compare_exchange_strong(s, local_run_state)) {
+          TASKPARTS_LOG_PPT(Scheduler, cf);
+          break;
+        }
       } else if (s == remote_run_state) {
-	assert(cf == nativefj_fiber<Scheduler>::current_fiber.mine());
-	if (! status.compare_exchange_strong(s, remote_notify_state)) {
-	  TASKPARTS_LOG_PPT(Scheduler, cf);
-	  continue;
-	}
-	cf->incounter++;
-	auto st = cf->status;
-	cf->status = fiber_status_pause;
-	if (context::capture<nativefj_fiber<Scheduler>*>(context::addr(cf->ctx))) {
-	  cf->status = st;
-	  TASKPARTS_LOG_PPT(Scheduler, cf);
-	  return;
-	}
-	TASKPARTS_LOG_PPT(Scheduler, cf);
-	status.store(remote_notified_state);
-	cf->exit_to_scheduler();
-	assert(false);
+        assert(cf == nativefj_fiber<Scheduler>::current_fiber.mine());
+        if (! status.compare_exchange_strong(s, remote_notify_state)) {
+          TASKPARTS_LOG_PPT(Scheduler, cf);
+          continue;
+        }
+        cf->incounter++;
+        auto st = cf->status;
+        cf->status = fiber_status_pause;
+        if (context::capture<nativefj_fiber<Scheduler>*>(context::addr(cf->ctx))) {
+          cf->status = st;
+          TASKPARTS_LOG_PPT(Scheduler, cf);
+          return;
+        }
+        TASKPARTS_LOG_PPT(Scheduler, cf);
+        status.store(remote_notified_state);
+        cf->exit_to_scheduler();
+        assert(false);
       } else if (s == remote_ran_state) {
-	return;
+        return;
       } else {
-	assert(false);
+        assert(false);
       }
     }
     TASKPARTS_LOG_PPT(Scheduler, cf);
