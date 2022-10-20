@@ -284,14 +284,16 @@ public:
     remote_notify_state, remote_notified_state
   };
   
-  std::atomic<status_type> status;  
+  std::atomic<status_type> status;
+
+  std::atomic<int> refcount;
 
   F f;
   
   nativefj_fiber<Scheduler>* cf;
 
   lazy_future(const F& f, Scheduler sched=Scheduler())
-    : fiber<Scheduler>(), f(std::move(f)), status(initial_state) {
+    : fiber<Scheduler>(), f(std::move(f)), status(initial_state), refcount(2) {
     cf = nativefj_fiber<Scheduler>::current_fiber.mine();
   }
 
@@ -367,6 +369,7 @@ public:
         if (context::capture<nativefj_fiber<Scheduler>*>(context::addr(cf->ctx))) {
           cf->status = st;
           TASKPARTS_LOG_PPT(Scheduler, cf);
+	  decr_refcount();
           return;
         }
         TASKPARTS_LOG_PPT(Scheduler, cf);
@@ -374,6 +377,7 @@ public:
         cf->exit_to_scheduler();
         assert(false);
       } else if (s == remote_ran_state) {
+	decr_refcount();
         return;
       } else {
         assert(false);
@@ -382,6 +386,13 @@ public:
     TASKPARTS_LOG_PPT(Scheduler, cf);
     f();
     TASKPARTS_LOG_PPT(Scheduler, cf);
+    decr_refcount();
+  }
+
+  auto decr_refcount() -> void {
+    if (--refcount == 0) {
+      delete this;
+    }
   }
 
   void finish() {
@@ -390,6 +401,7 @@ public:
     auto s = status.load();
     assert((s == local_run_state) || (s == remote_ran_state));
 #endif
+    decr_refcount();
   }
 
 };
