@@ -4,6 +4,7 @@
 #include <optional>
 #include <atomic>
 #include <vector>
+#include <functional>
 
 #include "timing.hpp"
 #include "perworker.hpp"

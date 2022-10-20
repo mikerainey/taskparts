@@ -15,11 +15,10 @@ using register_type = ulong_t*;
 /*---------------------------------------------------------------------*/
 /* Rollforward table and lookup */
 
-#ifdef TASKPARTS_TPALRTS_HBTIMER_KMOD
+#if defined(TASKPARTS_TPALRTS_HBTIMER_KMOD)
 extern "C" {
 #include <heartbeat.h>
 }
-#endif
 
 extern
 uint64_t rollforward_table_size;
@@ -29,9 +28,11 @@ extern
 struct hb_rollforward rollforward_table[];
 extern
 struct hb_rollforward rollback_table[];
+#endif
 
 namespace taskparts {
 
+#if defined(TASKPARTS_TPALRTS_HBTIMER_KMOD)
 auto try_to_initiate_rollforward(void** rip) {
   void* ra_src = *rip;
   void* ra_dst = nullptr;
@@ -118,9 +119,11 @@ void __initialize(int argc, char **argv) {
   qsort(rollback_table, rollforward_table_size, 16, sorter);
   rf_well_formed_check();
 }
+#endif
     
 } // end namespace
 
+#if defined(TASKPARTS_TPALRTS_HBTIMER_KMOD)
 #define taskparts_tpal_handler \
    __attribute__((preserve_all, noinline))
 
@@ -144,7 +147,7 @@ void __initialize(int argc, char **argv) {
     } \
     exit(1); \
   } }
-
+#endif
 
 #define taskparts_tpal_unlikely(x)    __builtin_expect(!!(x), 0)
 
