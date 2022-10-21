@@ -9,7 +9,6 @@ import glob, argparse, psutil, pathlib
 # ===========================================
 
 # TODOs:
-#   - increase the input size of benchmarks
 #   - incremental snapshots of experiments and output of results to git
 #   - ensure numa interleaving
 #   - experiment to vary the minimum nb of steal attempts before going to sleep TASKPARTS_NB_STEAL_ATTEMPTS
@@ -69,11 +68,11 @@ benchmarks = [ x for x
 # uncomment to override the list of benchmarks above
 benchmarks = [ 'fft', 'bellmanford', 'knn',
                'samplesort', 'suffixarray', 'karatsuba', 'setcover',
-               # maybe needs a larger input size
                'filterkruskal', 'bigintadd', 'quickhull',
-               # definitely needs a larger input size
-               'kcore', 'betweennesscentrality', 'bucketeddijkstra',
-               'cartesiantree', 'graphcolor'
+               'betweennesscentrality', 'bucketeddijkstra',
+               'cartesiantree', 'graphcolor',
+               # something seems off...
+               'kcore'
               ]
 
 # Benchmark keys
@@ -104,6 +103,7 @@ scheduler_values = [ 'nonelastic', 'multiprogrammed',
 
 experiment_key = 'experiment'
 experiment_values = [ 'high-parallelism', 'low-parallelism', 'parallel-serial-mix' ]
+
 
 # Impact of low parallelism experiment
 # ------------------------------------

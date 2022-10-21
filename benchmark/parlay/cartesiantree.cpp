@@ -16,7 +16,7 @@ parlay::sequence<long> parents;
 long n;
 
 auto gen_input() {
-  n = std::max((size_t)1, (size_t)taskparts::cmdline::parse_or_default_long("n", 10 * 1000 * 1000));
+  n = std::max((size_t)1, (size_t)taskparts::cmdline::parse_or_default_long("n", 100 * 1000 * 1000));
   values = generate_values(n);
 }
 
