@@ -1,8 +1,7 @@
 import sqlalchemy
 import ingest
 import model
-from model import Machine, Experiments
-from sqlalchemy import *
+from model import Machine, Experiments, Baseline
 from sqlalchemy import *
 
 # Sets up a connection to a database.
@@ -26,24 +25,28 @@ def setup(path=None, setup=False, echo=True) :
             model.init(engine)
         return engine
 
-def ingest(engine):
+def ingest_json(engine):
     ing = ingest.Ingester(engine)
     ing.ingest("json/aware.json", Machine.aware)
     ing.ingest("json/aws.json", Machine.aws)
     ing.ingest("json/gamora.json", Machine.gamora)
 
 def main():
-    # engine = setup(echo=False, path="data/data.db", setup=True)
-    engine = setup(echo=True, path="data/data.db")
+    engine = setup(echo=False, path="data/data.db", setup=True)
+    # engine = setup(echo=True, path="data/data.db")
+    # engine = setup(echo=False)
 
     # This ingests the json files 
-    # ingest(engine)
+    ingest_json(engine)
 
     # Test run -- lists all experiments
     with sqlalchemy.orm.Session(engine) as session:
-        rslt = session.execute(sqlalchemy.select(Experiments))
-        count = len(rslt.all())
-        print(f"Found total {count} entries.")
+        # rslt = session.execute(sqlalchemy.select(Experiments))
+        rslt = session.execute(sqlalchemy.select(Baseline))
+        print(len(rslt.all()))
+
+        # count = len(all)
+        # print(f"Found total {count} entries.")
 
 if __name__ == "__main__":
 	main()
