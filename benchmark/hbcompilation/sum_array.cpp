@@ -11,7 +11,7 @@ using namespace taskparts;
 
 int D = 64;
 
-int64_t H = 10000;
+int64_t H = 100000;
 
 perworker::array<uint64_t> prev;
 
