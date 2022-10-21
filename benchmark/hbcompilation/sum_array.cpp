@@ -71,36 +71,33 @@ auto sum_array(double* a, int64_t lo, int64_t hi, double* dst, Scheduler sched) 
 double* a0 = nullptr;
 
 int main() {
-  n = taskparts::cmdline::parse_or_default_long("n", 1000 * 1000 * 1000);
-  D = taskparts::cmdline::parse_or_default_int("D", D);
-  H = taskparts::cmdline::parse_or_default_int("H", H);
+  n = cmdline::parse_or_default_long("n", 1000 * 1000 * 1000);
+  D = cmdline::parse_or_default_int("D", D);
+  H = cmdline::parse_or_default_int("H", H);
   double result = 0.0;
   auto init_array = [&] {
     for (int64_t i = 0; i < n; i++) {
       a0[i] = 1.0;
     }
   };
-  
-  a0 = (double*)malloc(n * sizeof(double));
 
   for (size_t i = 0; i < prev.size(); i++) {
     prev[i] = cycles::now();
   }
   
-  taskparts::benchmark_nativeforkjoin([&] (auto sched){
+  benchmark_nativeforkjoin([&] (auto sched){
     sum_array(a0, 0, n, &result, sched);
   }, [&] (auto sched) { // setup
-
+    a0 = (double*)malloc(n * sizeof(double));
     init_array();
   }, [&] (auto sched) { // teardown
-    
+    free(a0);
+    a0 = nullptr;
   }, [&] (auto sched) { // reset
+    result = 0.0;
     init_array();
   });
   
-  free(a0);
-  a0 = nullptr;
-
   printf("result\t%.0f\n", result);
   return 0;
 }
