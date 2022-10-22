@@ -350,6 +350,14 @@ public:
   }
 
   void force() {
+    /*
+    auto f2 = Scheduler::template take<fiber>();
+    assert(this == f2);
+    if (f2 != nullptr) {
+      f();
+      decr_refcount();
+      return;
+      } */
     while (true) {
       auto s = status.load();
       if ((s == initial_state) || (s == remote_try_state)) {

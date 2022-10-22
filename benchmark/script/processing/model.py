@@ -1,9 +1,7 @@
 import enum
-from multiprocessing import Semaphore
-from tkinter.tix import COLUMN
-from tokenize import Double
 from sqlalchemy import *
 from sqlalchemy.orm import *
+import view
 
 Base = declarative_base()
 
@@ -65,7 +63,27 @@ class Experiments(Base):
     usertime         = Column(Float)
     utilization      = Column(Float)
 
+    # def __repr__(self):
+    #     return f"Run({self.id!r}, {self.machine!r}, {self.scheduler!r}, {self.numworkers!r}, {self.utilization!r}"
+
+# Baseline view created upon the experiments set
+class Baseline(Base):
+    __table__ = view.view (
+        "baseline",
+        Base.metadata,
+        select(
+            Experiments.id.label("id"),
+            Experiments.machine.label("machine"),
+            Experiments.benchmark.label("benchmark"),
+            Experiments.scheduler.label("scheduler"),
+            Experiments.numworkers.label("numworkers"),
+            Experiments.exectime.label("exectime")
+        )
+        .where(Experiments.scheduler == "nonelastic")
+    )
+
 # This creates all tabels with the given engine
 # Should only be called for the initial ingest
 def init(engine):
     Base.metadata.create_all(engine)
+
