@@ -426,8 +426,10 @@ public:
   static
   auto take() -> fiber_type* {
     auto my_id = perworker::my_id();
+#ifndef NDEBUG
     auto& my_buffer = buffers[my_id];
     assert(my_buffer.empty());
+#endif
     fiber_type* current = nullptr;
     current = pop(my_id);
     if (current != nullptr) {

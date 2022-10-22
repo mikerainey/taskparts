@@ -14,7 +14,6 @@ import glob, argparse, psutil, pathlib
 #   - experiment to vary the minimum nb of steal attempts before going to sleep TASKPARTS_NB_STEAL_ATTEMPTS
 #   - try the version of scalable elastic that uses the tree to sample for victim workers
 #   - save benchmark-run history in addition to the output table
-#   - fix tokens benchmark
 #   - make it possible to configure warmup secs
 #   - print to stdout exectime preview and counter value of each benchmark
 #   - much later: experiment with idea of a parameter expression that expresses
@@ -66,14 +65,16 @@ benchmarks = [ x for x
                if x not in benchmark_skips ]
 
 # uncomment to override the list of benchmarks above
-benchmarks = [ 'fft', 'bellmanford', 'knn',
+benchmarks = [ 'fft', 'quickhull',
+               'bellmanford', 'knn',
                'samplesort', 'suffixarray', 'karatsuba', 'setcover',
-               'filterkruskal', 'bigintadd', 'quickhull',
+               'filterkruskal', 'bigintadd', 
                'betweennesscentrality', 'bucketeddijkstra',
                'cartesiantree', 'graphcolor',
                # something seems off...
-               'kcore'
-              ]
+               'kcore' ]
+
+benchmarks = [ 'fft', 'quickhull' ]
 
 # Benchmark keys
 # ==============
@@ -102,22 +103,8 @@ scheduler_values = [ 'nonelastic', 'multiprogrammed',
                      'elastic2_spin', 'elastic_spin' ]
 
 experiment_key = 'experiment'
-experiment_values = [ 'high-parallelism', 'low-parallelism', 'parallel-serial-mix' ]
-
-
-# Impact of low parallelism experiment
-# ------------------------------------
-
-override_granularity_key = 'override_granularity'
-
-# Impact of phased workload experiment
-# ------------------------------------
-
-force_sequential_key = 'force_sequential'
-
-k_key = 'k'
-
-m_key = 'm'
+experiment_values = [ 'high-parallelism', 'low-parallelism',
+                      'parallel-serial-mix' ]
 
 # Key types
 # ---------
@@ -127,7 +114,7 @@ m_key = 'm'
 env_arg_keys = taskparts_env_vars
 # keys that are not meant to be passed at all (just for annotating
 # rows)
-silent_keys = [ scheduler_key ]
+silent_keys = [ scheduler_key, experiment_key ]
 
 def is_prog_key(k):
     return (k in prog_keys)
@@ -141,23 +128,26 @@ def is_command_line_arg_key(k):
 # Benchmarking configuration
 # ==========================
 
-# default scheduler (chaselev)
+# High-parallelism experiment
+# ---------------------------
+
+# - default scheduler (chaselev)
 mk_sched_chaselev = mk_cross_sequence(
     [ mk_parameter(scheduler_key, 'nonelastic'),
       mk_parameter(binary_key, 'sta') ])
-# elastic two-level tree scheduler
+# - elastic two-level tree scheduler
 mk_sched_elastic2 = mk_cross_sequence(
     [ mk_parameter(scheduler_key, 'elastic2'),
       mk_parameter(binary_key, 'sta'),
       mk_parameter(chaselev_key, 'elastic'),
       mk_parameter(elastic_key, 'surplus2') ])
-# elastic multi-level tree scheduler
+# - elastic multi-level tree scheduler
 mk_sched_elastic = mk_cross_sequence(
     [ mk_parameter(scheduler_key, 'elastic'),
       mk_parameter(binary_key, 'sta'),
       mk_parameter(chaselev_key, 'elastic'),
       mk_parameter(elastic_key, 'surplus') ] )
-# versions of the two schedulers above, in which the semaphore is
+# - versions of the two schedulers above, in which the semaphore is
 # replaced by our own version that blocks by spinning instead of via
 # the OS/semaphore mechanism
 mk_sched_elastic2_spin = mk_cross_sequence(
@@ -178,12 +168,57 @@ mk_scheds = mk_append_sequence(
     [ mk_sched_chaselev,
       mk_sched_elastic2, mk_sched_elastic,
       mk_sched_elastic2_spin, mk_sched_elastic_spin ])
-# high-parallelism experiment
+
 mk_high_parallelism = mk_cross_sequence(
     [ mk_parameter(experiment_key, 'high-parallelism'),
       mk_parameters(benchmark_key, benchmarks),
       mk_scheds,
       mk_parameter(taskparts_num_workers_key, args.num_workers) ])
+
+# Low-parallelism experiment
+# --------------------------
+
+override_granularity_key = 'override_granularity'
+
+mk_low_parallelism = mk_cross_sequence(
+    [ mk_parameter(experiment_key, 'low-parallelism'),
+      mk_parameters(benchmark_key, benchmarks),
+      mk_scheds,
+      mk_parameter(taskparts_num_workers_key, args.num_workers),
+      mk_parameter(override_granularity_key, 1) ])
+
+# Parallel-sequential-mix experiment
+# ----------------------------------
+
+mk_parallel_sequential_mix = mk_cross_sequence(
+    [ mk_parameter(experiment_key, 'parallel-sequential-mix'),
+      mk_parameters(benchmark_key, benchmarks),
+      mk_scheds,
+      mk_parameter(taskparts_num_workers_key, args.num_workers),
+      mk_parameter('force_sequential', 1),
+      mk_parameter('k', 3),
+      mk_parameter('m', 2) ])
+
+# Multiprogrammed work-stealing experiment
+# ----------------------------------------
+
+mk_sched_multiprogrammed = mk_cross_sequence(
+    [ mk_parameter(scheduler_key, 'multiprogrammed'),
+      mk_parameter(chaselev_key, 'multiprogrammed'),
+      mk_parameter(binary_key, 'sta') ])
+
+mk_multiprogrammed = mk_cross_sequence(
+    [ mk_parameter(experiment_key, 'multiprogrammed'),
+      mk_parameters(benchmark_key, benchmarks),
+      mk_append_sequence([
+          mk_sched_chaselev,
+          mk_sched_elastic2,
+          mk_sched_multiprogrammed ]),
+      mk_parameters(taskparts_num_workers_key,
+                    [ args.num_workers * i for i in [1, 2, 3, 4] ]) ])
+
+# Cilk experiment
+# ---------------
 
 # Benchmark runs
 # ==============
@@ -207,6 +242,7 @@ def maybe_build_benchmark(b):
     path = pathlib.Path(path_to_binaries + b)
     if path.is_file():
         return
+    print('$', end = ' ')
     cmd = 'make ' + b
     print(cmd)
     if args.virtual_run:
@@ -235,9 +271,11 @@ def maybe_build_benchmark(b):
 def flatten(l):
     return [item for sublist in l for item in sublist]
 
-def run_of_row(row):
+def run_of_row(row, i, n):
     p = prog_of_row(row)
+    print('[' + str(i) + '/' + str(n) + ']')
     maybe_build_benchmark(p)
+    print('$', end = ' ')
     cs = flatten([ ['-' + kv['key'], str(kv['val'])]
                    for kv in row
                    if is_command_line_arg_key(kv['key']) ])
@@ -259,7 +297,7 @@ def run_of_row(row):
 #                     {"key": "m2", "val": 4567},
 #                     {"key": "scheduler", "val": "elastic"},
 #                     {"key": taskparts_num_workers_key, "val": args.num_workers}
-#                    ])
+#                    ], 0, 1)
 # pretty_print_json(br_i)
 # #br_i = read_benchmark_from_file_path('taskparts_benchmark_run_example1.json')
 # r = run_taskparts_benchmark(br_i,num_repeat=args.num_benchmark_repeat,verbose=True,cwd=path_to_binaries)
@@ -270,20 +308,26 @@ def run_of_row(row):
 
 def run_benchmarks_of_rows(rows):
     brs = []
+    i = 1
+    n = len(rows)
     for row in rows:
-        br_i = run_of_row(row)
+        br_i = run_of_row(row, i, n)
         br_o = run_taskparts_benchmark(br_i,
                                        num_repeat=args.num_benchmark_repeat,
                                        verbose=True,
                                        cwd=path_to_binaries)
         br_o['row'] = row
         brs += [br_o]
+        i += 1
     return brs
 
 def virtual_run_benchmarks_of_rows(rows):
+    i = 1
+    n = len(rows)
     for row in rows:
-        br_i = run_of_row(row)
+        br_i = run_of_row(row, i, n)
         print(string_of_benchmark_run(br_i))
+        i += 1
 
 # r = run_benchmarks_of_rows([
 #     [ {"key": "benchmark", "val": "fft"},
@@ -317,8 +361,6 @@ def virtual_run_elastic_benchmarks(e):
     rows = rows_of(eval(e))
     virtual_run_benchmarks_of_rows(rows)
 
-#pretty_print_json(run_elastic_benchmarks(r1))
-
 # Results-file output
 # ===================
 
@@ -351,3 +393,6 @@ if not(args.virtual_run):
     write_benchmark_to_file_path(run_elastic_benchmarks(mk_high_parallelism), file_path = args.results_outfile)
 else:
     virtual_run_elastic_benchmarks(mk_high_parallelism)
+    virtual_run_elastic_benchmarks(mk_low_parallelism)
+    virtual_run_elastic_benchmarks(mk_parallel_sequential_mix)
+    virtual_run_elastic_benchmarks(mk_multiprogrammed)
