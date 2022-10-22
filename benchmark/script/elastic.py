@@ -133,7 +133,10 @@ mk_core_bindings = mk_cross(
     mk_parameter(taskparts_resource_binding_key,
                  taskparts_resource_binding_by_core))
 
-mk_binary_type = mk_parameter(binary_key, 'sta')
+mk_taskparts_basis = mk_cross_sequence([
+    mk_parameter(binary_key, 'sta'),
+    mk_parameter(taskparts_numa_alloc_interleaved_key, 1),
+    mk_core_bindings ])
 
 # High-parallelism experiment
 # ---------------------------
@@ -173,8 +176,7 @@ mk_scheds = mk_append_sequence(
 
 mk_high_parallelism = mk_cross_sequence(
     [ mk_parameter(experiment_key, 'high-parallelism'),
-      mk_binary_type,
-      mk_core_bindings,
+      mk_taskparts_basis,
       mk_parameters(benchmark_key, benchmarks),
       mk_scheds,
       mk_parameter(taskparts_num_workers_key, args.num_workers) ])
@@ -186,8 +188,7 @@ override_granularity_key = 'override_granularity'
 
 mk_low_parallelism = mk_cross_sequence(
     [ mk_parameter(experiment_key, 'low-parallelism'),
-      mk_binary_type,
-      mk_core_bindings,
+      mk_taskparts_basis,
       mk_parameters(benchmark_key, benchmarks),
       mk_scheds,
       mk_parameter(taskparts_num_workers_key, args.num_workers),
@@ -198,8 +199,7 @@ mk_low_parallelism = mk_cross_sequence(
 
 mk_parallel_sequential_mix = mk_cross_sequence(
     [ mk_parameter(experiment_key, 'parallel-sequential-mix'),
-      mk_binary_type,
-      mk_core_bindings,
+      mk_taskparts_basis,
       mk_parameters(benchmark_key, benchmarks),
       mk_scheds,
       mk_parameter(taskparts_num_workers_key, args.num_workers),
@@ -216,8 +216,7 @@ mk_sched_multiprogrammed = mk_cross_sequence(
 
 mk_multiprogrammed = mk_cross_sequence(
     [ mk_parameter(experiment_key, 'multiprogrammed'),
-      mk_binary_type,
-      mk_core_bindings,
+      mk_taskparts_basis,
       mk_parameters(benchmark_key, benchmarks),
       mk_append_sequence([
           mk_sched_chaselev,
