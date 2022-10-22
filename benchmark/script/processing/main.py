@@ -57,7 +57,7 @@ def three_way_compare(schedbase, sched1, sched2) :
             elastic_spin.exectime.label("rt_elastic"),
             baseline.total_time.label("burn_baseline"),
             elastic.total_time.label("burn_spdup"),
-            elastic_spin.exectime.label("burn_elastic"),
+            elastic_spin.total_time.label("burn_elastic"),
         )
         .select_from(baseline, elastic, elastic_spin)
         .where(baseline.benchmark == elastic.benchmark)
