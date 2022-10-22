@@ -19,8 +19,10 @@ taskparts_benchmark_warmup_secs_key = 'TASKPARTS_BENCHMARK_WARMUP_SECS'
 taskparts_outfile_key = 'TASKPARTS_STATS_OUTFILE'
 taskparts_cilk_outfile_key = 'CILK_STATS_OUTFILE'
 taskparts_num_workers_key = 'TASKPARTS_NUM_WORKERS'
-taskparts_resource_binding_key = 'TASKPARTS_RESOURCE_BINDING'
 taskparts_nb_steal_attempts_key = 'TASKPARTS_NB_STEAL_ATTEMPTS'
+taskparts_pin_worker_threads_key = 'TASKPARTS_PIN_WORKER_THREADS'
+taskparts_resource_binding_key = 'TASKPARTS_RESOURCE_BINDING'
+taskparts_resource_binding_by_core = 'by_core'
 
 taskparts_env_vars = [
     taskparts_num_workers_key,
@@ -28,7 +30,8 @@ taskparts_env_vars = [
     taskparts_benchmark_num_repeat_key,
     taskparts_benchmark_warmup_secs_key,
     taskparts_cilk_outfile_key,
-    taskparts_resource_binding_key
+    taskparts_resource_binding_key,
+    taskparts_pin_worker_threads_key
 ]
 
 # Outputs

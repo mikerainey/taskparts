@@ -128,23 +128,27 @@ def is_command_line_arg_key(k):
 # Benchmarking configuration
 # ==========================
 
+mk_core_bindings = mk_cross(
+    mk_parameter(taskparts_pin_worker_threads_key, 1),
+    mk_parameter(taskparts_resource_binding_key,
+                 taskparts_resource_binding_by_core))
+
+mk_binary_type = mk_parameter(binary_key, 'sta')
+
 # High-parallelism experiment
 # ---------------------------
 
 # - default scheduler (chaselev)
 mk_sched_chaselev = mk_cross_sequence(
-    [ mk_parameter(scheduler_key, 'nonelastic'),
-      mk_parameter(binary_key, 'sta') ])
+    [ mk_parameter(scheduler_key, 'nonelastic') ])
 # - elastic two-level tree scheduler
 mk_sched_elastic2 = mk_cross_sequence(
     [ mk_parameter(scheduler_key, 'elastic2'),
-      mk_parameter(binary_key, 'sta'),
       mk_parameter(chaselev_key, 'elastic'),
       mk_parameter(elastic_key, 'surplus2') ])
 # - elastic multi-level tree scheduler
 mk_sched_elastic = mk_cross_sequence(
     [ mk_parameter(scheduler_key, 'elastic'),
-      mk_parameter(binary_key, 'sta'),
       mk_parameter(chaselev_key, 'elastic'),
       mk_parameter(elastic_key, 'surplus') ] )
 # - versions of the two schedulers above, in which the semaphore is
@@ -152,13 +156,11 @@ mk_sched_elastic = mk_cross_sequence(
 # the OS/semaphore mechanism
 mk_sched_elastic2_spin = mk_cross_sequence(
     [ mk_parameter(scheduler_key, 'elastic2_spin'),
-      mk_parameter(binary_key, 'sta'),
       mk_parameter(chaselev_key, 'elastic'),
       mk_parameter(elastic_key, 'surplus2'),
       mk_parameter(semaphore_key, 'spin') ])
 mk_sched_elastic_spin = mk_cross_sequence(
     [ mk_parameter(scheduler_key, 'elastic_spin'),
-      mk_parameter(binary_key, 'sta'),
       mk_parameter(chaselev_key, 'elastic'),
       mk_parameter(elastic_key, 'surplus'),
       mk_parameter(semaphore_key, 'spin')  ] )
@@ -171,6 +173,8 @@ mk_scheds = mk_append_sequence(
 
 mk_high_parallelism = mk_cross_sequence(
     [ mk_parameter(experiment_key, 'high-parallelism'),
+      mk_binary_type,
+      mk_core_bindings,
       mk_parameters(benchmark_key, benchmarks),
       mk_scheds,
       mk_parameter(taskparts_num_workers_key, args.num_workers) ])
@@ -182,6 +186,8 @@ override_granularity_key = 'override_granularity'
 
 mk_low_parallelism = mk_cross_sequence(
     [ mk_parameter(experiment_key, 'low-parallelism'),
+      mk_binary_type,
+      mk_core_bindings,
       mk_parameters(benchmark_key, benchmarks),
       mk_scheds,
       mk_parameter(taskparts_num_workers_key, args.num_workers),
@@ -192,6 +198,8 @@ mk_low_parallelism = mk_cross_sequence(
 
 mk_parallel_sequential_mix = mk_cross_sequence(
     [ mk_parameter(experiment_key, 'parallel-sequential-mix'),
+      mk_binary_type,
+      mk_core_bindings,
       mk_parameters(benchmark_key, benchmarks),
       mk_scheds,
       mk_parameter(taskparts_num_workers_key, args.num_workers),
@@ -204,11 +212,12 @@ mk_parallel_sequential_mix = mk_cross_sequence(
 
 mk_sched_multiprogrammed = mk_cross_sequence(
     [ mk_parameter(scheduler_key, 'multiprogrammed'),
-      mk_parameter(chaselev_key, 'multiprogrammed'),
-      mk_parameter(binary_key, 'sta') ])
+      mk_parameter(chaselev_key, 'multiprogrammed') ])
 
 mk_multiprogrammed = mk_cross_sequence(
     [ mk_parameter(experiment_key, 'multiprogrammed'),
+      mk_binary_type,
+      mk_core_bindings,
       mk_parameters(benchmark_key, benchmarks),
       mk_append_sequence([
           mk_sched_chaselev,
