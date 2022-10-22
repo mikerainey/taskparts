@@ -38,6 +38,8 @@ def three_way_compare(schedbase, sched1, sched2) :
     elastic  = orm.aliased(Experiments, name="elastic")
     elastic_spin = orm.aliased(Experiments, name="spin")
 
+    # Labels are picked such that the mapper for the textabel maps 
+    # the column to a texcolumn with identical name
     return (
         select(
             baseline.id.label("bid"),
@@ -47,11 +49,15 @@ def three_way_compare(schedbase, sched1, sched2) :
             baseline.machine,
             baseline.numworkers,
             baseline.scheduler,
+            elastic.elastic.label("elastic"),
             elastic.scheduler,
             elastic_spin.scheduler,
-            baseline.exectime,
-            elastic.exectime,
-            elastic_spin.exectime,
+            baseline.exectime.label("rt_baseline"),
+            elastic.exectime.label("rt_spdup"),
+            elastic_spin.exectime.label("rt_elastic"),
+            baseline.total_time.label("burn_baseline"),
+            elastic.total_time.label("burn_spdup"),
+            elastic_spin.exectime.label("burn_elastic"),
         )
         .select_from(baseline, elastic, elastic_spin)
         .where(baseline.benchmark == elastic.benchmark)
@@ -64,17 +70,18 @@ def three_way_compare(schedbase, sched1, sched2) :
         .where(baseline.scheduler == schedbase)
         .where(elastic.scheduler == sched1)
         .where(elastic_spin.scheduler == sched2)
+        .order_by(baseline.numworkers.asc())
         .order_by(baseline.machine)
         .order_by(baseline.benchmark)
-        .order_by(baseline.numworkers)
     )
 
 def main_table_schema() :
-    overheader = [ColSkip(2), ColumnLegend(width=3, text=r"\textbf{wall clock}"), ColumnLegend(width=2, text=r"\textbf{burn}")]
-    header     = [ColSkip(2), ColumnLegend("non-elastic"), ColumnLegend("speedup"), ColumnLegend("elastic"), ColumnLegend("non-elastic"), ColumnLegend("elastic")]
+    overheader = [ColSkip(3), ColumnLegend(width=3, text=r"\textbf{wall clock}"), ColumnLegend(width=2, text=r"\textbf{burn}")]
+    header     = [ColSkip(3), ColumnLegend("non-elastic"), ColumnLegend("speedup"), ColumnLegend("elastic"), ColumnLegend("non-elastic"), ColumnLegend("elastic")]
     columns = [
         TexColString("benchset").setCommoning(),
         TexColString("benchmark").setAlign(Alignment.Left), 
+        TexColInteger("numworkers").setCommoning(), 
         ColumnBar.Bar,
         TexColFloat("rt_baseline", ndigits=2),
         TexColMultiple("rt_spdup", ndigits=2).setAlign(Alignment.Left),
@@ -86,24 +93,35 @@ def main_table_schema() :
     return TexTableSchema(header, overheader, columns)
 
 def test_table_schema() :
-    overheader = [ColSkip(2), ColumnLegend(width=3, text=r"\textbf{wall clock}"), ColumnLegend(width=3, text=r"\textbf{burn}")]
+    overheader = [ColSkip(3), ColumnLegend(width=3, text=r"\textbf{wall clock}"), ColumnLegend(width=3, text=r"\textbf{burn}")]
     header     = [
-        ColSkip(2), 
+        ColSkip(1), ColumnLegend("#procs"), ColumnLegend("benchmark"),
         ColumnLegend("non-elastic"), ColumnLegend("elastic"), ColumnLegend("spin"), 
         ColumnLegend("non-elastic"), ColumnLegend("elastic"), ColumnLegend("spin")]
     columns = [
         TexColString("benchset").setCommoning(),
+        TexColString("numworkers").setCommoning(), 
         TexColString("benchmark").setAlign(Alignment.Left), 
         ColumnBar.Bar,
         TexColFloat("rt_baseline", ndigits=2),
         TexColFloat("rt_spdup", ndigits=2),
         TexColFloat("rt_elastic", ndigits=2),
         ColumnBar.Bar,
-        TexColFloat("rt_baseline", ndigits=2),
-        TexColFloat("rt_spdup", ndigits=2),
-        TexColFloat("rt_elastic", ndigits=2),
+        TexColFloat("burn_baseline", ndigits=2),
+        TexColFloat("burn_spdup", ndigits=2),
+        TexColFloat("burn_elastic", ndigits=2),
     ]
-    return TexTableSchema(header, overheader, columns)
+    
+    def mapper(row, name):
+        if name == "benchset":
+            if row.elastic is None:
+                return "simpl"
+            else:
+                return row.elastic
+        else: 
+            return row[name]
+
+    return (TexTableSchema(header, overheader, columns), mapper)
 
 
 def main():
@@ -117,20 +135,21 @@ def main():
     # Test run -- lists all experiments
     with sqlalchemy.orm.Session(engine) as session:
         # rslt = session.execute(sqlalchemy.select(Experiments))
-        rslt = session.execute(sqlalchemy.select(Experiments))
-        print(len(rslt.all()))
+        # rslt = session.execute(sqlalchemy.select(Experiments))
+        # print(len(rslt.all()))
 
         rslt1 = session.execute(three_way_compare(Scheduler.nonelastic, Scheduler.elastic, Scheduler.elastic_spin)).all()
         rslt2 = session.execute(three_way_compare(Scheduler.nonelastic, Scheduler.elastic2, Scheduler.elastic2_spin)).all()
-        for row in rslt1:
-            print(row)
-        for row in rslt2:
-            print(row)
+        # for row in rslt1:
+        #     print(row)
+        # for row in rslt2:
+        #     print(row)
         # count = len(all)
         # print(f"Found total {count} entries.")
-    
-    # tex_schema = main_table_schema()
-    print(generate_table(test_table_schema(), rslt1, None))
+    # print(rslt1[0].keys())
+
+    schema, mapper = test_table_schema()
+    print(generate_table(schema, rslt1 + rslt2, mapper))
 
 if __name__ == "__main__":
 	main()

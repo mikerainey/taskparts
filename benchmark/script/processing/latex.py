@@ -28,7 +28,6 @@ class TexColumn:
 	commoning : bool = False   # Requires vertical 'commoning', i.e. combine rows with same values
 	to_string : str  = None    # Custom to_string function
 	alignment : Alignment = Alignment.Center
-	math      : bool = False
 
 	def setAlign(self, align):
 		self.alignment = align
@@ -120,20 +119,55 @@ def generate_table(schema: TexTableSchema, rslt, mapper):
 	lines.append(r"\toprule")
 
 	if schema.overheader is not None:
-		lines.append(" & ".join([_legend_to_str(leg) for leg in schema.overheader]))
+		lines.append(" & ".join([_legend_to_str(leg) for leg in schema.overheader]) + r"\\")
 
-	lines.append(" & ".join([_legend_to_str(leg) for leg in schema.header]))
+	lines.append(" & ".join([_legend_to_str(leg) for leg in schema.header]) + r"\\")
 	lines.append(r"\midrule")
 
 
 	# We will start emitting rows
 	nrows = len(rslt)
 
-	rows_str = []
-	# We will emit the rows in reverse order
-	# For every commoning column we will keep a counter, 
-	# counting how many identical rows we have met
+	# For every commoning column we will keep a value, which is the 
+	# one-past-the end element of the current group. When we first reach this row, we 
+	# will update the value to indicate the end of current group.
+	commoning = dict()
+	for i, col in enumerate(schema.columns):  
+		if col.commoning:
+			commoning[i] = (0, 0)
 
+	for i in range(nrows):
+		# Adjust the commonning group
+		for cid, (begin, end) in commoning.items():
+			if i == end:
+				col = schema.columns[cid]
+				# Current value of the row
+				val = mapper(rslt[i], col.name)
+				
+				j = i 
+				while (j < nrows):
+					if val != mapper(rslt[j], col.name):
+						break
+					else:
+						j = j + 1
+				# Updates the new begin/ end
+				commoning[cid] = (i, j)
+		
+		def col_to_str(cid, col):
+			if col.commoning:
+				begin, end = commoning[cid]
+				if i == begin:
+					val = mapper(rslt[i], col.name)
+					return "\multirow{%d}{*}{%s}" % (end - begin, col.to_string(val))
+				else:
+					return " "
+			else :
+				val = mapper(rslt[i], col.name)
+				return col.to_string(val)
+
+		# Now spits out the column
+		row_str = [col_to_str(cid, col) for cid, col in enumerate(schema.columns)]
+		lines.append(" & ".join(row_str) + r" \\")
 
 	lines.append(r"\bottomrule")
 	lines.append(r"\end{tabular}")
