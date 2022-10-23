@@ -57,7 +57,7 @@ def three_way_compare(schedbase, sched1, sched2) :
             elastic_spin.exectime.label("rt_elastic"),
             baseline.total_time.label("burn_baseline"),
             elastic.total_time.label("burn_spdup"),
-            elastic_spin.exectime.label("burn_elastic"),
+            elastic_spin.total_time.label("burn_elastic"),
         )
         .select_from(baseline, elastic, elastic_spin)
         .where(baseline.benchmark == elastic.benchmark)
@@ -93,14 +93,15 @@ def main_table_schema() :
     return TexTableSchema(header, overheader, columns)
 
 def test_table_schema() :
-    overheader = [ColSkip(3), ColumnLegend(width=3, text=r"\textbf{wall clock}"), ColumnLegend(width=3, text=r"\textbf{burn}")]
+    overheader = [ColSkip(4), ColumnLegend(width=3, text=r"\textbf{wall clock}"), ColumnLegend(width=3, text=r"\textbf{burn}")]
     header     = [
-        ColSkip(1), ColumnLegend("#procs"), ColumnLegend("benchmark"),
+        ColSkip(1), ColumnLegend("\\#procs"), ColumnLegend("benchmark"), ColumnLegend("machine"),
         ColumnLegend("non-elastic"), ColumnLegend("elastic"), ColumnLegend("spin"), 
         ColumnLegend("non-elastic"), ColumnLegend("elastic"), ColumnLegend("spin")]
     columns = [
         TexColString("benchset").setCommoning(),
         TexColString("numworkers").setCommoning(), 
+        TexColString("machine").setCommoning(), 
         TexColString("benchmark").setAlign(Alignment.Left), 
         ColumnBar.Bar,
         TexColFloat("rt_baseline", ndigits=2),
@@ -149,7 +150,7 @@ def main():
     # print(rslt1[0].keys())
 
     schema, mapper = test_table_schema()
-    print(generate_table(schema, rslt1 + rslt2, mapper))
+    print(doc_frame(generate_table(schema, rslt1 + rslt2, mapper)))
 
 if __name__ == "__main__":
 	main()

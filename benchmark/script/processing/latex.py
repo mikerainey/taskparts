@@ -115,6 +115,8 @@ def generate_table(schema: TexTableSchema, rslt, mapper):
 	lines = [] # output buffer
 
 	## Table header
+	lines.append(r"\begin{table}")
+	lines.append(r"\centering")
 	lines.append(r"\begin{tabular}{" + "".join(schema.shape) + r"}")
 	lines.append(r"\toprule")
 
@@ -137,6 +139,16 @@ def generate_table(schema: TexTableSchema, rslt, mapper):
 			commoning[i] = (0, 0)
 
 	for i in range(nrows):
+		# spit out midruls
+		if i != 0 and i != nrows - 1:
+			for cid, c in enumerate(schema.columns):
+				if c.commoning and commoning[cid][1] == i:
+					if cid == 0:
+						lines.append(r"\midrule")
+					else:
+						lines.append("\\cmidrule{%d-%d}" % (cid + 1, schema.width))
+					break
+
 		# Adjust the commonning group
 		for cid, (begin, end) in commoning.items():
 			if i == end:
@@ -171,6 +183,23 @@ def generate_table(schema: TexTableSchema, rslt, mapper):
 
 	lines.append(r"\bottomrule")
 	lines.append(r"\end{tabular}")
+	lines.append(r"\end{table}")
 	return "\n".join(lines)
 	
-	
+
+def doc_frame(content):
+	return (
+r'''
+\documentclass{article}
+\usepackage[margin=0.1in]{geometry}
+\usepackage[utf8]{inputenc}
+\usepackage{booktabs}
+\usepackage{multicol}
+\usepackage{multirow}
+
+\begin{document}
+''' + "\n" + content + "\n" + r'''
+\end{document}
+'''.strip()
+	)
+
