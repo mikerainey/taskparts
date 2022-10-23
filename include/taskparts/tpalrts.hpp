@@ -3,6 +3,7 @@
 #include <cstdint>
 
 #include "defaults.hpp"
+#include "taskparts/timing.hpp"
 
 namespace taskparts {
 
@@ -99,6 +100,16 @@ auto tpalrts_prmlist_pop_front(tpalrts_prml prml) -> tpalrts_prml {
   return prml;
 }
 
+// To support software polling-based heartbeat by tracking the timestamp
+// of the previous heartbeat
+perworker::array<uint64_t> prev;
+
+auto initialize_tpalrts() {
+  for (size_t i = 0; i < prev.size(); i++) {
+    prev[i] = cycles::now();
+  }
+}
+  
 } // end namespace
 
 

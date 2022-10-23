@@ -51,6 +51,9 @@ auto benchmark_nativeforkjoin(const Benchmark& benchmark,
   }
   // initialization
   initialize_machine();
+#ifdef TASKPARTS_TPALRTS
+  initialize_tpalrts();
+#endif
   Bench_logging::initialize();
   Bench_stats::start_collecting();
   // warmup

@@ -142,7 +142,6 @@ auto assign_workers_to_resources(resource_packing_type packing,
   return assignments;
 }
 
-// all to be defined in one of the headers included below
 auto pin_calling_worker();
 auto initialize_machine();
 auto teardown_machine();
@@ -151,8 +150,32 @@ auto teardown_machine();
 
 #if defined(TASKPARTS_POSIX) || defined(TASKPARTS_DARWIN)
 #include "posix/machine.hpp"
+namespace taskparts {
+auto pin_calling_worker() {
+  posix_pin_calling_worker();
+}
+auto initialize_machine() {
+  posix_initialize_machine();
+  get_kappa_usec();
+}
+auto teardown_machine() {
+  posix_teardown_machine();
+}
+} // end namespace
 #elif defined (TASKPARTS_NAUTILUS)
 #include "nautilus/machine.hpp"
+namespace taskparts {
+auto pin_calling_worker() {
+  nautilus_pin_calling_worker();
+}
+auto initialize_machine() {
+  nautilus_initialize_machine();
+  get_kappa_usec();
+}
+auto teardown_machine() {
+  nautilus_teardown_machine();
+}
+} // end namespace
 #else
 #error need to declare platform (e.g., TASKPARTS_POSIX)
 #endif

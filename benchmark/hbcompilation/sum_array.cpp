@@ -2,16 +2,12 @@
 #include <stdio.h>
 #include <assert.h>
 
-#include "taskparts/nativeforkjoin.hpp"
-#include "taskparts/perworker.hpp"
-#include "taskparts/timing.hpp"
+#include <taskparts/nativeforkjoin.hpp>
 #include <taskparts/benchmark.hpp>
 
 using namespace taskparts;
 
 int D = 64;
-
-perworker::array<uint64_t> prev;
 
 template <typename Scheduler>
 auto sum_array(double* a, int64_t lo, int64_t hi, double* dst, Scheduler sched) -> void;
@@ -25,7 +21,7 @@ auto sum_array_handler(double* a, int64_t lo, int64_t hi, double* dst,
   }
   auto& p = prev.mine();
   auto n = cycles::now();
-  if ((n - p) < kappa_usec) {
+  if ((p + kappa_cycles) > n) {
     return;
   }
   p = n;
@@ -76,10 +72,6 @@ int main() {
     }
   };
 
-  for (size_t i = 0; i < prev.size(); i++) {
-    prev[i] = cycles::now();
-  }
-  
   benchmark_nativeforkjoin([&] (auto sched){
     sum_array(a0, 0, n, &result, sched);
   }, [&] (auto sched) { // setup
