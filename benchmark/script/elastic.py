@@ -9,9 +9,16 @@ import glob, argparse, psutil, pathlib
 # ===========================================
 
 # TODOs:
+#   - experiment with varying:
+#      - TASKPARTS_NB_TO_WAKE_ON_SURPLUS_INCREASE
+#      - TASKPARTS_NB_STEAL_ATTEMPTS
+#      - TASKPARTS_ELASTIC_TREE_VICTIM_SELECTION_BY_TREE
+#      - inject a little randomness to the process of going to sleep,
+#        in the hopes of detecting some contention on the wake->sleep
+#        and sleep->wake transitions
+#      - use compare_exchange_with_backoff
+#      - try stressing the schedulers w/ the challenge workload in mixed.hpp
 #   - incremental snapshots of experiments and output of results to git
-#   - ensure numa interleaving
-#   - experiment to vary the minimum nb of steal attempts before going to sleep TASKPARTS_NB_STEAL_ATTEMPTS
 #   - try the version of scalable elastic that uses the tree to sample for victim workers
 #   - save benchmark-run history in addition to the output table
 #   - make it possible to configure warmup secs

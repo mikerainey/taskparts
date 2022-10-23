@@ -791,6 +791,9 @@ public:
   
   static
   int lg_P;
+  
+  static
+  int nb_to_wake_on_surplus_increase;
 
   static
   cache_aligned_fixed_capacity_array<node, 1 << max_lg_P> nodes_array;
@@ -1069,7 +1072,12 @@ public:
 
   static
   auto initialize() {
-    f = [] { print_tree(""); };
+    f = [] { print_tree(""); }; // for debugging purposes
+    if (const auto env_p = std::getenv("TASKPARTS_NB_TO_WAKE_ON_SURPLUS_INCREASE")) {
+      nb_to_wake_on_surplus_increase = std::stoi(env_p);
+    } else {
+      nb_to_wake_on_surplus_increase = 2;
+    }
     // find the nearest setting of lg_P s.t. lg_P is the smallest
     // number for which 2^{lg_P} < perworker::nb_workers()
     lg_P = 0;
@@ -1202,7 +1210,7 @@ public:
       semaphores[target_id].post();
       return true;
     };
-    int nb_to_wake = 2;
+    int nb_to_wake = nb_to_wake_on_surplus_increase;
     while (nb_to_wake > 0) {
       // exit early if no workers need to wake up
       auto g = nodes_array[0].g.load();
@@ -1377,6 +1385,10 @@ public:
 template <typename Stats, typename Logging, typename Semaphore,
           size_t max_lg_P>
 int elastic_tree<Stats, Logging, Semaphore, max_lg_P>::lg_P;
+
+template <typename Stats, typename Logging, typename Semaphore,
+          size_t max_lg_P>
+int elastic_tree<Stats, Logging, Semaphore, max_lg_P>::nb_to_wake_on_surplus_increase;
 
 template <typename Stats, typename Logging, typename Semaphore,
           size_t max_lg_P>

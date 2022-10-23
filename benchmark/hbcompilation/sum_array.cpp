@@ -11,8 +11,6 @@ using namespace taskparts;
 
 int D = 64;
 
-int64_t H = 100000;
-
 perworker::array<uint64_t> prev;
 
 template <typename Scheduler>
@@ -27,7 +25,7 @@ auto sum_array_handler(double* a, int64_t lo, int64_t hi, double* dst,
   }
   auto& p = prev.mine();
   auto n = cycles::now();
-  if ((n - p) < H) {
+  if ((n - p) < kappa_usec) {
     return;
   }
   p = n;
@@ -43,8 +41,6 @@ auto sum_array_handler(double* a, int64_t lo, int64_t hi, double* dst,
     *dst += dst1 + dst2;
   }, sched);
 }
-
-int64_t n;
 
 template <typename Scheduler>
 auto sum_array(double* a, int64_t lo, int64_t hi, double* dst, Scheduler sched) -> void {
@@ -68,12 +64,11 @@ auto sum_array(double* a, int64_t lo, int64_t hi, double* dst, Scheduler sched) 
   *dst += r;
 }
 
-double* a0 = nullptr;
-
 int main() {
-  n = cmdline::parse_or_default_long("n", 1000 * 1000 * 1000);
+  // TASKPARTS_KAPPA_USEC
+  int64_t n = cmdline::parse_or_default_long("n", 1000 * 1000 * 1000);
   D = cmdline::parse_or_default_int("D", D);
-  H = cmdline::parse_or_default_int("H", H);
+  double* a0 = nullptr;
   double result = 0.0;
   auto init_array = [&] {
     for (int64_t i = 0; i < n; i++) {

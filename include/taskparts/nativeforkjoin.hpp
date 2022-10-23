@@ -377,7 +377,7 @@ public:
         if (context::capture<nativefj_fiber<Scheduler>*>(context::addr(cf->ctx))) {
           cf->status = st;
           //TASKPARTS_LOG_PPT(Scheduler, cf);
-	  decr_refcount();
+          decr_refcount();
           return;
         }
         //TASKPARTS_LOG_PPT(Scheduler, cf);
@@ -385,7 +385,7 @@ public:
         cf->exit_to_scheduler();
         assert(false);
       } else if (s == remote_ran_state) {
-	decr_refcount();
+        decr_refcount();
         return;
       } else {
         assert(false);
