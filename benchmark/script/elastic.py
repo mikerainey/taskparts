@@ -37,8 +37,8 @@ import glob, argparse, psutil, pathlib
 sys_num_workers = psutil.cpu_count(logical=False)
 
 experiment_key = 'experiment'
-experiments = [ 'high-parallelism', 'low-parallelism',
-                'parallel-serial-mix', 'multiprogrammed' ]
+experiments = [ 'high_parallelism', 'low_parallelism',
+                'parallel_sequential_mix', 'multiprogrammed' ]
 
 modes = ['dry', 'from_scratch' ] # LATER: add append mode
 
@@ -212,7 +212,7 @@ mk_scheds = mk_append_sequence(
       mk_sched_elastic2_spin, mk_sched_elastic_spin ])
 
 mk_high_parallelism = mk_cross_sequence(
-    [ mk_parameter(experiment_key, 'high-parallelism'),
+    [ mk_parameter(experiment_key, 'high_parallelism'),
       mk_taskparts_basis,
       mk_parameters(benchmark_key, benchmarks),
       mk_scheds,
@@ -224,7 +224,7 @@ mk_high_parallelism = mk_cross_sequence(
 override_granularity_key = 'override_granularity'
 
 mk_low_parallelism = mk_cross_sequence(
-    [ mk_parameter(experiment_key, 'low-parallelism'),
+    [ mk_parameter(experiment_key, 'low_parallelism'),
       mk_taskparts_basis,
       mk_parameters(benchmark_key, benchmarks),
       mk_scheds,
@@ -270,9 +270,9 @@ mk_multiprogrammed = mk_cross_sequence(
 # All experiments
 # ---------------
 
-all_experiments = { 'high-parallelism': mk_high_parallelism,
-                    'low-parallelism': mk_low_parallelism,
-                    'parallel-serial-mix': mk_parallel_sequential_mix,
+all_experiments = { 'high_parallelism': mk_high_parallelism,
+                    'low_parallelism': mk_low_parallelism,
+                    'parallel_sequential_mix': mk_parallel_sequential_mix,
                     'multiprogrammed': mk_multiprogrammed }
 experiments_to_run = { k: all_experiments[k] for k in experiment_values }
 
