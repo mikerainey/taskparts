@@ -10,6 +10,7 @@ import glob, argparse, psutil, pathlib
 
 # TODOs:
 #   - experiment with varying:
+#      - try all different pinning options
 #      - TASKPARTS_NB_TO_WAKE_ON_SURPLUS_INCREASE
 #      - TASKPARTS_NB_STEAL_ATTEMPTS
 #      - TASKPARTS_ELASTIC_TREE_VICTIM_SELECTION_BY_TREE

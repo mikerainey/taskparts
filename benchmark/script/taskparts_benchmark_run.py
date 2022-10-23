@@ -24,6 +24,8 @@ taskparts_numa_alloc_interleaved_key = 'TASKPARTS_NUMA_ALLOC_INTERLEAVED'
 taskparts_pin_worker_threads_key = 'TASKPARTS_PIN_WORKER_THREADS'
 taskparts_resource_binding_key = 'TASKPARTS_RESOURCE_BINDING'
 taskparts_resource_binding_by_core = 'by_core'
+taskparts_resource_binding_by_numa = 'by_numa'
+taskparts_resource_binding_all = 'all' # the default
 
 taskparts_env_vars = [
     taskparts_num_workers_key,
