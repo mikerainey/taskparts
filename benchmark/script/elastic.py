@@ -74,7 +74,7 @@ few_benchmarks = [ 'fft', 'quickhull' ]
 parser = argparse.ArgumentParser('Benchmark elastic task scheduling')
 
 
-parser.add_argument('-num-workers', type=int, required=False,
+parser.add_argument('-num_workers', type=int, required=False,
                     default = sys_num_workers,
                     help = 'number of worker threads to use in benchmarks')
 parser.add_argument('-mode', choices = modes, default = 'dry',
@@ -461,9 +461,12 @@ for (e, mk) in experiments_to_run.items():
     print('Experiment: ' + e)
     print('\tto be written to ' + fp)
     print('------------------------\n')
-    if is_dry_run:
+    if not(is_dry_run) and args.verbose:
         virtual_run_elastic_benchmarks(mk)
-    else:
-        r = run_elastic_benchmarks(mk)
-        write_benchmark_to_file_path(r, file_path = fp)
+    elif is_dry_run:
+        virtual_run_elastic_benchmarks(mk)
+        continue
+    print('\nStarting to run benchmarks\n')
+    r = run_elastic_benchmarks(mk)
+    write_benchmark_to_file_path(r, file_path = fp)
         
