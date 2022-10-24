@@ -4,6 +4,7 @@
 
 include ../Makefile_benchmark
 TASKPARTS_PATH=../../
+INCLUDE_PREFIX += -DTASKPARTS_TPALRTS
 
 # Binaries
 # ========

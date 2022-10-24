@@ -136,13 +136,13 @@ auto hwloc_pin_calling_worker() {
   
 #endif
 
-auto pin_calling_worker() {
+auto posix_pin_calling_worker() {
 #ifdef TASKPARTS_HAVE_HWLOC
   hwloc_pin_calling_worker();
 #endif
 }
 
-auto initialize_machine() {
+auto posix_initialize_machine() {
   auto nb_workers = perworker::nb_workers();
   pthread_setconcurrency((int)nb_workers);
   bool requested_pinning_policy = false;
@@ -185,7 +185,7 @@ auto initialize_machine() {
 #endif
 }
 
-auto teardown_machine() {
+auto posix_teardown_machine() {
 #ifdef TASKPARTS_HAVE_HWLOC
   auto nb_workers = perworker::nb_workers();
   hwloc_bitmap_free(all_cpus);

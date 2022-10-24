@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+import sys
+sys.setrecursionlimit(150000)
 from taskparts_benchmark_run import *
 from parameter import *
 import glob, argparse, psutil, pathlib
@@ -10,6 +12,7 @@ import glob, argparse, psutil, pathlib
 
 # TODOs:
 #   - experiment with varying:
+#      - try all different pinning options
 #      - TASKPARTS_NB_TO_WAKE_ON_SURPLUS_INCREASE
 #      - TASKPARTS_NB_STEAL_ATTEMPTS
 #      - TASKPARTS_ELASTIC_TREE_VICTIM_SELECTION_BY_TREE
@@ -18,6 +21,7 @@ import glob, argparse, psutil, pathlib
 #        and sleep->wake transitions
 #      - use compare_exchange_with_backoff
 #      - try stressing the schedulers w/ the challenge workload in mixed.hpp
+#   - Cilk experiment (?)
 #   - incremental snapshots of experiments and output of results to git
 #   - try the version of scalable elastic that uses the tree to sample for victim workers
 #   - save benchmark-run history in addition to the output table
@@ -29,38 +33,19 @@ import glob, argparse, psutil, pathlib
 # Parameters
 # ==========
 
+# default setting for the nb of worker threads to be used by taskparts
+# (can be overridden by -num-workers); should be the count of the
+# number of cores in the calling system
 sys_num_workers = psutil.cpu_count(logical=False)
 
-# Command line
-# ------------
+experiment_key = 'experiment'
+experiments = [ 'high_parallelism', 'low_parallelism',
+                'parallel_sequential_mix', 'multiprogrammed' ]
 
-parser = argparse.ArgumentParser('Benchmark elastic task scheduling')
-parser.add_argument('-num_workers', type=int, required=False,
-                    default = sys_num_workers,
-                    help = 'number of worker threads to use in benchmarks')
-parser.add_argument('--virtual_run', dest ='virtual_run',
-                    action ='store_true',
-                    help ='only print the benchmarks to be run')
-parser.add_argument('-num_benchmark_repeat', type=int, required=False,
-                    default = 1,
-                    help = 'number of times to repeat each benchmark run (default 1)')
-parser.add_argument('-results_outfile', type=str, required=False,
-                    default = 'results.json',
-                    help = 'path to the file in which to write benchmark results (default results.json)')
-parser.add_argument('--verbose', dest ='verbose',
-                    action ='store_true',
-                    help ='verbose mode')
-args = parser.parse_args()
-
-# Taskparts
-# ---------
+modes = ['dry', 'from_scratch' ] # LATER: add append mode
 
 path_to_benchmarks = '../parlay/'
-
 path_to_binaries = path_to_benchmarks + 'bin/'
-
-# Elastic scheduling
-# ------------------
 
 # list of benchmarks to skip
 benchmark_skips = [ 'cyclecount' ]
@@ -72,16 +57,69 @@ benchmarks = [ x for x
                if x not in benchmark_skips ]
 
 # uncomment to override the list of benchmarks above
-benchmarks = [ 'fft', 'quickhull',
-               'bellmanford', 'knn',
-               'samplesort', 'suffixarray', 'karatsuba', 'setcover',
-               'filterkruskal', 'bigintadd', 
-               'betweennesscentrality', 'bucketeddijkstra',
-               'cartesiantree', 'graphcolor',
-               # something seems off...
-               'kcore' ]
+all_benchmarks = [ 'fft', 'quickhull',
+                   'bellmanford', 'knn',
+                   'samplesort', 'suffixarray', 'karatsuba', 'setcover',
+                   'filterkruskal', 'bigintadd', 
+                   'betweennesscentrality', 'bucketeddijkstra',
+                   'cartesiantree', 'graphcolor' ]
+# something seems off with this one...
+#               'kcore'
 
-benchmarks = [ 'fft', 'quickhull' ]
+few_benchmarks = [ 'fft', 'quickhull' ]
+
+# Command line arguments
+# ----------------------
+
+parser = argparse.ArgumentParser('Benchmark elastic task scheduling')
+
+
+parser.add_argument('-num-workers', type=int, required=False,
+                    default = sys_num_workers,
+                    help = 'number of worker threads to use in benchmarks')
+parser.add_argument('-mode', choices = modes, default = 'dry',
+                    help ='operating modes of this script')
+parser.add_argument('-experiment', action='append',
+                    help = ('any one of ' + str(experiments)))
+parser.add_argument('--few_benchmarks', dest ='few_benchmarks',
+                    action ='store_true',
+                    help = ('run only benchmarks ' + str(few_benchmarks)))
+parser.add_argument('-only_benchmark', action='append')
+parser.add_argument('-skip_benchmark', action='append')
+parser.add_argument('-num_benchmark_repeat', type=int, required=False,
+                    default = 1,
+                    help = 'number of times to repeat each benchmark run (default 1)')
+parser.add_argument('--verbose', dest ='verbose',
+                    action ='store_true',
+                    help ='verbose mode')
+parser.add_argument('-binding', choices = taskparts_resource_bindings, default = 'by_core',
+                    help ='worker-pthread-to-resource binding policy')
+
+args = parser.parse_args()
+
+experiment_values = experiments if args.experiment == None else args.experiment
+for e in experiment_values:
+    if e not in experiments:
+        raise SystemExit('Experiment ' + e + ' not in ' + str(experiments))
+
+is_dry_run = args.mode == 'dry'
+
+benchmarks = all_benchmarks if not(args.few_benchmarks) else few_benchmarks
+
+only_benchmarks = args.only_benchmark
+if only_benchmarks != None:
+    for b in only_benchmarks:
+        if b not in all_benchmarks:
+            raise SystemExit('Benchmark ' + b + ' not in ' + str(all_benchmarks))
+    benchmarks = only_benchmarks
+
+skip_benchmarks = args.skip_benchmark
+if skip_benchmarks != None:
+    for b in skip_benchmarks:
+        if b not in all_benchmarks:
+            raise SystemExit('Benchmark ' + b + ' not in ' + str(all_benchmarks))
+    benchmarks = [ b for b in benchmarks if b not in skip_benchmarks ]
+
 
 # Benchmark keys
 # ==============
@@ -109,10 +147,6 @@ scheduler_values = [ 'nonelastic', 'multiprogrammed',
                      'elastic2', 'elastic',
                      'elastic2_spin', 'elastic_spin' ]
 
-experiment_key = 'experiment'
-experiment_values = [ 'high-parallelism', 'low-parallelism',
-                      'parallel-serial-mix' ]
-
 # Key types
 # ---------
 
@@ -137,8 +171,7 @@ def is_command_line_arg_key(k):
 
 mk_core_bindings = mk_cross(
     mk_parameter(taskparts_pin_worker_threads_key, 1),
-    mk_parameter(taskparts_resource_binding_key,
-                 taskparts_resource_binding_by_core))
+    mk_parameter(taskparts_resource_binding_key, args.binding))
 
 mk_taskparts_basis = mk_cross_sequence([
     mk_parameter(binary_key, 'sta'),
@@ -182,7 +215,7 @@ mk_scheds = mk_append_sequence(
       mk_sched_elastic2_spin, mk_sched_elastic_spin ])
 
 mk_high_parallelism = mk_cross_sequence(
-    [ mk_parameter(experiment_key, 'high-parallelism'),
+    [ mk_parameter(experiment_key, 'high_parallelism'),
       mk_taskparts_basis,
       mk_parameters(benchmark_key, benchmarks),
       mk_scheds,
@@ -194,7 +227,7 @@ mk_high_parallelism = mk_cross_sequence(
 override_granularity_key = 'override_granularity'
 
 mk_low_parallelism = mk_cross_sequence(
-    [ mk_parameter(experiment_key, 'low-parallelism'),
+    [ mk_parameter(experiment_key, 'low_parallelism'),
       mk_taskparts_basis,
       mk_parameters(benchmark_key, benchmarks),
       mk_scheds,
@@ -235,6 +268,17 @@ mk_multiprogrammed = mk_cross_sequence(
 # Cilk experiment
 # ---------------
 
+# TODO
+
+# All experiments
+# ---------------
+
+all_experiments = { 'high_parallelism': mk_high_parallelism,
+                    'low_parallelism': mk_low_parallelism,
+                    'parallel_sequential_mix': mk_parallel_sequential_mix,
+                    'multiprogrammed': mk_multiprogrammed }
+experiments_to_run = { k: all_experiments[k] for k in experiment_values }
+
 # Benchmark runs
 # ==============
 
@@ -260,12 +304,9 @@ def maybe_build_benchmark(b):
     print('$', end = ' ')
     cmd = 'make ' + b
     print(cmd)
-    if args.virtual_run:
+    if is_dry_run:
         return
-    os_env = os.environ.copy()
-    env_args = { }
-    env = {**os_env, **env_args}
-    current_child = subprocess.Popen(cmd, shell = True, # env = env,
+    current_child = subprocess.Popen(cmd, shell = True,
                                      stdout = subprocess.PIPE, stderr = subprocess.PIPE,
                                      cwd = path_to_benchmarks)
     child_stdout, child_stderr = current_child.communicate(timeout = 1000)
@@ -286,6 +327,7 @@ def maybe_build_benchmark(b):
 def flatten(l):
     return [item for sublist in l for item in sublist]
 
+# row is the i^th of n rows in total
 def run_of_row(row, i, n):
     p = prog_of_row(row)
     print('[' + str(i) + '/' + str(n) + ']')
@@ -388,7 +430,7 @@ def json_dumps(thing):
         separators=(',', ':'),
     )
 
-def write_string_to_file_path(bstr, file_path = args.results_outfile, verbose = True):
+def write_string_to_file_path(bstr, file_path, verbose = True):
     with open(file_path, 'w', encoding='utf-8') as fd:
         fd.write(bstr)
         fd.close()
@@ -404,10 +446,24 @@ def write_benchmark_to_file_path(benchmark, file_path = '', verbose = True):
 # Driver
 # ======
 
-if not(args.virtual_run):
-    write_benchmark_to_file_path(run_elastic_benchmarks(mk_high_parallelism), file_path = args.results_outfile)
+print('=============================================')
+if is_dry_run:
+    print('Dry run:')
 else:
-    virtual_run_elastic_benchmarks(mk_high_parallelism)
-    virtual_run_elastic_benchmarks(mk_low_parallelism)
-    virtual_run_elastic_benchmarks(mk_parallel_sequential_mix)
-    virtual_run_elastic_benchmarks(mk_multiprogrammed)
+    print('From-scratch run:')
+print('\tExperiments: ' + str(experiment_values))
+print('\tBenchmarks: ' + str(benchmarks))
+print('=============================================\n')
+
+for (e, mk) in experiments_to_run.items():
+    fp =  e + '.json'
+    print('\n------------------------')
+    print('Experiment: ' + e)
+    print('\tto be written to ' + fp)
+    print('------------------------\n')
+    if is_dry_run:
+        virtual_run_elastic_benchmarks(mk)
+    else:
+        r = run_elastic_benchmarks(mk)
+        write_benchmark_to_file_path(r, file_path = fp)
+        
