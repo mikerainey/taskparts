@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import sys
+import sys, time, shutil
 sys.setrecursionlimit(150000)
 from taskparts_benchmark_run import *
 from parameter import *
@@ -33,6 +33,14 @@ import glob, argparse, psutil, pathlib
 # Parameters
 # ==========
 
+timestr = time.strftime("%Y-%m-%d-%H-%M-%S")
+
+default_local_results_path = 'results-' + timestr
+
+taskparts_home = '../../'
+
+default_remote_results_path = taskparts_home + '../draft-elastic/drafts/draft-elastic/experiments/'
+
 # default setting for the nb of worker threads to be used by taskparts
 # (can be overridden by -num-workers); should be the count of the
 # number of cores in the calling system
@@ -47,14 +55,11 @@ modes = ['dry', 'from_scratch' ] # LATER: add append mode
 path_to_benchmarks = '../parlay/'
 path_to_binaries = path_to_benchmarks + 'bin/'
 
-# list of benchmarks to skip
-benchmark_skips = [ 'cyclecount' ]
-
-# list of benchmarks to run
-benchmarks = [ x for x
-               in [os.path.basename(x).split('.')[0] for x
-                   in glob.glob(path_to_benchmarks + "*.cpp")]
-               if x not in benchmark_skips ]
+# list of all benchmarks in the parlay folder
+#############################################################
+# benchmarks = [os.path.basename(x).split('.')[0] for x     #
+#               in glob.glob(path_to_benchmarks + "*.cpp")] #
+#############################################################
 
 # uncomment to override the list of benchmarks above
 all_benchmarks = [ 'fft', 'quickhull',
@@ -73,7 +78,6 @@ few_benchmarks = [ 'fft', 'quickhull' ]
 
 parser = argparse.ArgumentParser('Benchmark elastic task scheduling')
 
-
 parser.add_argument('-num_workers', type=int, required=False,
                     default = sys_num_workers,
                     help = 'number of worker threads to use in benchmarks')
@@ -84,8 +88,10 @@ parser.add_argument('-experiment', action='append',
 parser.add_argument('--few_benchmarks', dest ='few_benchmarks',
                     action ='store_true',
                     help = ('run only benchmarks ' + str(few_benchmarks)))
-parser.add_argument('-only_benchmark', action='append')
-parser.add_argument('-skip_benchmark', action='append')
+parser.add_argument('-only_benchmark', action='append',
+                    help = 'specifies a benchmark to run')
+parser.add_argument('-skip_benchmark', action='append',
+                    help = 'specifies a benchmark to not run')
 parser.add_argument('-num_benchmark_repeat', type=int, required=False,
                     default = 1,
                     help = 'number of times to repeat each benchmark run (default 1)')
@@ -94,8 +100,23 @@ parser.add_argument('--verbose', dest ='verbose',
                     help ='verbose mode')
 parser.add_argument('-binding', choices = taskparts_resource_bindings, default = 'by_core',
                     help ='worker-pthread-to-resource binding policy')
+parser.add_argument('-local_results_path', # action='append',
+                    help = 'path to a folder in which to generate results files; default: ' +
+                    default_local_results_path)
+parser.add_argument('-remote_results_path', #action='append',
+                    help = 'path to a folder in the git repo in which to commit results files; default: ' +
+                    default_remote_results_path)
+parser.add_argument('--export_results', dest ='export_results',
+                    action ='store_true',
+                    help ='select to commit the results files to the git repository located in the results path')
 
 args = parser.parse_args()
+
+local_results_path = default_local_results_path if args.local_results_path == None else args.local_results_path
+
+remote_results_path = default_remote_results_path if args.remote_results_path == None else args.remote_results_path
+
+export_results = False if args.export_results == None else args.export_results
 
 experiment_values = experiments if args.experiment == None else args.experiment
 for e in experiment_values:
@@ -412,7 +433,7 @@ def run_elastic_benchmarks(e):
     results = mk_unit()
     for br in brs:
         results = mk_append(row_of_benchmark_results(br), results)
-    return eval(results)
+    return eval(results), brs
 
 def virtual_run_elastic_benchmarks(e):
     rows = rows_of(eval(e))
@@ -420,6 +441,8 @@ def virtual_run_elastic_benchmarks(e):
 
 # Results-file output
 # ===================
+
+timestr = time.strftime("%Y-%m-%d-%H-%M-%S")
 
 def json_dumps(thing):
     return json.dumps(
@@ -435,16 +458,25 @@ def write_string_to_file_path(bstr, file_path, verbose = True):
         fd.write(bstr)
         fd.close()
         if verbose:
-            print('Wrote benchmark to file: ' + file_path)
+            print('Wrote to file: ' + file_path)
 
-def write_benchmark_to_file_path(benchmark, file_path = '', verbose = True):
-    bstr = json_dumps(benchmark)
-    file_path = file_path if file_path != '' else 'results-' + get_hash(bstr) + '.json'
+def write_json_to_file_path(j, file_path = '', verbose = True):
+    bstr = json_dumps(j)
+    timestr = time.strftime("%Y-%m-%d-%H-%M-%S")
+    file_path = file_path if file_path != '' else 'results-' + timestr + get_hash(bstr) + '.json'
     write_string_to_file_path(bstr, file_path, verbose)
     return file_path
 
 # Driver
 # ======
+
+def export_results():
+    if export_results:
+        rrp = remote_results_path + os.path.basename(os.path.abspath(local_results_path))
+        print('Exporting local results in ' + local_results_path +
+              ' to the remote path ' + rrp)
+        shutil.copytree(local_results_path, rrp,
+                        dirs_exist_ok=True)
 
 print('=============================================')
 if is_dry_run:
@@ -456,17 +488,24 @@ print('\tBenchmarks: ' + str(benchmarks))
 print('=============================================\n')
 
 for (e, mk) in experiments_to_run.items():
-    fp =  e + '.json'
+    pfx = local_results_path + '/' + e
+    results_file =  pfx + '-results.json'
+    trace_file =  pfx + '-trace.json'
     print('\n------------------------')
     print('Experiment: ' + e)
-    print('\tto be written to ' + fp)
+    print('\tresults to be written to ' + results_file)
+    print('\ttrace to be written to ' + trace_file)
     print('------------------------\n')
     if not(is_dry_run) and args.verbose:
         virtual_run_elastic_benchmarks(mk)
     elif is_dry_run:
         virtual_run_elastic_benchmarks(mk)
         continue
+    if not(os.path.exists(local_results_path)):
+        os.makedirs(local_results_path)
     print('\nStarting to run benchmarks\n')
-    r = run_elastic_benchmarks(mk)
-    write_benchmark_to_file_path(r, file_path = fp)
-        
+    results, traces = run_elastic_benchmarks(mk)
+    write_json_to_file_path(results, file_path = results_file)
+    write_json_to_file_path(traces, file_path = trace_file)
+    
+export_results()
