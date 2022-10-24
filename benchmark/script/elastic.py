@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+import sys
+sys.setrecursionlimit(150000)
 from taskparts_benchmark_run import *
 from parameter import *
 import glob, argparse, psutil, pathlib
@@ -77,7 +79,8 @@ parser.add_argument('-num-workers', type=int, required=False,
                     help = 'number of worker threads to use in benchmarks')
 parser.add_argument('-mode', choices = modes, default = 'dry',
                     help ='operating modes of this script')
-parser.add_argument('-experiment', action='append')
+parser.add_argument('-experiment', action='append',
+                    help = ('any one of ' + str(experiments)))
 parser.add_argument('--few_benchmarks', dest ='few_benchmarks',
                     action ='store_true',
                     help = ('run only benchmarks ' + str(few_benchmarks)))
