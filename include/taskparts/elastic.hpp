@@ -496,6 +496,9 @@ public:
   using counters_type = struct counters_struct {
     int32_t surplus;
     int32_t sleeping;
+    bool operator==(struct counters_struct& other) const {
+      return (surplus == other.surplus) && (sleeping == other.sleeping);
+    }
   };
   
   static
@@ -546,6 +549,7 @@ public:
     return r;
   }
 
+#ifndef TASKPARTS_UPDATE_WITH_BACKOFF
   template <typename Update, typename Early_exit>
   static
   auto update_counters(std::atomic<counters_type>& status,
@@ -556,6 +560,60 @@ public:
       r = try_to_update_counters(status, update, should_exit);
     }
   }
+#else
+  // update with exponential backoff
+  template <typename Update, typename Early_exit>
+  static
+  auto update_counters(std::atomic<counters_type>& status,
+                       const Update& update,
+                       const Early_exit& should_exit) {
+    auto my_id = perworker::my_id();
+    uint64_t max_delay = 1;
+    auto r = try_to_update_counters(status, update, should_exit);
+    while (r != update_counters_succeeded) {
+      r = try_to_update_counters(status, update, should_exit);
+      max_delay = 2 * max_delay;
+      uint64_t d = hash(my_id + max_delay) % max_delay;
+      cycles::spin_for(d);
+    }
+  }
+#endif
+  
+#if 0
+  
+  // update using Adaptive Probability (see Naama Ben-David's dissertation, sec 2.4)
+  template <typename Update, typename Early_exit>
+  static
+  auto update_counters(std::atomic<counters_type>& status,
+                       const Update& update,
+                       const Early_exit& should_exit) {
+    auto my_id = perworker::my_id();
+    auto current_val = status.load();
+    uint64_t prob = 1;
+    uint64_t i = 0;
+    while (true) {
+      if (should_exit(current_val)) {
+        return;
+      }
+      bool heads = (prob == 0) ? true : (hash(my_id + i) % prob) == 0;
+      if (heads) {
+        auto val = update(current_val);
+        auto orig = current_val;
+        if (status.compare_exchange_strong(orig, val)) {
+          return;
+        }
+        auto new_val = status.load();
+        if (new_val == current_val) {
+          prob = std::max((uint64_t)1l, (uint64_t)2l * prob);
+        } else {
+          prob = prob / 2;
+          current_val = new_val;
+        }
+      }
+      i++;
+    }
+  }
+#endif
 
   template <typename Update>
   static

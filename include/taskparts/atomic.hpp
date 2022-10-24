@@ -8,7 +8,10 @@ namespace taskparts {
 
 /*---------------------------------------------------------------------*/
 /* Atomic compare-and-exchange which handles failure by having the
-   caller for spin wait for 4k cycles. */
+   caller spin wait for 4k cycles. */
+
+// TODO: remove the code below and replace it with one of the backoff
+// protocols proposed in Naama Ben-David's dissertation (see elastic.hpp)
   
 template <class T>
 auto compare_exchange_with_backoff(std::atomic<T>& cell, T& expected, T desired) -> bool {
