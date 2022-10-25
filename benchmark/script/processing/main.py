@@ -4,7 +4,7 @@ import ingest
 import pathlib
 import model
 from latex import *
-from model import Machine, Experiments, Scheduler
+from model import Averaged, Machine, Experiments, Scheduler
 from sqlalchemy import *
 import sqlalchemy.orm as orm
 
@@ -58,18 +58,19 @@ def ingest_json(engine):
     # ing.ingest("json/aws.json", Machine.aws)
     # ing.ingest("json/gamora.json", Machine.gamora)
 
-def three_way_compare(schedbase, sched1, sched2) :
-    baseline = orm.aliased(Experiments, name="baseline")
-    elastic  = orm.aliased(Experiments, name="elastic")
-    elastic_spin = orm.aliased(Experiments, name="spin")
+def three_way_compare(schedbase, sched1, sched2, table=Averaged) :
+    baseline = orm.aliased(table, name="baseline")
+    elastic  = orm.aliased(table, name="elastic")
+    elastic_spin = orm.aliased(table, name="spin")
 
     # Labels are picked such that the mapper for the textabel maps 
     # the column to a texcolumn with identical name
     return (
         select(
-            baseline.id.label("bid"),
-            elastic.id.label("eid"),
-            elastic.id.label("sid"),
+            # baseline.id.label("bid"),
+            # elastic.id.label("eid"),
+            # elastic_spin.id.label("sid"),
+            baseline.benchcls,
             baseline.benchmark,
             baseline.machine,
             baseline.numworkers,
@@ -77,17 +78,19 @@ def three_way_compare(schedbase, sched1, sched2) :
             elastic.elastic.label("elastic"),
             elastic.scheduler,
             elastic_spin.scheduler,
-            baseline.exectime.label("rt_baseline"),
-            elastic.exectime.label("rt_spdup"),
-            elastic_spin.exectime.label("rt_elastic"),
-            baseline.total_time.label("burn_baseline"),
-            elastic.total_time.label("burn_spdup"),
-            elastic_spin.total_time.label("burn_elastic"),
+            baseline.exectime_avg.label("rt_baseline"),
+            elastic.exectime_avg.label("rt_spdup"),
+            elastic_spin.exectime_avg.label("rt_elastic"),
+            baseline.total_time_avg.label("burn_baseline"),
+            elastic.total_time_avg.label("burn_spdup"),
+            elastic_spin.total_time_avg.label("burn_elastic"),
         )
         .select_from(baseline, elastic, elastic_spin)
+        .where(baseline.benchcls == elastic.benchcls)
         .where(baseline.benchmark == elastic.benchmark)
         .where(baseline.machine == elastic.machine)
         .where(baseline.numworkers == elastic.numworkers)
+        .where(baseline.benchcls == elastic_spin.benchcls)
         .where(baseline.benchmark == elastic_spin.benchmark)
         .where(baseline.machine == elastic_spin.machine)
         .where(baseline.numworkers == elastic_spin.numworkers)
@@ -97,6 +100,7 @@ def three_way_compare(schedbase, sched1, sched2) :
         .where(elastic_spin.scheduler == sched2)
         .order_by(baseline.numworkers.asc())
         .order_by(baseline.machine)
+        .order_by(baseline.benchcls.asc())
         .order_by(baseline.benchmark)
     )
 
@@ -158,37 +162,6 @@ def main():
     # This ingests the json files 
     ingest_json(engine)
 
-    stmt = (
-        select(
-            Experiments.machine,
-            Experiments.numworkers,
-            Experiments.benchcls,
-            Experiments.benchmark,
-            Experiments.scheduler,
-            Experiments.semaphore,
-            Experiments.elastic,
-            func.avg(Experiments.exectime).label("exectime_avg"),
-            func.avg(Experiments.systime).label("systime_avg"),
-            func.avg(Experiments.usertime).label("usertime_avg"),
-            func.avg(Experiments.total_time).label("total_time_avg"),
-            func.avg(Experiments.total_work_time).label("total_work_time_avg"),
-            func.avg(Experiments.total_sleep_time).label("total_sleep_time_avg"),
-            func.avg(Experiments.utilization).label("utilization_avg"),
-        )
-        .select_from(Experiments)
-        .group_by(
-            Experiments.machine,
-            Experiments.numworkers,
-            Experiments.benchcls,
-            Experiments.benchmark,
-            Experiments.scheduler,
-            Experiments.semaphore,
-            Experiments.elastic,
-        )
-    )
-    
-    print(stmt)
-
     # Test run -- lists all experiments
     with sqlalchemy.orm.Session(engine) as session:
         # rslt = session.execute(sqlalchemy.select(Experiments))
@@ -197,10 +170,17 @@ def main():
 
         # rslt = session.execute(sqlalchemy.select(Experiments))
         # print(len(rslt.all()))
-        return
+        q1 = three_way_compare(Scheduler.nonelastic, Scheduler.elastic, Scheduler.elastic_spin)
+        print(q1)
+        print("")
+        q2 = three_way_compare(Scheduler.nonelastic, Scheduler.elastic2, Scheduler.elastic2_spin)
+        print(q2)
+        print("")
 
-        rslt1 = session.execute(three_way_compare(Scheduler.nonelastic, Scheduler.elastic, Scheduler.elastic_spin)).all()
-        rslt2 = session.execute(three_way_compare(Scheduler.nonelastic, Scheduler.elastic2, Scheduler.elastic2_spin)).all()
+        return 
+
+        rslt1 = session.execute(q1).all()
+        rslt2 = session.execute(q2).all()
         # for row in rslt1:
         #     print(row)
         # for row in rslt2:
