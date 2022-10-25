@@ -549,6 +549,8 @@ public:
     return r;
   }
 
+#define TASKPARTS_UPDATE_WITH_ADAPTIVE_BACKOFF 1
+  //  #define TASKPARTS_UPDATE_WITH_EXPONENTIAL_BACKOFF 1
 #if defined(TASKPARTS_UPDATE_WITH_EXPONENTIAL_BACKOFF)
   // update with exponential backoff
   template <typename Update, typename Early_exit>
