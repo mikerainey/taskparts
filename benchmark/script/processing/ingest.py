@@ -1,6 +1,7 @@
 import sqlalchemy 
 import model
 import json
+import datetime
 
 def setup_test() :
     engine = sqlalchemy.create_engine("sqlite+pysqlite:///:memory:", echo=True, future=True)
@@ -11,7 +12,7 @@ class Ingester:
         self.engine = engine
         pass
 
-    def ingest(self, filepath, machine : model.Machine):
+    def ingest(self, filepath, machine : model.Machine, exclude=None):
         with open(filepath, 'r') as fp: 
             source = json.load(fp)
             with sqlalchemy.orm.Session(self.engine) as session:
@@ -32,10 +33,15 @@ class Ingester:
                         else:
                             return f(kv[key])
 
+                    if exclude is not None:
+                        if exclude(kv):
+                            continue
+
                     # Constructing the objects
                     e = model.Experiments (
                         machine=machine,
                         benchmark=kv["benchmark"],
+                        benchcls=model.BenchmarkClass[kv['experiment'].replace('-', '_')],
                         numworkers=kv['TASKPARTS_NUM_WORKERS'],
                         bin=model.Binary[kv['binary']],
                         chaselev=case_opt('chaselev', lambda ch: model.Chaselev[ch]),
@@ -55,6 +61,10 @@ class Ingester:
                         total_work_time=kv['total_work_time'],
                         usertime=kv['usertime'],
                         utilization=kv['utilization'],
+                        tp_numa_alloc_inter=(kv['TASKPARTS_NUMA_ALLOC_INTERLEAVED'] > 0),
+                        tp_pin_worker=(kv['TASKPARTS_PIN_WORKER_THREADS'] > 0),
+                        tp_binding=model.ResourceBinding[kv['TASKPARTS_RESOURCE_BINDING']],
+                        file=filepath
                     )
 
                     session.add(e)

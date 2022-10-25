@@ -25,6 +25,16 @@ class Elastic(enum.Enum):
     surplus2 = enum.auto()
 
 @enum.unique
+class ResourceBinding(enum.Enum):
+    by_core = enum.auto()
+
+@enum.unique
+class BenchmarkClass(enum.Enum):
+    high_parallelism = enum.auto()
+    low_parallelism = enum.auto()
+    parallel_sequential_mix = enum.auto()
+
+@enum.unique
 class Scheduler(enum.Enum):
     nonelastic = enum.auto()
     elastic = enum.auto()
@@ -43,6 +53,7 @@ class Experiments(Base):
     machine          = Column(Enum(Machine))
     numworkers       = Column(Integer)
     benchmark        = Column(String)
+    benchcls         = Column(Enum(BenchmarkClass))
     bin              = Column(Enum(Binary)) # Renamed to avoid conflict with type
     chaselev         = Column(Enum(Chaselev))
     elastic          = Column(Enum(Elastic))
@@ -62,28 +73,55 @@ class Experiments(Base):
     total_work_time  = Column(Float)
     usertime         = Column(Float)
     utilization      = Column(Float)
+    
+    tp_numa_alloc_inter = Column(Boolean)
+    tp_pin_worker       = Column(Boolean)
+    tp_binding          = Column(Enum(ResourceBinding))
 
+    file = Column(String)
+    
     # def __repr__(self):
     #     return f"Run({self.id!r}, {self.machine!r}, {self.scheduler!r}, {self.numworkers!r}, {self.utilization!r}"
 
-# Baseline view created upon the experiments set
-class Baseline(Base):
-    __table__ = view.view (
-        "baseline",
-        Base.metadata,
+_avg_stmt = (
         select(
-            Experiments.id.label("id"),
-            Experiments.machine.label("machine"),
-            Experiments.benchmark.label("benchmark"),
-            Experiments.scheduler.label("scheduler"),
-            Experiments.numworkers.label("numworkers"),
-            Experiments.exectime.label("exectime")
+            Experiments.machine,
+            Experiments.numworkers,
+            Experiments.benchcls,
+            Experiments.benchmark,
+            Experiments.scheduler,
+            Experiments.semaphore,
+            Experiments.elastic,
+            func.avg(Experiments.exectime).label("exectime_avg"),
+            func.avg(Experiments.systime).label("systime_avg"),
+            func.avg(Experiments.usertime).label("usertime_avg"),
+            func.avg(Experiments.total_time).label("total_time_avg"),
+            func.avg(Experiments.total_work_time).label("total_work_time_avg"),
+            func.avg(Experiments.total_sleep_time).label("total_sleep_time_avg"),
+            func.avg(Experiments.utilization).label("utilization_avg"),
         )
-        .where(Experiments.scheduler == "nonelastic")
+        .select_from(Experiments)
+        .group_by(
+            Experiments.machine,
+            Experiments.numworkers,
+            Experiments.benchcls,
+            Experiments.benchmark,
+            Experiments.scheduler,
+            Experiments.semaphore,
+            Experiments.elastic,
+        )
     )
+
+# Baseline view created upon the experiments set
+# class Averaged(Base):
+#     __table__ = view.view (
+#         "averaged",
+#         Base.metadata, _avg_stmt
+#     )
 
 # This creates all tabels with the given engine
 # Should only be called for the initial ingest
 def init(engine):
+    Base.metadata.drop_all(engine)
     Base.metadata.create_all(engine)
 

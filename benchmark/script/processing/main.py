@@ -1,5 +1,7 @@
+from sys import stderr
 import sqlalchemy
 import ingest
+import pathlib
 import model
 from latex import *
 from model import Machine, Experiments, Scheduler
@@ -16,8 +18,19 @@ import sqlalchemy.orm as orm
 # setting setup=True
 #
 # The function returns the created engine.
-def setup(path=None, setup=False, echo=True) :
-    if path is None:
+def setup(path=None, setup=False, echo=True, remote=False) :
+    if remote:
+        print("Connecting to remote db.", stderr)
+        # (!!) You really should not put username/password in the code
+        # However we are using free tier services and on a ddl crunch.
+        user = "pop"
+        passwd = "scheduler"
+        address = "experiments.cz6zabb0vywb.us-east-1.rds.amazonaws.com"
+        engine = sqlalchemy.create_engine(f'postgresql+psycopg2://{user}:{passwd}@{address}/postgres')
+        if setup:
+            model.init(engine)
+        return engine
+    elif path is None :
         engine = sqlalchemy.create_engine("sqlite+pysqlite:///:memory:", echo=echo, future=True)
         model.init(engine)
         return engine
@@ -29,9 +42,21 @@ def setup(path=None, setup=False, echo=True) :
 
 def ingest_json(engine):
     ing = ingest.Ingester(engine)
-    ing.ingest("json/aware.json", Machine.aware)
-    ing.ingest("json/aws.json", Machine.aws)
-    ing.ingest("json/gamora.json", Machine.gamora)
+    
+    def exclude(kv):
+        return kv['benchmark'] == 'suffixarray'
+
+    def aws(path):
+        ing.ingest(path, Machine.aws, exclude=exclude)
+    
+    aws("json/experiments/results-2022-10-24-22-06-57/high_parallelism-results.json")
+    aws("json/experiments/results-2022-10-24-22-47-27/high_parallelism-results.json")
+    aws("json/experiments/results-2022-10-25-01-22-22/high_parallelism-results.json")
+    aws("json/experiments/results-2022-10-25-01-22-22/low_parallelism-results.json")
+    aws("json/experiments/results-2022-10-25-01-22-22/parallel_sequential_mix-results.json")
+    # ing.ingest("json/aware.json", Machine.aware)
+    # ing.ingest("json/aws.json", Machine.aws)
+    # ing.ingest("json/gamora.json", Machine.gamora)
 
 def three_way_compare(schedbase, sched1, sched2) :
     baseline = orm.aliased(Experiments, name="baseline")
@@ -126,18 +151,53 @@ def test_table_schema() :
 
 
 def main():
-    # engine = setup(echo=False, path="data/data.db", setup=True)
+    engine = setup(echo=True, remote=True, setup=True)
     # engine = setup(echo=True, path="data/data.db")
-    engine = setup(echo=False)
+    # engine = setup(echo=False)
 
     # This ingests the json files 
     ingest_json(engine)
+
+    stmt = (
+        select(
+            Experiments.machine,
+            Experiments.numworkers,
+            Experiments.benchcls,
+            Experiments.benchmark,
+            Experiments.scheduler,
+            Experiments.semaphore,
+            Experiments.elastic,
+            func.avg(Experiments.exectime).label("exectime_avg"),
+            func.avg(Experiments.systime).label("systime_avg"),
+            func.avg(Experiments.usertime).label("usertime_avg"),
+            func.avg(Experiments.total_time).label("total_time_avg"),
+            func.avg(Experiments.total_work_time).label("total_work_time_avg"),
+            func.avg(Experiments.total_sleep_time).label("total_sleep_time_avg"),
+            func.avg(Experiments.utilization).label("utilization_avg"),
+        )
+        .select_from(Experiments)
+        .group_by(
+            Experiments.machine,
+            Experiments.numworkers,
+            Experiments.benchcls,
+            Experiments.benchmark,
+            Experiments.scheduler,
+            Experiments.semaphore,
+            Experiments.elastic,
+        )
+    )
+    
+    print(stmt)
 
     # Test run -- lists all experiments
     with sqlalchemy.orm.Session(engine) as session:
         # rslt = session.execute(sqlalchemy.select(Experiments))
         # rslt = session.execute(sqlalchemy.select(Experiments))
+        
+
+        # rslt = session.execute(sqlalchemy.select(Experiments))
         # print(len(rslt.all()))
+        return
 
         rslt1 = session.execute(three_way_compare(Scheduler.nonelastic, Scheduler.elastic, Scheduler.elastic_spin)).all()
         rslt2 = session.execute(three_way_compare(Scheduler.nonelastic, Scheduler.elastic2, Scheduler.elastic2_spin)).all()
