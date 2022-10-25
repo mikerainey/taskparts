@@ -549,18 +549,7 @@ public:
     return r;
   }
 
-#ifndef TASKPARTS_UPDATE_WITH_BACKOFF
-  template <typename Update, typename Early_exit>
-  static
-  auto update_counters(std::atomic<counters_type>& status,
-                       const Update& update,
-                       const Early_exit& should_exit) {
-    auto r = try_to_update_counters(status, update, should_exit);
-    while (r != update_counters_succeeded) {
-      r = try_to_update_counters(status, update, should_exit);
-    }
-  }
-#else
+#if defined(TASKPARTS_UPDATE_WITH_EXPONENTIAL_BACKOFF)
   // update with exponential backoff
   template <typename Update, typename Early_exit>
   static
@@ -577,10 +566,7 @@ public:
       cycles::spin_for(d);
     }
   }
-#endif
-  
-#if 0
-  
+#elif defined(TASKPARTS_UPDATE_WITH_ADAPTIVE_BACKOFF)
   // update using Adaptive Probability (see Naama Ben-David's dissertation, sec 2.4)
   template <typename Update, typename Early_exit>
   static
@@ -611,6 +597,17 @@ public:
         }
       }
       i++;
+    }
+  }
+#else
+  template <typename Update, typename Early_exit>
+  static
+  auto update_counters(std::atomic<counters_type>& status,
+                       const Update& update,
+                       const Early_exit& should_exit) {
+    auto r = try_to_update_counters(status, update, should_exit);
+    while (r != update_counters_succeeded) {
+      r = try_to_update_counters(status, update, should_exit);
     }
   }
 #endif

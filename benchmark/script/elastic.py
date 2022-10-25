@@ -470,29 +470,32 @@ def write_json_to_file_path(j, file_path = '', verbose = True):
 # Driver
 # ======
 
-def export_results():
-    if export_results:
-        bn = os.path.basename(os.path.abspath(local_results_path))
-        rrp = remote_results_path + bn
-        print('Exporting local results in ' + local_results_path +
-              ' to the remote path ' + rrp)
-        shutil.copytree(local_results_path, rrp, dirs_exist_ok=True)
-        cmd = 'git add ' + bn
-        exp_path, _ = os.path.split(rrp)
-        current_child = subprocess.Popen(cmd, shell = True,
-                                         stdout = subprocess.PIPE, stderr = subprocess.PIPE,
-                                         cwd = exp_path)
-        child_stdout, child_stderr = current_child.communicate(timeout = 1000)
-        child_stdout = child_stdout.decode('utf-8')
-        child_stderr = child_stderr.decode('utf-8')
-        return_code = current_child.returncode
-        if return_code != 0:
-            print('Error: export to git returned error code ' + str(return_code))
-            print('stdout:')
-            print(str(child_stdout))
-            print('stderr:')
-            print(str(child_stderr))
-            exit
+def export_results_to_git():
+    if not(export_results):
+        return
+    if not(os.path.exists(local_results_path)):
+        return
+    bn = os.path.basename(os.path.abspath(local_results_path))
+    rrp = remote_results_path + bn
+    print('Exporting local results in ' + local_results_path +
+          ' to the remote path ' + rrp)
+    shutil.copytree(local_results_path, rrp, dirs_exist_ok=True)
+    cmd = 'git add ' + bn
+    exp_path, _ = os.path.split(rrp)
+    current_child = subprocess.Popen(cmd, shell = True,
+                                     stdout = subprocess.PIPE, stderr = subprocess.PIPE,
+                                     cwd = exp_path)
+    child_stdout, child_stderr = current_child.communicate(timeout = 1000)
+    child_stdout = child_stdout.decode('utf-8')
+    child_stderr = child_stderr.decode('utf-8')
+    return_code = current_child.returncode
+    if return_code != 0:
+        print('Error: export to git returned error code ' + str(return_code))
+        print('stdout:')
+        print(str(child_stdout))
+        print('stderr:')
+        print(str(child_stderr))
+        exit
 
 
 print('=============================================')
@@ -525,4 +528,4 @@ for (e, mk) in experiments_to_run.items():
     write_json_to_file_path(results, file_path = results_file)
     write_json_to_file_path(traces, file_path = trace_file)
     
-export_results()
+export_results_to_git()
