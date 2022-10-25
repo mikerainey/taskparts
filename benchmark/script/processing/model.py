@@ -1,4 +1,5 @@
 import enum
+from tokenize import group
 from sqlalchemy import *
 from sqlalchemy.orm import *
 import view
@@ -83,15 +84,23 @@ class Experiments(Base):
     # def __repr__(self):
     #     return f"Run({self.id!r}, {self.machine!r}, {self.scheduler!r}, {self.numworkers!r}, {self.utilization!r}"
 
-_avg_stmt = (
-        select(
-            Experiments.machine,
-            Experiments.numworkers,
-            Experiments.benchcls,
-            Experiments.benchmark,
-            Experiments.scheduler,
-            Experiments.semaphore,
-            Experiments.elastic,
+
+# Baseline view created upon the experiments set
+class Averaged(Base):
+    def grouping(c):
+        return [
+            c.machine,
+            c.numworkers,
+            c.benchcls,
+            c.benchmark,
+            c.scheduler,
+            c.semaphore,
+            c.elastic,
+        ]
+
+    _avg_stmt = (
+        select(grouping(Experiments) +
+        [
             func.avg(Experiments.exectime).label("exectime_avg"),
             func.avg(Experiments.systime).label("systime_avg"),
             func.avg(Experiments.usertime).label("usertime_avg"),
@@ -99,25 +108,19 @@ _avg_stmt = (
             func.avg(Experiments.total_work_time).label("total_work_time_avg"),
             func.avg(Experiments.total_sleep_time).label("total_sleep_time_avg"),
             func.avg(Experiments.utilization).label("utilization_avg"),
-        )
+        ])
         .select_from(Experiments)
-        .group_by(
-            Experiments.machine,
-            Experiments.numworkers,
-            Experiments.benchcls,
-            Experiments.benchmark,
-            Experiments.scheduler,
-            Experiments.semaphore,
-            Experiments.elastic,
-        )
+        .group_by(*grouping(Experiments))
     )
 
-# Baseline view created upon the experiments set
-# class Averaged(Base):
-#     __table__ = view.view (
-#         "averaged",
-#         Base.metadata, _avg_stmt
-#     )
+    __table__ = view.view (
+        "averaged",
+        Base.metadata, _avg_stmt
+    )
+
+    __mapper_args__ = {
+        "primary_key" : grouping(__table__.c)
+    }
 
 # This creates all tabels with the given engine
 # Should only be called for the initial ingest

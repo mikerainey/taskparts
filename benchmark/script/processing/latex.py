@@ -41,6 +41,9 @@ class TexColumn:
 def TexColString(name):
 	return TexColumn(name, to_string=lambda x : x)
 
+def TexColInteger(name):
+	return TexColumn(name, to_string=lambda x : "%d" % x)
+
 def TexColMath(name):
 	return TexColumn(name, to_string=lambda x : '''\ensuremath{%s}''' % x)
 
