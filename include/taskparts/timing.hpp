@@ -2,6 +2,9 @@
 
 #include <cstdint>
 #include <cstdlib>
+#ifdef TASKPARTS_X64
+#include <emmintrin.h>
+#endif
 
 #include "diagnostics.hpp"
 #if defined(TASKPARTS_POSIX) || defined(TASKPARTS_DARWIN)
@@ -20,6 +23,7 @@ namespace taskparts {
 static inline
 auto busywait_pause() {
 #if defined(TASKPARTS_X64)
+  //_mm_pause();
   __builtin_ia32_pause();
 #elif defined(TASKPARTS_ARM64)
   //__builtin_arm_yield();
