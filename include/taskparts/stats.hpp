@@ -128,6 +128,7 @@ public:
     if (! Configuration::collect_all_stats) {
       return;
     }
+    increment(Configuration::nb_sleeps);
     all_timers.mine().start_sleep = now();
   }
   

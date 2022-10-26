@@ -193,7 +193,7 @@ def generate_table(schema: TexTableSchema, rslt, mapper):
 def doc_frame(content):
 	return (
 r'''
-\documentclass{article}
+\documentclass[a3paper]{article}
 \usepackage[margin=0.1in]{geometry}
 \usepackage[utf8]{inputenc}
 \usepackage{booktabs}

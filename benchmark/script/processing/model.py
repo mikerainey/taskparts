@@ -25,6 +25,14 @@ class Elastic(enum.Enum):
     surplus = enum.auto()
     surplus2 = enum.auto()
 
+    def __str__(self) -> str:
+        if self.value == self.__class__.surplus.value :
+            return "surplus"
+        elif self.value == self.__class__.surplus2.value :
+            return "surplus2"
+        assert False
+
+
 @enum.unique
 class ResourceBinding(enum.Enum):
     by_core = enum.auto()
@@ -34,6 +42,15 @@ class BenchmarkClass(enum.Enum):
     high_parallelism = enum.auto()
     low_parallelism = enum.auto()
     parallel_sequential_mix = enum.auto()
+
+    def __str__(self) -> str:
+        if self.name == "high_parallelism":
+            return "high"
+        elif self.name == "low_parallelism":
+            return "low"
+        else:
+            return "mixed"
+
 
 @enum.unique
 class Scheduler(enum.Enum):
