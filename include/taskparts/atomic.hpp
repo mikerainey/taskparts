@@ -83,10 +83,12 @@ public:
       if (c >= 0) {
         break;
       }
-      //cycles::spin_for(500);
+      cycles::spin_for(2000);
+      /*
       for (int i = 0; i < (1 << 6); i++) {
 	_mm_pause();
       }
+      */
       c = count.load();
     } while (true);
     assert(count.load() >= 0);
