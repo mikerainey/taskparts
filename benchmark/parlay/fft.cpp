@@ -23,7 +23,7 @@ auto gen_input() {
   force_sequential = taskparts::cmdline::parse_or_default_bool("force_sequential", false);
   parlay::override_granularity = taskparts::cmdline::parse_or_default_long("override_granularity", 0);
   include_infile_load = taskparts::cmdline::parse_or_default_bool("include_infile_load", false);
-  n = std::max((size_t)1, (size_t)taskparts::cmdline::parse_or_default_long("n", 40 * 1000 * 1000));
+  n = std::max((size_t)1, (size_t)taskparts::cmdline::parse_or_default_long("n", 10 * 1000 * 1000));
   parlay::random_generator gen1(0);
   std::uniform_real_distribution<double> dis1(0.0,1.0);
   gen = gen1;
