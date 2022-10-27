@@ -115,33 +115,6 @@ using resource_binding_type = enum resource_binding_enum {
 
 pinning_policy_type pinning_policy = pinning_policy_disabled;
 
-template <typename Resource_id>
-auto assign_workers_to_resources(resource_packing_type packing,
-				 size_t nb_workers,
-				 std::vector<size_t>& max_nb_workers_by_resource,
-				 const std::vector<Resource_id>& resource_ids)
-  -> std::vector<Resource_id> {
-  assert(resource_ids.size() == max_nb_workers_by_resource.size());
-  std::vector<Resource_id> assignments(nb_workers);
-  auto nb_resources = resource_ids.size();
-  // we start from resources w/ high ids and work down so as to avoid allocating core 0
-  size_t resource = nb_resources - 1;
-  auto next_resource = [&] {
-    resource = (resource == 0) ? nb_resources - 1 : resource - 1;
-  };
-  for (size_t i = 0; i != nb_workers; ++i) {
-    while (max_nb_workers_by_resource[resource] == 0) {
-      next_resource();
-    }
-    max_nb_workers_by_resource[resource]--;
-    assignments[i] = resource_ids[resource];
-    if (packing == resource_packing_sparse) {
-      next_resource();
-    }
-  }
-  return assignments;
-}
-
 auto pin_calling_worker();
 auto initialize_machine();
 auto teardown_machine();

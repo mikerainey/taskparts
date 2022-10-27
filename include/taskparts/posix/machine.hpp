@@ -44,15 +44,7 @@ auto detect_cpu_frequency_khz() -> uint64_t {
 
 #ifdef TASKPARTS_HAVE_HWLOC
 
-using hwloc_coordinate_type = struct hwloc_coordinate_struct {
-  int depth;
-  int position;
-};
-
-static constexpr
-hwloc_coordinate_type empty_coordinate = { .depth = -1, .position = -1 };
-
-perworker::array<hwloc_coordinate_type> worker_hwloc_coordinates;
+using hwloc_obj_type = hwloc_obj_type_t;
 
 perworker::array<hwloc_cpuset_t> hwloc_cpusets;
   
@@ -61,49 +53,46 @@ hwloc_topology_t topology;
 hwloc_cpuset_t all_cpus;
 
 auto hwloc_assign_cpusets(size_t nb_workers,
-                          pinning_policy_type _pinning_policy,
-                          resource_packing_type resource_packing,
-                          resource_binding_type resource_binding) {
+			  pinning_policy_type _pinning_policy,
+			  resource_packing_type resource_packing,
+			  hwloc_obj_type resource_binding) {
   pinning_policy = _pinning_policy;
-  all_cpus = hwloc_bitmap_dup(hwloc_topology_get_topology_cpuset(topology));
-  std::vector<size_t> max_nb_workers_by_resource;
-  std::vector<hwloc_coordinate_type> resource_ids;
-  if (resource_binding == resource_binding_by_core) {
-    auto core_depth = hwloc_get_type_or_below_depth(topology, HWLOC_OBJ_CORE);
-    size_t nb_cores = hwloc_get_nbobjs_by_depth(topology, core_depth);
-    if (nb_workers > nb_cores) {
-      taskparts_die("hwloc_assign_cpusets: Requested %d workers but also requested to pin each worker to one of %d available cores\n", nb_workers, nb_cores);
-    }
-    max_nb_workers_by_resource.resize(nb_cores);
-    resource_ids.resize(nb_cores, empty_coordinate);
-    for (int core_id = 0; core_id < nb_cores; core_id++) {
-      hwloc_obj_t core = hwloc_get_obj_by_depth(topology, core_depth, core_id);
-      max_nb_workers_by_resource[core_id] =
-        hwloc_get_nbobjs_inside_cpuset_by_type(topology, core->cpuset, HWLOC_OBJ_CORE);
-      resource_ids[core_id] = { .depth = core_depth, .position = core_id };
-    }
-  } else if (resource_binding == resource_binding_by_numa_node) {
-    taskparts_die("todo");
-  } else {
-    assert(resource_binding == resource_binding_all);
-    for (size_t worker_id = 0; worker_id != nb_workers; ++worker_id) {
-      hwloc_cpusets[worker_id] = hwloc_bitmap_dup(all_cpus);
-    }
-    return;
+  auto depth = hwloc_get_type_or_below_depth(topology, resource_binding);
+  if (depth < 0) {
+    taskparts_die("requested resource that is unavailable on the calling machine");
   }
-  auto assignments = assign_workers_to_resources(resource_packing,
-                                                 nb_workers,
-                                                 max_nb_workers_by_resource,
-                                                 resource_ids);
-  for (size_t worker_id = 0; worker_id != nb_workers; ++worker_id) {
-    hwloc_cpuset_t cpuset;
-    auto assignment = assignments[worker_id];
-    if (assignment.depth == -1) {
-      cpuset = all_cpus;
-    } else {
-      cpuset = hwloc_get_obj_by_depth(topology, assignment.depth, assignment.position)->cpuset;
+  auto topology_depth = hwloc_topology_get_depth(topology);
+  if (depth >= topology_depth) {
+    taskparts_die("bogus topology depth");
+  }
+  auto nb_objects = hwloc_get_nbobjs_by_depth(topology, depth);
+  if (nb_objects == 0) {
+    taskparts_die("request to bind taskpartsworker threads to a nonexistent hardware resource\n");
+  }
+  if (resource_packing == resource_packing_sparse) {
+    for (size_t worker_id = 0, object_id = 0; worker_id < nb_workers; worker_id++, object_id++) {
+      object_id = (object_id >= nb_objects) ? 0 : object_id;
+      //printf("nbo = %d depth = %d oid=%d wid=%d\n",nb_objects,depth,object_id, worker_id);
+      auto cpuset = hwloc_get_obj_by_depth(topology, depth, object_id)->cpuset;
+      hwloc_cpusets[worker_id] = hwloc_bitmap_dup(cpuset);
     }
-    hwloc_cpusets[worker_id] = hwloc_bitmap_dup(cpuset);
+  } else if (resource_packing == resource_packing_dense) {
+    for (size_t worker_id = 0, object_id = 0, i = 0; worker_id < nb_workers; worker_id++) {
+      object_id = (object_id >= nb_objects) ? 0 : object_id;
+      auto cpuset = hwloc_get_obj_by_depth(topology, depth, object_id)->cpuset;
+      auto nb_in_obj = hwloc_get_nbobjs_inside_cpuset_by_depth(topology, cpuset, depth + 1);
+      //printf("i=%d nbo2 = %d depth = %d oid=%d wid=%d nbio=%d\n",i,nb_objects,depth,object_id, worker_id,nb_in_obj);
+      if (nb_in_obj == 0) {
+	taskparts_die("bogus request");
+      }
+      if (++i >= nb_in_obj) {
+	i = 0;
+	object_id++;
+      }
+      hwloc_cpusets[worker_id] = hwloc_bitmap_dup(cpuset);
+    }
+  } else {
+    taskparts_die("impossible");
   }
 }
 
@@ -155,13 +144,15 @@ auto posix_initialize_machine() {
     requested_pinning_policy = true;
     pinning_policy = (std::stoi(env_p) == 1) ? pinning_policy_enabled : pinning_policy_disabled;
   }
-  resource_packing_type resource_packing = resource_packing_dense;
+  resource_packing_type resource_packing = resource_packing_sparse;
   if (const auto env_p = std::getenv("TASKPARTS_RESOURCE_PACKING")) {
     requested_pinning_policy = true;
     if (std::string(env_p) == "sparse") {
       resource_packing = resource_packing_sparse;
-    } else if (std::string(env_p) != "dense") {
-      taskparts_die("Bogus setting for environment variable TASKPARTS_RESOURCE_PACKING");
+    } else if (std::string(env_p) == "dense") {
+      resource_packing = resource_packing_dense;
+    } else {
+      taskparts_die("impossible");
     }
   }
   resource_binding_type resource_binding = resource_binding_by_core;
@@ -177,7 +168,13 @@ auto posix_initialize_machine() {
   }
 #if defined(TASKPARTS_HAVE_HWLOC)
   initialize_hwloc(nb_workers, numa_alloc_interleaved);
-  hwloc_assign_cpusets(nb_workers, pinning_policy, resource_packing, resource_binding);
+  auto rb = HWLOC_OBJ_MACHINE;
+  if (resource_binding == resource_binding_by_core) {
+    rb = HWLOC_OBJ_CORE;
+  } else if (resource_binding == resource_binding_by_numa_node) {
+    rb = HWLOC_OBJ_NUMANODE;
+  }
+  hwloc_assign_cpusets(nb_workers, pinning_policy, resource_packing, rb);
 #else
   if (requested_pinning_policy) {
     taskparts_die("Requested pinning policy, but need hwloc to realize it");
@@ -187,10 +184,9 @@ auto posix_initialize_machine() {
 
 auto posix_teardown_machine() {
 #ifdef TASKPARTS_HAVE_HWLOC
-  auto nb_workers = perworker::nb_workers();
   hwloc_bitmap_free(all_cpus);
-  for (std::size_t worker_id = 0; worker_id != nb_workers; ++worker_id) {
-    hwloc_bitmap_free(hwloc_cpusets[worker_id]);
+  for (size_t id = 0; id != perworker::nb_workers(); ++id) {
+    hwloc_bitmap_free(hwloc_cpusets[id]);
   }
   hwloc_topology_destroy(topology);
 #endif
