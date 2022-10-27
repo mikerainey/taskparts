@@ -9,7 +9,7 @@
 #include "diagnostics.hpp"
 
 #ifndef TASKPARTS_MAX_NB_WORKERS_LG
-#define TASKPARTS_MAX_NB_WORKERS_LG 7
+#define TASKPARTS_MAX_NB_WORKERS_LG 8
 #endif
 
 namespace taskparts {
