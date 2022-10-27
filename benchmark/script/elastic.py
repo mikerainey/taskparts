@@ -62,16 +62,18 @@ path_to_binaries = path_to_benchmarks + 'bin/'
 #############################################################
 
 # uncomment to override the list of benchmarks above
-all_benchmarks = [ 'fft', 'quickhull',
+all_benchmarks = [ 'quickhull',
                    'bellmanford', 'knn',
-                   'samplesort', 'suffixarray', 'karatsuba', 'setcover',
+                   'samplesort', 'suffixarray', 'setcover',
                    'filterkruskal', 'bigintadd', 
                    'betweennesscentrality', 'bucketeddijkstra',
                    'cartesiantree', 'graphcolor' ]
 # something seems off with this one...
 #               'kcore'
+# 'fft' not compiling
+# 'karatsuba' segfaulting randomly
 
-few_benchmarks = [ 'fft', 'quickhull' ]
+few_benchmarks = [ 'bigintadd', 'quickhull' ]
 
 # Command line arguments
 # ----------------------
@@ -232,8 +234,8 @@ mk_sched_elastic_spin = mk_cross_sequence(
 # all schedulers
 mk_scheds = mk_append_sequence(
     [ mk_sched_chaselev,
-      mk_sched_elastic2, mk_sched_elastic,
-      mk_sched_elastic2_spin, mk_sched_elastic_spin ])
+      mk_sched_elastic2,
+      mk_sched_elastic2_spin ])
 
 mk_high_parallelism = mk_cross_sequence(
     [ mk_parameter(experiment_key, 'high_parallelism'),

@@ -10,13 +10,17 @@ auto gen_input() {
   parlay::override_granularity = taskparts::cmdline::parse_or_default_long("override_granularity", 0);
   include_infile_load = taskparts::cmdline::parse_or_default_bool("include_infile_load", false);
   size_t n = std::max((size_t)1, (size_t)taskparts::cmdline::parse_or_default_long("n", 9000l * 1000l * 1000l));
-  parlay::random_generator gen;
-  std::uniform_int_distribution<unsigned int> dis(0,std::numeric_limits<int>::max());
-  long m = n/32;
-  a = parlay::tabulate(m, [&] (long i) {
-    auto r = gen[i]; return dis(r);});
-  b = parlay::tabulate(m, [&] (long i) {
-    auto r = gen[i+n]; return dis(r);});
+  auto rand_num = [] (long m, long seed) {
+    parlay::random_generator gen(seed);
+    auto maxv = std::numeric_limits<digit>::max();
+    std::uniform_int_distribution<digit> dis(0, maxv);
+    return parlay::tabulate(m, [&] (long i) {
+      auto r = gen[i];
+      return dis(r);});
+  };
+  long m = n/digit_len;
+  a = rand_num(m, 0);
+  b = rand_num(m, 1);
 }
 
 auto benchmark_dflt() {
