@@ -17,7 +17,8 @@
     repo   = "cilk-plus-rts-with-stats";
     rev    = "d143c31554bc9c122d168ec22ed65e7941d4c91d";
     sha256 = "123bsrqcp6kq6xz2rn4bvj2nifflfci7rd9ij82fpi2x6xvvsmsb";
-  }) {}
+  }) {},
+  parlaylib ? import ../parlaylib {}
 }:
 
 let cilk-stats-rts-params =
@@ -48,6 +49,8 @@ stdenv.mkDerivation rec {
     export TASKPARTS_NUM_WORKERS=$( ${hwloc}/bin/hwloc-ls|grep Core|wc -l );
     export CILKRTS_STATS_PREFIX="${cilk-stats-rts-params}"
   '';
+
+  PARLAYLIB_PATH="${parlaylib}";
 
   TASKPARTS_BENCHMARK_WARMUP_SECS=0;
 }

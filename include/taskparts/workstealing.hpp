@@ -8,7 +8,26 @@
 #include "fixedcapacity.hpp"
 #include "scheduler.hpp"
 #include "hash.hpp"
+
+#if defined(TASKPARTS_USE_ABP_DEQUE)
 #include "abp.hpp"
+namespace taskparts {
+template <typename Fiber>
+using deque = abp<Fiber>;
+}
+#elif defined(TASKPARTS_USE_YWRA_DEQUE)
+#include "ywra.hpp"
+namespace taskparts {
+template <typename Fiber>
+using deque = ywra<Fiber>;
+}
+#else
+#include "chaselev.hpp"
+namespace taskparts {
+template <typename Fiber>
+using deque = chaselev<Fiber>;
+}
+#endif
 
 namespace taskparts {
   
@@ -26,7 +45,7 @@ public:
 
   using fiber_type = Fiber<Scheduler>;
 
-  using deque_type = abp_deque<fiber_type>;
+  using deque_type = deque<fiber_type>;
 
   using buffer_type = ringbuffer<fiber_type*>;
 

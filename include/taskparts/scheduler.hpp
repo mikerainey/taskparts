@@ -243,6 +243,11 @@ public:
 
 };
 
+using deque_surplus_result_type = enum deque_surplus_result_enum {
+  deque_surplus_stable, deque_surplus_up, deque_surplus_down,
+  deque_surplus_unknown
+};
+
 /*---------------------------------------------------------------------*/
 /* Interrupts */
 
