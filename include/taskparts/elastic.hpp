@@ -241,7 +241,20 @@ public:
       }
     }
   }
-  
+
+  static
+  auto decr_sleeping(size_t my_id = perworker::my_id()) {
+    auto& cs = worker_counters[my_id];
+    auto s = cs.load();
+    while (s.sleeping != 0) {
+      decr_sleeping_of_worker(my_id);
+      s = cs.load();
+    }
+    assert(s.sleeping == 0);
+    assert(s.stealing == 1);
+    decr_sleeping_global();
+  }
+
   static
   auto try_to_sleep(size_t) {
     auto my_id = perworker::my_id();
@@ -250,9 +263,7 @@ public:
     Stats::on_enter_sleep();
     incr_sleeping(my_id);
     semaphores[my_id].wait();
-    // at least one call to decr_sleeping_of_worker(my_id) always
-    // preceds the next line
-    decr_sleeping_global();
+    decr_sleeping(my_id);
     Stats::on_exit_sleep();
     Logging::log_event(exit_sleep);
     Stats::on_enter_acquire();
