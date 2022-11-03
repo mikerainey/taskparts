@@ -255,7 +255,7 @@ mk_low_parallelism = mk_cross_sequence(
       mk_parameters(benchmark_key, benchmarks),
       mk_scheds,
       mk_parameter(taskparts_num_workers_key, args.num_workers),
-      mk_parameter(override_granularity_key, 1) ])
+      mk_parameter(override_granularity_key, 200) ])
 
 # Parallel-sequential-mix experiment
 # ----------------------------------
