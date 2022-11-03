@@ -31,7 +31,7 @@ struct ywra {
     std::atomic<Fiber*> f;
   };
   
-  static constexpr int q_size = 1000;
+  static constexpr int q_size = 10000;
   std::atomic<age_t> age;
   std::array<padded_fiber, q_size> deq;
   
