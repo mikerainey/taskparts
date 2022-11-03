@@ -145,7 +145,7 @@ public:
 
   auto run() -> fiber_status_type {
     switch (trampoline) {
-    case reset_enter: {
+    case reset_enter: { // leader worker enters here
       if (perworker::nb_workers() == 1) {
         worker_reset();
         global_reset();
@@ -159,7 +159,7 @@ public:
       trampoline = reset_pause0;
       return fiber_status_continue;
     }
-    case reset_try_to_spawn: {
+    case reset_try_to_spawn: { // all non-leader workers enter here
       while (true) {
         auto n = nb_workers_spawned->load();
         assert(n <= perworker::nb_workers());
@@ -175,7 +175,7 @@ public:
         }
       }
     }      
-    case reset_pause: {
+    case reset_pause: { // all non-leader workers go here second
       if (worker_first) {
         worker_reset();
       }
@@ -190,7 +190,7 @@ public:
       (*nb_workers_finished)++;
       return fiber_status_finish;
     }
-    case reset_pause0: {
+    case reset_pause0: { // leader worker goes here second
       while (true) {
         if (nb_workers_paused->load() + 1 == perworker::nb_workers()) {
           // all other workers are busy waiting in the loop above
@@ -207,7 +207,7 @@ public:
         }
       }
     }
-    case reset_wait_for_all: {
+    case reset_wait_for_all: { // leader worker exits from here
       while (nb_workers_finished->load() != perworker::nb_workers()) {
         // wait for the other workers to finish
         busywait_pause();

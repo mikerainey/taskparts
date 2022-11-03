@@ -8,159 +8,9 @@
 #include "fixedcapacity.hpp"
 #include "scheduler.hpp"
 #include "hash.hpp"
+#include "abp.hpp"
 
 namespace taskparts {
-  
-/*---------------------------------------------------------------------*/
-/* Chase-Lev Work-Stealing Deque data structure
- * 
- * This implementation is based on
- *   https://gist.github.com/Amanieu/7347121
- */
-  
-template <typename Fiber>
-class chase_lev_deque {
-public:
-  
-  // We use signed integer values to index items in the deque. But why
-  // do we use signed integers given that negative index values never
-  // point to items. The blog post linked here explains why.
-  //   https://wingolog.org/archives/2022/10/03/on-correct-and-efficient-work-stealing-for-weak-memory-models
-  // It turns out that there's a paper that presents a version of the
-  // Chase & Lev deque structure and its formal verification using a
-  // proof assistant (Le et al; 2013). But this version uses
-  // unsigned integers (size_t) to index into the deque, which is the
-  // source of the nasty bug as described in the blog post above.
-  using index_type = long; // must be signed!
-  using pop_result_tag = enum pop_result_enum {
-      pop_failed, pop_maybe_emptied_deque, pop_left_surplus
-  };
-  
-  using pop_result_type = struct pop_result_struct {
-    pop_result_tag t;
-    Fiber* f;
-  };
-  
-  class circular_array {
-  private:
-    
-    cache_aligned_array<std::atomic<Fiber*>> items;
-    
-    std::unique_ptr<circular_array> previous;
-
-  public:
-    
-    circular_array(index_type n) : items(n) {}
-    
-    index_type size() const {
-      return items.size();
-    }
-    
-    auto get(index_type index) -> Fiber* {
-      return items[index % size()].load(std::memory_order_relaxed);
-    }
-    
-    auto put(index_type index, Fiber* x) {
-      items[index % size()].store(x, std::memory_order_relaxed);
-    }
-    
-    auto grow(index_type top, index_type bottom) -> circular_array* {
-      circular_array* new_array = new circular_array(size() * 2);
-      new_array->previous.reset(this);
-      for (index_type i = top; i != bottom; ++i) {
-        new_array->put(i, get(i));
-      }
-      return new_array;
-    }
-
-  };
-
-  std::atomic<circular_array*> array;
-  
-  std::atomic<index_type> top, bottom;
-  
-  chase_lev_deque()
-    : array(new circular_array(64)), top(0), bottom(0) {}
-  
-  ~chase_lev_deque() {
-    circular_array* p = array.load(std::memory_order_relaxed);
-    if (p) {
-      delete p;
-    }
-  }
-
-  auto size() -> index_type {
-    auto b = bottom.load(std::memory_order_relaxed);
-    auto t = top.load(std::memory_order_relaxed);
-    return b - t;
-  }
-
-  auto empty() -> bool {
-    return size() == 0;
-  }
-
-  auto push(Fiber* x) {
-    auto b = bottom.load(std::memory_order_relaxed);
-    auto t = top.load(std::memory_order_acquire);
-    auto a = array.load(std::memory_order_relaxed);
-    if ((b - t) > (a->size() - 1)) {
-      a = a->grow(t, b);
-      array.store(a, std::memory_order_relaxed);
-    }
-    a->put(b, x);
-    std::atomic_thread_fence(std::memory_order_release);
-    bottom.store(b + 1, std::memory_order_relaxed);
-  }
-
-  auto pop() -> pop_result_type {
-    pop_result_type r;
-    auto b = bottom.load(std::memory_order_relaxed) - 1;
-    auto a = array.load(std::memory_order_relaxed);
-    bottom.store(b, std::memory_order_relaxed);
-    std::atomic_thread_fence(std::memory_order_seq_cst);
-    auto t = top.load(std::memory_order_relaxed);
-    if (t <= b) {
-      r.f = a->get(b);
-      if (t == b) {
-        if (! top.compare_exchange_strong(t, t + 1, std::memory_order_seq_cst, std::memory_order_relaxed)) {
-          r.t = pop_failed;
-        } else {
-          r.t = pop_maybe_emptied_deque;
-        }
-        bottom.store(b + 1, std::memory_order_relaxed);
-        assert(empty());
-      } else {
-        r.t = pop_left_surplus;
-      }
-    } else {
-      bottom.store(b + 1, std::memory_order_relaxed);
-      r.t = pop_failed;
-      assert(empty());
-    }
-    return r;
-  }
-
-  auto steal() -> pop_result_type {
-    pop_result_type r;
-    auto t = top.load(std::memory_order_acquire);
-    std::atomic_thread_fence(std::memory_order_seq_cst);
-    auto b = bottom.load(std::memory_order_acquire);
-    if (t < b) {
-      auto a = array.load(std::memory_order_relaxed);
-      r.f = a->get(t);
-      if (! top.compare_exchange_strong(t, t + 1, std::memory_order_seq_cst, std::memory_order_relaxed)) {
-        r.t = pop_failed;
-      } else {
-        r.t = ((b - t) == 1) ? pop_maybe_emptied_deque : pop_left_surplus;
-        assert(r.f != nullptr);
-      }
-    } else {
-      r.t = pop_failed;
-    }
-    return r;
-  }
-
-};
   
 /*---------------------------------------------------------------------*/
 /* Work-stealing scheduler  */
@@ -171,12 +21,12 @@ template <typename Scheduler,
           template <typename, typename> typename Elastic=minimal_elastic,
           typename Worker=minimal_worker,
           typename Interrupt=minimal_interrupt>
-class chase_lev_work_stealing_scheduler {
+class work_stealing_scheduler {
 public:
 
   using fiber_type = Fiber<Scheduler>;
 
-  using deque_type = chase_lev_deque<fiber_type>;
+  using deque_type = abp_deque<fiber_type>;
 
   using buffer_type = ringbuffer<fiber_type*>;
 
@@ -190,58 +40,33 @@ public:
   
   static
   auto push(deque_type& d, fiber_type* f) {
-#if defined(TASKPARTS_ELASTIC_SURPLUS) || defined(TASKPARTS_ELASTIC_TREE)
-    auto e = d.empty();
-    if (e) {
-      auto epoch = elastic_type::before_surplus_increase();
-      assert(epoch >= 0);
-      f->epoch = epoch;
+    auto r = d.push(f);
+    if (r == deque_surplus_up) {
+      elastic_type::incr_surplus();
     }
-#endif
-    d.push(f);
-#if defined(TASKPARTS_ELASTIC_SURPLUS) || defined(TASKPARTS_ELASTIC_TREE)
-    if (e) {
-      elastic_type::after_surplus_increase();
-    }
-#endif
   }
   
   static
   auto pop(size_t my_id) -> fiber_type* {
     auto& d = deques[my_id];
-    fiber_type* r = nullptr;
-    auto r1 = d.pop();
-    if (r1.t != deque_type::pop_failed) {
-      r = r1.f;
+    auto r = d.pop();
+    auto f = r.first;
+    if (r.second == deque_surplus_down) {
+      elastic_type::decr_surplus(my_id);
     }
-#if defined(TASKPARTS_ELASTIC_SURPLUS) || defined(TASKPARTS_ELASTIC_TREE)
-    if (r1.t == deque_type::pop_maybe_emptied_deque) {
-      //aprintf("popped t=%p\n",r);
-      elastic_type::after_surplus_decrease(my_id, r->epoch);
-    }
-#endif
-    return r;
+    return f;
   }
   
   static
   auto steal(size_t target_id) -> fiber_type* {
     auto& d = deques[target_id];
-    fiber_type* r = nullptr;
-    auto r1 = d.steal();
-    if (r1.t != deque_type::pop_failed) {
-      r = r1.f;
+    auto r = d.steal();
+    auto f = r.first;
+    if (r.second == deque_surplus_down) {
+      elastic_type::decr_surplus(target_id);
+      //aprintf("stole %p from %lu\n",f,target_id);
     }
-#if defined(TASKPARTS_ELASTIC_SURPLUS) || defined(TASKPARTS_ELASTIC_TREE)
-    if (r1.t == deque_type::pop_maybe_emptied_deque) {
-      auto epoch = (r1.t != deque_type::pop_failed) ? r->epoch : -1;
-      //aprintf("stole t=%p from %lu\n",r,target_id);
-      elastic_type::after_surplus_decrease(target_id, epoch);
-    }
-    if (r1.t != deque_type::pop_failed) {
-      elastic_type::try_to_wake_others();
-    }
-#endif
-    return r;
+    return f;
   }
 
   static
@@ -312,7 +137,7 @@ public:
       Logging::log_event(enter_wait);
       Stats::on_enter_acquire();
       termination_barrier.set_active(false);
-      elastic_type::on_enter_acquire();
+      elastic_type::incr_stealing(my_id);
       fiber_type* current = nullptr;
       while (current == nullptr) {
         assert(nb_steal_attempts >= 1);
@@ -325,6 +150,7 @@ public:
             termination_barrier.set_active(false);
           } else {
             Stats::increment(Stats::configuration_type::nb_steals);
+            elastic_type::decr_stealing(my_id);
             break;
           }
           i--;
@@ -335,12 +161,11 @@ public:
           auto t = new terminal_fiber<Scheduler>();
           t->incounter.store(0);
           current = t;
+          elastic_type::decr_stealing(my_id);
           return scheduler_status_active;
         }
         if (current == nullptr) {
           elastic_type::try_to_sleep(target);
-        } else {
-          elastic_type::wake_children();
         }
       }
       assert(current != nullptr);
@@ -370,7 +195,6 @@ public:
             } else if (s == fiber_status_exit_worker) {
               current->finish();
               Logging::log_event(worker_exit);
-              elastic_type::wake_children();
               Stats::on_exit_acquire();
               Logging::log_event(exit_wait);
               status = scheduler_status_finish;
@@ -466,8 +290,8 @@ template <typename Scheduler,
           template <typename, typename> typename Elastic,
           typename Worker,
           typename Interrupt>
-perworker::array<typename chase_lev_work_stealing_scheduler<Scheduler,Fiber,Stats,Logging,Elastic,Worker,Interrupt>::buffer_type> 
-chase_lev_work_stealing_scheduler<Scheduler,Fiber,Stats,Logging,Elastic,Worker,Interrupt>::buffers;
+perworker::array<typename work_stealing_scheduler<Scheduler,Fiber,Stats,Logging,Elastic,Worker,Interrupt>::buffer_type> 
+work_stealing_scheduler<Scheduler,Fiber,Stats,Logging,Elastic,Worker,Interrupt>::buffers;
 
 template <typename Scheduler,
           template <typename> typename Fiber,
@@ -475,8 +299,8 @@ template <typename Scheduler,
           template <typename, typename> typename Elastic,
           typename Worker,
           typename Interrupt>
-perworker::array<typename chase_lev_work_stealing_scheduler<Scheduler,Fiber,Stats,Logging,Elastic,Worker,Interrupt>::deque_type>
-chase_lev_work_stealing_scheduler<Scheduler,Fiber,Stats,Logging,Elastic,Worker,Interrupt>::deques;
+perworker::array<typename work_stealing_scheduler<Scheduler,Fiber,Stats,Logging,Elastic,Worker,Interrupt>::deque_type>
+work_stealing_scheduler<Scheduler,Fiber,Stats,Logging,Elastic,Worker,Interrupt>::deques;
 
 template <typename Scheduler,
           template <typename> typename Fiber,
@@ -485,7 +309,7 @@ template <typename Scheduler,
           typename Worker,
           typename Interrupt>
 Fiber<Scheduler>* take() {
-  return chase_lev_work_stealing_scheduler<Scheduler,Fiber,Stats,Logging,Elastic,Worker,Interrupt>::take();  
+  return work_stealing_scheduler<Scheduler,Fiber,Stats,Logging,Elastic,Worker,Interrupt>::take();  
 }
 
 template <typename Scheduler,
@@ -495,7 +319,7 @@ template <typename Scheduler,
           typename Worker,
           typename Interrupt>
 void schedule(Fiber<Scheduler>* f) {
-  chase_lev_work_stealing_scheduler<Scheduler,Fiber,Stats,Logging,Elastic,Worker,Interrupt>::schedule(f);  
+  work_stealing_scheduler<Scheduler,Fiber,Stats,Logging,Elastic,Worker,Interrupt>::schedule(f);  
 }
 
 template <typename Scheduler,
@@ -505,7 +329,7 @@ template <typename Scheduler,
           typename Worker,
           typename Interrupt>
 void commit() {
-  chase_lev_work_stealing_scheduler<Scheduler,Fiber,Stats,Logging,Elastic,Worker,Interrupt>::commit();
+  work_stealing_scheduler<Scheduler,Fiber,Stats,Logging,Elastic,Worker,Interrupt>::commit();
 }
   
 } // end namespace

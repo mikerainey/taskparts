@@ -222,30 +222,24 @@ public:
   bool override_rand_worker = false;
 
   static
-  auto wake_children() { }
-
-  static
   auto try_to_sleep(size_t) {
     worker_yield();
   }
 
   static
-  auto on_enter_acquire() { }
-
-  static
   auto initialize() { }
   
   static
-  auto before_surplus_increase() -> int64_t { return -1; }
+  auto incr_stealing(size_t my_id = perworker::my_id()) { }
   
   static
-  auto after_surplus_decrease(size_t, int64_t) { }
+  auto decr_stealing(size_t my_id = perworker::my_id()) { }
   
   static
-  auto after_surplus_increase() -> void { } 
-
+  auto incr_surplus(size_t my_id = perworker::my_id()) { }
+  
   static
-  auto try_to_wake_others(size_t my_id = perworker::my_id()) -> void { } 
+  auto decr_surplus(size_t target_id = perworker::my_id()) { }
 
 };
 

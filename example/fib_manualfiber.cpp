@@ -1,5 +1,5 @@
 #include <taskparts/defaults.hpp>
-#include <taskparts/chaselev.hpp>
+#include <taskparts/workstealing.hpp>
 #include "taskparts/cmdline.hpp"
 #include <fib_manualfiber.hpp>
 
@@ -27,9 +27,9 @@ void run() {
   fiber<Scheduler>::add_edge(f_body, f_term);
   f_body->release();
   f_term->release();
-  using cl = chase_lev_work_stealing_scheduler<Scheduler, fiber,
-                  Bench_stats, Bench_logging,
-                  Bench_elastic, Bench_worker, Bench_interrupt>;
+  using cl = work_stealing_scheduler<Scheduler, fiber,
+				     Bench_stats, Bench_logging,
+				     Bench_elastic, Bench_worker, Bench_interrupt>;
   Bench_stats::on_enter_work();
   cl::launch();
   Bench_stats::on_exit_work();

@@ -1,5 +1,5 @@
 #include <taskparts/defaults.hpp>
-#include <taskparts/chaselev.hpp>
+#include <taskparts/workstealing.hpp>
 #include "taskparts/cmdline.hpp"
 #include <fib_nativeforkjoin.hpp>
 

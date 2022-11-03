@@ -3,7 +3,7 @@
 #include <stdio.h>
 
 #include "taskparts/defaults.hpp"
-#include "taskparts/chaselev.hpp"
+#include "taskparts/workstealing.hpp"
 #include "taskparts/oracleguided.hpp"
 #include "taskparts/cmdline.hpp"
 #ifdef TASKPARTS_TPALRTS
@@ -103,7 +103,7 @@ auto benchmark_nativeforkjoin(const Benchmark& benchmark,
   fiber<Scheduler>::add_edge(&f_body, f_term);
   f_body.release();
   f_term->release();
-  using cl = chase_lev_work_stealing_scheduler<Scheduler, fiber,
+  using cl = work_stealing_scheduler<Scheduler, fiber,
 					       Bench_stats, Bench_logging,
 					       Bench_elastic, Bench_worker, Bench_interrupt>;
   cl::launch();

@@ -1,6 +1,6 @@
 #include "taskparts/scheduler.hpp"
 #include "taskparts/stats.hpp"
-#include "taskparts/chaselev.hpp"
+#include "taskparts/workstealing.hpp"
 #include "taskparts/machine.hpp"
 #include "taskparts/logging.hpp"
 #include "../example/fib_par.hpp"
@@ -62,7 +62,7 @@ auto test_fib1() -> bool {
   fiber<my_scheduler>::add_edge(f_body, f_term);
   f_body->release();
   f_term->release();
-  chase_lev_work_stealing_scheduler<my_scheduler, fiber, minimal_stats, my_logging>::launch();
+  work_stealing_scheduler<my_scheduler, fiber, minimal_stats, my_logging>::launch();
   my_logging::output();
   return (dst == fib_seq(n));
 }
@@ -80,7 +80,7 @@ auto test_fib2() -> bool {
   fiber<my_scheduler>::add_edge(&f_body, f_term);
   f_body.release();
   f_term->release();
-  chase_lev_work_stealing_scheduler<my_scheduler, fiber, minimal_stats, my_logging>::launch();
+  work_stealing_scheduler<my_scheduler, fiber, minimal_stats, my_logging>::launch();
   return (dst == fib_seq(n));
 }
 
@@ -96,7 +96,7 @@ auto test_fib3() -> bool {
   fiber<my_scheduler>::add_edge(&f_body, f_term);
   f_body.release();
   f_term->release();
-  chase_lev_work_stealing_scheduler<my_scheduler, fiber>::launch();
+  work_stealing_scheduler<my_scheduler, fiber>::launch();
   return (dst == fib_seq(n));
 }
 

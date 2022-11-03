@@ -5,7 +5,7 @@
 #include "taskparts/logging.hpp"
 #include "taskparts/elastic.hpp"
 #include "taskparts/nativeforkjoin.hpp"
-#include "taskparts/chaselev.hpp"
+#include "taskparts/workstealing.hpp"
 
 #ifdef TASKPARTS_TPALRTS
 
@@ -68,13 +68,7 @@ using bench_logging = logging_base<true>;
 using bench_logging = logging_base<false>;
 #endif
 
-#if defined(TASKPARTS_ELASTIC_LIFELINE)
-template <typename Stats, typename Logging>
-using bench_elastic = elastic<Stats, Logging>;
-#elif defined(TASKPARTS_ELASTIC_FLAT)
-template <typename Stats, typename Logging>
-using bench_elastic = elastic_flat<Stats, Logging>;
-#elif defined(TASKPARTS_ELASTIC_SURPLUS)
+#if defined(TASKPARTS_ELASTIC_SURPLUS)
 template <typename Stats, typename Logging>
 using bench_elastic = elastic_surplus<Stats, Logging>;
 #elif defined(TASKPARTS_ELASTIC_TREE)
@@ -113,7 +107,7 @@ auto launch(const F& f) {
   fiber<scheduler_type>::add_edge(&f_body, f_term);
   f_body.release();
   f_term->release();
-  using cl = chase_lev_work_stealing_scheduler<scheduler_type, fiber>;
+  using cl = work_stealing_scheduler<scheduler_type, fiber>;
   cl::launch();
   teardown_machine();
 }
