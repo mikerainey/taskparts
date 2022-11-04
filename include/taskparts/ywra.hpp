@@ -33,7 +33,7 @@ struct ywra {
   };
 
   static constexpr
-  int max_sz = (1 << 14); // can in principle be up to 2^16
+  int max_sz = (1 << 15); // can in principle be up to 2^16
   
   std::atomic<age_t> age;
   
@@ -59,7 +59,7 @@ struct ywra {
     auto next = orig;
     next.bot++;
     if (next.bot == max_sz) {
-      throw std::runtime_error("internal error: scheduler queue overflow");
+      taskparts_die("internal error: scheduler queue overflow\n");
     }
     next.tag = orig.tag + 1;
     deq[orig.bot].f.store(f, std::memory_order_relaxed);

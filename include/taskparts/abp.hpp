@@ -51,7 +51,7 @@ struct abp {
     deq[local_bot].f.store(f, std::memory_order_relaxed);  // shared store
     local_bot += 1;
     if (local_bot == q_size) {
-      throw std::runtime_error("internal error: scheduler queue overflow");
+      taskparts_die("internal error: scheduler queue overflow\n");
     }
     bot.store(local_bot, std::memory_order_relaxed);  // shared store
     std::atomic_thread_fence(std::memory_order_seq_cst);
