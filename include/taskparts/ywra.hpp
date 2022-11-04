@@ -16,12 +16,13 @@ namespace taskparts {
 template <typename Fiber>
 struct ywra {
   
-  using qidx = unsigned int;
+  using qidx = uint16_t;
   
   // use std::atomic<age_t> for atomic access.
   // Note: Explicit alignment specifier required
   // to ensure that Clang inlines atomic loads.
   struct alignas(int64_t) age_t {
+    uint32_t tag;
     qidx bot;
     qidx top;
   };
@@ -30,14 +31,18 @@ struct ywra {
   struct alignas(64) padded_fiber {
     std::atomic<Fiber*> f;
   };
+
+  static constexpr
+  int max_sz = (1 << 14); // can in principle be up to 2^16
   
-  static constexpr int q_size = 10000;
   std::atomic<age_t> age;
-  std::array<padded_fiber, q_size> deq;
   
-  ywra() : age(age_t{0, 0}) {}
+  std::array<padded_fiber, max_sz> deq;
+  
+  ywra() : age(age_t{0, 0, 0}) { }
   
   auto size(age_t a) -> unsigned int {
+    assert(a.bot >= a.top);
     return a.bot - a.top;
   }
 
@@ -53,21 +58,24 @@ struct ywra {
     auto orig = age.load();
     auto next = orig;
     next.bot++;
-    if (next.bot == q_size) {
+    if (next.bot == max_sz) {
       throw std::runtime_error("internal error: scheduler queue overflow");
     }
+    next.tag = orig.tag + 1;
     deq[orig.bot].f.store(f, std::memory_order_relaxed);
     while (true) {
       if (age.compare_exchange_strong(orig, next)) {
         break;
       }
       next.top = orig.top;
+      next.tag = orig.tag + 1;
       if (size(next) == 0) {
+	deq[0].f.store(f, std::memory_order_relaxed);
         next.top = 0;
         next.bot = 1;
-        deq[0].f.store(f, std::memory_order_relaxed);
       }
     }
+    assert(size(orig) + 1 == size(next));
     return (size(orig) == 0) ? deque_surplus_up : deque_surplus_stable;
   }
   
@@ -78,6 +86,7 @@ struct ywra {
     }
     auto next = orig;
     next.bot--;
+    next.tag = orig.tag + 1;
     auto f = deq[next.bot].f.load(std::memory_order_relaxed);
     assert(f != nullptr);
     while (true) {
@@ -85,6 +94,7 @@ struct ywra {
         break;
       }
       next.top = orig.top;
+      next.tag = orig.tag + 1;
       assert((orig.bot - 1) == next.bot);
       if (size(orig) == 0) {
         return std::make_pair(nullptr, deque_surplus_stable);
@@ -102,6 +112,7 @@ struct ywra {
     auto next = orig;
     auto f = deq[next.top].f.load(std::memory_order_relaxed);
     next.top++;
+    next.tag = orig.tag + 1;
     if (! age.compare_exchange_strong(orig, next)) {
       return std::make_pair(nullptr, deque_surplus_stable);
     }
