@@ -55,9 +55,6 @@ stdenv.mkDerivation rec {
   PARLAYLIB_PATH="${parlaylib}";
   
   shellHook = ''
-    # The line below is needed, at present, because otherwise taskparts may 
-    # request more workers than there are cores, which would be incompatible 
-    # with the per-core pinning.
     export NUM_SYSTEM_CORES=$( ${hwloc}/bin/hwloc-ls|grep Core|wc -l )
     export MAKEFLAGS="-j $NUM_SYSTEM_CORES"
     export TASKPARTS_NUM_WORKERS=$NUM_SYSTEM_CORES;

@@ -11,6 +11,7 @@
   stdenv ? pkgs.stdenv,
   hwloc ? pkgs.hwloc,
   jemalloc ? null, # pkgs.jemalloc450
+  gdb ? pkgs.gdb,
   valgrind ? pkgs.valgrind,
   cilk-stats-rts ? import (pkgs.fetchFromGitHub {
     owner  = "deepsea-inria";
@@ -33,6 +34,7 @@ stdenv.mkDerivation rec {
     [ ]
     ++ (if hwloc == null then [] else [ hwloc ])
     ++ (if jemalloc == null then [] else [ jemalloc ])
+    ++ (if gdb == null then [] else [ gdb ])
     ++ (if valgrind == null then [] else [ valgrind ])
     ++ (if cilk-stats-rts == null then [] else [ cilk-stats-rts ]);
 
@@ -43,10 +45,9 @@ stdenv.mkDerivation rec {
   HWLOC_INCLUDE_PREFIX=if hwloc == null then "" else "-DTASKPARTS_HAVE_HWLOC -I${hwloc.dev}/include/";
   HWLOC_LIBRARY_PREFIX=if hwloc == null then "" else "-L${hwloc.lib}/lib/ -lhwloc";
   shellHook = if hwloc == null then "" else ''
-    # The line below is needed, at present, because otherwise taskparts may 
-    # request more workers than there are cores, which would be incompatible 
-    # with the per-core pinning.
-    export TASKPARTS_NUM_WORKERS=$( ${hwloc}/bin/hwloc-ls|grep Core|wc -l );
+    export NUM_SYSTEM_CORES=$( ${hwloc}/bin/hwloc-ls|grep Core|wc -l )
+    export MAKEFLAGS="-j $NUM_SYSTEM_CORES"
+    export TASKPARTS_NUM_WORKERS=$NUM_SYSTEM_CORES;
     export CILKRTS_STATS_PREFIX="${cilk-stats-rts-params}"
   '';
 
