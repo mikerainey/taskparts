@@ -11,6 +11,7 @@ import glob, argparse, psutil, pathlib
 # ===========================================
 
 # TODOs:
+#   - On start of from_scratch run, rebuild all benchmarks, unless specified otherwise
 #   - experiment with varying:
 #      - try all different pinning options
 #      - TASKPARTS_ELASTIC_ALPHA
