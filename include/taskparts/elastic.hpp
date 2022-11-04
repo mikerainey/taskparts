@@ -54,7 +54,13 @@ public:
   perworker::array<Semaphore> semaphores;
 
   static
+  perworker::array<uint64_t> rng;
+
+  static
   int alpha;
+
+  static
+  int beta;
   
   template <typename Update>
   static
@@ -256,8 +262,22 @@ public:
   }
 
   static
+  auto next_rng(size_t my_id = perworker::my_id()) -> size_t {
+    auto& nb = rng[my_id];
+    nb = (size_t)(hash(my_id) + hash(nb));
+    return nb;
+  }
+
+  static
   auto try_to_sleep(size_t) {
     auto my_id = perworker::my_id();
+    auto flip = [&] () -> bool {
+      auto n = next_rng(my_id);
+      return (beta == 1) ? true : (n % beta) < (beta - 1);
+    };
+    if (flip()) {
+      return;
+    }
     Stats::on_exit_acquire();
     Logging::log_enter_sleep(my_id, 0l, 0l);
     Stats::on_enter_sleep();
@@ -275,6 +295,11 @@ public:
       alpha = std::stoi(env_p);
     } else {
       alpha = 2;
+    }
+    if (const auto env_p = std::getenv("TASKPARTS_ELASTIC_BETA")) {
+      beta = std::max(2, std::stoi(env_p));
+    } else {
+      beta = 2;
     }
   }
   
@@ -295,6 +320,12 @@ perworker::array<Semaphore> elastic_surplus<Stats, Logging, Semaphore>::semaphor
 template <typename Stats, typename Logging, typename Semaphore>
 int elastic_surplus<Stats, Logging, Semaphore>::alpha;
 
+template <typename Stats, typename Logging, typename Semaphore>
+int elastic_surplus<Stats, Logging, Semaphore>::beta;
+
+template <typename Stats, typename Logging, typename Semaphore>
+perworker::array<uint64_t> elastic_surplus<Stats, Logging, Semaphore>::rng;
+  
 /*---------------------------------------------------------------------*/
 /* Elastic work stealing (driven by concurrent tree, based on tracking surplus) */
 
