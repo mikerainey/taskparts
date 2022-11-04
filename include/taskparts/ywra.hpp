@@ -33,11 +33,12 @@ struct ywra {
   };
 
   static constexpr
-  int max_sz = (1 << 15); // can in principle be up to 2^16
+  int max_sz = (1 << 14); // can in principle be up to 2^16
   
   std::atomic<age_t> age;
   
   std::array<padded_fiber, max_sz> deq;
+  std::array<Fiber*, max_sz> backup_deq;
   
   ywra() : age(age_t{0, 0, 0}) { }
   
@@ -53,13 +54,65 @@ struct ywra {
   auto empty() -> bool {
     return size() == 0;
   }
+
+  auto relocate() -> age_t {
+    auto freeze = [&] () -> age_t {
+      auto orig = age.load();
+      auto next = orig;
+      while (true) {
+	next.top = 0;
+	next.bot = 0;
+	next.tag = orig.tag + 1;
+	if (age.compare_exchange_strong(orig, next)) {
+	  break;
+	}
+      }
+      return orig;
+    };
+    auto backup = [&] (age_t orig) -> age_t {
+      qidx j = 0;
+      for (qidx i = orig.top; i < orig.bot; i++) {
+	backup_deq[j++] = deq[i].f.load(std::memory_order_relaxed);
+      }
+      assert(j == size(orig));
+      return orig;
+    };
+    auto restore = [&] (age_t orig) -> age_t {
+      auto n = size(orig);
+      for (qidx i = 0; i < n; i++) {
+	deq[i].f.store(backup_deq[i], std::memory_order_relaxed);
+      }
+      orig.top = 0;
+      orig.bot = n;
+      orig.tag++;
+      return orig;
+    };
+    return restore(backup(freeze()));
+  }
+
+  auto reset_on_sz_zero(age_t orig) -> age_t {
+    if (size(orig) > 0) {
+      return orig;
+    }
+    auto next = orig;
+    next.top = 0;
+    next.bot = 0;
+    next.tag = orig.tag + 1;
+    if (! age.compare_exchange_strong(orig, next)) {
+      taskparts_die("bogus");
+    }
+    return next;
+  }
   
   auto push(Fiber* f) -> deque_surplus_result_type {
-    auto orig = age.load();
+    auto orig = reset_on_sz_zero(age.load());
     auto next = orig;
     next.bot++;
     if (next.bot == max_sz) {
-      taskparts_die("internal error: scheduler queue overflow\n");
+      if (size(orig) == max_sz) {
+	taskparts_die("internal error: scheduler queue overflow\n");
+      }
+      orig = relocate();
     }
     next.tag = orig.tag + 1;
     deq[orig.bot].f.store(f, std::memory_order_relaxed);
@@ -69,18 +122,13 @@ struct ywra {
       }
       next.top = orig.top;
       next.tag = orig.tag + 1;
-      if (size(next) == 0) {
-	deq[0].f.store(f, std::memory_order_relaxed);
-        next.top = 0;
-        next.bot = 1;
-      }
     }
     assert(size(orig) + 1 == size(next));
     return (size(orig) == 0) ? deque_surplus_up : deque_surplus_stable;
   }
   
   auto pop() -> std::pair<Fiber*, deque_surplus_result_type> {
-    auto orig = age.load();
+    auto orig = reset_on_sz_zero(age.load());
     if (size(orig) == 0) {
       return std::make_pair(nullptr, deque_surplus_stable);
     }
