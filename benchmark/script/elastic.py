@@ -11,10 +11,11 @@ import glob, argparse, psutil, pathlib
 # ===========================================
 
 # TODOs:
+#   - Fix broken path for input files, e.g., for suffixarray
+#   - See whether adaptive feedback can help w/ perf of elastic
 #   - On start of from_scratch run, rebuild all benchmarks, unless specified otherwise
 #   - experiment with varying:
-#      - try all different pinning options
-#      - TASKPARTS_ELASTIC_ALPHA
+#      - TASKPARTS_ELASTIC_ALPHA, TASKPARTS_ELASTIC_BETA
 #      - TASKPARTS_NB_STEAL_ATTEMPTS
 #      - TASKPARTS_ELASTIC_TREE_VICTIM_SELECTION_BY_TREE
 #      - inject a little randomness to the process of going to sleep,
@@ -63,18 +64,18 @@ path_to_binaries = path_to_benchmarks + 'bin/'
 #############################################################
 
 # uncomment to override the list of benchmarks above
-all_benchmarks = [ 'quickhull',
-                   'bellmanford', 'knn',
+all_benchmarks = [ 'quickhull', 'bellmanford', 'knn',
                    'samplesort', 'suffixarray', 'setcover',
                    'filterkruskal', 'bigintadd', 
                    'betweennesscentrality', 'bucketeddijkstra',
+                   'trianglecount', 
                    'cartesiantree', 'graphcolor' ]
 # something seems off with this one...
 #               'kcore'
 # 'fft' not compiling
 # 'karatsuba' segfaulting randomly
 
-few_benchmarks = [ 'bigintadd', 'quickhull' ]
+few_benchmarks = [ 'bigintadd', 'quickhull', 'samplesort', 'suffixarray' ]
 
 # Command line arguments
 # ----------------------
