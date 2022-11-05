@@ -114,12 +114,6 @@ public:
   auto update_global_counters(const Update& u, bool was_trying_to_sleep = false) -> counters_type {
     auto my_id = perworker::my_id();
     auto nb_workers = perworker::nb_workers();
-    size_t nb_sa = my_id;
-    auto random_worker = [&] () -> size_t {
-      size_t id = (size_t)((hash(my_id) + hash(nb_sa)) % nb_workers);
-      nb_sa++;
-      return id;
-    };
     auto need_sentinel = [nb_workers] (counters_type s) {
       return (s.sleeping >= 1) && (s.surplus >= 1) && (s.stealing == 0);
     };
@@ -129,7 +123,7 @@ public:
         try_to_wake(my_id);
         break;
       }
-      auto target_id = random_worker();
+      auto target_id = next_rng() % nb_workers;
       if (try_to_wake(target_id)) {
         break;
       }
@@ -196,14 +190,12 @@ public:
       return s;
     });
     //aprintf("decr_st stealing=%d sleeping=%d surplus=%d\n",s.stealing,s.sleeping,s.surplus);
-    size_t nb_sa = 0;
     auto random_other_worker = [&] (size_t my_id) -> size_t {
       auto nb_workers = perworker::nb_workers();
-      size_t id = (size_t)((hash(my_id) + hash(nb_sa)) % (nb_workers - 1));
+      size_t id = next_rng(my_id) % (nb_workers - 1);
       if (id >= my_id) {
         id++;
       }
-      nb_sa++;
       return id;
     };
     int nb_to_wake = alpha;
