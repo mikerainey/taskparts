@@ -44,16 +44,21 @@ def ingest_json(engine):
     ing = ingest.Ingester(engine)
     
     def exclude(kv):
-        return kv['benchmark'] == 'suffixarray'
+        return False #kv['benchmark'] == 'suffixarray'
 
     def aws(path):
         ing.ingest(path, Machine.aws, exclude=exclude)
+
+        
+    aws("json/experiments/results-2022-11-05-00-06-18/high_parallelism-results.json")
+    aws("json/experiments/results-2022-11-05-00-06-18/low_parallelism-results.json")
+    aws("json/experiments/results-2022-11-05-00-06-18/parallel_sequential_mix-results.json")
     
-    aws("json/experiments/results-2022-10-24-22-06-57/high_parallelism-results.json")
-    aws("json/experiments/results-2022-10-24-22-47-27/high_parallelism-results.json")
-    aws("json/experiments/results-2022-10-25-01-22-22/high_parallelism-results.json")
-    aws("json/experiments/results-2022-10-25-01-22-22/low_parallelism-results.json")
-    aws("json/experiments/results-2022-10-25-01-22-22/parallel_sequential_mix-results.json")
+    # aws("json/experiments/results-2022-10-24-22-06-57/high_parallelism-results.json")
+    # aws("json/experiments/results-2022-10-24-22-47-27/high_parallelism-results.json")
+    # aws("json/experiments/results-2022-10-25-01-22-22/high_parallelism-results.json")
+    # aws("json/experiments/results-2022-10-25-01-22-22/low_parallelism-results.json")
+    # aws("json/experiments/results-2022-10-25-01-22-22/parallel_sequential_mix-results.json")
     # ing.ingest("json/aware.json", Machine.aware)
     # ing.ingest("json/aws.json", Machine.aws)
     # ing.ingest("json/gamora.json", Machine.gamora)

@@ -11,6 +11,16 @@ from benchmark_run import *
 # Inputs
 # ======
 
+# Binary types
+# ------------
+
+binary_extensions = [
+    'opt',   # optimized, minimal stats
+    'sta',   # optimized, full stats
+    'log',   # optimized, full stats and logging
+    'dbg'    # unoptimized, full stats and logging
+]
+
 # Environment variables
 # ---------------------
 

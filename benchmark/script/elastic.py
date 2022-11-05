@@ -11,23 +11,19 @@ import glob, argparse, psutil, pathlib
 # ===========================================
 
 # TODOs:
+#   - Make it possible to merge two results folders to create a new one
 #   - Fix broken path for input files, e.g., for suffixarray
 #   - See whether adaptive feedback can help w/ perf of elastic
-#   - On start of from_scratch run, rebuild all benchmarks, unless specified otherwise
+#   - Cilk experiment (?)
+
+# LATERs:
 #   - experiment with varying:
 #      - TASKPARTS_ELASTIC_ALPHA, TASKPARTS_ELASTIC_BETA
 #      - TASKPARTS_NB_STEAL_ATTEMPTS
-#      - TASKPARTS_ELASTIC_TREE_VICTIM_SELECTION_BY_TREE
-#      - inject a little randomness to the process of going to sleep,
-#        in the hopes of detecting some contention on the wake->sleep
-#        and sleep->wake transitions
-#      - use compare_exchange_with_backoff
 #      - try stressing the schedulers w/ the challenge workload in mixed.hpp
-#   - Cilk experiment (?)
+#   - On start of from_scratch run, rebuild all benchmarks, unless specified otherwise
 #   - incremental snapshots of experiments and output of results to git
-#   - try the version of scalable elastic that uses the tree to sample for victim workers
-#   - save benchmark-run history in addition to the output table
-#   - make it possible to configure warmup secs
+#   - try the version of scalable elastic that uses the tree to sample for victim workers TASKPARTS_ELASTIC_TREE_VICTIM_SELECTION_BY_TREE
 #   - print to stdout exectime preview and counter value of each benchmark
 #   - much later: experiment with idea of a parameter expression that expresses
 #     a key waiting for a value
@@ -64,16 +60,18 @@ path_to_binaries = path_to_benchmarks + 'bin/'
 #############################################################
 
 # uncomment to override the list of benchmarks above
-all_benchmarks = [ 'quickhull', 'bellmanford', 'knn',
+all_benchmarks = [ 'quickhull', 'bellmanford', 
                    'samplesort', 'suffixarray', 'setcover',
                    'filterkruskal', 'bigintadd', 
                    'betweennesscentrality', 'bucketeddijkstra',
                    'trianglecount', 
                    'cartesiantree', 'graphcolor' ]
-# something seems off with this one...
-#               'kcore'
-# 'fft' not compiling
-# 'karatsuba' segfaulting randomly
+broken_benchmarks = [ 'kcore',      # something seems off
+                      'fft',        # failing to compile
+                      # segfaulting randomly
+                      'karatsuba',  
+                      'knn'
+                     ]
 
 few_benchmarks = [ 'bigintadd', 'quickhull', 'samplesort', 'suffixarray' ]
 
@@ -150,10 +148,10 @@ if skip_benchmarks != None:
 # ==============
 
 binary_key = 'binary'
-binary_values = [ 'opt', 'sta', 'log', 'dbg' ]
+binary_values = binary_extensions
 
-chaselev_key = 'chaselev'
-chaselev_values = [ 'elastic', 'multiprogrammed' ]
+workstealing_key = 'workstealing'
+workstealing_values = [ 'elastic', 'multiprogrammed' ]
 
 elastic_key = 'elastic'
 elastic_values = [ 'surplus2', 'surplus' ]
@@ -164,7 +162,7 @@ semaphore_values = [ 'spin' ]
 benchmark_key = 'benchmark'
 benchmark_values = benchmarks
 
-prog_keys = [ binary_key, chaselev_key, elastic_key, semaphore_key,
+prog_keys = [ binary_key, workstealing_key, elastic_key, semaphore_key,
               benchmark_key ]
 
 scheduler_key = 'scheduler'
@@ -172,12 +170,18 @@ scheduler_values = [ 'nonelastic', 'multiprogrammed',
                      'elastic2', 'elastic',
                      'elastic2_spin', 'elastic_spin' ]
 
+alpha_key = 'TASKPARTS_ELASTIC_ALPHA'
+alpha_values = [ 2 ]
+
+beta_key = 'TASKPARTS_ELASTIC_BETA'
+beta_values = [ 2 ]
+
 # Key types
 # ---------
 
 # keys whose associated values are to be passed as environment
 # variables
-env_arg_keys = taskparts_env_vars
+env_arg_keys = taskparts_env_vars + [ alpha_key, beta_key ]
 # keys that are not meant to be passed at all (just for annotating
 # rows)
 silent_keys = [ scheduler_key, experiment_key ]
@@ -206,44 +210,52 @@ mk_taskparts_basis = mk_cross_sequence([
 # High-parallelism experiment
 # ---------------------------
 
-# - default scheduler (chaselev)
-mk_sched_chaselev = mk_cross_sequence(
+mk_elastic_shared = mk_cross_sequence([
+    mk_parameter(workstealing_key, 'elastic'),
+    mk_parameters(alpha_key, alpha_values),
+    mk_parameters(beta_key, beta_values) ])
+
+# - default scheduler (nonelastic)
+mk_sched_nonelastic = mk_cross_sequence(
     [ mk_parameter(scheduler_key, 'nonelastic') ])
 # - elastic two-level tree scheduler
 mk_sched_elastic2 = mk_cross_sequence(
     [ mk_parameter(scheduler_key, 'elastic2'),
-      mk_parameter(chaselev_key, 'elastic'),
+      mk_elastic_shared,      
       mk_parameter(elastic_key, 'surplus2') ])
 # - elastic multi-level tree scheduler
 mk_sched_elastic = mk_cross_sequence(
     [ mk_parameter(scheduler_key, 'elastic'),
-      mk_parameter(chaselev_key, 'elastic'),
+      mk_elastic_shared,
       mk_parameter(elastic_key, 'surplus') ] )
 # - versions of the two schedulers above, in which the semaphore is
 # replaced by our own version that blocks by spinning instead of via
 # the OS/semaphore mechanism
 mk_sched_elastic2_spin = mk_cross_sequence(
     [ mk_parameter(scheduler_key, 'elastic2_spin'),
-      mk_parameter(chaselev_key, 'elastic'),
+      mk_elastic_shared,
       mk_parameter(elastic_key, 'surplus2'),
       mk_parameter(semaphore_key, 'spin') ])
 mk_sched_elastic_spin = mk_cross_sequence(
     [ mk_parameter(scheduler_key, 'elastic_spin'),
-      mk_parameter(chaselev_key, 'elastic'),
+      mk_elastic_shared,
       mk_parameter(elastic_key, 'surplus'),
       mk_parameter(semaphore_key, 'spin')  ] )
 
 # all schedulers
-mk_scheds = mk_append_sequence(
-    [ mk_sched_chaselev,
+mk_schedulers = mk_append_sequence(
+    [ mk_sched_nonelastic,
       mk_sched_elastic2,
-      mk_sched_elastic2_spin ])
+      mk_sched_elastic2_spin,
+#      mk_sched_elastic,
+#      mk_sched_elastic_spin
+     ])
 
 mk_high_parallelism = mk_cross_sequence(
     [ mk_parameter(experiment_key, 'high_parallelism'),
       mk_taskparts_basis,
       mk_parameters(benchmark_key, benchmarks),
-      mk_scheds,
+      mk_schedulers,
       mk_parameter(taskparts_num_workers_key, args.num_workers) ])
 
 # Low-parallelism experiment
@@ -255,7 +267,7 @@ mk_low_parallelism = mk_cross_sequence(
     [ mk_parameter(experiment_key, 'low_parallelism'),
       mk_taskparts_basis,
       mk_parameters(benchmark_key, benchmarks),
-      mk_scheds,
+      mk_schedulers,
       mk_parameter(taskparts_num_workers_key, args.num_workers),
       mk_parameter(override_granularity_key, 200) ])
 
@@ -266,7 +278,7 @@ mk_parallel_sequential_mix = mk_cross_sequence(
     [ mk_parameter(experiment_key, 'parallel-sequential-mix'),
       mk_taskparts_basis,
       mk_parameters(benchmark_key, benchmarks),
-      mk_scheds,
+      mk_schedulers,
       mk_parameter(taskparts_num_workers_key, args.num_workers),
       mk_parameter('force_sequential', 1),
       mk_parameter('k', 3),
@@ -277,14 +289,14 @@ mk_parallel_sequential_mix = mk_cross_sequence(
 
 mk_sched_multiprogrammed = mk_cross_sequence(
     [ mk_parameter(scheduler_key, 'multiprogrammed'),
-      mk_parameter(chaselev_key, 'multiprogrammed') ])
+      mk_parameter(workstealing_key, 'multiprogrammed') ])
 
 mk_multiprogrammed = mk_cross_sequence(
     [ mk_parameter(experiment_key, 'multiprogrammed'),
       mk_taskparts_basis,
       mk_parameters(benchmark_key, benchmarks),
       mk_append_sequence([
-          mk_sched_chaselev,
+          mk_sched_nonelastic,
           mk_sched_elastic2,
           mk_sched_multiprogrammed ]),
       mk_parameters(taskparts_num_workers_key,
