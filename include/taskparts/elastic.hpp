@@ -99,7 +99,13 @@ public:
     }
 #endif
   }
-  
+
+  template <typename Update>
+  static
+  auto update_counters(size_t id, const Update& u) -> counters_type {
+    return update_counters(worker_counters[id], u);
+  }
+
   static
   auto try_to_wake(size_t id) -> bool {
     if (! decr_sleeping_of_worker(id)) {
@@ -134,7 +140,7 @@ public:
   
   static
   auto incr_surplus(size_t my_id = perworker::my_id()) {
-    update_counters(worker_counters[my_id], [&] (counters_type s) {
+    update_counters(my_id, [&] (counters_type s) {
       assert(s.stealing == 0);
       assert(s.sleeping == 0);
       s.surplus++;
@@ -149,7 +155,7 @@ public:
   
   static
   auto decr_surplus(size_t id) {
-    update_counters(worker_counters[id], [&] (counters_type s) {
+    update_counters(id, [&] (counters_type s) {
       assert((id != perworker::my_id()) || (s.sleeping == 0));
       assert((id != perworker::my_id()) || (s.stealing == 0));
       s.surplus--;
@@ -164,7 +170,7 @@ public:
   
   static
   auto incr_stealing(size_t my_id = perworker::my_id()) {
-    update_counters(worker_counters[my_id], [&] (counters_type s) {
+    update_counters(my_id, [&] (counters_type s) {
       assert(s.stealing == 0);
       assert(s.sleeping == 0);
       s.stealing++;
@@ -179,7 +185,7 @@ public:
   
   static
   auto decr_stealing(size_t my_id = perworker::my_id()) {
-    update_counters(worker_counters[my_id], [&] (counters_type s) {
+    update_counters(my_id, [&] (counters_type s) {
       assert(s.stealing == 1);
       assert(s.sleeping == 0);
       s.stealing--;
@@ -211,7 +217,7 @@ public:
   
   static
   auto incr_sleeping(size_t my_id = perworker::my_id()) {
-    update_counters(worker_counters[my_id], [&] (counters_type s) {
+    update_counters(my_id, [&] (counters_type s) {
       assert(s.stealing == 1);
       assert(s.sleeping == 0);
       s.sleeping++;
