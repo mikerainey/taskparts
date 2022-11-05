@@ -72,6 +72,7 @@ public:
       };
       return valid_nb_workers((int)c.sleeping) && valid_nb_workers((int)c.stealing);
     };
+#ifndef TASKPARTS_ELASTIC_OVERRIDE_ADAPTIVE_BACKOFF
     while (true) {
       auto v = c.load();
       auto orig = v;
@@ -82,6 +83,21 @@ public:
         return next;
       }
     }
+#else
+    // We mitigate contention on the counters cell by using Adaptive
+    // Feedback (as proposed in Ben-David's dissertation)
+    uint64_t max_delay = 1;
+    while (true) {
+      auto v = c.load();
+      auto orig = v;
+      auto next = u(orig);
+      if (c.compare_exchange_strong(orig, next)) {
+        return next;
+      }
+      max_delay *= 2;
+      cycles::spin_for(hash(my_id + max_delay) % max_delay);
+    }
+#endif
   }
   
   static
