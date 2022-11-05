@@ -50,12 +50,12 @@ auto gen_input() {
   n = std::max((size_t)1, (size_t)taskparts::cmdline::parse_or_default_long("n", 4 * 1000 * 1000));
   source = taskparts::cmdline::parse_or_default_long("source", source);
   auto input = taskparts::cmdline::parse_or_default_string("input", "rmat");
-  auto infile = input + ".adj";
-  if (n == 0) {
-    G = utils::read_symmetric_graph_from_file(infile.c_str());
-    n = G.size();
-  } else {
+  if (input == "rmat") {
     G = utils::rmat_graph(n, 20*n);
+  } else {
+    auto infile = input + ".adj";
+    G = utils::read_graph_from_file_pbbs(infile.c_str());
+    n = G.size();
   }
 #ifndef NDEBUG
   utils::print_graph_stats(G);
