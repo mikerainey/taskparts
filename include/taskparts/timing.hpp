@@ -2,9 +2,6 @@
 
 #include <cstdint>
 #include <cstdlib>
-#ifdef TASKPARTS_X64
-#include <emmintrin.h>
-#endif
 
 #include "diagnostics.hpp"
 #if defined(TASKPARTS_POSIX) || defined(TASKPARTS_DARWIN)
@@ -17,12 +14,15 @@
 #if defined(TASKPARTS_DARWIN)
 #include <mach/mach_time.h>
 #endif
+#if defined(TASKPARTS_X64) && ! defined(TASKPARTS_OVERRIDE_PAUSE_INSTR)
+#include <emmintrin.h>
+#endif
 
 namespace taskparts {
 
 static inline
 auto busywait_pause() {
-#if defined(TASKPARTS_X64)
+#if defined(TASKPARTS_X64) && ! defined(TASKPARTS_OVERRIDE_PAUSE_INSTR)
   //_mm_pause();
   __builtin_ia32_pause();
 #elif defined(TASKPARTS_ARM64)
