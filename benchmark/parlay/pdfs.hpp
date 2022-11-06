@@ -27,7 +27,6 @@ public:
 
 bool try_to_mark(parlay::sequence<std::atomic<int>>& visited, vertexId target) {
   int orig = 0;
-    printf("target=%d visited=%d\n",target,visited.size());
   assert(target >= 0);
   assert(target < visited.size());
   if (! visited[target].compare_exchange_strong(orig, 1)) {

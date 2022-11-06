@@ -18,6 +18,8 @@ auto DFS(vertexId source, const Graph& g) -> parlay::sequence<int> {
       vertexId other = neighbors[edge];
       if (visited_serial[other])
         continue;
+      assert(other >= 0);
+      assert(other < visited_serial.size());
       visited_serial[other] = 1;
       frontier[frontier_size++] = other;
     }
