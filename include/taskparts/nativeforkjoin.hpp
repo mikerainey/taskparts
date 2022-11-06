@@ -310,7 +310,7 @@ public:
         assert(false);
       }
     }
-    auto fb = new nativefj_from_lambda([&] {
+    auto f = [&] {
       while (true) {
         auto s = status.load();
         if (s == local_run_state) {
@@ -344,7 +344,8 @@ public:
           assert(false);
         }
       }
-    }, Scheduler());
+    };
+    auto fb = new nativefj_from_lambda<decltype(f),Scheduler>(f, Scheduler());
     fb->release();
     return fiber_status_pause;
   }
@@ -408,7 +409,7 @@ public:
 
 template <typename F, typename Scheduler>
 auto spawn_lazy_future(const F& f, Scheduler sched) -> lazy_future<F, Scheduler>* {
-  auto fut = new lazy_future(f, sched);
+  auto fut = new lazy_future<F,Scheduler>(f, sched);
   fut->release();
   yield(sched);
   return fut;
