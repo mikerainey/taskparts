@@ -45,7 +45,6 @@ auto gen_input() {
   Graph G;
   source = taskparts::cmdline::parse_or_default_long("source", source);
   auto input = taskparts::cmdline::parse_or_default_string("input", "rmat");
-  auto infile = input + ".adj";
   G = readGraphFromFile<vertexId,edgeId>((char*)infile.c_str());
   /*
   if (include_infile_load) {

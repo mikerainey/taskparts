@@ -19,7 +19,8 @@
     rev    = "d143c31554bc9c122d168ec22ed65e7941d4c91d";
     sha256 = "123bsrqcp6kq6xz2rn4bvj2nifflfci7rd9ij82fpi2x6xvvsmsb";
   }) {},
-  parlaylib ? import ../parlaylib {}
+  parlaylib ? import ../parlaylib {},
+  enableParlaylibPoolAlloc ? false
 }:
 
 let cilk-stats-rts-params =
@@ -52,6 +53,7 @@ stdenv.mkDerivation rec {
   '';
 
   PARLAYLIB_PATH="${parlaylib}";
+  PARLAYLIB_EXTRAS=if enableParlaylibPoolAlloc then "" else "-DPARLAY_USE_STD_ALLOC";
 
   TASKPARTS_BENCHMARK_WARMUP_SECS=0;
 }

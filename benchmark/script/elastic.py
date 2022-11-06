@@ -46,12 +46,14 @@ sys_num_workers = psutil.cpu_count(logical=False)
 
 experiment_key = 'experiment'
 experiments = [ 'high_parallelism', 'low_parallelism',
-                'parallel_sequential_mix', 'multiprogrammed' ]
+                'parallel_sequential_mix', 'multiprogrammed', 'graph'
+               ]
 
 modes = ['dry', 'from_scratch' ] # LATER: add append mode
 
 path_to_benchmarks = '../parlay/'
 path_to_binaries = path_to_benchmarks + 'bin/'
+path_to_infiles = os.getcwd() + '/..'
 
 # list of all benchmarks in the parlay folder
 #############################################################
@@ -102,10 +104,10 @@ parser.add_argument('--verbose', dest ='verbose',
                     help ='verbose mode')
 parser.add_argument('-binding', choices = taskparts_resource_bindings, default = 'by_core',
                     help ='worker-pthread-to-resource binding policy')
-parser.add_argument('-local_results_path', # action='append',
+parser.add_argument('-local_results_path',
                     help = 'path to a folder in which to generate results files; default: ' +
                     default_local_results_path)
-parser.add_argument('-remote_results_path', #action='append',
+parser.add_argument('-remote_results_path',
                     help = 'path to a folder in the git repo in which to commit results files; default: ' +
                     default_remote_results_path)
 parser.add_argument('--export_results', dest ='export_results',
@@ -176,12 +178,14 @@ alpha_values = [ 2 ]
 beta_key = 'TASKPARTS_ELASTIC_BETA'
 beta_values = [ 2 ]
 
+infiles_path_key = 'TASKPARTS_BENCHMARK_INFILE_PATH'
+
 # Key types
 # ---------
 
 # keys whose associated values are to be passed as environment
 # variables
-env_arg_keys = taskparts_env_vars + [ alpha_key, beta_key ]
+env_arg_keys = taskparts_env_vars + [ alpha_key, beta_key, infiles_path_key ]
 # keys that are not meant to be passed at all (just for annotating
 # rows)
 silent_keys = [ scheduler_key, experiment_key ]
@@ -302,6 +306,28 @@ mk_multiprogrammed = mk_cross_sequence(
       mk_parameters(taskparts_num_workers_key,
                     [ args.num_workers * i for i in [1, 2, 3, 4] ]) ])
 
+# Graph experiment
+# ----------------
+
+graph_input_key = 'input'
+mk_orkut = mk_parameter(graph_input_key, 'orkut')
+mk_europe = mk_cross(mk_parameter(graph_input_key, 'europe'), mk_parameter('source', 1))
+mk_alternating = mk_parameter(graph_input_key, 'alternating')
+
+mk_bfs = mk_cross(
+    mk_parameter(benchmark_key, 'bfs'), mk_append(mk_orkut, mk_europe))
+mk_pdfs = mk_cross(
+    mk_parameter(benchmark_key, 'pdfs'), mk_append_sequence([ mk_orkut, mk_europe, mk_alternating ]))
+
+mk_graph = mk_cross(mk_append(mk_bfs, mk_pdfs),
+                    mk_cross_sequence(
+                        [ mk_parameter(experiment_key, 'graph'),
+                          mk_parameter(infiles_path_key, path_to_infiles),
+                          mk_taskparts_basis,
+                          mk_schedulers,
+                          mk_parameter(taskparts_num_workers_key, args.num_workers) ]))
+
+
 # Cilk experiment
 # ---------------
 
@@ -313,7 +339,8 @@ mk_multiprogrammed = mk_cross_sequence(
 all_experiments = { 'high_parallelism': mk_high_parallelism,
                     'low_parallelism': mk_low_parallelism,
                     'parallel_sequential_mix': mk_parallel_sequential_mix,
-                    'multiprogrammed': mk_multiprogrammed }
+                    'multiprogrammed': mk_multiprogrammed,
+                    'graph': mk_graph }
 experiments_to_run = { k: all_experiments[k] for k in experiment_values }
 
 # Benchmark runs

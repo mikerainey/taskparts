@@ -18,7 +18,9 @@
   jemalloc ? pkgs.jemalloc,
   cilk-stats-rts ? import ../cilk-plus-rts-with-stats {},
   hbtimer-kmod ? import ../heartbeat-linux { pkgs=pkgs; stdenv=stdenv; },
-  parlaylib ? import ../parlaylib {}
+  parlaylib ? import ../parlaylib {},
+  pbbsbench ? import ../pbbsbench { parlaylib=parlaylib; },
+  chunkedseq ? import ../chunkedseq/script { }
 }:
 
 let cilk-stats-rts-params =
@@ -53,6 +55,8 @@ stdenv.mkDerivation rec {
     "${hbtimer-kmod}/rf_compiler";
 
   PARLAYLIB_PATH="${parlaylib}";
+  PBBSBENCH_PATH="${pbbsbench}";
+  CHUNKEDSEQ_PATH="${chunkedseq}";
   
   shellHook = ''
     export NUM_SYSTEM_CORES=$( ${hwloc}/bin/hwloc-ls|grep Core|wc -l )

@@ -1,25 +1,21 @@
 #pragma once
 
-#include <iostream>
-#include <string>
 #include "common.hpp"
-#include "helper/graph_utils.h"
+#include <common/graph.h>
+#include <common/IO.h>
+#include <common/graphIO.h>
+#include <common/sequenceIO.h>
+#include <testData/graphData/alternatingGraph.h>
+#include <testData/graphData/rMat.h>
+#include <benchmarks/breadthFirstSearch/bench/BFS.h>
 
-// **************************************************************
-// Driver
-// **************************************************************
-using vertex = int;
-using nested_seq = parlay::sequence<parlay::sequence<vertex>>;
-using graph = nested_seq;
-using utils = graph_utils<vertex>;
+using namespace std;
+using namespace benchIO;
 
-long n = 0;
-graph G, GT;
-utils::edges E;
-vertex source = 1;
+size_t source = 0;
 
-/*
 auto gen_alternating() {
+  Graph G;
   size_t n =
     taskparts::cmdline::parse_or_default_long("n", 3);
   // for ~85% utilization on 15 cores:
@@ -41,7 +37,6 @@ auto gen_alternating() {
   G = graphFromEdges<vertexId,edgeId>(EA, true);
   return G;
 }
-*/
 
 auto gen_input() {
   std::string infile_path = "";
@@ -51,18 +46,29 @@ auto gen_input() {
   force_sequential = taskparts::cmdline::parse_or_default_bool("force_sequential", false);
   parlay::override_granularity = taskparts::cmdline::parse_or_default_long("override_granularity", 0);
   include_infile_load = taskparts::cmdline::parse_or_default_bool("include_infile_load", false);
-  n = std::max((size_t)1, (size_t)taskparts::cmdline::parse_or_default_long("n", 4 * 1000 * 1000));
+  Graph G;
   source = taskparts::cmdline::parse_or_default_long("source", source);
   auto input = taskparts::cmdline::parse_or_default_string("input", "rmat");
-  if (input == "rmat") {
-    G = utils::rmat_graph(n, 20*n);
+  auto infile = infile_path + "/" + input + ".adj";
+  G = readGraphFromFile<vertexId,edgeId>((char*)infile.c_str());
+  /*
+  if (include_infile_load) {
+    auto infile = input + ".adj";
+    G = readGraphFromFile<vertexId,edgeId>((char*)infile.c_str());
   } else {
-    auto infile = infile_path + "/" + input + ".adj";
-    G = utils::read_graph_from_file_pbbs(infile.c_str());
-    n = G.size();
-  }
-#ifndef NDEBUG
-  utils::print_graph_stats(G);
-#endif
+    if (input == "alternating") {
+      gen_alternating();
+    } else { // input == "rmat"
+      size_t n = taskparts::cmdline::parse_or_default_long("n", 5000000);
+      double a = 0.5;
+      double b = 0.1;
+      double c = b;
+      size_t m = 10*n;
+      size_t seed = 1;
+      auto EA = edgeRmat<vertexId>(n, m, seed, a, b, c);
+      G = graphFromEdges<vertexId,edgeId>(EA, true);    
+    } 
+    } */
+  G.addDegrees();
+  return G;
 }
-
