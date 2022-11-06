@@ -51,7 +51,7 @@ modes = ['dry', 'from_scratch' ] # LATER: add append mode
 
 path_to_benchmarks = '../parlay/'
 path_to_binaries = path_to_benchmarks + 'bin/'
-path_to_infiles = os.getcwd() + '/..'
+path_to_infiles = os.getcwd() + '/../../../infiles'
 
 # list of all benchmarks in the parlay folder
 #############################################################
