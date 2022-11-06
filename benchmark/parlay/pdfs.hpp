@@ -27,6 +27,9 @@ public:
 
 bool try_to_mark(parlay::sequence<std::atomic<int>>& visited, vertexId target) {
   int orig = 0;
+    printf("target=%d visited=%d\n",target,visited.size());
+  assert(target >= 0);
+  assert(target < visited.size());
   if (! visited[target].compare_exchange_strong(orig, 1)) {
     return false;
   }
@@ -79,10 +82,11 @@ auto tpalrts_promote_via_nativefj(const F1& f1, const F2& f2, const Fj& fj, Sche
 }
 } // end namespace
 
+size_t poll_cutoff = 10000;
+size_t split_cutoff = 10000;
+size_t cutoff = 10000;
+
 void loop(const Graph& g, frontier_type& _frontier, parlay::sequence<std::atomic<int>>& visited) {
-  size_t poll_cutoff = 10000;
-  size_t split_cutoff = 10000;
-  size_t cutoff = 10000;
   frontier_type frontier;
   frontier.swap(_frontier);
   size_t nb_since_last_split = 0;
@@ -111,10 +115,15 @@ void loop(const Graph& g, frontier_type& _frontier, parlay::sequence<std::atomic
 	}
       });
     f = frontier.nb_outedges();
+    assert(f >= 0);
+    assert(f < g.numVertices());
   }
 }
 
 auto PDFS(vertexId source, const Graph& g) -> parlay::sequence<std::atomic<int>> {
+  poll_cutoff = taskparts::cmdline::parse_or_default_long("poll_cutoff", poll_cutoff);
+  split_cutoff = taskparts::cmdline::parse_or_default_long("split_cutoff", split_cutoff);
+  cutoff = taskparts::cmdline::parse_or_default_long("cutoff", cutoff);
   frontier_type frontier0;
   frontier0.set_graph(graph_alias(g));
   frontier0.push_vertex_back(source);
