@@ -12,9 +12,7 @@ import glob, argparse, psutil, pathlib
 
 # TODOs:
 #   - Make it possible to merge two results folders to create a new one
-#   - Fix broken path for input files, e.g., for suffixarray
-#   - See whether adaptive feedback can help w/ perf of elastic
-#   - Cilk experiment (?)
+#   - See if adaptive feedback helps or hurts w/ perf of elastic
 
 # LATERs:
 #   - experiment with varying:
@@ -46,8 +44,8 @@ sys_num_workers = psutil.cpu_count(logical=False)
 
 experiment_key = 'experiment'
 experiments = [ 'high_parallelism', 'low_parallelism',
-                'parallel_sequential_mix', 'multiprogrammed', 'graph'
-               ]
+                'parallel_sequential_mix', 'multiprogrammed', 'graph',
+                'cilk_shootout' ]
 
 modes = ['dry', 'from_scratch' ] # LATER: add append mode
 
@@ -75,7 +73,7 @@ broken_benchmarks = [ 'kcore',      # something seems off
                       'knn'
                      ]
 
-few_benchmarks = [ 'bigintadd', 'quickhull', 'samplesort', 'suffixarray' ]
+few_benchmarks = [ 'bigintadd', 'quickhull' ] #, 'samplesort', 'suffixarray' ]
 
 # Command line arguments
 # ----------------------
@@ -153,7 +151,8 @@ binary_key = 'binary'
 binary_values = binary_extensions
 
 workstealing_key = 'workstealing'
-workstealing_values = [ 'elastic', 'multiprogrammed' ]
+workstealing_values = [ 'elastic', 'multiprogrammed', 'cilk', 'abp',
+                        'ywra', 'cl' ]
 
 elastic_key = 'elastic'
 elastic_values = [ 'surplus2', 'surplus' ]
@@ -168,9 +167,8 @@ prog_keys = [ binary_key, workstealing_key, elastic_key, semaphore_key,
               benchmark_key ]
 
 scheduler_key = 'scheduler'
-scheduler_values = [ 'nonelastic', 'multiprogrammed',
-                     'elastic2', 'elastic',
-                     'elastic2_spin', 'elastic_spin' ]
+scheduler_values = [ 'nonelastic', 'multiprogrammed', 'elastic2',
+                     'elastic', 'elastic2_spin', 'elastic_spin' ]
 
 alpha_key = 'TASKPARTS_ELASTIC_ALPHA'
 alpha_values = [ 2 ]
@@ -211,13 +209,13 @@ mk_taskparts_basis = mk_cross_sequence([
     mk_parameter(taskparts_numa_alloc_interleaved_key, 1),
     mk_core_bindings ])
 
-# High-parallelism experiment
-# ---------------------------
-
 mk_elastic_shared = mk_cross_sequence([
     mk_parameter(workstealing_key, 'elastic'),
     mk_parameters(alpha_key, alpha_values),
     mk_parameters(beta_key, beta_values) ])
+
+# Scheduler configurations
+# ------------------------
 
 # - default scheduler (nonelastic)
 mk_sched_nonelastic = mk_cross_sequence(
@@ -254,6 +252,9 @@ mk_schedulers = mk_append_sequence(
 #      mk_sched_elastic,
 #      mk_sched_elastic_spin
      ])
+
+# High-parallelism experiment
+# ---------------------------
 
 mk_high_parallelism = mk_cross_sequence(
     [ mk_parameter(experiment_key, 'high_parallelism'),
@@ -328,10 +329,17 @@ mk_graph = mk_cross(mk_append(mk_bfs, mk_pdfs),
                           mk_parameter(taskparts_num_workers_key, args.num_workers) ]))
 
 
-# Cilk experiment
-# ---------------
+# Cilk/shootout experiment
+# ------------------------
 
-# TODO
+mk_cilk_shootout_schedulers = mk_parameters(workstealing_key, ['cl', 'abp', 'ywra', 'cilk'])
+
+mk_cilk_shootout = mk_cross_sequence(
+    [ mk_parameter(experiment_key, 'cilk_shootout'),
+      mk_taskparts_basis,
+      mk_parameters(benchmark_key, benchmarks),
+      mk_cilk_shootout_schedulers,
+      mk_parameter(taskparts_num_workers_key, args.num_workers) ])
 
 # All experiments
 # ---------------
@@ -340,7 +348,8 @@ all_experiments = { 'high_parallelism': mk_high_parallelism,
                     'low_parallelism': mk_low_parallelism,
                     'parallel_sequential_mix': mk_parallel_sequential_mix,
                     'multiprogrammed': mk_multiprogrammed,
-                    'graph': mk_graph }
+                    'graph': mk_graph,
+                    'cilk_shootout': mk_cilk_shootout }
 experiments_to_run = { k: all_experiments[k] for k in experiment_values }
 
 # Benchmark runs

@@ -57,6 +57,7 @@ stdenv.mkDerivation rec {
   PARLAYLIB_PATH="${parlaylib}";
   PBBSBENCH_PATH="${pbbsbench}";
   CHUNKEDSEQ_PATH="${chunkedseq}";
+  TASKPARTS_BENCHMARK_INFILE_PATH="../../../infiles";
   
   shellHook = ''
     export NUM_SYSTEM_CORES=$( ${hwloc}/bin/hwloc-ls|grep Core|wc -l )

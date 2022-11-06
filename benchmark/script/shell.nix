@@ -1,4 +1,6 @@
-{ pkgs ? import <nixpkgs> {} }:
+{ pkgs ? import <nixpkgs> {},
+  stdenv ? pkgs.stdenv
+}:
 
 let
   customPython = pkgs.python310.buildEnv.override {
@@ -11,6 +13,8 @@ let
   };
 in
 
-pkgs.mkShell {
+#pkgs.mkShell {
+stdenv.mkDerivation rec {
+  name = "elastic-benchmark";
   buildInputs = [ customPython ];
 }

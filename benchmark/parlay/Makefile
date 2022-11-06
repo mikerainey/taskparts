@@ -134,6 +134,48 @@ CILK_COMMON_PREFIX=$(INCLUDE_PREFIX_ALL) -fcilkplus -lcilkrts -DCILK -ldl -DPARL
 %.cilk.dbg: %.cilk.cpp $(INCLUDE_FILES) install_folder
 	$(CXX) $(DBG_PREFIX) $(CILK_COMMON_PREFIX) -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
 
+# Work staling w/ ABP deque
+# -------------------------
+
+ABP_INCLUDE_PREFIX=$(TASKPARTS_INCLUDE_PREFIX) -DTASKPARTS_USE_ABP_DEQUE
+
+%.abp.opt: %.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(OPT_PREFIX) $<  $(ABP_INCLUDE_PREFIX) -o $(INSTALL_PATH)/$@ $(LINKER_PREFIX)
+%.abp.sta: %.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(STA_PREFIX) $< $(ABP_INCLUDE_PREFIX) -o $(INSTALL_PATH)/$@ $(LINKER_PREFIX)
+%.abp.log: %.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(LOG_PREFIX) $< $(ABP_INCLUDE_PREFIX) -o $(INSTALL_PATH)/$@ $(LINKER_PREFIX)
+%.abp.dbg: %.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(DBG_PREFIX) $< $(ABP_INCLUDE_PREFIX) -o $(INSTALL_PATH)/$@ $(LINKER_PREFIX)
+
+# Work staling w/ YWRA deque
+# --------------------------
+
+YWRA_INCLUDE_PREFIX=$(TASKPARTS_INCLUDE_PREFIX) -DTASKPARTS_USE_YWRA_DEQUE
+
+%.ywra.opt: %.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(OPT_PREFIX) $<  $(YWRA_INCLUDE_PREFIX) -o $(INSTALL_PATH)/$@ $(LINKER_PREFIX)
+%.ywra.sta: %.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(STA_PREFIX) $< $(YWRA_INCLUDE_PREFIX) -o $(INSTALL_PATH)/$@ $(LINKER_PREFIX)
+%.ywra.log: %.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(LOG_PREFIX) $< $(YWRA_INCLUDE_PREFIX) -o $(INSTALL_PATH)/$@ $(LINKER_PREFIX)
+%.ywra.dbg: %.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(DBG_PREFIX) $< $(YWRA_INCLUDE_PREFIX) -o $(INSTALL_PATH)/$@ $(LINKER_PREFIX)
+
+# Work staling w/ YWRA deque
+# --------------------------
+
+CL_INCLUDE_PREFIX=$(TASKPARTS_INCLUDE_PREFIX) -DTASKPARTS_USE_CL_DEQUE
+
+%.cl.opt: %.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(OPT_PREFIX) $<  $(CL_INCLUDE_PREFIX) -o $(INSTALL_PATH)/$@ $(LINKER_PREFIX)
+%.cl.sta: %.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(STA_PREFIX) $< $(CL_INCLUDE_PREFIX) -o $(INSTALL_PATH)/$@ $(LINKER_PREFIX)
+%.cl.log: %.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(LOG_PREFIX) $< $(CL_INCLUDE_PREFIX) -o $(INSTALL_PATH)/$@ $(LINKER_PREFIX)
+%.cl.dbg: %.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(DBG_PREFIX) $< $(CL_INCLUDE_PREFIX) -o $(INSTALL_PATH)/$@ $(LINKER_PREFIX)
+
 # Cleanup
 # =======
 
