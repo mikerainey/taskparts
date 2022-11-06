@@ -20,6 +20,8 @@
     sha256 = "123bsrqcp6kq6xz2rn4bvj2nifflfci7rd9ij82fpi2x6xvvsmsb";
   }) {},
   parlaylib ? import ../parlaylib {},
+  pbbsbench ? import ../pbbsbench { parlaylib=parlaylib; },
+  chunkedseq ? import ../chunkedseq/script { },
   enableParlaylibPoolAlloc ? false
 }:
 
@@ -54,6 +56,9 @@ stdenv.mkDerivation rec {
 
   PARLAYLIB_PATH="${parlaylib}";
   PARLAYLIB_EXTRAS=if enableParlaylibPoolAlloc then "" else "-DPARLAY_USE_STD_ALLOC";
+  PBBSBENCH_PATH="${pbbsbench}";
+  CHUNKEDSEQ_PATH="${chunkedseq}";
+  TASKPARTS_BENCHMARK_INFILE_PATH="../../../infiles";
 
   TASKPARTS_BENCHMARK_WARMUP_SECS=0;
 }
