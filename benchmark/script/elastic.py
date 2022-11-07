@@ -64,7 +64,7 @@ parlay_benchmarks = [ 'quickhull', 'bellmanford', 'samplesort',
                       'suffixarray', 'setcover', 'filterkruskal',
                       'bigintadd', 'betweennesscentrality',
                       'trianglecount', 'cartesiantree', 'graphcolor',
-                      'nbodyfmm', 'knuthmorrispratt', 'rabinkarp' ]
+                      'nbodyfmm', 'knuthmorrispratt' ]
 all_benchmarks = pbbs_benchmarks + parlay_benchmarks
 
 broken_benchmarks = [ 'kcore',      # something seems off
@@ -72,6 +72,8 @@ broken_benchmarks = [ 'kcore',      # something seems off
                       # segfaulting randomly
                       'karatsuba',  
                       'knn',
+                      # segfaulting, probably b/c its input isn't in the right place
+                      'rabinkarp',
                       # very slow but not buggy
                       'bucketeddijkstra'
                      ]
@@ -114,6 +116,8 @@ parser.add_argument('-remote_results_path',
 parser.add_argument('--export_results', dest ='export_results',
                     action ='store_true',
                     help ='select to commit the results files to the git repository located in the results path')
+parser.add_argument('-merge_results', action='append',
+                    help = 'specifies the path of a results folder to merge with the output of the current run')
 
 args = parser.parse_args()
 
@@ -523,6 +527,23 @@ def write_json_to_file_path(j, file_path = '', verbose = True):
     write_string_to_file_path(bstr, file_path, verbose)
     return file_path
 
+def merge_list_of_results(rs):
+    m = mk_unit()
+    for r in rs:
+        m = mk_append(r, m)
+    return m
+
+def read_json_from_file_path(file_path):
+    with open(file_path, 'r', encoding='utf-8') as fd:
+        r = json.load(fd)
+        fd.close()
+        return r
+
+# p1 = mk_cross(mk_append(mk_parameter('x',1),mk_parameter('y',2)),mk_parameter('z',8))
+# p2 = mk_append(mk_parameter('x',3),mk_parameter('y',4))
+# pretty_print_json(eval(merge_list_of_results([p1,p2])))
+    
+    
 # Driver
 # ======
 
