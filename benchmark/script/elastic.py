@@ -540,6 +540,8 @@ def merge_list_of_results(rs):
 
 def merge_results_folders(rfs):
     all_results={}
+    if rfs == None:
+        return all_results
     for results_dirs in rfs:
         for root, dirs, files in os.walk(results_dirs):
             for f in files:
