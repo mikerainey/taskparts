@@ -126,7 +126,7 @@ auto PDFS(vertexId source, const Graph& g) -> parlay::sequence<std::atomic<int>>
   frontier_type frontier0;
   frontier0.set_graph(graph_alias(g));
   frontier0.push_vertex_back(source);
-  parlay::sequence<std::atomic<int>> visited(g.numVertices());
+  parlay::sequence<std::atomic<int>> visited(g.numVertices() + 1); // temporary hack to deal with buggy alternating.adj graph, which is somehow off by one
   TASKPARTS_LOG_PPT(taskparts::bench_logging, 0);
   visited[source].store(1);
   loop(g, frontier0, visited);
