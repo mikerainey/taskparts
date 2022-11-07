@@ -63,7 +63,7 @@ parlay_benchmarks = [ 'quickhull', 'bellmanford', 'samplesort',
                       'suffixarray', 'setcover', 'filterkruskal',
                       'bigintadd', 'betweennesscentrality',
                       'trianglecount', 'cartesiantree', 'graphcolor',
-                      'nbodyfmm', 'knuthmorrispratt' ]
+                      'nbodyfmm', 'knuthmorrispratt', 'rabinkarp' ]
 all_benchmarks = pbbs_benchmarks + parlay_benchmarks
 
 broken_benchmarks = [ 'kcore',      # something seems off
@@ -71,8 +71,6 @@ broken_benchmarks = [ 'kcore',      # something seems off
                       # segfaulting randomly
                       'karatsuba',  
                       'knn',
-                      # segfaulting, probably b/c its input isn't in the right place
-                      'rabinkarp',
                       # very slow but not buggy
                       'bucketeddijkstra'
                      ]
