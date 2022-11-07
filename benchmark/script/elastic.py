@@ -4,14 +4,13 @@ import sys, time, shutil
 sys.setrecursionlimit(150000)
 from taskparts_benchmark_run import *
 from parameter import *
-import glob, argparse, psutil, pathlib
+import glob, argparse, psutil, pathlib, fnmatch
 
 # ===========================================
 # Elastic task scheduling benchmarking script
 # ===========================================
 
 # TODOs:
-#   - Make it possible to merge two results folders to create a new one
 #   - See if adaptive feedback helps or hurts w/ perf of elastic
 
 # LATERs:
@@ -527,34 +526,59 @@ def write_json_to_file_path(j, file_path = '', verbose = True):
     write_string_to_file_path(bstr, file_path, verbose)
     return file_path
 
-def merge_list_of_results(rs):
-    m = mk_unit()
-    for r in rs:
-        m = mk_append(r, m)
-    return m
-
 def read_json_from_file_path(file_path):
     with open(file_path, 'r', encoding='utf-8') as fd:
         r = json.load(fd)
         fd.close()
         return r
 
-# p1 = mk_cross(mk_append(mk_parameter('x',1),mk_parameter('y',2)),mk_parameter('z',8))
-# p2 = mk_append(mk_parameter('x',3),mk_parameter('y',4))
-# pretty_print_json(eval(merge_list_of_results([p1,p2])))
-    
+def merge_list_of_results(rs):
+    m = mk_unit()
+    for r in rs:
+        m = mk_append(r, m)
+    return m
+
+def merge_results_folders(rfs):
+    all_results={}
+    for results_dirs in rfs:
+        for root, dirs, files in os.walk(results_dirs):
+            for f in files:
+                if fnmatch.fnmatch(f, '*results*'):
+                    fs = str(f)
+                    if fs not in all_results:
+                        all_results[fs] = mk_unit()
+                    r = read_json_from_file_path(os.path.join(root, f))
+                    all_results[fs] = mk_append(all_results[fs], r)
+    return all_results
+
+# later: include in the merged results all results in local_results_path
+def output_merged_results():
+    timestr = time.strftime("%Y-%m-%d-%H-%M-%S")
+    merged_results_path = 'merged-results-' + timestr
+    if args.merge_results == []:
+        return None
+    if not(os.path.exists(merged_results_path)):
+        os.makedirs(merged_results_path)
+    all_results = merge_results_folders(args.merge_results)
+    for results_file in all_results:
+        mf = merged_results_path + '/' + results_file
+        rs = eval(all_results[results_file])
+        write_json_to_file_path(rs, file_path = mf)
+    return merged_results_path
     
 # Driver
 # ======
 
-def export_results_to_git():
+def export_results_to_git(local_results_path):
+    if local_results_path == None:
+        return
     if not(export_results):
         return
     if not(os.path.exists(local_results_path)):
         return
     bn = os.path.basename(os.path.abspath(local_results_path))
     rrp = remote_results_path + bn
-    print('Exporting local results in ' + local_results_path +
+    print('Exporting results in ' + local_results_path +
           ' to the remote path ' + rrp)
     shutil.copytree(local_results_path, rrp, dirs_exist_ok=True)
     cmd = 'git add ' + bn
@@ -573,7 +597,6 @@ def export_results_to_git():
         print('stderr:')
         print(str(child_stderr))
         exit
-
 
 print('=============================================')
 if is_dry_run:
@@ -605,4 +628,6 @@ for (e, mk) in experiments_to_run.items():
     write_json_to_file_path(results, file_path = results_file)
     write_json_to_file_path(traces, file_path = trace_file)
     
-export_results_to_git()
+export_results_to_git(local_results_path)
+
+export_results_to_git(output_merged_results())
