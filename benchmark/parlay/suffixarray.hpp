@@ -16,10 +16,15 @@ charseq str;
 parlay::sequence<uint> result;
 
 auto gen_input() {
+  std::string infile_path = "";
+  if (const auto env_p = std::getenv("TASKPARTS_BENCHMARK_INFILE_PATH")) {
+    infile_path = std::string(env_p);
+  }
   force_sequential = taskparts::cmdline::parse_or_default_bool("force_sequential", false);
   parlay::override_granularity = taskparts::cmdline::parse_or_default_long("override_granularity", 0);
-  std::string fname = taskparts::cmdline::parse_or_default_string("input", "chr22.dna");
-  str = parlay::chars_from_file(fname.c_str());
+  std::string input = taskparts::cmdline::parse_or_default_string("input", "chr22.dna");
+  auto infile = infile_path + "/" + input;
+  str = parlay::chars_from_file(infile.c_str());
 }
 
 auto benchmark_dflt() {
