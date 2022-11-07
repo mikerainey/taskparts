@@ -53,6 +53,7 @@ def ingest_json(engine):
     aws("json/experiments/" + latest_results_folder + "/high_parallelism-results.json")
     aws("json/experiments/" + latest_results_folder + "/low_parallelism-results.json")
     aws("json/experiments/" + latest_results_folder + "/parallel_sequential_mix-results.json")
+    aws("json/experiments/" + latest_results_folder + "/multiprogrammed-results.json")
     
     # aws("json/experiments/results-2022-10-24-22-06-57/high_parallelism-results.json")
     # aws("json/experiments/results-2022-10-24-22-47-27/high_parallelism-results.json")
@@ -126,6 +127,42 @@ def main_table_schema() :
     ]
     return TexTableSchema(header, overheader, columns)
 
+def multiprogrammed_schema() :
+    overheader = [ColSkip(3), ColumnLegend(width=3, text=r"\textbf{wall clock}"), ColumnLegend(width=3, text=r"\textbf{burn}")]
+    header     = [
+        ColumnLegend("class"), 
+        # ColumnLegend("scheduler"), 
+        ColumnLegend("\\#procs"), 
+        ColumnLegend("benchmark"), 
+        ColumnLegend("non-elastic"), ColumnLegend("elastic"), ColumnLegend("multiprog"), 
+        ColumnLegend("non-elastic"), ColumnLegend("elastic"), ColumnLegend("multiprog")]
+    columns = [
+        TexColEnum("benchcls").setCommoning(),
+        TexColInteger("numworkers").setCommoning(), 
+        TexColString("benchmark").setAlign(Alignment.Left), 
+        # TexColString("scheduler"),
+        ColumnBar.Bar,
+        TexColFloat("rt_baseline", ndigits=2),
+        TexColFloat("rt_elastic", ndigits=2),
+        TexColFloat("rt_elastic2", ndigits=2),
+        ColumnBar.Bar,
+        TexColFloat("burn_baseline", ndigits=2),
+        TexColFloat("burn_elastic", ndigits=2),
+        TexColFloat("burn_elastic2", ndigits=2),
+    ]
+    
+    def mapper(row, name):
+        # if name == "benchset":
+        if name == "scheduler":
+            if row.elastic is None:
+                return "simpl"
+            else:
+                return row.elastic.name
+        else: 
+            return row[name]
+
+    return (TexTableSchema(header, overheader, columns), mapper)
+
 def test_table_schema() :
     overheader = [ColSkip(4), ColumnLegend(width=3, text=r"\textbf{wall clock}"), ColumnLegend(width=3, text=r"\textbf{burn}")]
     header     = [
@@ -136,9 +173,9 @@ def test_table_schema() :
         ColumnLegend("non-elastic"), ColumnLegend("elastic"), ColumnLegend("spin"), 
         ColumnLegend("non-elastic"), ColumnLegend("elastic"), ColumnLegend("spin")]
     columns = [
-        TexColString("numworkers").setCommoning(), 
+        TexColInteger("numworkers").setCommoning(), 
         TexColString("scheduler").setCommoning(),
-        TexColString("benchcls").setCommoning(),
+        TexColEnum("benchcls").setCommoning(),
         # TexColString("machine").setCommoning(), 
         TexColString("benchmark").setAlign(Alignment.Left), 
         ColumnBar.Bar,
@@ -195,10 +232,24 @@ def main():
         #     print(row)
         # count = len(all)
         # print(f"Found total {count} entries.")
+
+        m1 = three_way_compare(Scheduler.nonelastic, Scheduler.elastic2, Scheduler.multiprogrammed)
+        rsltm1 = session.execute(m1).all()
     # print(rslt1[0].keys())
 
     schema, mapper = test_table_schema()
-    print(doc_frame(generate_table(schema, rslt1 + rslt2, mapper)))
+
+    maintbl_tex = 'tex/maintbl.tex'
+    multiprog_tex = 'tex/multiprog.tex'
+
+    with open(maintbl_tex, 'w') as fout:
+        print(doc_frame(generate_table(schema, rslt1 + rslt2, mapper)), file=fout)
+
+    schema, mapper = multiprogrammed_schema()
+    with open(multiprog_tex, 'w') as fout:
+        print(doc_frame(generate_table(schema, rsltm1, mapper)), file=fout)
+
+    print(f'Done. Tex results written to "{maintbl_tex}" and "{multiprog_tex} respectively"')
 
 if __name__ == "__main__":
 	main()

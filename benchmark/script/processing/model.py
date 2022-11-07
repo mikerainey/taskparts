@@ -42,14 +42,19 @@ class BenchmarkClass(enum.Enum):
     high_parallelism = enum.auto()
     low_parallelism = enum.auto()
     parallel_sequential_mix = enum.auto()
+    multiprogrammed = enum.auto()
 
     def __str__(self) -> str:
         if self.name == "high_parallelism":
             return "high"
         elif self.name == "low_parallelism":
             return "low"
-        else:
+        elif self.name == "parallel_sequential_mix":
             return "mixed"
+        elif self.name == "multiprogrammed":
+            return "multiprogrammed"
+        else:
+            raise Exception('Unknown benchcls')
 
 
 @enum.unique
@@ -59,6 +64,7 @@ class Scheduler(enum.Enum):
     elastic2 = enum.auto()
     elastic_spin = enum.auto()
     elastic2_spin = enum.auto()
+    multiprogrammed = enum.auto()
 
 @enum.unique
 class SemImpl(enum.Enum):
