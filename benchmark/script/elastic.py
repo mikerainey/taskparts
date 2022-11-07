@@ -63,16 +63,17 @@ pbbs_benchmarks = [ 'classify', 'index', 'raycast', 'dedup' ]
 parlay_benchmarks = [ 'quickhull', 'bellmanford', 'samplesort',
                       'suffixarray', 'setcover', 'filterkruskal',
                       'bigintadd', 'betweennesscentrality',
-                      'bucketeddijkstra', 'trianglecount',
-                      'cartesiantree', 'graphcolor', 'nbodyfmm',
-                      'knuthmorrispratt' ]
+                      'trianglecount', 'cartesiantree', 'graphcolor',
+                      'nbodyfmm', 'knuthmorrispratt', 'rabinkarp' ]
 all_benchmarks = pbbs_benchmarks + parlay_benchmarks
 
 broken_benchmarks = [ 'kcore',      # something seems off
                       'fft',        # failing to compile
                       # segfaulting randomly
                       'karatsuba',  
-                      'knn'
+                      'knn',
+                      # very slow but not buggy
+                      'bucketeddijkstra'
                      ]
 
 few_benchmarks = [ 'bigintadd', 'quickhull' ] #, 'samplesort', 'suffixarray' ]
