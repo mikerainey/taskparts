@@ -18,7 +18,7 @@ flag replaces all uses of `PAUSE` with `NOP`s.
 
 ## TODOs
 
-- To fix: reset fiber is broken by any program that performs some parallel work inside its reset function
+- To fix: reset fiber is broken by any program that performs some parallel work inside its reset function; our current temporary fix is to force sequential in `benchmark.hpp`.
 - Enable separate compilation
 - Make deque data structure a template parameter of the work-stealing scheduler.
 - Document all environment-variable arguments

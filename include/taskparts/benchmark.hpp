@@ -89,7 +89,14 @@ auto benchmark_nativeforkjoin(const Benchmark& benchmark,
 	Bench_stats::capture_summary();
 	Bench_logging::output("log" + std::to_string(i) + ".json");
 	if (i + 1 < repeat) {
+	  // LATER: we current have to force sequential b/c any client
+	  // code in the benchmark_reset() call that spawns tasks will
+	  // livelock the reset_fiber; as such, the blame goes to the
+	  // reset_fiber and the fix is needed there
+	  auto f = force_sequential;
+	  force_sequential = true;
 	  benchmark_reset(sched);
+	  force_sequential = false;
 	}
 	Bench_stats::start_collecting();
       }, true, sched);

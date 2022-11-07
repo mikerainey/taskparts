@@ -123,4 +123,5 @@ auto benchmark() {
 }
 
 auto reset() {
+  result.clear();
 }
