@@ -88,10 +88,15 @@ auto rows_to_features(sequence<char> types, rows const &A) {
 }
 
 auto gen_input() {
+  std::string infile_path = "";
+  if (const auto env_p = std::getenv("TASKPARTS_BENCHMARK_INFILE_PATH")) {
+    infile_path = std::string(env_p);
+  }
   force_sequential = taskparts::cmdline::parse_or_default_bool("force_sequential", false);
   parlay::override_granularity = taskparts::cmdline::parse_or_default_long("override_granularity", 0);
   include_infile_load = taskparts::cmdline::parse_or_default_bool("include_infile_load", false);
-  auto iFile = taskparts::cmdline::parse_or_default_string("input", "kddcup.data");
+  auto infile = infile_path + "/" + "kddcup.data";
+  auto iFile = taskparts::cmdline::parse_or_default_string("input", infile.c_str());
   string train_file = iFile;
   string test_file = iFile;
   string label_file = iFile;

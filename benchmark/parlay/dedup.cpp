@@ -1,5 +1,5 @@
 #include <taskparts/benchmark.hpp>
-#include "removeduplicates.hpp"
+#include "dedup.hpp"
 
 int main() {
   parlay::benchmark_taskparts([&] (auto sched) { // benchmark

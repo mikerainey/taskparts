@@ -17,6 +17,10 @@ parlay::sequence<ray<point>> rays;
 parlay::sequence<index_t> R;
 
 auto gen_input() {
+  std::string infile_path = "";
+  if (const auto env_p = std::getenv("TASKPARTS_BENCHMARK_INFILE_PATH")) {
+    infile_path = std::string(env_p);
+  }
   force_sequential = taskparts::cmdline::parse_or_default_bool("force_sequential", false);
   parlay::override_granularity = taskparts::cmdline::parse_or_default_long("override_granularity", 0);
   include_infile_load = taskparts::cmdline::parse_or_default_bool("include_infile_load", false);
@@ -24,8 +28,8 @@ auto gen_input() {
   if (input == "") {
     exit(-1);
   }
-  auto infile_rays = input + "Rays";
-  auto infile_tris = input + "Triangles";
+  auto infile_rays = infile_path + "/" + input + "Rays";
+  auto infile_tris = infile_path + "/" + input + "Triangles";
   T = readTrianglesFromFile<point>(infile_tris.c_str(), 1);
   parlay::sequence<point> Pts = readPointsFromFile<point>(infile_rays.c_str());
   size_t n = Pts.size()/2;

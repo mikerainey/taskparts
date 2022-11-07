@@ -30,6 +30,10 @@ auto parse_strs(auto In) {
 }
 
 auto gen_input() {
+  std::string infile_path = "";
+  if (const auto env_p = std::getenv("TASKPARTS_BENCHMARK_INFILE_PATH")) {
+    infile_path = std::string(env_p);
+  }
   force_sequential = taskparts::cmdline::parse_or_default_bool("force_sequential", false);
   parlay::override_granularity = taskparts::cmdline::parse_or_default_long("override_granularity", 0);
   include_infile_load = taskparts::cmdline::parse_or_default_bool("include_infile_load", false);
@@ -38,7 +42,7 @@ auto gen_input() {
     if (input == "") {
       exit(-1);
     }
-    auto infile = input + ".seq";
+    auto infile = infile_path + "/" + input + ".seq";
     auto In = benchIO::get_tokens(infile.c_str());
     in_type = benchIO::elementTypeFromHeader(In[0]);
     if (in_type == benchIO::intType) {

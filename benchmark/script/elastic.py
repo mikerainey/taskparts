@@ -59,13 +59,15 @@ path_to_infiles = os.getcwd() + '/../../../infiles'
 #               in glob.glob(path_to_benchmarks + "*.cpp")] #
 #############################################################
 
-# uncomment to override the list of benchmarks above
-all_benchmarks = [ 'quickhull', 'bellmanford', 
-                   'samplesort', 'suffixarray', 'setcover',
-                   'filterkruskal', 'bigintadd', 
-                   'betweennesscentrality', 'bucketeddijkstra',
-                   'trianglecount', 
-                   'cartesiantree', 'graphcolor' ]
+pbbs_benchmarks = [ 'classify', 'index', 'raycast', 'dedup' ]
+parlay_benchmarks = [ 'quickhull', 'bellmanford', 'samplesort',
+                      'suffixarray', 'setcover', 'filterkruskal',
+                      'bigintadd', 'betweennesscentrality',
+                      'bucketeddijkstra', 'trianglecount',
+                      'cartesiantree', 'graphcolor' ]
+all_benchmarks = pbbs_benchmarks
+#+ parlay_benchmarks
+
 broken_benchmarks = [ 'kcore',      # something seems off
                       'fft',        # failing to compile
                       # segfaulting randomly
@@ -207,7 +209,8 @@ mk_core_bindings = mk_cross(
 mk_taskparts_basis = mk_cross_sequence([
     mk_parameter(binary_key, 'sta'),
     mk_parameter(taskparts_numa_alloc_interleaved_key, 1),
-    mk_core_bindings ])
+    mk_core_bindings,
+    mk_parameter(infiles_path_key, path_to_infiles),])
 
 mk_elastic_shared = mk_cross_sequence([
     mk_parameter(workstealing_key, 'elastic'),
@@ -323,7 +326,6 @@ mk_pdfs = mk_cross(
 mk_graph = mk_cross(mk_append(mk_bfs, mk_pdfs),
                     mk_cross_sequence(
                         [ mk_parameter(experiment_key, 'graph'),
-                          mk_parameter(infiles_path_key, path_to_infiles),
                           mk_taskparts_basis,
                           mk_schedulers,
                           mk_parameter(taskparts_num_workers_key, args.num_workers) ]))
