@@ -557,7 +557,7 @@ def merge_results_folders(rfs):
 def output_merged_results():
     timestr = time.strftime("%Y-%m-%d-%H-%M-%S")
     merged_results_path = 'merged-results-' + timestr
-    if args.merge_results == []:
+    if args.merge_results == None:
         return None
     if not(os.path.exists(merged_results_path)):
         os.makedirs(merged_results_path)
