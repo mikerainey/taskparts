@@ -287,9 +287,13 @@ public:
     auto my_id = perworker::my_id();
     auto flip = [&] () -> bool {
       auto n = next_rng(my_id);
-      return (beta == 1) ? true : (n % beta) < (beta - 1);
+      // LATER: replace the coin flip below b/c currently the
+      // calculation inconsistent with the defintion of beta given in
+      // the paper
+      return (n % beta) == 0;
+      //return (beta == 1) ? true : (n % beta) < (beta - 1);
     };
-    if (flip()) {
+    if (! flip()) {
       return;
     }
     Stats::on_exit_acquire();
