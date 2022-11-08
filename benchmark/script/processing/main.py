@@ -92,6 +92,7 @@ def three_way_compare(schedbase, sched1, sched2, table=Averaged) :
             baseline.usertime_avg.label("burn_baseline"),
             elastic.usertime_avg.label("burn_elastic"),
             elastic_spin.usertime_avg.label("burn_elastic2"),
+            (100.0*(baseline.exectime_avg-elastic.exectime_avg)/((baseline.exectime_avg + elastic.exectime_avg)/2.0)).label("rt_pctdiff"),
         )
         .select_from(baseline, elastic, elastic_spin)
         .where(baseline.benchcls == elastic.benchcls)
@@ -182,7 +183,8 @@ def test_table_schema() :
         TexColString("benchmark").setAlign(Alignment.Left), 
         ColumnBar.Bar,
         TexColFloat("rt_baseline", ndigits=2),
-        TexColFloat("rt_elastic", ndigits=2),
+                TexColFloat("rt_pctdiff", ndigits=2),
+#        TexColFloat("rt_elastic", ndigits=2),
 #        TexColFloat("rt_elastic2", ndigits=2),
         ColumnBar.Bar,
         TexColFloat("burn_baseline", ndigits=2),
