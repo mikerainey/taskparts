@@ -66,6 +66,8 @@ def ingest_json(engine):
     # ing.ingest("json/aws.json", Machine.aws)
     # ing.ingest("json/gamora.json", Machine.gamora)
 
+
+# This executes a three-way compare between one baseline and two possible other scheduler
 def three_way_compare(schedbase, sched1, sched2, table=Averaged) :
     baseline = orm.aliased(table, name="baseline")
     elastic  = orm.aliased(table, name="elastic")
@@ -92,7 +94,6 @@ def three_way_compare(schedbase, sched1, sched2, table=Averaged) :
             baseline.usertime_avg.label("burn_baseline"),
             elastic.usertime_avg.label("burn_elastic"),
             elastic_spin.usertime_avg.label("burn_elastic2"),
-            (100.0*(baseline.exectime_avg-elastic.exectime_avg)/((baseline.exectime_avg + elastic.exectime_avg)/2.0)).label("rt_pctdiff"),
         )
         .select_from(baseline, elastic, elastic_spin)
         .where(baseline.benchcls == elastic.benchcls)
@@ -113,22 +114,104 @@ def three_way_compare(schedbase, sched1, sched2, table=Averaged) :
         .order_by(baseline.benchmark)
     )
 
+# This executes two-way compare
+def two_way_compare(schedbase, sched, table=Averaged) :
+    baseline = orm.aliased(table, name="baseline")
+    elastic  = orm.aliased(table, name="elastic")
+
+    # Labels are picked such that the mapper for the textabel maps 
+    # the column to a texcolumn with identical name
+    return (
+        select(
+            # The following are all join conditions
+            baseline.benchcls,
+            baseline.machine,
+            baseline.numworkers,
+            baseline.scheduler,
+            baseline.elastic.label("elastic"),
+            baseline.benchmark,
+
+            # runtime comparisons
+            baseline.exectime_avg.label("rt_baseline"),
+            elastic.exectime_avg.label("rt_elastic"),
+            # ((elastic.exectime_avg - baseline.exectime_avg) / baseline.exectime_avg).label("rt_pctdiff"),
+
+            # burn comparisons
+            baseline.usertime_avg.label("burn_baseline"),
+            elastic.usertime_avg.label("burn_elastic"),
+            # ((elastic.usertime_avg - baseline.usertime_avg) / baseline.exectime_avg).label("burn_pctdiff"),
+
+            # burn ratios
+            (baseline.total_work_time_avg).label("work_baseline"),
+            (elastic.total_work_time_avg).label("work_elastic"),
+            # (baseline.usertime_avg / baseline.total_work_time_avg).label("br_baseline"),
+            # (elastic.usertime_avg / elastic.total_work_time_avg).label("br_elastic"),
+        )
+        .select_from(baseline, elastic)
+        .where(baseline.benchcls == elastic.benchcls)
+        .where(baseline.benchmark == elastic.benchmark)
+        .where(baseline.machine == elastic.machine)
+        .where(baseline.numworkers == elastic.numworkers)
+        # Scheduler choices
+        .where(baseline.scheduler == schedbase)
+        .where(elastic.scheduler == sched)
+        .order_by(baseline.benchcls.asc())
+        .order_by(baseline.numworkers.asc())
+        .order_by(baseline.machine)
+        .order_by(baseline.benchmark)
+    )
+
 def main_table_schema() :
-    overheader = [ColSkip(3), ColumnLegend(width=3, text=r"\textbf{wall clock}"), ColumnLegend(width=2, text=r"\textbf{burn}")]
-    header     = [ColSkip(3), ColumnLegend("non-elastic"), ColumnLegend("speedup"), ColumnLegend("elastic"), ColumnLegend("non-elastic"), ColumnLegend("elastic")]
+    overheader = [ColSkip(2), 
+        ColumnLegend(width=3, text=r"\textbf{Runtime (s)}"), ColumnLegend(width=3, text=r"\textbf{Burn (s)}"), 
+        ColumnLegend(width=2, text=r"\textbf{Work (s)}"), ColumnLegend(width=2, text=r"\textbf{Burn ratio}")]
+    header     = [
+        ColSkip(2), 
+        ColumnLegend("Non-elastic"), ColumnLegend("Elastic"), ColumnLegend(r"$\Delta_T$"), 
+        ColumnLegend("Non-elastic"), ColumnLegend("Elastic"), ColumnLegend(r"$\Delta_B$"), 
+        ColumnLegend("Non-elastic"), ColumnLegend("Elastic"),
+        ColumnLegend("Non-elastic"), ColumnLegend("Elastic"), 
+        ]
     columns = [
-        TexColString("benchset").setCommoning(),
+        TexColString("benchcls").setCommoning(),
         TexColString("benchmark").setAlign(Alignment.Left), 
-        TexColInteger("numworkers").setCommoning(), 
         ColumnBar.Bar,
         TexColFloat("rt_baseline", ndigits=2),
-        TexColMultiple("rt_spdup", ndigits=2).setAlign(Alignment.Left),
-        TexColPercentage("rt_elastic", ndigits=2).setAlign(Alignment.Left),
+        TexColFloat("rt_elastic", ndigits=2),
+        TexColPercentage("rt_pctdiff", ndigits=2).setAlign(Alignment.Left),
         ColumnBar.Bar,
-        TexColFloat("burn_nonelastic", ndigits=2),
-        TexColPercentage("burn_elastic", ndigits=2).setAlign(Alignment.Left),
+        TexColFloat("burn_baseline", ndigits=2),
+        TexColFloat("burn_elastic", ndigits=2),
+        TexColPercentage("burn_pctdiff", ndigits=2).setAlign(Alignment.Left),
+        ColumnBar.Bar,
+        TexColFloat("work_baseline", ndigits=2),
+        TexColFloat("work_elastic", ndigits=2),
+        ColumnBar.Bar,
+        TexColMultiple("br_baseline", ndigits=2),
+        TexColMultiple("br_elastic", ndigits=2),
     ]
-    return TexTableSchema(header, overheader, columns)
+    
+    # We compute the derived columns here
+    def mapper(row, name):
+        def safe_div(x, y):
+            try:
+                return x / y 
+            except ZeroDivisionError:
+                print("Warning: Division-by-zero in ratio computation", file=stderr)
+                return float('nan')
+
+        if name == "rt_pctdiff":
+            return safe_div(row.rt_elastic - row.rt_baseline, row.rt_baseline)
+        elif name == "burn_pctdiff":
+            return safe_div(row.burn_elastic - row.burn_baseline, row.burn_baseline)
+        elif name == "br_baseline":
+            return safe_div(row.burn_baseline, row.work_baseline)
+        elif name == "br_elastic":
+            return safe_div(row.burn_elastic, row.work_elastic)
+        else:
+            return row[name]
+
+    return (TexTableSchema(header, overheader, columns), mapper)
 
 def multiprogrammed_schema() :
     overheader = [ColSkip(3), ColumnLegend(width=3, text=r"\textbf{wall clock}"), ColumnLegend(width=3, text=r"\textbf{burn}")]
@@ -183,7 +266,7 @@ def test_table_schema() :
         TexColString("benchmark").setAlign(Alignment.Left), 
         ColumnBar.Bar,
         TexColFloat("rt_baseline", ndigits=2),
-                TexColFloat("rt_pctdiff", ndigits=2),
+        TexColFloat("rt_pctdiff", ndigits=2),
 #        TexColFloat("rt_elastic", ndigits=2),
 #        TexColFloat("rt_elastic2", ndigits=2),
         ColumnBar.Bar,
@@ -205,19 +288,15 @@ def test_table_schema() :
     return (TexTableSchema(header, overheader, columns), mapper)
 
 def appendix_table_schema() :
-    overheader = [ColSkip(4), ColumnLegend(width=3, text=r"\textbf{wall clock}"), ColumnLegend(width=3, text=r"\textbf{burn}")]
+    overheader = [ColSkip(2), ColumnLegend(width=3, text=r"\textbf{Runtime (w)}"), ColumnLegend(width=3, text=r"\textbf{Burn (s)}")]
     header     = [
-        ColumnLegend("\\#procs123"), 
-        ColumnLegend("scheduler"), 
-        ColumnLegend("class"), 
-        ColumnLegend("benchmark"), 
-        ColumnLegend("non-elastic"), ColumnLegend("elastic"), ColumnLegend("spin"), 
-        ColumnLegend("non-elastic"), ColumnLegend("elastic"), ColumnLegend("spin")]
+        ColumnLegend("Kind"), 
+        ColumnLegend("Benchmark"), 
+        ColumnLegend("Non-elastic"), ColumnLegend("Elastic"), ColumnLegend("Spin"), 
+        ColumnLegend("Non-elastic"), ColumnLegend("Elastic"), ColumnLegend("Spin")]
     columns = [
-        TexColInteger("numworkers").setCommoning(), 
-        TexColString("scheduler").setCommoning(),
+        # TexColInteger("numworkers").setCommoning(), 
         TexColEnum("benchcls").setCommoning(),
-        # TexColString("machine").setCommoning(), 
         TexColString("benchmark").setAlign(Alignment.Left), 
         ColumnBar.Bar,
         TexColFloat("rt_baseline", ndigits=2),
@@ -229,6 +308,11 @@ def appendix_table_schema() :
         TexColFloat("burn_elastic2", ndigits=2),
     ]
 
+    def mapper(row, name):
+        return row[name]
+
+    return (TexTableSchema(header, overheader, columns), mapper)
+
 def main():
     # engine = setup(echo=True, remote=True, setup=True)
     # engine = setup(echo=True, path="data/data.db")
@@ -237,47 +321,39 @@ def main():
     # This ingests the json files 
     ingest_json(engine)
 
-    # Test run -- lists all experiments
-    with sqlalchemy.orm.Session(engine) as session:
-        # rslt = session.execute(sqlalchemy.select(Experiments))
-        # rslt = session.execute(sqlalchemy.select(Experiments))
-        
-
-        # rslt = session.execute(sqlalchemy.select(Experiments))
-        # print(len(rslt.all()))
-        #q1 = three_way_compare(Scheduler.nonelastic, Scheduler.elastic, Scheduler.elastic_spin)
-        # print(q1)
-        # print("")
-        q2 = three_way_compare(Scheduler.nonelastic, Scheduler.elastic2, Scheduler.elastic2_spin)
-        # print(q2)
-        # print("")
-
-        #rslt1 = session.execute(q1).all()
-        rslt2 = session.execute(q2).all()
-        # for row in rslt1:
-        #     print(row)
-        # for row in rslt2:
-        #     print(row)
-        # count = len(all)
-        # print(f"Found total {count} entries.")
-
-        m1 = three_way_compare(Scheduler.nonelastic, Scheduler.elastic2, Scheduler.multiprogrammed)
-        rsltm1 = session.execute(m1).all()
-    # print(rslt1[0].keys())
-
-    schema, mapper = test_table_schema()
-
     maintbl_tex = 'tex/maintbl.tex'
     multiprog_tex = 'tex/multiprog.tex'
+    appendix_tex = 'tex/appendix.tex'
 
-    with open(maintbl_tex, 'w') as fout:
-        print(doc_frame(generate_table(schema, rslt2, mapper)), file=fout)
+    with sqlalchemy.orm.Session(engine) as session:
 
-    schema, mapper = multiprogrammed_schema()
-    with open(multiprog_tex, 'w') as fout:
-        print(doc_frame(generate_table(schema, rsltm1, mapper)), file=fout)
+        # Main table
+        rslt = session.execute(two_way_compare(Scheduler.nonelastic, Scheduler.elastic2)).all()
+        with open(maintbl_tex, 'w') as fout:
+            schema, mapper = main_table_schema()
+            print(doc_frame(generate_table(schema, rslt, mapper)), file=fout)
 
-    print(f'Done. Tex results written to "{maintbl_tex}" and "{multiprog_tex} respectively"')
+        # Appendix table
+        rslt = session.execute(three_way_compare(Scheduler.nonelastic, Scheduler.elastic2, Scheduler.elastic2_spin)).all()
+        with open(appendix_tex, 'w') as fout:
+            schema, mapper = appendix_table_schema()
+            print(doc_frame(generate_table(schema, rslt, mapper)), file=fout)
+
+        print(f'Done. Tex results written to "{maintbl_tex}" and "{appendix_tex} respectively"')
+
+    # schema, mapper = test_table_schema()
+
+    # maintbl_tex = 'tex/maintbl.tex'
+    # multiprog_tex = 'tex/multiprog.tex'
+
+    # with open(maintbl_tex, 'w') as fout:
+    #     print(doc_frame(generate_table(schema, rslt2, mapper)), file=fout)
+
+    # schema, mapper = multiprogrammed_schema()
+    # with open(multiprog_tex, 'w') as fout:
+    #     print(doc_frame(generate_table(schema, rsltm1, mapper)), file=fout)
+
+    # print(f'Done. Tex results written to "{maintbl_tex}" and "{multiprog_tex} respectively"')
 
 if __name__ == "__main__":
 	main()

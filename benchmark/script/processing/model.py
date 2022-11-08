@@ -128,6 +128,7 @@ class Averaged(Base):
             func.avg(Experiments.systime).label("systime_avg"),
             func.avg(Experiments.usertime).label("usertime_avg"),
             func.avg(Experiments.total_time).label("total_time_avg"),
+            func.avg(Experiments.total_idle_time).label("total_idle_time_avg"),
             func.avg(Experiments.total_work_time).label("total_work_time_avg"),
             func.avg(Experiments.total_sleep_time).label("total_sleep_time_avg"),
             func.avg(Experiments.utilization).label("utilization_avg"),

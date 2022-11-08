@@ -52,15 +52,15 @@ def TexColMath(name):
 
 # By default rounds to nearest 0.01
 def TexColFloat(name, ndigits=2):
-	return TexColumn(name, to_string=lambda x : f"{round(x, ndigits=ndigits)}")
+	return TexColumn(name, to_string=lambda x : f"{x : .{ndigits}f}")
 
 # Renders a floating number (without multiplication) to nearest 0.1%
 def TexColPercentage(name, ndigits=1):
-	return TexColumn(name, to_string=lambda x : f"{round(x * 100, ndigits=ndigits)}\\%")
+	return TexColumn(name, to_string=lambda x : f"{100 * x : .{ndigits}f}\\%")
 
 # Renders a floating number to a multiple (to nearest 0.1x)
 def TexColMultiple(name, ndigits=1):
-	return TexColumn(name, to_string=lambda x : f"{round(x, ndigits=ndigits)}x")
+	return TexColumn(name, to_string=lambda x : f"{x : .{ndigits}f}" + r"$\times$")
 
 def _col_to_shape(col) : 
 	if isinstance(col, ColumnBar):
