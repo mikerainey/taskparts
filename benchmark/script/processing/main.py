@@ -49,11 +49,13 @@ def ingest_json(engine):
     def aws(path):
         ing.ingest(path, Machine.aws, exclude=exclude)
 
-    latest_results_folder = 'results-2022-11-05-15-30-37'
+    #latest_results_folder = 'results-2022-11-05-15-30-37'
+    latest_results_folder = 'merged-results-2022-11-08-01-19-45'
+    
     aws("json/experiments/" + latest_results_folder + "/high_parallelism-results.json")
     aws("json/experiments/" + latest_results_folder + "/low_parallelism-results.json")
     aws("json/experiments/" + latest_results_folder + "/parallel_sequential_mix-results.json")
-    aws("json/experiments/" + latest_results_folder + "/multiprogrammed-results.json")
+    #aws("json/experiments/" + latest_results_folder + "/multiprogrammed-results.json")
     
     # aws("json/experiments/results-2022-10-24-22-06-57/high_parallelism-results.json")
     # aws("json/experiments/results-2022-10-24-22-47-27/high_parallelism-results.json")

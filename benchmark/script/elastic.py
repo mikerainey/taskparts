@@ -63,7 +63,7 @@ parlay_benchmarks = [ 'quickhull', 'bellmanford', 'samplesort',
                       'suffixarray', 'setcover', 'filterkruskal',
                       'bigintadd', 'betweennesscentrality',
                       'trianglecount', 'cartesiantree', 'graphcolor',
-                      'nbodyfmm', 'knuthmorrispratt', 'rabinkarp' ]
+                      'nbodyfmm', 'rabinkarp' ]
 all_benchmarks = pbbs_benchmarks + parlay_benchmarks
 
 broken_benchmarks = [ 'kcore',      # something seems off
