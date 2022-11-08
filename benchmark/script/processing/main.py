@@ -164,9 +164,46 @@ def multiprogrammed_schema() :
     return (TexTableSchema(header, overheader, columns), mapper)
 
 def test_table_schema() :
+    overheader = [ColSkip(2), ColumnLegend(width=2, text=r"\textbf{wall clock}"), ColumnLegend(width=2, text=r"\textbf{burn}")]
+    header     = [
+#        ColumnLegend("\\#procs123"), 
+#        ColumnLegend("scheduler"), 
+        ColumnLegend(""), 
+        ColumnLegend("benchmark"), 
+        ColumnLegend("non-elastic"), ColumnLegend("elastic"), 
+        ColumnLegend("non-elastic"), ColumnLegend("elastic")]
+    columns = [
+#        TexColInteger("numworkers").setCommoning(), 
+#        TexColString("scheduler").setCommoning(),
+        TexColEnum("benchcls").setCommoning(),
+        # TexColString("machine").setCommoning(), 
+        TexColString("benchmark").setAlign(Alignment.Left), 
+        ColumnBar.Bar,
+        TexColFloat("rt_baseline", ndigits=2),
+        TexColFloat("rt_elastic", ndigits=2),
+#        TexColFloat("rt_elastic2", ndigits=2),
+        ColumnBar.Bar,
+        TexColFloat("burn_baseline", ndigits=2),
+        TexColFloat("burn_elastic", ndigits=2),
+#        TexColFloat("burn_elastic2", ndigits=2),
+    ]
+
+    def mapper(row, name):
+        # if name == "benchset":
+        if name == "scheduler":
+            if row.elastic is None:
+                return "simpl"
+            else:
+                return row.elastic
+        else: 
+            return row[name]
+
+    return (TexTableSchema(header, overheader, columns), mapper)
+
+def appendix_table_schema() :
     overheader = [ColSkip(4), ColumnLegend(width=3, text=r"\textbf{wall clock}"), ColumnLegend(width=3, text=r"\textbf{burn}")]
     header     = [
-        ColumnLegend("\\#procs"), 
+        ColumnLegend("\\#procs123"), 
         ColumnLegend("scheduler"), 
         ColumnLegend("class"), 
         ColumnLegend("benchmark"), 
@@ -187,19 +224,6 @@ def test_table_schema() :
         TexColFloat("burn_elastic", ndigits=2),
         TexColFloat("burn_elastic2", ndigits=2),
     ]
-    
-    def mapper(row, name):
-        # if name == "benchset":
-        if name == "scheduler":
-            if row.elastic is None:
-                return "simpl"
-            else:
-                return row.elastic
-        else: 
-            return row[name]
-
-    return (TexTableSchema(header, overheader, columns), mapper)
-
 
 def main():
     # engine = setup(echo=True, remote=True, setup=True)
@@ -217,14 +241,14 @@ def main():
 
         # rslt = session.execute(sqlalchemy.select(Experiments))
         # print(len(rslt.all()))
-        q1 = three_way_compare(Scheduler.nonelastic, Scheduler.elastic, Scheduler.elastic_spin)
+        #q1 = three_way_compare(Scheduler.nonelastic, Scheduler.elastic, Scheduler.elastic_spin)
         # print(q1)
         # print("")
         q2 = three_way_compare(Scheduler.nonelastic, Scheduler.elastic2, Scheduler.elastic2_spin)
         # print(q2)
         # print("")
 
-        rslt1 = session.execute(q1).all()
+        #rslt1 = session.execute(q1).all()
         rslt2 = session.execute(q2).all()
         # for row in rslt1:
         #     print(row)
@@ -243,7 +267,7 @@ def main():
     multiprog_tex = 'tex/multiprog.tex'
 
     with open(maintbl_tex, 'w') as fout:
-        print(doc_frame(generate_table(schema, rslt1 + rslt2, mapper)), file=fout)
+        print(doc_frame(generate_table(schema, rslt2, mapper)), file=fout)
 
     schema, mapper = multiprogrammed_schema()
     with open(multiprog_tex, 'w') as fout:
