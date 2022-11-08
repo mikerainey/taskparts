@@ -50,7 +50,8 @@ def ingest_json(engine):
         ing.ingest(path, Machine.aws, exclude=exclude)
 
     #latest_results_folder = 'results-2022-11-05-15-30-37'
-    latest_results_folder = 'merged-results-2022-11-08-01-19-45'
+    #latest_results_folder = 'merged-results-2022-11-08-01-19-45'
+    latest_results_folder = 'merged-results-2022-11-08-08-50-29'
     
     aws("json/experiments/" + latest_results_folder + "/high_parallelism-results.json")
     aws("json/experiments/" + latest_results_folder + "/low_parallelism-results.json")
@@ -167,10 +168,10 @@ def main_table_schema() :
         ColumnLegend(width=2, text=r"\textbf{Work (s)}"), ColumnLegend(width=2, text=r"\textbf{Burn ratio}")]
     header     = [
         ColSkip(2), 
-        ColumnLegend("Non-elastic"), ColumnLegend("Elastic"), ColumnLegend(r"$\Delta_T$"), 
-        ColumnLegend("Non-elastic"), ColumnLegend("Elastic"), ColumnLegend(r"$\Delta_B$"), 
-        ColumnLegend("Non-elastic"), ColumnLegend("Elastic"),
-        ColumnLegend("Non-elastic"), ColumnLegend("Elastic"), 
+        ColumnLegend("NE"), ColumnLegend("E"), ColumnLegend(r"$\Delta_T$"), 
+        ColumnLegend("NE"), ColumnLegend("E"), ColumnLegend(r"$\Delta_B$"), 
+        ColumnLegend("NE"), ColumnLegend("E"),
+        ColumnLegend("NE"), ColumnLegend("E"), 
         ]
     columns = [
         TexColString("benchcls").setCommoning(),
@@ -292,8 +293,8 @@ def appendix_table_schema() :
     header     = [
         ColumnLegend("Kind"), 
         ColumnLegend("Benchmark"), 
-        ColumnLegend("Non-elastic"), ColumnLegend("Elastic"), ColumnLegend("Spin"), 
-        ColumnLegend("Non-elastic"), ColumnLegend("Elastic"), ColumnLegend("Spin")]
+        ColumnLegend("NE"), ColumnLegend("E"), ColumnLegend("ES"), 
+        ColumnLegend("NE"), ColumnLegend("E"), ColumnLegend("ES")]
     columns = [
         # TexColInteger("numworkers").setCommoning(), 
         TexColEnum("benchcls").setCommoning(),
