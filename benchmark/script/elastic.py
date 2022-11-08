@@ -43,8 +43,10 @@ sys_num_workers = psutil.cpu_count(logical=False)
 
 experiment_key = 'experiment'
 experiments = [ 'high_parallelism', 'low_parallelism',
-                'parallel_sequential_mix', 'multiprogrammed', 'graph',
-                'cilk_shootout' ]
+                'parallel_sequential_mix', 'graph',
+                'cilk_shootout',
+                #'multiprogrammed',
+               ]
 
 modes = ['dry', 'from_scratch' ] # LATER: add append mode
 
@@ -59,18 +61,18 @@ path_to_infiles = os.getcwd() + '/../../../infiles'
 #############################################################
 
 pbbs_benchmarks = [ 'classify', 'index', 'raycast', 'dedup' ]
+
 parlay_benchmarks = [ 'quickhull', 'bellmanford', 'samplesort',
                       'suffixarray', 'setcover', 'filterkruskal',
                       'bigintadd', 'betweennesscentrality',
                       'trianglecount', 'cartesiantree', 'graphcolor',
-                      'nbodyfmm', 'rabinkarp' ]
+                      'nbodyfmm', 'rabinkarp', 'knn', 'huffmantree',
+                      'fft' ]
+
 all_benchmarks = pbbs_benchmarks + parlay_benchmarks
 
 broken_benchmarks = [ 'kcore',      # something seems off
-                      'fft',        # failing to compile
-                      # segfaulting randomly
-                      'karatsuba',  
-                      'knn',
+                      'karatsuba', # segfaults randomly
                       # very slow but not buggy
                       'bucketeddijkstra'
                      ]
@@ -352,7 +354,7 @@ mk_cilk_shootout = mk_cross_sequence(
 all_experiments = { 'high_parallelism': mk_high_parallelism,
                     'low_parallelism': mk_low_parallelism,
                     'parallel_sequential_mix': mk_parallel_sequential_mix,
-                    'multiprogrammed': mk_multiprogrammed,
+                    'multiprogrammed': mk_multiprogrammed, 
                     'graph': mk_graph,
                     'cilk_shootout': mk_cilk_shootout }
 experiments_to_run = { k: all_experiments[k] for k in experiment_values }
