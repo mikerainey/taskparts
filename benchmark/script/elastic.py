@@ -63,7 +63,7 @@ path_to_infiles = os.getcwd() + '/../../../infiles'
 pbbs_benchmarks = [ 'classify', 'index', 'raycast', 'dedup' ]
 
 parlay_benchmarks = [ 'quickhull', 'bellmanford', 'samplesort',
-                      'suffixarray', 'setcover', 'filterkruskal',
+                      'suffixarray', 'setcover', #'filterkruskal',
                       'bigintadd', 'betweennesscentrality',
                       'trianglecount', 'cartesiantree', 'graphcolor',
                       'nbodyfmm', 'rabinkarp', 'knn', 'huffmantree',
