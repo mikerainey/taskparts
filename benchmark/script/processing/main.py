@@ -56,6 +56,9 @@ def ingest_json(engine):
     aws("json/experiments/" + latest_results_folder + "/high_parallelism-results.json")
     aws("json/experiments/" + latest_results_folder + "/low_parallelism-results.json")
     aws("json/experiments/" + latest_results_folder + "/parallel_sequential_mix-results.json")
+
+    # Cilk baseline
+    aws("json/experiments/results-2022-11-09-21-44-57/cilk_shootout-results.json")
     #aws("json/experiments/" + latest_results_folder + "/multiprogrammed-results.json")
     
     # aws("json/experiments/results-2022-10-24-22-06-57/high_parallelism-results.json")
@@ -177,9 +180,9 @@ def main_table_schema() :
         TexColString("benchcls").setCommoning(),
         TexColString("benchmark").setAlign(Alignment.Left), 
         ColumnBar.Bar,
-        TexColFloat("rt_baseline", ndigits=2),
-        TexColFloat("rt_elastic", ndigits=2),
-        TexColPercentage("rt_pctdiff", ndigits=2).setAlign(Alignment.Left),
+        TexColFloat("rt_baseline", ndigits=4),
+        TexColFloat("rt_elastic", ndigits=4),
+        TexColPercentage("rt_pctdiff", ndigits=1).setAlign(Alignment.Left),
         ColumnBar.Bar,
         TexColFloat("burn_baseline", ndigits=2),
         TexColFloat("burn_elastic", ndigits=2),
@@ -314,6 +317,31 @@ def appendix_table_schema() :
 
     return (TexTableSchema(header, overheader, columns), mapper)
 
+def cilk_table_schema() :
+    overheader = [ColSkip(1), ColumnLegend(width=3, text=r"\textbf{Runtime (w)}"), ColumnLegend(width=3, text=r"\textbf{Burn (s)}")]
+    header     = [
+        ColumnLegend("Benchmark"), 
+        ColumnLegend("Cilk"), ColumnLegend("ABP"), ColumnLegend("YWRA"), 
+        ColumnLegend("Cilk"), ColumnLegend("ABP"), ColumnLegend("YWRA")]
+    columns = [
+        # TexColInteger("numworkers").setCommoning(), 
+        # TexColEnum("benchcls").setCommoning(),
+        TexColString("benchmark").setAlign(Alignment.Left), 
+        ColumnBar.Bar,
+        TexColFloat("rt_baseline", ndigits=2),
+        TexColFloat("rt_elastic", ndigits=2),
+        TexColFloat("rt_elastic2", ndigits=2),
+        ColumnBar.Bar,
+        TexColFloat("burn_baseline", ndigits=2),
+        TexColFloat("burn_elastic", ndigits=2),
+        TexColFloat("burn_elastic2", ndigits=2),
+    ]
+
+    def mapper(row, name):
+        return row[name]
+
+    return (TexTableSchema(header, overheader, columns), mapper)
+
 def main():
     # engine = setup(echo=True, remote=True, setup=True)
     # engine = setup(echo=True, path="data/data.db")
@@ -325,6 +353,7 @@ def main():
     maintbl_tex = 'tex/maintbl.tex'
     multiprog_tex = 'tex/multiprog.tex'
     appendix_tex = 'tex/appendix.tex'
+    cilk_tex = 'tex/cilk.tex'
 
     with sqlalchemy.orm.Session(engine) as session:
 
@@ -340,7 +369,13 @@ def main():
             schema, mapper = appendix_table_schema()
             print(doc_frame(generate_table(schema, rslt, mapper)), file=fout)
 
-        print(f'Done. Tex results written to "{maintbl_tex}" and "{appendix_tex} respectively"')
+        # CILK comparision
+        rslt = session.execute(three_way_compare(Scheduler.cilk, Scheduler.ne_abp, Scheduler.ne_ywra)).all()
+        with open(cilk_tex, 'w') as fout:
+            schema, mapper = cilk_table_schema()
+            print(doc_frame(generate_table(schema, rslt, mapper)), file=fout)
+
+        print(f'Done. Tex results written to "{maintbl_tex}" and "{appendix_tex}", "{cilk_tex}" respectively')
 
     # schema, mapper = test_table_schema()
 
