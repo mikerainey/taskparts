@@ -67,7 +67,7 @@ parlay_benchmarks = [ 'quickhull', 'bellmanford', 'samplesort',
                       'bigintadd', 'btwcentrality',
                       'trianglecount', 'cartesiantree', 'graphcolor',
                       'nbodyfmm', 'rabinkarp', 'knn', 'huffmantree',
-                      'fft', 'knuthmorrispratt'
+                      'fft', 'knuthmorrispratt', 'kruskal'
                       #'spectralseparator' # really slow: 10s but highly parallel
                       #'kcore',      # seems best w/ high diameter graph;
                       #'filterkruskal',
