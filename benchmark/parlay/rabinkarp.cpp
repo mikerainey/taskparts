@@ -27,6 +27,11 @@ auto gen_input() {
   str = parlay::chars_from_file(infile.c_str());
   auto input_search = taskparts::cmdline::parse_or_default_string("search", "foo");
   search_str = parlay::to_chars(input_search.c_str());
+  auto str2 = str;
+  str.append(str2);
+  str.append(str2);
+  str.append(str2);
+  str2.clear();
 }
 
 auto benchmark_dflt() {
