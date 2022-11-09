@@ -64,7 +64,7 @@ pbbs_benchmarks = [ 'classify', 'index', 'raycast', 'dedup' ]
 
 parlay_benchmarks = [ 'quickhull', 'bellmanford', 'samplesort',
                       'suffixarray', 'setcover', #'filterkruskal',
-                      'bigintadd', 'betweennesscentrality',
+                      'bigintadd', 'btwcentrality',
                       'trianglecount', 'cartesiantree', 'graphcolor',
                       'nbodyfmm', 'rabinkarp', 'knn', 'huffmantree',
                       'fft' ]
