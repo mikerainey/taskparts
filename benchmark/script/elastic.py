@@ -42,7 +42,7 @@ default_remote_results_path = taskparts_home + '../draft-elastic/drafts/draft-el
 sys_num_workers = psutil.cpu_count(logical=False)
 
 experiment_key = 'experiment'
-experiments = [ 'high_parallelism', 'low_parallelism',
+experiments = [ 'high_parallelism',
                 'parallel_sequential_mix', 'graph',
                 'cilk_shootout',
                 #'multiprogrammed',
@@ -270,19 +270,6 @@ mk_high_parallelism = mk_cross_sequence(
       mk_schedulers,
       mk_parameter(taskparts_num_workers_key, args.num_workers) ])
 
-# Low-parallelism experiment
-# --------------------------
-
-override_granularity_key = 'override_granularity'
-
-mk_low_parallelism = mk_cross_sequence(
-    [ mk_parameter(experiment_key, 'low_parallelism'),
-      mk_taskparts_basis,
-      mk_parameters(benchmark_key, benchmarks),
-      mk_schedulers,
-      mk_parameter(taskparts_num_workers_key, args.num_workers),
-      mk_parameter(override_granularity_key, 200) ])
-
 # Parallel-sequential-mix experiment
 # ----------------------------------
 
@@ -352,7 +339,6 @@ mk_cilk_shootout = mk_cross_sequence(
 # ---------------
 
 all_experiments = { 'high_parallelism': mk_high_parallelism,
-                    'low_parallelism': mk_low_parallelism,
                     'parallel_sequential_mix': mk_parallel_sequential_mix,
                     'multiprogrammed': mk_multiprogrammed, 
                     'graph': mk_graph,
