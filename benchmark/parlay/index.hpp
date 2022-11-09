@@ -22,9 +22,10 @@ auto gen_input() {
   force_sequential = taskparts::cmdline::parse_or_default_bool("force_sequential", false);
   parlay::override_granularity = taskparts::cmdline::parse_or_default_long("override_granularity", 0);
   include_infile_load = taskparts::cmdline::parse_or_default_bool("include_infile_load", false);
-  auto infile = infile_path + "/" + "wikisamp.xml";
-  auto iFile = taskparts::cmdline::parse_or_default_string("input", infile.c_str());
-  s = parlay::to_sequence(parlay::file_map(iFile));
+  // alternative, smaller input is wikisamp.xml
+  auto input = taskparts::cmdline::parse_or_default_string("input", "wikipedia250M.txt");
+  auto infile = infile_path + "/" + input;
+  s = parlay::to_sequence(parlay::file_map(infile.c_str()));
   string header = "<doc";
   start = parlay::to_sequence(header);
 }
