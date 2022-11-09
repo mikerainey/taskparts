@@ -8,11 +8,22 @@ graph G;
 parlay::sequence<bool> partition;
 
 auto gen_input2() {
+  std::string infile_path = "";
+  if (const auto env_p = std::getenv("TASKPARTS_BENCHMARK_INFILE_PATH")) {
+    infile_path = std::string(env_p);
+  }
   force_sequential = taskparts::cmdline::parse_or_default_bool("force_sequential", false);
   parlay::override_granularity = taskparts::cmdline::parse_or_default_long("override_granularity", 0);
   include_infile_load = taskparts::cmdline::parse_or_default_bool("include_infile_load", false);
-  n = std::max((size_t)1, (size_t)taskparts::cmdline::parse_or_default_long("n", 50 * 1000));
+  n = std::max((size_t)1, (size_t)taskparts::cmdline::parse_or_default_long("n", 4 * 1000 * 1000));
+  auto input = taskparts::cmdline::parse_or_default_string("input", "europe");
+  if (input != "gen-rmat") {
+    auto infile = infile_path + "/" + input + ".adj";
+    G = utils::read_graph_from_file_pbbs(infile.c_str());
+    n = G.size();
+  } else {
   G = utils::grid_graph(n);
+  }
 #ifndef NDEBUG
   utils::print_graph_stats(G);
 #endif

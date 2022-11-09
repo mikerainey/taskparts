@@ -63,18 +63,22 @@ path_to_infiles = os.getcwd() + '/../../../infiles'
 pbbs_benchmarks = [ 'classify', 'index', 'raycast', 'dedup' ]
 
 parlay_benchmarks = [ 'quickhull', 'bellmanford', 'samplesort',
-                      'suffixarray', 'setcover', #'filterkruskal',
+                      'suffixarray', 'setcover', 
                       'bigintadd', 'btwcentrality',
                       'trianglecount', 'cartesiantree', 'graphcolor',
                       'nbodyfmm', 'rabinkarp', 'knn', 'huffmantree',
-                      'fft' ]
+                      'fft', 'knuthmorrispratt'
+                      #'spectralseparator' # really slow: 10s but highly parallel
+                      #'kcore',      # seems best w/ high diameter graph;
+                      #'filterkruskal',
+                      #'bucketeddijkstra' ?? slow?
+                     ]
 
 all_benchmarks = pbbs_benchmarks + parlay_benchmarks
 
-broken_benchmarks = [ 'kcore',      # something seems off
+broken_benchmarks = [ 
                       'karatsuba', # segfaults randomly
-                      # very slow but not buggy
-                      'bucketeddijkstra'
+    
                      ]
 
 few_benchmarks = [ 'bigintadd', 'quickhull' ] #, 'samplesort', 'suffixarray' ]
