@@ -65,6 +65,9 @@ class Scheduler(enum.Enum):
     elastic_spin = enum.auto()
     elastic2_spin = enum.auto()
     multiprogrammed = enum.auto()
+    cilk = enum.auto()
+    ne_abp = enum.auto() # Baseline only used in Cilk shootout
+    ne_ywra = enum.auto() # Baseline only used in Cilk shootout
 
 @enum.unique
 class SemImpl(enum.Enum):

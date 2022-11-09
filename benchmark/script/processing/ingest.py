@@ -27,40 +27,60 @@ class Ingester:
                         else:
                             kv[key] = val
                     
-                    def case_opt(key, f):
+                    def case_opt(key, f = None):
                         if kv.get(key) is None:
                             return None
                         else:
-                            return f(kv[key])
+                            if f is None:
+                                return kv[key]
+                            else:
+                                return f(kv[key])
 
                     if exclude is not None:
                         if exclude(kv):
                             continue
 
+                    # Special handling for cilk
+                    if kv['experiment'] == 'cilk_shootout':
+                        benchcls = model.BenchmarkClass.high_parallelism
+                        if kv['workstealing'] == 'cilk':
+                            scheduler = model.Scheduler.cilk
+                        elif kv['workstealing'] == 'abp':
+                            scheduler = model.Scheduler.ne_abp
+                        elif kv['workstealing'] == 'ywra':
+                            scheduler = model.Scheduler.ne_ywra
+                        elif kv['workstealing'] == 'cl':
+                            continue # Skipping chaselev
+                        else:
+                            raise Exception("Unknown Cilk baseline scheduler variant")
+                    else:
+                        benchcls=model.BenchmarkClass[kv['experiment'].replace('-', '_')]
+                        scheduler=model.Scheduler[kv['scheduler']]
+
                     # Constructing the objects
                     e = model.Experiments (
                         machine=machine,
                         benchmark=kv["benchmark"],
-                        benchcls=model.BenchmarkClass[kv['experiment'].replace('-', '_')],
+                        benchcls=benchcls,
                         numworkers=kv['TASKPARTS_NUM_WORKERS'],
                         bin=model.Binary[kv['binary']],
                         chaselev=case_opt('chaselev', lambda ch: model.Chaselev[ch]),
                         elastic=case_opt('elastic', lambda e: model.Elastic[e]),
                         exectime=kv['exectime'],
-                        nb_fibers=kv['nb_fibers'],
-                        nb_steals=kv['nb_steals'],
+                        nb_fibers=case_opt('nb_fibers'),
+                        nb_steals=case_opt('nb_steals'),
                         nivcsw=kv['nivcsw'],
                         nsignals=kv['nsignals'],
                         nvcsw=kv['nvcsw'],
-                        scheduler=model.Scheduler[kv['scheduler']],
+                        scheduler=scheduler,
                         semaphore=case_opt('semaphore', lambda sem: model.SemImpl[sem]),
                         systime=kv['systime'],
-                        total_idle_time=kv['total_idle_time'],
-                        total_sleep_time=kv['total_sleep_time'],
-                        total_time=kv['total_time'],
-                        total_work_time=kv['total_work_time'],
+                        total_idle_time=case_opt('total_idle_time'),
+                        total_sleep_time=case_opt('total_sleep_time'),
+                        total_time=case_opt( 'total_time' ),
+                        total_work_time=case_opt( 'total_work_time' ),
                         usertime=kv['usertime'],
-                        utilization=kv['utilization'],
+                        utilization=case_opt( 'utilization' ),
                         tp_numa_alloc_inter=(kv['TASKPARTS_NUMA_ALLOC_INTERLEAVED'] > 0),
                         tp_pin_worker=(kv['TASKPARTS_PIN_WORKER_THREADS'] > 0),
                         tp_binding=model.ResourceBinding[kv['TASKPARTS_RESOURCE_BINDING']],
