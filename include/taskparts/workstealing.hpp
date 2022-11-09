@@ -9,11 +9,11 @@
 #include "scheduler.hpp"
 #include "hash.hpp"
 
-#if defined(TASKPARTS_USE_ABP_DEQUE)
-#include "abp.hpp"
+#if defined(TASKPARTS_USE_CHASELEV_DEQUE)
+#include "chaselev.hpp"
 namespace taskparts {
 template <typename Fiber>
-using deque = abp<Fiber>;
+using deque = chaselev<Fiber>;
 }
 #elif defined(TASKPARTS_USE_YWRA_DEQUE)
 #include "ywra.hpp"
@@ -22,10 +22,10 @@ template <typename Fiber>
 using deque = ywra<Fiber>;
 }
 #else
-#include "chaselev.hpp"
+#include "abp.hpp"
 namespace taskparts {
 template <typename Fiber>
-using deque = chaselev<Fiber>;
+using deque = abp<Fiber>;
 }
 #endif
 
