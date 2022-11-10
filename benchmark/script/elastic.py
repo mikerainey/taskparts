@@ -651,9 +651,9 @@ export_results_to_git(local_results_path)
 export_results_to_git(output_merged_results())
 
 def process_results_file():
-    if args.load_results_file == []:
+    if args.load_results_file == [] or args.load_results_file == None:
         return
-    if args.split_into_files_by_keys == []:
+    if args.split_into_files_by_keys == [] or args.split_into_files_by_keys == None:
         return
     f = args.load_results_file[0]
     k = args.split_into_files_by_keys[0]
