@@ -128,6 +128,11 @@ parser.add_argument('--export_results', dest ='export_results',
 parser.add_argument('-merge_results', action='append',
                     help = 'specifies the path of a results folder to merge with the output of the current run')
 
+parser.add_argument('-load_results_file', action='append',
+                    help = 'specifies a results file to load')
+parser.add_argument('-split_into_files_by_keys', action='append',
+                    help = 'specifies a results key to split into multiple files by all values')  
+
 args = parser.parse_args()
 
 local_results_path = default_local_results_path if args.local_results_path == None else args.local_results_path
@@ -644,3 +649,34 @@ for (e, mk) in experiments_to_run.items():
 export_results_to_git(local_results_path)
 
 export_results_to_git(output_merged_results())
+
+def process_results_file():
+    if args.load_results_file == []:
+        return
+    if args.split_into_files_by_keys == []:
+        return
+    f = args.load_results_file[0]
+    k = args.split_into_files_by_keys[0]
+    r = read_json_from_file_path(f)
+    rows = rows_of(r)
+    vals = set()
+    for row in rows:
+        vo = val_of_key_in_row(row, k)
+        if vo != []:
+            vals.add(vo[0])
+    bn = os.path.basename(f)
+    n, e = os.path.splitext(bn)
+    print(n)
+    print(e)
+    for v in vals:
+        n2 = n + '_' + v + e
+        print(n2)
+        vrows = []
+        for row in rows:
+            if does_row_contain_kvp(row, {'key': k, 'val': v}):
+                vrows = vrows + [ row]
+        vr = {'value': vrows}
+        write_json_to_file_path(vr, file_path = n2)
+    print(vals)
+
+process_results_file()
