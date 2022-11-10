@@ -150,6 +150,7 @@ public:
       s.surplus++;
       return s;
     });
+    Stats::increment(Stats::configuration_type::nb_surplus_transitions);
     //aprintf("incr_sp stealing=%d sleeping=%d surplus=%d\n",s.stealing,s.sleeping,s.surplus);
   }
   

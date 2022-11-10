@@ -48,13 +48,19 @@ public:
   using counter_id_type = enum counter_id_enum {
     nb_fibers,
     nb_steals,
-    nb_sleeps,
+#if defined(TASKPARTS_ELASTIC_SURPLUS)
+    nb_sleeps, nb_surplus_transitions, // for elastic work stealing
+#endif
     nb_counters
   };
 
   static
   auto name_of_counter(counter_id_type id) -> const char* {
-    const char* names [] = { "nb_fibers", "nb_steals", "nb_sleeps" };
+    const char* names [] = { "nb_fibers", "nb_steals",
+#if defined(TASKPARTS_ELASTIC_SURPLUS)
+			     "nb_sleeps", "nb_surplus_transitions"
+#endif
+    };
     return names[id];
   }
   
