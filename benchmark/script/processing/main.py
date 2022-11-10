@@ -51,11 +51,11 @@ def ingest_json(engine):
 
     #latest_results_folder = 'results-2022-11-05-15-30-37'
     #latest_results_folder = 'merged-results-2022-11-08-01-19-45'
-    latest_results_folder = 'merged-results-2022-11-08-22-08-23'
+    latest_results_folder = 'merged-results-2022-11-10-09-10-51'
     
     aws("json/experiments/" + latest_results_folder + "/high_parallelism-results.json")
-    aws("json/experiments/" + latest_results_folder + "/low_parallelism-results.json")
-    aws("json/experiments/" + latest_results_folder + "/parallel_sequential_mix-results.json")
+    #aws("json/experiments/" + latest_results_folder + "/parallel_sequential_mix-results_med.json")
+    aws("json/experiments/" + latest_results_folder + "/parallel_sequential_mix-results_large.json")
 
     # Cilk baseline
     aws("json/experiments/results-2022-11-09-21-44-57/cilk_shootout-results.json")
