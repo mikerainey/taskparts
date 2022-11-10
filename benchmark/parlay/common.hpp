@@ -13,14 +13,18 @@ bool force_sequential;
 
 template <typename B>
 auto benchmark_intermix(const B& b) {
-  auto m = taskparts::cmdline::parse_or_default_long("m", 2);
-  auto k = taskparts::cmdline::parse_or_default_long("k", 2);
-  for (size_t i = 0; i < k; i++) {
+  auto nb_repeat = taskparts::cmdline::parse_or_default_long("nb_repeat", 2);
+  auto nb_par = taskparts::cmdline::parse_or_default_long("nb_par", 1);
+  auto nb_seq = taskparts::cmdline::parse_or_default_long("nb_seq", 1);
+  printf("hi\n");
+  for (size_t i = 0; i < nb_repeat; i++) {
     taskparts::force_sequential = true;
-    for (size_t j = 0; j < m; j++) {
+    for (size_t j = 0; j < nb_seq; j++) {
       b();
     }
     taskparts::force_sequential = false;
-    b();
+    for (size_t j = 0; j < nb_par; j++) {
+      b();
+    }
   }
 }

@@ -14,10 +14,7 @@ import glob, argparse, psutil, pathlib, fnmatch
 #   - See if adaptive feedback helps or hurts w/ perf of elastic
 
 # LATERs:
-#   - experiment with varying:
-#      - TASKPARTS_ELASTIC_ALPHA, TASKPARTS_ELASTIC_BETA
-#      - TASKPARTS_NB_STEAL_ATTEMPTS
-#      - try stressing the schedulers w/ the challenge workload in mixed.hpp
+#   - try stressing the schedulers w/ the challenge workload in mixed.hpp
 #   - On start of from_scratch run, rebuild all benchmarks, unless specified otherwise
 #   - incremental snapshots of experiments and output of results to git
 #   - try the version of scalable elastic that uses the tree to sample for victim workers TASKPARTS_ELASTIC_TREE_VICTIM_SELECTION_BY_TREE
@@ -277,15 +274,42 @@ mk_high_parallelism = mk_cross_sequence(
 # Parallel-sequential-mix experiment
 # ----------------------------------
 
+mix_level_key = 'mix_level'
+
+mk_low_parallelism = mk_cross_sequence([
+    mk_parameter('nb_repeat', 2),
+    mk_parameter('nb_seq', 1),
+    mk_parameter('nb_par', 1),
+    mk_parameter('mix_level_key', 'low')
+])
+
+mk_med_parallelism = mk_cross_sequence([
+    mk_parameter('nb_repeat', 2),
+    mk_parameter('nb_seq', 1),
+    mk_parameter('nb_par', 4),
+    mk_parameter('mix_level_key', 'med')
+])
+
+mk_large_parallelism = mk_cross_sequence([
+    mk_parameter('nb_repeat', 2),
+    mk_parameter('nb_seq', 1),
+    mk_parameter('nb_par', 8),
+    mk_parameter('mix_level_key', 'large')
+])
+
+mk_low_med_large = mk_append_sequence([mk_low_parallelism,
+                                       mk_med_parallelism,
+                                       mk_large_parallelism])
+
 mk_parallel_sequential_mix = mk_cross_sequence(
     [ mk_parameter(experiment_key, 'parallel-sequential-mix'),
       mk_taskparts_basis,
       mk_parameters(benchmark_key, benchmarks),
-      mk_schedulers,
-      mk_parameter(taskparts_num_workers_key, args.num_workers),
       mk_parameter('force_sequential', 1),
-      mk_parameter('k', 3),
-      mk_parameter('m', 2) ])
+      mk_schedulers,
+      mk_low_med_large,
+      mk_parameter(taskparts_num_workers_key, args.num_workers),
+     ])
 
 # Multiprogrammed work-stealing experiment
 # ----------------------------------------
