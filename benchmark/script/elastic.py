@@ -288,14 +288,14 @@ mk_low_parallelism = mk_cross_sequence([
 mk_med_parallelism = mk_cross_sequence([
     mk_parameter('nb_repeat', 2),
     mk_parameter('nb_seq', 1),
-    mk_parameter('nb_par', 4),
+    mk_parameter('nb_par', 16),
     mk_parameter('mix_level_key', 'med')
 ])
 
 mk_large_parallelism = mk_cross_sequence([
     mk_parameter('nb_repeat', 2),
     mk_parameter('nb_seq', 1),
-    mk_parameter('nb_par', 8),
+    mk_parameter('nb_par', 32),
     mk_parameter('mix_level_key', 'large')
 ])
 
