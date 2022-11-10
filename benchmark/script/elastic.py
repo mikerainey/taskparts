@@ -42,6 +42,7 @@ experiment_key = 'experiment'
 experiments = [ 'high_parallelism',
                 'parallel_sequential_mix', 'graph',
                 'cilk_shootout',
+                'vary_elastic_params'
                 #'multiprogrammed',
                ]
 
@@ -106,10 +107,10 @@ parser.add_argument('-num_benchmark_repeat', type=int, required=False,
                     default = 1,
                     help = 'number of times to repeat each benchmark run (default 1)')
 parser.add_argument('-alpha', type=int, required=False,
-                    default = 2,
+                    default = [2], action='append',
                     help = 'elastic parameter')
 parser.add_argument('-beta', type=int, required=False,
-                    default = 128,
+                    default = [128], action='append',
                     help = 'elastic parameter')
 parser.add_argument('--verbose', dest ='verbose',
                     action ='store_true',
@@ -193,10 +194,10 @@ scheduler_values = [ 'nonelastic', 'multiprogrammed', 'elastic2',
                      'elastic', 'elastic2_spin', 'elastic_spin' ]
 
 alpha_key = 'TASKPARTS_ELASTIC_ALPHA'
-alpha_values = [ args.alpha ]
+alpha_values = args.alpha
 
 beta_key = 'TASKPARTS_ELASTIC_BETA'
-beta_values = [ args.beta ]
+beta_values = args.beta
 
 infiles_path_key = 'TASKPARTS_BENCHMARK_INFILE_PATH'
 
@@ -257,11 +258,12 @@ mk_sched_elastic2_spin = mk_cross_sequence(
       mk_parameter(elastic_key, 'surplus2'),
       mk_parameter(semaphore_key, 'spin') ])
 
+mk_sched_elastic_all = mk_append(mk_sched_elastic2, mk_sched_elastic2_spin if args.use_elastic_spin else mk_unit())
+
 # all schedulers
 mk_schedulers = mk_append_sequence(
     [ mk_sched_nonelastic,
-      mk_sched_elastic2,
-     ] + ([ mk_sched_elastic2_spin ] if args.use_elastic_spin else [ ]) )
+      mk_sched_elastic_all ])
 
 # High-parallelism experiment
 # ---------------------------
@@ -312,6 +314,17 @@ mk_parallel_sequential_mix = mk_cross_sequence(
       mk_low_med_large,
       mk_parameter(taskparts_num_workers_key, args.num_workers),
      ])
+
+# Vary elastic parameters experiment
+# ---------------------------
+
+mk_vary_elastic_params = mk_cross_sequence(
+    [ mk_parameter(experiment_key, 'vary_elastic_params'),
+      mk_taskparts_basis,
+      mk_parameters(benchmark_key, benchmarks),
+      mk_sched_elastic_all,
+      mk_parameter(taskparts_num_workers_key, args.num_workers) ])
+
 
 # Multiprogrammed work-stealing experiment
 # ----------------------------------------
@@ -370,6 +383,7 @@ mk_cilk_shootout = mk_cross_sequence(
 
 all_experiments = { 'high_parallelism': mk_high_parallelism,
                     'parallel_sequential_mix': mk_parallel_sequential_mix,
+                    'vary_elastic_params': mk_vary_elastic_params,
                     'multiprogrammed': mk_multiprogrammed, 
                     'graph': mk_graph,
                     'cilk_shootout': mk_cilk_shootout }
