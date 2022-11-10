@@ -162,7 +162,8 @@ binary_values = binary_extensions
 
 workstealing_key = 'workstealing'
 workstealing_values = [ 'elastic', 'multiprogrammed', 'cilk', 'abp',
-                        'ywra', 'cl' ]
+                        'ywra' #, 'cl'
+                       ]
 
 elastic_key = 'elastic'
 elastic_values = [ 'surplus2', 'surplus' ]
@@ -344,7 +345,7 @@ mk_graph = mk_cross(mk_append(mk_bfs, mk_pdfs),
 # Cilk/shootout experiment
 # ------------------------
 
-mk_cilk_shootout_schedulers = mk_parameters(workstealing_key, ['cl', 'abp', 'ywra', 'cilk'])
+mk_cilk_shootout_schedulers = mk_parameters(workstealing_key, ['abp', 'ywra', 'cilk']) # 'cl', 
 
 mk_cilk_shootout = mk_cross_sequence(
     [ mk_parameter(experiment_key, 'cilk_shootout'),
