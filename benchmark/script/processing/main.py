@@ -4,7 +4,7 @@ import ingest
 import pathlib
 import model
 from latex import *
-from model import Averaged, Machine, Experiments, Scheduler
+from model import Averaged, Machine, Experiments, Scheduler, BenchmarkClass, MixLevel
 from sqlalchemy import *
 import sqlalchemy.orm as orm
 
@@ -55,10 +55,10 @@ def ingest_json(engine):
     
     aws("json/experiments/" + latest_results_folder + "/high_parallelism-results.json")
     aws("json/experiments/" + latest_results_folder + "/low_parallelism-results.json")
-    aws("json/experiments/" + latest_results_folder + "/parallel_sequential_mix-results.json")
+    aws("json/experiments/results-2022-11-10-02-09-29/parallel_sequential_mix-results.json")
 
     # Cilk baseline
-    aws("json/experiments/results-2022-11-09-21-44-57/cilk_shootout-results.json")
+    aws("json/experiments/results-2022-11-10-03-47-55/cilk_shootout-results.json")
     #aws("json/experiments/" + latest_results_folder + "/multiprogrammed-results.json")
     
     # aws("json/experiments/results-2022-10-24-22-06-57/high_parallelism-results.json")
@@ -85,6 +85,9 @@ def three_way_compare(schedbase, sched1, sched2, table=Averaged) :
             # elastic.id.label("eid"),
             # elastic_spin.id.label("sid"),
             baseline.benchcls,
+            baseline.mix_level,
+            baseline.alpha, 
+            baseline.beta,
             baseline.benchmark,
             baseline.machine,
             baseline.numworkers,
@@ -100,14 +103,21 @@ def three_way_compare(schedbase, sched1, sched2, table=Averaged) :
             elastic_spin.usertime_avg.label("burn_elastic2"),
         )
         .select_from(baseline, elastic, elastic_spin)
+
+        # Aligning scheduler 1
         .where(baseline.benchcls == elastic.benchcls)
+        .where(baseline.mix_level == elastic.mix_level)
         .where(baseline.benchmark == elastic.benchmark)
         .where(baseline.machine == elastic.machine)
         .where(baseline.numworkers == elastic.numworkers)
+
+        # Aligning scheduler 2
         .where(baseline.benchcls == elastic_spin.benchcls)
+        .where(baseline.mix_level == elastic_spin.mix_level)
         .where(baseline.benchmark == elastic_spin.benchmark)
         .where(baseline.machine == elastic_spin.machine)
         .where(baseline.numworkers == elastic_spin.numworkers)
+
         # Scheduler choices
         .where(baseline.scheduler == schedbase)
         .where(elastic.scheduler == sched1)
@@ -129,6 +139,9 @@ def two_way_compare(schedbase, sched, table=Averaged) :
         select(
             # The following are all join conditions
             baseline.benchcls,
+            baseline.mix_level,
+            baseline.alpha, 
+            baseline.beta,
             baseline.machine,
             baseline.numworkers,
             baseline.scheduler,
@@ -153,6 +166,7 @@ def two_way_compare(schedbase, sched, table=Averaged) :
         )
         .select_from(baseline, elastic)
         .where(baseline.benchcls == elastic.benchcls)
+        .where(baseline.mix_level == elastic.mix_level)
         .where(baseline.benchmark == elastic.benchmark)
         .where(baseline.machine == elastic.machine)
         .where(baseline.numworkers == elastic.numworkers)
@@ -160,6 +174,7 @@ def two_way_compare(schedbase, sched, table=Averaged) :
         .where(baseline.scheduler == schedbase)
         .where(elastic.scheduler == sched)
         .order_by(baseline.benchcls.asc())
+        .order_by(baseline.mix_level.asc())
         .order_by(baseline.numworkers.asc())
         .order_by(baseline.machine)
         .order_by(baseline.benchmark)
@@ -204,16 +219,22 @@ def main_table_schema() :
                 print("Warning: Division-by-zero in ratio computation", file=stderr)
                 return float('nan')
 
+        if name == 'benchcls': 
+            benchcls = row.benchcls
+            if benchcls == BenchmarkClass.parallel_sequential_mix:
+                return str(row.mix_level)
+            else:
+                return str(row.benchcls)
         if name == "rt_pctdiff":
             return safe_div(row.rt_elastic - row.rt_baseline, row.rt_baseline)
-        elif name == "burn_pctdiff":
+        if name == "burn_pctdiff":
             return safe_div(row.burn_elastic - row.burn_baseline, row.burn_baseline)
-        elif name == "br_baseline":
+        if name == "br_baseline":
             return safe_div(row.burn_baseline, row.work_baseline)
-        elif name == "br_elastic":
+        if name == "br_elastic":
             return safe_div(row.burn_elastic, row.work_elastic)
-        else:
-            return row[name]
+
+        return row[name]
 
     return (TexTableSchema(header, overheader, columns), mapper)
 

@@ -56,6 +56,11 @@ class BenchmarkClass(enum.Enum):
         else:
             raise Exception('Unknown benchcls')
 
+@enum.unique
+class MixLevel(enum.Enum):
+    low = enum.auto()
+    med = enum.auto()
+    large = enum.auto()
 
 @enum.unique
 class Scheduler(enum.Enum):
@@ -81,6 +86,9 @@ class Experiments(Base):
     numworkers       = Column(Integer)
     benchmark        = Column(String)
     benchcls         = Column(Enum(BenchmarkClass))
+    mix_level        = Column(Enum(MixLevel))
+    alpha            = Column(Integer)
+    beta             = Column(Integer)
     bin              = Column(Enum(Binary)) # Renamed to avoid conflict with type
     chaselev         = Column(Enum(Chaselev))
     elastic          = Column(Enum(Elastic))
@@ -118,6 +126,9 @@ class Averaged(Base):
             c.machine,
             c.numworkers,
             c.benchcls,
+            c.mix_level,
+            c.alpha,
+            c.beta,
             c.benchmark,
             c.scheduler,
             c.semaphore,
