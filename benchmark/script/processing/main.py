@@ -51,7 +51,8 @@ def ingest_json(engine):
 
     #latest_results_folder = 'results-2022-11-05-15-30-37'
     #latest_results_folder = 'merged-results-2022-11-08-01-19-45'
-    latest_results_folder = 'merged-results-2022-11-10-09-10-51'
+    #latest_results_folder = 'merged-results-2022-11-10-09-10-51'
+    latest_results_folder = 'merged-results-2022-11-10-14-35-06'
     
     aws("json/experiments/" + latest_results_folder + "/high_parallelism-results.json")
     # aws("json/experiments/" + latest_results_folder + "/low_parallelism-results.json")
@@ -182,29 +183,27 @@ def two_way_compare(schedbase, sched, table=Averaged) :
 
 def main_table_schema() :
     overheader = [ColSkip(2), 
-        ColumnLegend(width=3, text=r"\textbf{Runtime (s)}"), ColumnLegend(width=3, text=r"\textbf{Burn (s)}"), 
-        ColumnLegend(width=2, text=r"\textbf{Work (s)}"), ColumnLegend(width=2, text=r"\textbf{Burn ratio}")]
+        ColumnLegend(width=2, text=r"\textbf{Runtime (s)}"), ColumnLegend(width=2, text=r"\textbf{Burn (s)}"), ColumnLegend(width=2, text=r"\textbf{Burn ratio}")]
     header     = [
         ColSkip(2), 
-        ColumnLegend("NE"), ColumnLegend("E"), ColumnLegend(r"$\Delta_T$"), 
-        ColumnLegend("NE"), ColumnLegend("E"), ColumnLegend(r"$\Delta_B$"), 
+        ColumnLegend("NE"), ColumnLegend(r"$\Delta_T$"), 
+        ColumnLegend("NE"), ColumnLegend(r"$\Delta_B$"), 
         ColumnLegend("NE"), ColumnLegend("E"),
-        ColumnLegend("NE"), ColumnLegend("E"), 
         ]
     columns = [
         TexColString("benchcls").setCommoning(),
         TexColString("benchmark").setAlign(Alignment.Left), 
         ColumnBar.Bar,
         TexColFloat("rt_baseline", ndigits=4),
-        TexColFloat("rt_elastic", ndigits=4),
+        #TexColFloat("rt_elastic", ndigits=4),
         TexColPercentage("rt_pctdiff", ndigits=1).setAlign(Alignment.Left),
         ColumnBar.Bar,
         TexColFloat("burn_baseline", ndigits=2),
-        TexColFloat("burn_elastic", ndigits=2),
+        #TexColFloat("burn_elastic", ndigits=2),
         TexColPercentage("burn_pctdiff", ndigits=2).setAlign(Alignment.Left),
-        ColumnBar.Bar,
-        TexColFloat("work_baseline", ndigits=2),
-        TexColFloat("work_elastic", ndigits=2),
+        #ColumnBar.Bar,
+        #TexColFloat("work_baseline", ndigits=2),
+        #TexColFloat("work_elastic", ndigits=2),
         ColumnBar.Bar,
         TexColMultiple("br_baseline", ndigits=2),
         TexColMultiple("br_elastic", ndigits=2),
@@ -237,6 +236,100 @@ def main_table_schema() :
         return row[name]
 
     return (TexTableSchema(header, overheader, columns), mapper)
+
+def multiprogrammed_schema() :
+    overheader = [ColSkip(3), ColumnLegend(width=3, text=r"\textbf{wall clock}"), ColumnLegend(width=3, text=r"\textbf{burn}")]
+    header     = [
+        ColumnLegend("class"), 
+        # ColumnLegend("scheduler"), 
+        ColumnLegend("\\#procs"), 
+        ColumnLegend("benchmark"), 
+        ColumnLegend("non-elastic"), ColumnLegend("elastic"), ColumnLegend("multiprog"), 
+        ColumnLegend("non-elastic"), ColumnLegend("elastic"), ColumnLegend("multiprog")]
+    columns = [
+        TexColEnum("benchcls").setCommoning(),
+        TexColInteger("numworkers").setCommoning(), 
+        TexColString("benchmark").setAlign(Alignment.Left), 
+        # TexColString("scheduler"),
+        ColumnBar.Bar,
+        TexColFloat("rt_baseline", ndigits=2),
+        TexColFloat("rt_elastic", ndigits=2),
+        TexColFloat("rt_elastic2", ndigits=2),
+        ColumnBar.Bar,
+        TexColFloat("burn_baseline", ndigits=2),
+        TexColFloat("burn_elastic", ndigits=2),
+        TexColFloat("burn_elastic2", ndigits=2),
+    ]
+    
+    def mapper(row, name):
+        # if name == "benchset":
+        if name == "scheduler":
+            if row.elastic is None:
+                return "simpl"
+            else:
+                return row.elastic.name
+        else: 
+            return row[name]
+
+    return (TexTableSchema(header, overheader, columns), mapper)
+
+# def main_table_schema() :
+#     overheader = [ColSkip(2), 
+#         ColumnLegend(width=3, text=r"\textbf{Runtime (s)}"), ColumnLegend(width=3, text=r"\textbf{Burn (s)}"), 
+#         ColumnLegend(width=2, text=r"\textbf{Work (s)}"), ColumnLegend(width=2, text=r"\textbf{Burn ratio}")]
+#     header     = [
+#         ColSkip(2), 
+#         ColumnLegend("NE"), ColumnLegend("E"), ColumnLegend(r"$\Delta_T$"), 
+#         ColumnLegend("NE"), ColumnLegend("E"), ColumnLegend(r"$\Delta_B$"), 
+#         ColumnLegend("NE"), ColumnLegend("E"),
+#         ColumnLegend("NE"), ColumnLegend("E"), 
+#         ]
+#     columns = [
+#         TexColString("benchcls").setCommoning(),
+#         TexColString("benchmark").setAlign(Alignment.Left), 
+#         ColumnBar.Bar,
+#         TexColFloat("rt_baseline", ndigits=4),
+#         TexColFloat("rt_elastic", ndigits=4),
+#         TexColPercentage("rt_pctdiff", ndigits=1).setAlign(Alignment.Left),
+#         ColumnBar.Bar,
+#         TexColFloat("burn_baseline", ndigits=2),
+#         TexColFloat("burn_elastic", ndigits=2),
+#         TexColPercentage("burn_pctdiff", ndigits=2).setAlign(Alignment.Left),
+#         ColumnBar.Bar,
+#         TexColFloat("work_baseline", ndigits=2),
+#         TexColFloat("work_elastic", ndigits=2),
+#         ColumnBar.Bar,
+#         TexColMultiple("br_baseline", ndigits=2),
+#         TexColMultiple("br_elastic", ndigits=2),
+#     ]
+    
+#     # We compute the derived columns here
+#     def mapper(row, name):
+#         def safe_div(x, y):
+#             try:
+#                 return x / y 
+#             except ZeroDivisionError:
+#                 print("Warning: Division-by-zero in ratio computation", file=stderr)
+#                 return float('nan')
+
+#         if name == 'benchcls': 
+#             benchcls = row.benchcls
+#             if benchcls == BenchmarkClass.parallel_sequential_mix:
+#                 return str(row.mix_level)
+#             else:
+#                 return str(row.benchcls)
+#         if name == "rt_pctdiff":
+#             return safe_div(row.rt_elastic - row.rt_baseline, row.rt_baseline)
+#         if name == "burn_pctdiff":
+#             return safe_div(row.burn_elastic - row.burn_baseline, row.burn_baseline)
+#         if name == "br_baseline":
+#             return safe_div(row.burn_baseline, row.work_baseline)
+#         if name == "br_elastic":
+#             return safe_div(row.burn_elastic, row.work_elastic)
+
+#         return row[name]
+
+#     return (TexTableSchema(header, overheader, columns), mapper)
 
 def multiprogrammed_schema() :
     overheader = [ColSkip(3), ColumnLegend(width=3, text=r"\textbf{wall clock}"), ColumnLegend(width=3, text=r"\textbf{burn}")]
@@ -382,21 +475,21 @@ def main():
         rslt = session.execute(query).all()
         with open(maintbl_tex, 'w') as fout:
             schema, mapper = main_table_schema()
-            print(doc_frame(generate_table(schema, rslt, mapper)), file=fout)
+            print(generate_table(schema, rslt, mapper), file=fout)
 
         # Appendix table
         query = three_way_compare(Scheduler.nonelastic, Scheduler.elastic2, Scheduler.elastic2_spin)
         rslt = session.execute(query).all()
         with open(appendix_tex, 'w') as fout:
             schema, mapper = appendix_table_schema()
-            print(doc_frame(generate_table(schema, rslt, mapper)), file=fout)
+            print(generate_table(schema, rslt, mapper), file=fout)
 
         # CILK comparision
         query = three_way_compare(Scheduler.cilk, Scheduler.ne_abp, Scheduler.ne_ywra)
         rslt = session.execute(query).all()
         with open(cilk_tex, 'w') as fout:
             schema, mapper = cilk_table_schema()
-            print(doc_frame(generate_table(schema, rslt, mapper)), file=fout)
+            print(generate_table(schema, rslt, mapper), file=fout)
 
         print(f'Done. Tex results written to "{maintbl_tex}" and "{appendix_tex}", "{cilk_tex}" respectively')
 
