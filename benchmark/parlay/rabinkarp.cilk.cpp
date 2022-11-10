@@ -24,15 +24,16 @@ auto gen_input() {
   force_sequential = taskparts::cmdline::parse_or_default_bool("force_sequential", false);
   parlay::override_granularity = taskparts::cmdline::parse_or_default_long("override_granularity", 0);
   include_infile_load = taskparts::cmdline::parse_or_default_bool("include_infile_load", false);
+  int n = std::max((size_t)1, (size_t)taskparts::cmdline::parse_or_default_long("n", 40));
   auto input = taskparts::cmdline::parse_or_default_string("input", "chr22.dna");
   auto infile = infile_path + "/" + input;
   str = parlay::chars_from_file(infile.c_str());
   auto input_search = taskparts::cmdline::parse_or_default_string("search", "foo");
   search_str = parlay::to_chars(input_search.c_str());
   auto str2 = str;
-  str.append(str2);
-  str.append(str2);
-  str.append(str2);
+  for (int i = 0; i < n; i++) {  
+    str.append(str2);
+  }
   str2.clear();
 }
 

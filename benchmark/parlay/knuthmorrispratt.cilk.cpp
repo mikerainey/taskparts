@@ -14,13 +14,26 @@ parlay::chars str;
 parlay::chars search_str;
 parlay::sequence<long> locations;
 
+
 auto gen_input() {
+  std::string infile_path = "";
+  if (const auto env_p = std::getenv("TASKPARTS_BENCHMARK_INFILE_PATH")) {
+    infile_path = std::string(env_p);
+  }
   force_sequential = taskparts::cmdline::parse_or_default_bool("force_sequential", false);
   parlay::override_granularity = taskparts::cmdline::parse_or_default_long("override_granularity", 0);
   include_infile_load = taskparts::cmdline::parse_or_default_bool("include_infile_load", false);
-  auto input = taskparts::cmdline::parse_or_default_string("input", "rmat");
-  str = parlay::chars_from_file(input.c_str());
-  search_str = parlay::to_chars(taskparts::cmdline::parse_or_default_string("search_str", "foo").c_str());
+  int n = std::max((size_t)1, (size_t)taskparts::cmdline::parse_or_default_long("n", 40));
+  auto input = taskparts::cmdline::parse_or_default_string("input", "chr22.dna");
+  auto infile = infile_path + "/" + input;
+  str = parlay::chars_from_file(infile.c_str());
+  auto input_search = taskparts::cmdline::parse_or_default_string("search", "foo");
+  search_str = parlay::to_chars(input_search.c_str());
+  auto str2 = str;
+  for (int i = 0; i < n; i++) {  
+    str.append(str2);
+  }
+  str2.clear();
 }
 
 auto benchmark_dflt() {
