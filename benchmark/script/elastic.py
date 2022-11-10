@@ -105,6 +105,12 @@ parser.add_argument('-skip_benchmark', action='append',
 parser.add_argument('-num_benchmark_repeat', type=int, required=False,
                     default = 1,
                     help = 'number of times to repeat each benchmark run (default 1)')
+parser.add_argument('-alpha', type=int, required=False,
+                    default = 2,
+                    help = 'elastic parameter')
+parser.add_argument('-beta', type=int, required=False,
+                    default = 128,
+                    help = 'elastic parameter')
 parser.add_argument('--verbose', dest ='verbose',
                     action ='store_true',
                     help ='verbose mode')
@@ -182,10 +188,10 @@ scheduler_values = [ 'nonelastic', 'multiprogrammed', 'elastic2',
                      'elastic', 'elastic2_spin', 'elastic_spin' ]
 
 alpha_key = 'TASKPARTS_ELASTIC_ALPHA'
-alpha_values = [ 2 ]
+alpha_values = [ args.alpha ]
 
 beta_key = 'TASKPARTS_ELASTIC_BETA'
-beta_values = [ 128 ]
+beta_values = [ args.beta ]
 
 infiles_path_key = 'TASKPARTS_BENCHMARK_INFILE_PATH'
 
