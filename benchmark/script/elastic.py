@@ -95,6 +95,9 @@ parser.add_argument('-experiment', action='append',
 parser.add_argument('--few_benchmarks', dest ='few_benchmarks',
                     action ='store_true',
                     help = ('run only benchmarks ' + str(few_benchmarks)))
+parser.add_argument('--use_elastic_spin', dest ='use_elastic_spin',
+                    action ='store_true',
+                    help = ('run only benchmarks ' + str(few_benchmarks)))
 parser.add_argument('-only_benchmark', action='append',
                     help = 'specifies a benchmark to run')
 parser.add_argument('-skip_benchmark', action='append',
@@ -233,11 +236,6 @@ mk_sched_elastic2 = mk_cross_sequence(
     [ mk_parameter(scheduler_key, 'elastic2'),
       mk_elastic_shared,      
       mk_parameter(elastic_key, 'surplus2') ])
-# - elastic multi-level tree scheduler
-mk_sched_elastic = mk_cross_sequence(
-    [ mk_parameter(scheduler_key, 'elastic'),
-      mk_elastic_shared,
-      mk_parameter(elastic_key, 'surplus') ] )
 # - versions of the two schedulers above, in which the semaphore is
 # replaced by our own version that blocks by spinning instead of via
 # the OS/semaphore mechanism
@@ -246,20 +244,12 @@ mk_sched_elastic2_spin = mk_cross_sequence(
       mk_elastic_shared,
       mk_parameter(elastic_key, 'surplus2'),
       mk_parameter(semaphore_key, 'spin') ])
-mk_sched_elastic_spin = mk_cross_sequence(
-    [ mk_parameter(scheduler_key, 'elastic_spin'),
-      mk_elastic_shared,
-      mk_parameter(elastic_key, 'surplus'),
-      mk_parameter(semaphore_key, 'spin')  ] )
 
 # all schedulers
 mk_schedulers = mk_append_sequence(
     [ mk_sched_nonelastic,
       mk_sched_elastic2,
-      mk_sched_elastic2_spin,
-#      mk_sched_elastic,
-#      mk_sched_elastic_spin
-     ])
+     ] + ([ mk_sched_elastic2_spin ] if args.use_elastic_spin else [ ]) )
 
 # High-parallelism experiment
 # ---------------------------
