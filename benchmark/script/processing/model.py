@@ -46,13 +46,13 @@ class BenchmarkClass(enum.Enum):
 
     def __str__(self) -> str:
         if self.name == "high_parallelism":
-            return "high"
+            return "High"
         elif self.name == "low_parallelism":
-            return "low"
+            return "Low"
         elif self.name == "parallel_sequential_mix":
-            return "mixed"
+            return "Mixed"
         elif self.name == "multiprogrammed":
-            return "multiprogrammed"
+            return "Multiprogrammed"
         else:
             raise Exception('Unknown benchcls')
 
@@ -61,6 +61,17 @@ class MixLevel(enum.Enum):
     low = enum.auto()
     med = enum.auto()
     large = enum.auto()
+
+    def __str__(self) -> str:
+        if self.name == 'low':
+            return "Mixed - Low"
+        if self.name == 'med':
+            return "Mixed - Med"
+        if self.name == 'large':
+            return "Mixed - High"
+        else:
+            raise Exception("Unknown mix level")
+
 
 @enum.unique
 class Scheduler(enum.Enum):

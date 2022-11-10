@@ -54,7 +54,7 @@ def ingest_json(engine):
     latest_results_folder = 'merged-results-2022-11-10-09-10-51'
     
     aws("json/experiments/" + latest_results_folder + "/high_parallelism-results.json")
-    aws("json/experiments/" + latest_results_folder + "/low_parallelism-results.json")
+    # aws("json/experiments/" + latest_results_folder + "/low_parallelism-results.json")
     aws("json/experiments/results-2022-11-10-02-09-29/parallel_sequential_mix-results.json")
 
     # Cilk baseline
@@ -106,14 +106,14 @@ def three_way_compare(schedbase, sched1, sched2, table=Averaged) :
 
         # Aligning scheduler 1
         .where(baseline.benchcls == elastic.benchcls)
-        .where(baseline.mix_level == elastic.mix_level)
+        .where(or_(baseline.mix_level == elastic.mix_level, and_(baseline.mix_level == None, elastic.mix_level == None)))
         .where(baseline.benchmark == elastic.benchmark)
         .where(baseline.machine == elastic.machine)
         .where(baseline.numworkers == elastic.numworkers)
 
         # Aligning scheduler 2
         .where(baseline.benchcls == elastic_spin.benchcls)
-        .where(baseline.mix_level == elastic_spin.mix_level)
+        .where(or_(baseline.mix_level == elastic_spin.mix_level, and_(baseline.mix_level == None, elastic_spin.mix_level == None)))
         .where(baseline.benchmark == elastic_spin.benchmark)
         .where(baseline.machine == elastic_spin.machine)
         .where(baseline.numworkers == elastic_spin.numworkers)
@@ -166,7 +166,7 @@ def two_way_compare(schedbase, sched, table=Averaged) :
         )
         .select_from(baseline, elastic)
         .where(baseline.benchcls == elastic.benchcls)
-        .where(baseline.mix_level == elastic.mix_level)
+        .where(or_(baseline.mix_level == elastic.mix_level, and_(baseline.mix_level == None, elastic.mix_level == None)))
         .where(baseline.benchmark == elastic.benchmark)
         .where(baseline.machine == elastic.machine)
         .where(baseline.numworkers == elastic.numworkers)
@@ -377,21 +377,23 @@ def main():
     cilk_tex = 'tex/cilk.tex'
 
     with sqlalchemy.orm.Session(engine) as session:
-
         # Main table
-        rslt = session.execute(two_way_compare(Scheduler.nonelastic, Scheduler.elastic2)).all()
+        query = two_way_compare(Scheduler.nonelastic, Scheduler.elastic2)
+        rslt = session.execute(query).all()
         with open(maintbl_tex, 'w') as fout:
             schema, mapper = main_table_schema()
             print(doc_frame(generate_table(schema, rslt, mapper)), file=fout)
 
         # Appendix table
-        rslt = session.execute(three_way_compare(Scheduler.nonelastic, Scheduler.elastic2, Scheduler.elastic2_spin)).all()
+        query = three_way_compare(Scheduler.nonelastic, Scheduler.elastic2, Scheduler.elastic2_spin)
+        rslt = session.execute(query).all()
         with open(appendix_tex, 'w') as fout:
             schema, mapper = appendix_table_schema()
             print(doc_frame(generate_table(schema, rslt, mapper)), file=fout)
 
         # CILK comparision
-        rslt = session.execute(three_way_compare(Scheduler.cilk, Scheduler.ne_abp, Scheduler.ne_ywra)).all()
+        query = three_way_compare(Scheduler.cilk, Scheduler.ne_abp, Scheduler.ne_ywra)
+        rslt = session.execute(query).all()
         with open(cilk_tex, 'w') as fout:
             schema, mapper = cilk_table_schema()
             print(doc_frame(generate_table(schema, rslt, mapper)), file=fout)
