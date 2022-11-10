@@ -276,27 +276,27 @@ mk_high_parallelism = mk_cross_sequence(
 # Parallel-sequential-mix experiment
 # ----------------------------------
 
-mix_level_key = 'mix_level'
+mix_level_key = 'mix_level_key'
 
 mk_low_parallelism = mk_cross_sequence([
     mk_parameter('nb_repeat', 2),
     mk_parameter('nb_seq', 1),
     mk_parameter('nb_par', 1),
-    mk_parameter('mix_level_key', 'low')
+    mk_parameter(mix_level_key, 'low')
 ])
 
 mk_med_parallelism = mk_cross_sequence([
     mk_parameter('nb_repeat', 2),
     mk_parameter('nb_seq', 1),
     mk_parameter('nb_par', 16),
-    mk_parameter('mix_level_key', 'med')
+    mk_parameter(mix_level_key, 'med')
 ])
 
 mk_large_parallelism = mk_cross_sequence([
     mk_parameter('nb_repeat', 2),
     mk_parameter('nb_seq', 1),
     mk_parameter('nb_par', 32),
-    mk_parameter('mix_level_key', 'large')
+    mk_parameter(mix_level_key, 'large')
 ])
 
 mk_low_med_large = mk_append_sequence([mk_low_parallelism,
@@ -649,6 +649,22 @@ for (e, mk) in experiments_to_run.items():
 export_results_to_git(local_results_path)
 
 export_results_to_git(output_merged_results())
+
+def merge_k1v1_with_values_of_k2_in_results(k1, k2, results):
+    rows = rows_of(results)
+    rows_out = []
+    for row in rows:
+        rd = row_to_dictionary(row)
+        if k1 in rd and k2 in rd:
+            assert k1 in rd
+            rd[k1] = str(rd[k1] + '-' + rd[k2])
+        row2 = dictionary_to_row(rd)
+        rows_out = row2 + rows_out
+    return {'value': rows_out}
+
+# graph_results = read_json_from_file_path('results-2022-11-10-13-20-43/graph-results.json')
+# graph_results2 = merge_k1v1_with_values_of_k2_in_results('experiment', 'input', graph_results)
+# write_json_to_file_path(graph_results2, file_path = 'merged-results.json')
 
 def process_results_file():
     if args.load_results_file == [] or args.load_results_file == None:
