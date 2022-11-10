@@ -16,7 +16,7 @@ auto gen_input2() {
   auto input = taskparts::cmdline::parse_or_default_string("input", "orkut");
   if (input != "gen-rmat") {
     auto infile = infile_path + "/" + input + ".adj";
-    G = utils::read_graph_from_file_pbbs(infile.c_str());
+    G = utils::symmetrize(utils::read_graph_from_file_pbbs(infile.c_str()))bel;
     n = G.size();
   } else {
     G = utils::rmat_symmetric_graph(n, 20*n);
