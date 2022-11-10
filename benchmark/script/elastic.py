@@ -181,7 +181,7 @@ alpha_key = 'TASKPARTS_ELASTIC_ALPHA'
 alpha_values = [ 2 ]
 
 beta_key = 'TASKPARTS_ELASTIC_BETA'
-beta_values = [ 2 ]
+beta_values = [ 128 ]
 
 infiles_path_key = 'TASKPARTS_BENCHMARK_INFILE_PATH'
 
