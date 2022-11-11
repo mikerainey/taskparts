@@ -310,7 +310,7 @@ public:
         assert(false);
       }
     }
-    auto f = [&] {
+    auto g = [&] {
       while (true) {
         auto s = status.load();
         if (s == local_run_state) {
@@ -345,7 +345,7 @@ public:
         }
       }
     };
-    auto fb = new nativefj_from_lambda<decltype(f),Scheduler>(f, Scheduler());
+    auto fb = new nativefj_from_lambda<decltype(g),Scheduler>(g, Scheduler());
     fb->release();
     return fiber_status_pause;
   }
