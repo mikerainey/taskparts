@@ -4,7 +4,7 @@ import ingest
 import pathlib
 import model
 from latex import *
-from model import Averaged, Machine, Experiments, Scheduler, BenchmarkClass, MixLevel
+from model import Averaged, Machine, Experiments, Scheduler, BenchmarkClass
 from sqlalchemy import *
 import sqlalchemy.orm as orm
 
@@ -54,12 +54,14 @@ def ingest_json(engine):
     #latest_results_folder = 'merged-results-2022-11-10-09-10-51'
     latest_results_folder = 'merged-results-2022-11-10-14-35-06'
     
-    aws("json/experiments/" + latest_results_folder + "/high_parallelism-results.json")
+    aws("json/experiments/results-2022-11-10-22-27-23/high_parallelism-results.json")
+    # aws("json/experiments/" + latest_results_folder + "/high_parallelism-results.json")
     # aws("json/experiments/" + latest_results_folder + "/low_parallelism-results.json")
     aws("json/experiments/results-2022-11-10-02-09-29/parallel_sequential_mix-results.json")
 
     # Cilk baseline
     aws("json/experiments/results-2022-11-10-03-47-55/cilk_shootout-results.json")
+    # aws("json/experiments/results-2022-11-09-22-32-47/cilk_shootout-results.json")
     #aws("json/experiments/" + latest_results_folder + "/multiprogrammed-results.json")
     
     # aws("json/experiments/results-2022-10-24-22-06-57/high_parallelism-results.json")
@@ -176,6 +178,59 @@ def two_way_compare(schedbase, sched, table=Averaged) :
         .where(elastic.scheduler == sched)
         .order_by(baseline.benchcls.asc())
         .order_by(baseline.mix_level.asc())
+        .order_by(baseline.numworkers.asc())
+        .order_by(baseline.machine)
+        .order_by(baseline.benchmark)
+    )
+
+# This executes two-way compare
+def two_way_compare_cls(schedbase, sched, cls, table=Experiments) :
+    baseline = orm.aliased(table, name="baseline")
+    elastic  = orm.aliased(table, name="elastic")
+
+    # Labels are picked such that the mapper for the textabel maps 
+    # the column to a texcolumn with identical name
+    return (
+        select(
+            # The following are all join conditions
+            baseline.benchcls,
+            baseline.machine,
+            baseline.numworkers,
+            baseline.scheduler,
+            baseline.elastic.label("elastic"),
+            baseline.benchmark,
+
+            # runtime comparisons
+            baseline.exectime.label("rt_baseline"),
+            elastic.exectime.label("rt_elastic"),
+            # ((elastic.exectime_avg - baseline.exectime_avg) / baseline.exectime_avg).label("rt_pctdiff"),
+
+            # burn comparisons
+            baseline.usertime.label("burn_baseline"),
+            elastic.usertime.label("burn_elastic"),
+            # ((elastic.usertime_avg - baseline.usertime_avg) / baseline.exectime_avg).label("burn_pctdiff"),
+
+            # burn ratios
+            (baseline.total_work_time).label("work_baseline"),
+            (elastic.total_work_time).label("work_elastic"),
+            # (baseline.usertime_avg / baseline.total_work_time_avg).label("br_baseline"),
+            # (elastic.usertime_avg / elastic.total_work_time_avg).label("br_elastic"),
+
+            elastic.nb_fibers, 
+            elastic.nb_steals, 
+            elastic.nb_sleeps, 
+            elastic.nb_surplus_transitions,
+        )
+        .select_from(baseline, elastic)
+        .where(baseline.benchcls == cls)
+        .where(elastic.benchcls == cls)
+        .where(baseline.benchmark == elastic.benchmark)
+        .where(baseline.machine == elastic.machine)
+        .where(baseline.numworkers == elastic.numworkers)
+        # Scheduler choices
+        .where(baseline.scheduler == schedbase)
+        .where(elastic.scheduler == sched)
+        .order_by(baseline.benchcls.asc())
         .order_by(baseline.numworkers.asc())
         .order_by(baseline.machine)
         .order_by(baseline.benchmark)
@@ -326,10 +381,72 @@ def multiprogrammed_schema() :
 #             return safe_div(row.burn_baseline, row.work_baseline)
 #         if name == "br_elastic":
 #             return safe_div(row.burn_elastic, row.work_elastic)
-
+#
 #         return row[name]
-
+#
 #     return (TexTableSchema(header, overheader, columns), mapper)
+
+def highpar_table_schema() :
+    overheader = [ColSkip(1), 
+        ColumnLegend(width=3, text=r"\textbf{Runtime (s)}"), 
+        ColumnLegend(width=3, text=r"\textbf{Burn (s)}"), 
+        ColumnLegend(width=2, text=r"\textbf{Work (s)}"), 
+        ColumnLegend(width=2, text=r"\textbf{Burn ratio}"),
+        ColumnLegend(width=2, text=r"\textbf{Event count}")]
+    header     = [
+        ColSkip(1), 
+        ColumnLegend("NE"), ColumnLegend("E"), ColumnLegend(r"$\Delta_T$"), 
+        ColumnLegend("NE"), ColumnLegend("E"), ColumnLegend(r"$\Delta_B$"), 
+        ColumnLegend("NE"), ColumnLegend("E"),
+        ColumnLegend("NE"), ColumnLegend("E"), 
+        ColumnLegend("ST"), ColumnLegend("TR"), 
+        ]
+    columns = [
+        # TexColString("benchcls").setCommoning(),
+        TexColString("benchmark").setAlign(Alignment.Left), 
+        ColumnBar.Bar,
+        TexColFloat("rt_baseline", ndigits=4),
+        TexColFloat("rt_elastic", ndigits=4),
+        TexColPercentage("rt_pctdiff", ndigits=1).setAlign(Alignment.Left),
+        ColumnBar.Bar,
+        TexColFloat("burn_baseline", ndigits=2),
+        TexColFloat("burn_elastic", ndigits=2),
+        TexColPercentage("burn_pctdiff", ndigits=2).setAlign(Alignment.Left),
+        ColumnBar.Bar,
+        TexColFloat("work_baseline", ndigits=2),
+        TexColFloat("work_elastic", ndigits=2),
+        ColumnBar.Bar,
+        TexColMultiple("br_baseline", ndigits=2),
+        TexColMultiple("br_elastic", ndigits=2),
+        ColumnBar.Bar,
+        TexColInteger("nb_steals"),
+        TexColMultiple("nb_tr", ndigits=2),
+        # TexColInteger("nb_surplus_transitions"),
+    ]
+    
+    # We compute the derived columns here
+    def mapper(row, name):
+        def safe_div(x, y):
+            try:
+                return x / y 
+            except ZeroDivisionError:
+                print("Warning: Division-by-zero in ratio computation", file=stderr)
+                return float('nan')
+
+        if name == "rt_pctdiff":
+            return safe_div(row.rt_elastic - row.rt_baseline, row.rt_baseline)
+        elif name == "burn_pctdiff":
+            return safe_div(row.burn_elastic - row.burn_baseline, row.burn_baseline)
+        elif name == "br_baseline":
+            return safe_div(row.burn_baseline, row.work_baseline)
+        elif name == "br_elastic":
+            return safe_div(row.burn_elastic, row.work_elastic)
+        elif name == "nb_tr":
+            return safe_div(row.nb_surplus_transitions, row.nb_steals)
+        else:
+            return row[name]
+
+    return (TexTableSchema(header, overheader, columns), mapper)
 
 def multiprogrammed_schema() :
     overheader = [ColSkip(3), ColumnLegend(width=3, text=r"\textbf{wall clock}"), ColumnLegend(width=3, text=r"\textbf{burn}")]
@@ -362,44 +479,6 @@ def multiprogrammed_schema() :
                 return "simpl"
             else:
                 return row.elastic.name
-        else: 
-            return row[name]
-
-    return (TexTableSchema(header, overheader, columns), mapper)
-
-def test_table_schema() :
-    overheader = [ColSkip(2), ColumnLegend(width=2, text=r"\textbf{wall clock}"), ColumnLegend(width=2, text=r"\textbf{burn}")]
-    header     = [
-#        ColumnLegend("\\#procs123"), 
-#        ColumnLegend("scheduler"), 
-        ColumnLegend(""), 
-        ColumnLegend("benchmark"), 
-        ColumnLegend("non-elastic"), ColumnLegend("elastic"), 
-        ColumnLegend("non-elastic"), ColumnLegend("elastic")]
-    columns = [
-#        TexColInteger("numworkers").setCommoning(), 
-#        TexColString("scheduler").setCommoning(),
-        TexColEnum("benchcls").setCommoning(),
-        # TexColString("machine").setCommoning(), 
-        TexColString("benchmark").setAlign(Alignment.Left), 
-        ColumnBar.Bar,
-        TexColFloat("rt_baseline", ndigits=2),
-        TexColFloat("rt_pctdiff", ndigits=2),
-#        TexColFloat("rt_elastic", ndigits=2),
-#        TexColFloat("rt_elastic2", ndigits=2),
-        ColumnBar.Bar,
-        TexColFloat("burn_baseline", ndigits=2),
-        TexColFloat("burn_elastic", ndigits=2),
-#        TexColFloat("burn_elastic2", ndigits=2),
-    ]
-
-    def mapper(row, name):
-        # if name == "benchset":
-        if name == "scheduler":
-            if row.elastic is None:
-                return "simpl"
-            else:
-                return row.elastic
         else: 
             return row[name]
 
@@ -466,13 +545,23 @@ def main():
 
     maintbl_tex = 'tex/maintbl.tex'
     multiprog_tex = 'tex/multiprog.tex'
+    highpar_tex = 'tex/highpar.tex'
     appendix_tex = 'tex/appendix.tex'
     cilk_tex = 'tex/cilk.tex'
 
     with sqlalchemy.orm.Session(engine) as session:
+        # High parallelism table
+        query = two_way_compare_cls(Scheduler.nonelastic, Scheduler.elastic2, cls=BenchmarkClass.high_parallelism)
+        rslt = session.execute(query).all()
+        with open(highpar_tex, 'w') as fout:
+            schema, mapper = highpar_table_schema()
+            print(doc_frame(generate_table(schema, rslt, mapper)), file=fout)
+
         # Main table
         query = two_way_compare(Scheduler.nonelastic, Scheduler.elastic2)
         rslt = session.execute(query).all()
+        # filter out the high parallelism results
+        rslt = [row for row in rslt if row.benchcls != BenchmarkClass.high_parallelism]
         with open(maintbl_tex, 'w') as fout:
             schema, mapper = main_table_schema()
             print(generate_table(schema, rslt, mapper), file=fout)
@@ -480,6 +569,8 @@ def main():
         # Appendix table
         query = three_way_compare(Scheduler.nonelastic, Scheduler.elastic2, Scheduler.elastic2_spin)
         rslt = session.execute(query).all()
+        # filter out the high parallelism results
+        rslt = [row for row in rslt if row.benchcls != BenchmarkClass.high_parallelism]
         with open(appendix_tex, 'w') as fout:
             schema, mapper = appendix_table_schema()
             print(generate_table(schema, rslt, mapper), file=fout)

@@ -72,6 +72,8 @@ class Ingester:
                         exectime=kv['exectime'],
                         nb_fibers=case_opt('nb_fibers'),
                         nb_steals=case_opt('nb_steals'),
+                        nb_sleeps=case_opt('nb_sleeps'),
+                        nb_surplus_transitions=case_opt('nb_surplus_transitions'),
                         nivcsw=kv['nivcsw'],
                         nsignals=kv['nsignals'],
                         nvcsw=kv['nvcsw'],

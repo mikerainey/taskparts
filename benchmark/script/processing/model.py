@@ -107,6 +107,8 @@ class Experiments(Base):
     maxrss           = Column(Integer)
     nb_steals        = Column(Integer)
     nb_fibers        = Column(Integer)
+    nb_surplus_transitions  = Column(Integer)
+    nb_sleeps        = Column(Integer)
     nivcsw           = Column(Integer)
     nsignals         = Column(Integer)
     nvcsw            = Column(Integer)
