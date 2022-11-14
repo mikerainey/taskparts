@@ -22,10 +22,6 @@ public:
   alignas(TASKPARTS_CACHE_LINE_SZB)
   fiber* outedge;
 
-#if defined(TASKPARTS_ELASTIC_SURPLUS) || defined(TASKPARTS_ELASTIC_TREE)
-  int64_t epoch;
-#endif
-
   auto schedule() {
     Scheduler::schedule(this);
   }
