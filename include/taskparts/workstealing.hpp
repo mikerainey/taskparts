@@ -8,7 +8,6 @@
 #include "fixedcapacity.hpp"
 #include "scheduler.hpp"
 #include "hash.hpp"
-
 #if defined(TASKPARTS_USE_CHASELEV_DEQUE)
 #include "chaselev.hpp"
 namespace taskparts {
@@ -83,7 +82,6 @@ public:
     auto f = r.first;
     if (r.second == deque_surplus_down) {
       elastic_type::decr_surplus(target_id);
-      //aprintf("stole %p from %lu\n",f,target_id);
     }
     return f;
   }
