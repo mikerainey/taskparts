@@ -108,8 +108,7 @@ auto benchmark_nativeforkjoin(const Benchmark& benchmark,
   fiber<Scheduler>::add_edge(&f_body, f_term);
   f_body.release();
   f_term->release();
-  using cl = work_stealing_scheduler<Scheduler, fiber,
-					       Bench_stats, Bench_logging, Bench_worker, Bench_interrupt>;
+  using cl = work_stealing<Scheduler, fiber, Bench_stats, Bench_logging, Bench_worker, Bench_interrupt>;
   cl::launch();
 #else
   // serial run

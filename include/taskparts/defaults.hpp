@@ -102,7 +102,7 @@ auto launch(const F& f) {
   fiber<scheduler_type>::add_edge(&f_body, f_term);
   f_body.release();
   f_term->release();
-  using cl = work_stealing_scheduler<scheduler_type, fiber>;
+  using cl = work_stealing<scheduler_type, fiber>;
   cl::launch();
   teardown_machine();
 }

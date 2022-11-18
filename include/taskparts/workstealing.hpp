@@ -50,7 +50,7 @@ template <typename Scheduler,
           typename Stats=minimal_stats, typename Logging=minimal_logging,
           typename Worker=minimal_worker,
           typename Interrupt=minimal_interrupt>
-class work_stealing_scheduler {
+class work_stealing {
 public:
 
   using fiber_type = Fiber<Scheduler>;
@@ -317,16 +317,16 @@ template <typename Scheduler,
           typename Stats, typename Logging,
           typename Worker,
           typename Interrupt>
-perworker::array<typename work_stealing_scheduler<Scheduler,Fiber,Stats,Logging,Worker,Interrupt>::buffer_type> 
-work_stealing_scheduler<Scheduler,Fiber,Stats,Logging,Worker,Interrupt>::buffers;
+perworker::array<typename work_stealing<Scheduler,Fiber,Stats,Logging,Worker,Interrupt>::buffer_type> 
+work_stealing<Scheduler,Fiber,Stats,Logging,Worker,Interrupt>::buffers;
 
 template <typename Scheduler,
           template <typename> typename Fiber,
           typename Stats, typename Logging,
           typename Worker,
           typename Interrupt>
-perworker::array<typename work_stealing_scheduler<Scheduler,Fiber,Stats,Logging,Worker,Interrupt>::deque_type>
-work_stealing_scheduler<Scheduler,Fiber,Stats,Logging,Worker,Interrupt>::deques;
+perworker::array<typename work_stealing<Scheduler,Fiber,Stats,Logging,Worker,Interrupt>::deque_type>
+work_stealing<Scheduler,Fiber,Stats,Logging,Worker,Interrupt>::deques;
 
 template <typename Scheduler,
           template <typename> typename Fiber,
@@ -334,7 +334,7 @@ template <typename Scheduler,
           typename Worker,
           typename Interrupt>
 Fiber<Scheduler>* take() {
-  return work_stealing_scheduler<Scheduler,Fiber,Stats,Logging,Worker,Interrupt>::take();  
+  return work_stealing<Scheduler,Fiber,Stats,Logging,Worker,Interrupt>::take();  
 }
 
 template <typename Scheduler,
@@ -343,7 +343,7 @@ template <typename Scheduler,
           typename Worker,
           typename Interrupt>
 void schedule(Fiber<Scheduler>* f) {
-  work_stealing_scheduler<Scheduler,Fiber,Stats,Logging,Worker,Interrupt>::schedule(f);  
+  work_stealing<Scheduler,Fiber,Stats,Logging,Worker,Interrupt>::schedule(f);  
 }
 
 template <typename Scheduler,
@@ -352,7 +352,7 @@ template <typename Scheduler,
           typename Worker,
           typename Interrupt>
 void commit() {
-  work_stealing_scheduler<Scheduler,Fiber,Stats,Logging,Worker,Interrupt>::commit();
+  work_stealing<Scheduler,Fiber,Stats,Logging,Worker,Interrupt>::commit();
 }
   
 } // end namespace
