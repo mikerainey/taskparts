@@ -18,17 +18,15 @@ template <typename Benchmark,
 	  typename Benchmark_reset=decltype(dflt_benchmark_reset),
 	  typename Bench_stats=bench_stats,
 	  typename Bench_logging=bench_logging,
-	  template <typename, typename> typename Bench_elastic=bench_elastic,
 	  typename Bench_worker=bench_worker,
 	  typename Bench_interrupt=bench_interrupt,
-	  typename Scheduler=minimal_scheduler<Bench_stats, Bench_logging, Bench_elastic, Bench_worker, Bench_interrupt>>
+	  typename Scheduler=minimal_scheduler<Bench_stats, Bench_logging, Bench_worker, Bench_interrupt>>
 auto benchmark_nativeforkjoin(const Benchmark& benchmark,
 			      Benchmark_setup benchmark_setup=dflt_benchmark_setup,
 			      Benchmark_teardown benchmark_teardown=dflt_benchmark_teardown,
 			      Benchmark_reset benchmark_reset=dflt_benchmark_reset,
 			      Bench_stats stats=Bench_stats(),
 			      Bench_logging logging=Bench_logging(),
-			      Bench_elastic<Bench_stats, Bench_logging> elastic=Bench_elastic<Bench_stats, Bench_logging>(),
 			      Bench_worker worker=Bench_worker(),
 			      Bench_interrupt interrupt=Bench_interrupt(),
 			      Scheduler sched=Scheduler()) {
@@ -111,8 +109,7 @@ auto benchmark_nativeforkjoin(const Benchmark& benchmark,
   f_body.release();
   f_term->release();
   using cl = work_stealing_scheduler<Scheduler, fiber,
-					       Bench_stats, Bench_logging,
-					       Bench_elastic, Bench_worker, Bench_interrupt>;
+					       Bench_stats, Bench_logging, Bench_worker, Bench_interrupt>;
   cl::launch();
 #else
   // serial run

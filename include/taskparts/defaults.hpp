@@ -49,7 +49,7 @@ public:
     nb_fibers,
     nb_steals,
 #if defined(TASKPARTS_ELASTIC_SURPLUS)
-    nb_sleeps, nb_surplus_transitions, // for elastic work stealing
+    nb_sleeps, nb_surplus_transitions,
 #endif
     nb_counters
   };
@@ -74,14 +74,6 @@ using bench_logging = logging_base<true>;
 using bench_logging = logging_base<false>;
 #endif
 
-#if defined(TASKPARTS_ELASTIC_SURPLUS)
-template <typename Stats, typename Logging>
-using bench_elastic = elastic_surplus<Stats, Logging>;
-#else
-template <typename Stats, typename Logging>
-using bench_elastic = minimal_elastic<Stats, Logging>;
-#endif
-
 #ifdef TASKPARTS_TPALRTS
 using bench_worker = tpalrts_worker;
 using bench_interrupt = tpalrts_interrupt;
@@ -90,7 +82,7 @@ using bench_worker = minimal_worker;
 using bench_interrupt = minimal_interrupt;
 #endif
 
-using bench_scheduler = minimal_scheduler<bench_stats, bench_logging, bench_elastic,
+using bench_scheduler = minimal_scheduler<bench_stats, bench_logging, 
 					  bench_worker, bench_interrupt>;
 
 auto dflt_benchmark_setup = [] (bench_scheduler) { };

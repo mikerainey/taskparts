@@ -27,6 +27,18 @@ template <typename Fiber>
 using deque = abp<Fiber>;
 }
 #endif
+#include "elastic.hpp"
+#if defined(TASKPARTS_ELASTIC_SURPLUS)
+namespace taskparts {
+template <typename Stats, typename Logging>
+using Elastic = elastic_surplus<Stats, Logging>;
+}
+#else
+namespace taskparts {
+template <typename Stats, typename Logging>
+using Elastic = minimal_elastic<Stats, Logging>;
+}
+#endif
 
 namespace taskparts {
   
@@ -36,7 +48,6 @@ namespace taskparts {
 template <typename Scheduler,
           template <typename> typename Fiber=minimal_fiber,
           typename Stats=minimal_stats, typename Logging=minimal_logging,
-          template <typename, typename> typename Elastic=minimal_elastic,
           typename Worker=minimal_worker,
           typename Interrupt=minimal_interrupt>
 class work_stealing_scheduler {
@@ -304,49 +315,44 @@ public:
 template <typename Scheduler,
           template <typename> typename Fiber,
           typename Stats, typename Logging,
-          template <typename, typename> typename Elastic,
           typename Worker,
           typename Interrupt>
-perworker::array<typename work_stealing_scheduler<Scheduler,Fiber,Stats,Logging,Elastic,Worker,Interrupt>::buffer_type> 
-work_stealing_scheduler<Scheduler,Fiber,Stats,Logging,Elastic,Worker,Interrupt>::buffers;
+perworker::array<typename work_stealing_scheduler<Scheduler,Fiber,Stats,Logging,Worker,Interrupt>::buffer_type> 
+work_stealing_scheduler<Scheduler,Fiber,Stats,Logging,Worker,Interrupt>::buffers;
 
 template <typename Scheduler,
           template <typename> typename Fiber,
           typename Stats, typename Logging,
-          template <typename, typename> typename Elastic,
           typename Worker,
           typename Interrupt>
-perworker::array<typename work_stealing_scheduler<Scheduler,Fiber,Stats,Logging,Elastic,Worker,Interrupt>::deque_type>
-work_stealing_scheduler<Scheduler,Fiber,Stats,Logging,Elastic,Worker,Interrupt>::deques;
+perworker::array<typename work_stealing_scheduler<Scheduler,Fiber,Stats,Logging,Worker,Interrupt>::deque_type>
+work_stealing_scheduler<Scheduler,Fiber,Stats,Logging,Worker,Interrupt>::deques;
 
 template <typename Scheduler,
           template <typename> typename Fiber,
           typename Stats, typename Logging,
-          template <typename, typename> typename Elastic,
           typename Worker,
           typename Interrupt>
 Fiber<Scheduler>* take() {
-  return work_stealing_scheduler<Scheduler,Fiber,Stats,Logging,Elastic,Worker,Interrupt>::take();  
+  return work_stealing_scheduler<Scheduler,Fiber,Stats,Logging,Worker,Interrupt>::take();  
 }
 
 template <typename Scheduler,
           template <typename> typename Fiber,
           typename Stats, typename Logging,
-          template <typename, typename> typename Elastic,
           typename Worker,
           typename Interrupt>
 void schedule(Fiber<Scheduler>* f) {
-  work_stealing_scheduler<Scheduler,Fiber,Stats,Logging,Elastic,Worker,Interrupt>::schedule(f);  
+  work_stealing_scheduler<Scheduler,Fiber,Stats,Logging,Worker,Interrupt>::schedule(f);  
 }
 
 template <typename Scheduler,
           template <typename> typename Fiber,
           typename Stats, typename Logging,
-          template <typename, typename> typename Elastic,
           typename Worker,
           typename Interrupt>
 void commit() {
-  work_stealing_scheduler<Scheduler,Fiber,Stats,Logging,Elastic,Worker,Interrupt>::commit();
+  work_stealing_scheduler<Scheduler,Fiber,Stats,Logging,Worker,Interrupt>::commit();
 }
   
 } // end namespace

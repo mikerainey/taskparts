@@ -27,6 +27,9 @@ public:
     using counter_id_type = enum counter_id_enum {
       nb_fibers,
       nb_steals,
+#if defined(TASKPARTS_ELASTIC_SURPLUS)
+      nb_sleeps, nb_surplus_transitions,
+#endif
       nb_counters
     };
     
@@ -61,6 +64,12 @@ public:
 
   static inline
   auto on_exit_acquire() { }
+
+  static inline
+  auto on_enter_sleep() { }
+
+  static inline
+  auto on_exit_sleep() { }
 
   static inline
   auto increment(configuration_type::counter_id_type id) { }
@@ -271,7 +280,6 @@ public:
 template <typename Scheduler,
           template <typename> typename Fiber,
           typename Stats, typename Logging,
-          template <typename, typename> typename Elastic,
           typename Worker,
           typename Interrupt>
 void schedule(Fiber<Scheduler>* f);
@@ -279,7 +287,6 @@ void schedule(Fiber<Scheduler>* f);
 template <typename Scheduler,
 	  template <typename> typename Fiber,
 	  typename Stats, typename Logging,
-	  template <typename, typename> typename Elastic,
 	  typename Worker,
 	  typename Interrupt>
 Fiber<Scheduler>* take();
@@ -287,13 +294,11 @@ Fiber<Scheduler>* take();
 template <typename Scheduler,
 	  template <typename> typename Fiber,
 	  typename Stats, typename Logging,
-	  template <typename, typename> typename Elastic,
 	  typename Worker,
 	  typename Interrupt>
 void commit();
 
 template <typename Stats=minimal_stats, typename Logging=minimal_logging,
-	  template <typename, typename> typename Elastic=minimal_elastic,
 	  typename Worker=minimal_worker,
 	  typename Interrupt=minimal_interrupt>
 class minimal_scheduler {
@@ -302,19 +307,19 @@ public:
   template <template <typename> typename Fiber>
   static
   void schedule(Fiber<minimal_scheduler>* f) {
-    taskparts::schedule<minimal_scheduler, Fiber, Stats, Logging, Elastic, Worker, Interrupt>(f);
+    taskparts::schedule<minimal_scheduler, Fiber, Stats, Logging, Worker, Interrupt>(f);
   }
 
   template <template <typename> typename Fiber>
   static
   Fiber<minimal_scheduler>* take() {
-    return taskparts::take<minimal_scheduler, Fiber, Stats, Logging, Elastic, Worker, Interrupt>();
+    return taskparts::take<minimal_scheduler, Fiber, Stats, Logging, Worker, Interrupt>();
   }
 
   template <template <typename> typename Fiber>
   static
   void commit(Fiber<minimal_scheduler>*) {
-    taskparts::commit<minimal_scheduler, Fiber, Stats, Logging, Elastic, Worker, Interrupt>();
+    taskparts::commit<minimal_scheduler, Fiber, Stats, Logging, Worker, Interrupt>();
   }
 
   static inline
