@@ -230,7 +230,7 @@ public:
       i = _i;
       delta = _delta;
       if (i == path_index_of_leaf()) {
-	break;
+        break;
       }
     }
     return result;
@@ -244,7 +244,7 @@ public:
     while (g.needs_sentinel()) {
       auto id = next_random_number() % perworker::nb_workers();
       if (try_resume(id)) {
-	break;
+        break;
       }
       g = root_node()->gamma.load();
     }
@@ -313,7 +313,7 @@ public:
     auto n = leaf_node(my_id);
     auto g = n->gamma.load();
     n->gamma.store(delta1.apply(g));
-    if (update_path(delta1, paths[my_id]).needs_sentinel(), my_id) {
+    if (update_path(delta1, paths[my_id], my_id).needs_sentinel()) {
       try_resume(my_id);
     }
     { // start suspending the caller
