@@ -27,7 +27,7 @@ public:
     using counter_id_type = enum counter_id_enum {
       nb_fibers,
       nb_steals,
-#if defined(TASKPARTS_ELASTIC_SURPLUS)
+#if defined(TASKPARTS_ELASTIC_SURPLUS) || defined(TASKPARTS_ELASTIC_TREE)
       nb_sleeps, nb_surplus_transitions,
 #endif
       nb_counters

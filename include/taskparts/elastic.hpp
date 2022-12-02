@@ -125,7 +125,7 @@ public:
       auto orig = v;
       auto next = update(orig);
       if (cell.compare_exchange_strong(orig, next)) {
-	return next;
+        return next;
       }
     }
   }
@@ -279,11 +279,11 @@ public:
     auto m = alpha;
     while ((m > 0) || g.needs_sentinel()) {
       if (g.suspended == 0) {
-	break;
+        break;
       }
       auto id = next_random_number() % perworker::nb_workers();
       if (try_resume(id)) {
-	m--;
+        m--;
       }
       g = root_node()->gamma.load();
     }
@@ -446,6 +446,27 @@ public:
   }
   
 };
+
+template <typename Stats, typename Logging, typename Semaphore, size_t max_lg_P>
+int elastic<Stats, Logging, Semaphore, max_lg_P>::alpha;
+
+template <typename Stats, typename Logging, typename Semaphore, size_t max_lg_P>
+int elastic<Stats, Logging, Semaphore, max_lg_P>::beta;
+
+template <typename Stats, typename Logging, typename Semaphore, size_t max_lg_P>
+cache_aligned_fixed_capacity_array<typename elastic<Stats, Logging, Semaphore, max_lg_P>::node_type, 1 << max_lg_P> elastic<Stats, Logging, Semaphore, max_lg_P>::nodes_array;
+
+template <typename Stats, typename Logging, typename Semaphore, size_t max_lg_P>
+perworker::array<std::vector<typename elastic<Stats, Logging, Semaphore, max_lg_P>::node_type*>> elastic<Stats, Logging, Semaphore, max_lg_P>::paths;
+
+template <typename Stats, typename Logging, typename Semaphore, size_t max_lg_P>
+perworker::array<Semaphore> elastic<Stats, Logging, Semaphore, max_lg_P>::semaphores;
+
+template <typename Stats, typename Logging, typename Semaphore, size_t max_lg_P>
+perworker::array<uint64_t> elastic<Stats, Logging, Semaphore, max_lg_P>::rng;
+
+template <typename Stats, typename Logging, typename Semaphore, size_t max_lg_P>
+int elastic<Stats, Logging, Semaphore, max_lg_P>::lg_P;
 
 /*---------------------------------------------------------------------*/
 /* Elastic work stealing (driven by surplus) */
@@ -695,7 +716,7 @@ public:
   }
 
   static
-  auto try_to_sleep(size_t) {
+  auto try_suspend(size_t) {
     auto my_id = perworker::my_id();
     auto flip = [&] () -> bool {
       auto n = next_rng(my_id);

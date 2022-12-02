@@ -198,7 +198,7 @@ public:
           return scheduler_status_active;
         }
         if (current == nullptr) {
-          elastic_type::try_to_sleep(target);
+          elastic_type::try_suspend(target);
         }
       }
       assert(current != nullptr);
