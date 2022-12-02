@@ -40,6 +40,10 @@ template <typename Stats, typename Logging, typename Semaphore=dflt_semaphore,
 class elastic {
 public:
 
+  // for now...
+  static constexpr 
+  bool override_rand_worker = false;
+  
   using gamma_type = struct gamma_struct {
     int32_t surplus = 0;
     int16_t stealing = 0;
@@ -67,7 +71,8 @@ public:
     auto empty() -> bool {
       return (surplus == 0) && (stealing == 0) && (suspended == 0);
     }
-    auto apply(gamma_type g) -> gamma_type {
+    //    auto apply(gamma_type g) -> gamma_type {
+    gamma_type apply(gamma_type g) const {
       g.surplus += surplus;
       g.stealing += stealing;
       g.suspended += suspended;
@@ -169,19 +174,19 @@ public:
         while (true) {
           d_o = n->delta.load();
           delta_type d_n;
-          d_n.l = node_locked;
-          if (d_o.l == node_unlocked) { // no delegation
+          d_n.lock = node_locked;
+          if (d_o.lock == node_unlocked) { // no delegation
             if (n->delta.compare_exchange_strong(d_o, d_n)) {
               apply_delta(n, d);
               break;
             }
           } else { // delegation
-            assert(d_o.l == node_locked);
+            assert(d_o.lock == node_locked);
             d_n = d_o + d;
             if (n->delta.compare_exchange_strong(d_o, d_n)) {
               // delegate the update of d_n to the worker holding the lock on d_o
               assert(j >= 1);
-              assert(d_n.l == node_locked);
+              assert(d_n.lock == node_locked);
               return j;
             }
           }
@@ -199,14 +204,14 @@ public:
         delta_type d_o;
         while (true) {
           d_o = n->delta.load();
-          assert(d_o.l == node_locked);
+          assert(d_o.lock == node_locked);
           if (d_o.empty()) { // no delegation to handle
-            d_n.l = node_unlocked;
+            d_n.lock = node_unlocked;
             if (n->delta.compare_exchange_strong(d_o, d_n)) {
               break;
             }
           } else { // handle delegation
-            d_n.l = node_locked;
+            d_n.lock = node_locked;
             if (n->delta.compare_exchange_strong(d_o, d_n)) {
               apply_delta(n, d_o);
               return std::make_pair(j - 1, d_o);
@@ -328,14 +333,14 @@ public:
   auto try_resume(size_t worker_id = perworker::my_id()) -> bool {
     auto n = leaf_node(worker_id);
     auto g = n->gamma.load();
-    if (g.sleeping == 0) {
+    if (g.suspended == 0) {
       return false;
     }
     auto orig = g;
     auto next = orig;
-    next.sleeping = 0;
+    next.suspended = 0;
     next.stealing = 1;
-    if (! g->gamma.compare_exchange_strong(orig, next)) {
+    if (! n->gamma.compare_exchange_strong(orig, next)) {
       return false;
     }
     semaphores[worker_id].post();
@@ -436,7 +441,7 @@ public:
       auto nd = tree_index_of_leaf_node_at(i);
       paths[i] = mk_path(nd);
       assert(paths[i].size() == path_size());
-      paths[i][path_size() - 1]->id = i;
+      paths[i][path_size() - 1]->worker_id = i;
     }
   }
   

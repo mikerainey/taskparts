@@ -33,6 +33,11 @@ namespace taskparts {
 template <typename Stats, typename Logging>
 using Elastic = elastic_surplus<Stats, Logging>;
 }
+#elif defined(TASKPARTS_ELASTIC_TREE)
+namespace taskparts {
+template <typename Stats, typename Logging>
+using Elastic = elastic<Stats, Logging>;
+}
 #else
 namespace taskparts {
 template <typename Stats, typename Logging>
