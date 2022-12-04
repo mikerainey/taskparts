@@ -71,7 +71,6 @@ public:
     auto empty() -> bool {
       return (surplus == 0) && (stealing == 0) && (suspended == 0);
     }
-    //    auto apply(gamma_type g) -> gamma_type {
     gamma_type apply(gamma_type g) const {
       g.surplus += surplus;
       g.stealing += stealing;

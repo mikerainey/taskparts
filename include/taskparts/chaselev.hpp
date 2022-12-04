@@ -128,7 +128,7 @@ public:
       circular_array* a = array.load(std::memory_order_relaxed);
       x = a->get(t);
       if (!top.compare_exchange_strong(t, t + 1, std::memory_order_seq_cst, std::memory_order_relaxed)) {
-	return std::make_pair(nullptr, deque_surplus_unknown);
+        return std::make_pair(nullptr, deque_surplus_unknown);
       }
     }
     return std::make_pair(x, deque_surplus_unknown);
