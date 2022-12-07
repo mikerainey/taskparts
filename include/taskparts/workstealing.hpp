@@ -4,7 +4,6 @@
 #include <memory>
 #include <assert.h>
 
-#include "perworker.hpp"
 #include "fixedcapacity.hpp"
 #include "scheduler.hpp"
 #include "hash.hpp"
@@ -159,24 +158,13 @@ public:
     if (const auto env_p = std::getenv("TASKPARTS_NB_STEAL_ATTEMPTS")) {
       nb_steal_attempts = std::stoi(env_p);
     }
-    perworker::array<size_t> nb_steal_attempts_so_far(0);
 
-    auto random_other_worker = [&] (size_t nb_workers, size_t my_id) -> size_t {
-      assert(nb_workers != 1);
-      auto& nb_sa = nb_steal_attempts_so_far[my_id];
-      size_t id;
+    auto random_victim = [&] (size_t my_id) -> size_t {
       if constexpr (elastic_type::override_rand_worker) {
-        id = elastic_type::random_other_worker(nb_sa, nb_workers, my_id);
+        return elastic_type::random_other_worker(my_id);
       } else {
-        id = (size_t)((hash(my_id) + hash(nb_sa)) % (nb_workers - 1));
-        if (id >= my_id) {
-          id++;
-        }
-        nb_sa++;
+	return random_other_worker(my_id);
       }
-      assert(id != my_id);
-      assert(id >= 0 && id < nb_workers);
-      return id;
     };
 
     auto acquire = [&] {
@@ -193,7 +181,7 @@ public:
       while (current == nullptr) {
         assert(nb_steal_attempts >= 1);
         auto i = nb_steal_attempts;
-        auto target = random_other_worker(nb_workers, my_id);
+        auto target = random_victim(my_id);
         do {
           termination_barrier.set_active(true);
           current = steal(target);
@@ -205,7 +193,7 @@ public:
             break;
           }
           i--;
-          target = random_other_worker(nb_workers, my_id);
+          target = random_victim(my_id);
         } while (i > 0);
         if (termination_barrier.is_terminated()) {
           assert(current == nullptr);

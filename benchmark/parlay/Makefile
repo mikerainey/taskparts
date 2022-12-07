@@ -102,52 +102,52 @@ INCLUDE_PREFIX_ELASTIC_SURPLUS_SPIN=$(INCLUDE_PREFIX_ELASTIC_SURPLUS) -DTASKPART
 
 INCLUDE_PREFIX_ELASTIC_TREE=$(TASKPARTS_ELASTIC_INCLUDE_PREFIX) -DTASKPARTS_ELASTIC_TREE
 
-%.surplus.elastic.opt: %.cpp $(INCLUDE_FILES) install_folder
+%.elastic.opt: %.cpp $(INCLUDE_FILES) install_folder
 	$(CXX) $(OPT_PREFIX) $(INCLUDE_PREFIX_ELASTIC_TREE) -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
-%.surplus.elastic.sta: %.cpp $(INCLUDE_FILES) install_folder
+%.elastic.sta: %.cpp $(INCLUDE_FILES) install_folder
 	$(CXX) $(STA_PREFIX) $(INCLUDE_PREFIX_ELASTIC_TREE) -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
-%.surplus.elastic.log: %.cpp $(INCLUDE_FILES) install_folder
+%.elastic.log: %.cpp $(INCLUDE_FILES) install_folder
 	$(CXX) $(LOG_PREFIX) $(INCLUDE_PREFIX_ELASTIC_TREE) -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
-%.surplus.elastic.dbg: %.cpp $(INCLUDE_FILES) install_folder
+%.elastic.dbg: %.cpp $(INCLUDE_FILES) install_folder
 	$(CXX) $(DBG_PREFIX) $(INCLUDE_PREFIX_ELASTIC_TREE) -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
 
 ### Tree (using spinning semaphores)
 
 INCLUDE_PREFIX_ELASTIC_TREE_SPIN=$(INCLUDE_PREFIX_ELASTIC_TREE) -DTASKPARTS_USE_SPINNING_SEMAPHORE
 
-%.spin.surplus.elastic.opt: %.cpp $(INCLUDE_FILES) install_folder
+%.spin.elastic.opt: %.cpp $(INCLUDE_FILES) install_folder
 	$(CXX) $(OPT_PREFIX) $(INCLUDE_PREFIX_ELASTIC_TREE_SPIN) -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
-%.spin.surplus.elastic.sta: %.cpp $(INCLUDE_FILES) install_folder
+%.spin.elastic.sta: %.cpp $(INCLUDE_FILES) install_folder
 	$(CXX) $(STA_PREFIX) $(INCLUDE_PREFIX_ELASTIC_TREE_SPIN) -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
-%.spin.surplus.elastic.log: %.cpp $(INCLUDE_FILES) install_folder
+%.spin.elastic.log: %.cpp $(INCLUDE_FILES) install_folder
 	$(CXX) $(LOG_PREFIX) $(INCLUDE_PREFIX_ELASTIC_TREE_SPIN) -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
-%.spin.surplus.elastic.dbg: %.cpp $(INCLUDE_FILES) install_folder
+%.spin.elastic.dbg: %.cpp $(INCLUDE_FILES) install_folder
 	$(CXX) $(DBG_PREFIX) $(INCLUDE_PREFIX_ELASTIC_TREE_SPIN) -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
 
-### Surplus (using native semaphores)
+### S3 (using native semaphores)
 
 INCLUDE_PREFIX_ELASTIC_SURPLUS=$(TASKPARTS_ELASTIC_INCLUDE_PREFIX) -DTASKPARTS_ELASTIC_S3
 
-%.surplus_s3.elastic.opt: %.cpp $(INCLUDE_FILES) install_folder
+%.s3.elastic.opt: %.cpp $(INCLUDE_FILES) install_folder
 	$(CXX) $(OPT_PREFIX) $(INCLUDE_PREFIX_ELASTIC_SURPLUS) -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
-%.surplus_s3.elastic.sta: %.cpp $(INCLUDE_FILES) install_folder
+%.s3.elastic.sta: %.cpp $(INCLUDE_FILES) install_folder
 	$(CXX) $(STA_PREFIX) $(INCLUDE_PREFIX_ELASTIC_SURPLUS) -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
-%.surplus_s3.elastic.log: %.cpp $(INCLUDE_FILES) install_folder
+%.s3.elastic.log: %.cpp $(INCLUDE_FILES) install_folder
 	$(CXX) $(LOG_PREFIX) $(INCLUDE_PREFIX_ELASTIC_SURPLUS) -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
-%.surplus_s3.elastic.dbg: %.cpp $(INCLUDE_FILES) install_folder
+%.s3.elastic.dbg: %.cpp $(INCLUDE_FILES) install_folder
 	$(CXX) $(DBG_PREFIX) $(INCLUDE_PREFIX_ELASTIC_SURPLUS) -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
 
-### Surplus (using spinning semaphores)
+### S3 (using spinning semaphores)
 
 INCLUDE_PREFIX_ELASTIC_SURPLUS_SPIN=$(INCLUDE_PREFIX_ELASTIC_SURPLUS) -DTASKPARTS_USE_SPINNING_SEMAPHORE
 
-%.spin.surplus_s3.elastic.opt: %.cpp $(INCLUDE_FILES) install_folder
+%.spin.s3.elastic.opt: %.cpp $(INCLUDE_FILES) install_folder
 	$(CXX) $(OPT_PREFIX) $(INCLUDE_PREFIX_ELASTIC_SURPLUS_SPIN) -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
-%.spin.surplus_s3.elastic.sta: %.cpp $(INCLUDE_FILES) install_folder
+%.spin.s3.elastic.sta: %.cpp $(INCLUDE_FILES) install_folder
 	$(CXX) $(STA_PREFIX) $(INCLUDE_PREFIX_ELASTIC_SURPLUS_SPIN) -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
-%.spin.surplus_s3.elastic.log: %.cpp $(INCLUDE_FILES) install_folder
+%.spin.s3.elastic.log: %.cpp $(INCLUDE_FILES) install_folder
 	$(CXX) $(LOG_PREFIX) $(INCLUDE_PREFIX_ELASTIC_SURPLUS_SPIN) -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
-%.spin.surplus_s3.elastic.dbg: %.cpp $(INCLUDE_FILES) install_folder
+%.spin.s3.elastic.dbg: %.cpp $(INCLUDE_FILES) install_folder
 	$(CXX) $(DBG_PREFIX) $(INCLUDE_PREFIX_ELASTIC_SURPLUS_SPIN) -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
 
 
