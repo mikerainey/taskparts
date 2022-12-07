@@ -8,6 +8,13 @@
 #include "fixedcapacity.hpp"
 #include "scheduler.hpp"
 #include "hash.hpp"
+// Configuration of deque data structure (assuming non-elastic
+// work stealing).
+#ifndef TASKPARTS_ELASTIC_WORKSTEALING
+namespace taskparts {
+template <typename Stats, typename Logging>
+using Elastic = minimal_elastic<Stats, Logging>;
+}
 #if defined(TASKPARTS_USE_CHASELEV_DEQUE)
 #include "chaselev.hpp"
 namespace taskparts {
@@ -27,6 +34,14 @@ template <typename Fiber>
 using deque = abp<Fiber>;
 }
 #endif
+#else
+// Configuration of deque data structure and the elastic
+// work-stealing policy.
+#include "ywra.hpp" // <- the only deque structure compatible w/ elastic
+namespace taskparts {
+template <typename Fiber>
+using deque = ywra<Fiber>;
+}
 #include "elastic.hpp"
 #if defined(TASKPARTS_ELASTIC_SURPLUS)
 namespace taskparts {
@@ -38,11 +53,14 @@ namespace taskparts {
 template <typename Stats, typename Logging>
 using Elastic = elastic<Stats, Logging>;
 }
-#else
+#elif defined(TASKPARTS_ELASTIC_S3)
 namespace taskparts {
 template <typename Stats, typename Logging>
-using Elastic = minimal_elastic<Stats, Logging>;
+using Elastic = elastic_s3<Stats, Logging>;
 }
+#else
+#error "Need to declare one of the elastic policies."
+#endif
 #endif
 
 namespace taskparts {

@@ -26,14 +26,14 @@ auto snzi_increment(Snzi_Node& node) {
       auto next = x;
       next.c++;
       next.v++;
-      succ = compare_exchange_with_backoff(X, orig, next);
+      succ = X.compare_exchange_strong(orig, next);
     }
     if (x.c == 0) {
       auto orig = x;
       auto next = x;
       next.c = snzi_one_half;
       next.v++;
-      if (compare_exchange_with_backoff(X, orig, next)) {
+      if (X.compare_exchange_strong(orig, next)) {
         succ = true;
         x.c = snzi_one_half;
         x.v++;
@@ -46,7 +46,7 @@ auto snzi_increment(Snzi_Node& node) {
       auto orig = x;
       auto next = x;
       next.c = 1;
-      if (! compare_exchange_with_backoff(X, orig, next)) {
+      if (! X.compare_exchange_strong(orig, next)) {
         undo_arr++;
       }
     }
@@ -70,7 +70,7 @@ auto snzi_decrement(Snzi_Node& node) -> bool {
     auto orig = x;
     auto next = x;
     next.c--;
-    if (compare_exchange_with_backoff(X, orig, next)) {
+    if (X.compare_exchange_strong(orig, next)) {
       bool s = (x.c == 1);
       if (Snzi_Node::is_root_node(parent)) {
         return s;

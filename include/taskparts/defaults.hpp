@@ -48,7 +48,7 @@ public:
   using counter_id_type = enum counter_id_enum {
     nb_fibers,
     nb_steals,
-#if defined(TASKPARTS_ELASTIC_SURPLUS) || defined(TASKPARTS_ELASTIC_TREE)
+#ifdef TASKPARTS_ELASTIC_WORKSTEALING
     nb_sleeps, nb_surplus_transitions,
 #endif
     nb_counters
@@ -57,7 +57,7 @@ public:
   static
   auto name_of_counter(counter_id_type id) -> const char* {
     const char* names [] = { "nb_fibers", "nb_steals",
-#if defined(TASKPARTS_ELASTIC_SURPLUS) || defined(TASKPARTS_ELASTIC_TREE)
+#ifdef TASKPARTS_ELASTIC_WORKSTEALING
 			     "nb_sleeps", "nb_surplus_transitions"
 #endif
     };

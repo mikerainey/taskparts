@@ -6,22 +6,34 @@
 
 namespace taskparts {
 
-/*---------------------------------------------------------------------*/
-/* Atomic compare-and-exchange which handles failure by having the
-   caller spin wait for 4k cycles. */
-
-// TODO: remove the code below and replace it with one of the backoff
-// protocols proposed in Naama Ben-David's dissertation (see elastic.hpp)
-  
-template <class T>
-auto compare_exchange_with_backoff(std::atomic<T>& cell, T& expected, T desired) -> bool {
-  static constexpr
-  int backoff_nb_cycles = 1l << 12;
-  if (cell.compare_exchange_strong(expected, desired)) {
-    return true;
+template <typename T, typename Update>
+static
+auto update_atomic(std::atomic<T>& c, const Update& u,
+                   size_t my_id = perworker::my_id()) -> T {
+#ifndef TASKPARTS_ELASTIC_OVERRIDE_ADAPTIVE_BACKOFF
+  while (true) {
+    auto v = c.load();
+    auto orig = v;
+    auto next = u(orig);
+    if (c.compare_exchange_strong(orig, next)) {
+      return next;
+    }
   }
-  cycles::spin_for(backoff_nb_cycles);
-  return false;
+#else
+  // We mitigate contention on the atomic cell by using Adaptive
+  // Feedback (as proposed in Ben-David's dissertation)
+  uint64_t max_delay = 1;
+  while (true) {
+    auto v = c.load();
+    auto orig = v;
+    auto next = u(orig);
+    if (c.compare_exchange_strong(orig, next)) {
+      return next;
+    }
+    max_delay *= 2;
+    cycles::spin_for(hash(my_id + max_delay) % max_delay);
+  }
+#endif
 }
 
 /*---------------------------------------------------------------------*/

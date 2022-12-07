@@ -59,7 +59,7 @@ public:
         auto c2 = (float)t / (float)n;
         state_type ls2;
         ls2.f = {.c = c2, .nmax = (int)n};
-        done = compare_exchange_with_backoff(s, _ls.u, ls2.u);
+        done = s.compare_exchange_strong(_ls.u, ls2.u);
       } else {
         done = true;
       }

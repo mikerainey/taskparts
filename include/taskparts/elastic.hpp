@@ -46,10 +46,10 @@ public:
   
   using gamma_type = struct gamma_struct {
     int32_t surplus = 0;
-    int16_t stealing = 0;
+    int16_t stealers = 0;
     int16_t suspended = 0;
     auto needs_sentinel() -> bool {
-      return (surplus >= 1) && (stealing == 0) && (suspended >= 1);
+      return (surplus >= 1) && (stealers == 0) && (suspended >= 1);
     }
   };
 
@@ -59,21 +59,21 @@ public:
   using delta_type = struct delta_struct {
     unsigned int lock : 1 = node_unlocked;
     int surplus : 31 = 0;
-    int16_t stealing = 0;
+    int16_t stealers = 0;
     int16_t suspended = 0;
     struct delta_struct operator+(struct delta_struct other) {
       delta_type d = *this;
       d.surplus += other.surplus;
-      d.stealing += other.stealing;
+      d.stealers += other.stealers;
       d.suspended += other.suspended;
       return d;
     }
     auto empty() -> bool {
-      return (surplus == 0) && (stealing == 0) && (suspended == 0);
+      return (surplus == 0) && (stealers == 0) && (suspended == 0);
     }
     gamma_type apply(gamma_type g) const {
       g.surplus += surplus;
-      g.stealing += stealing;
+      g.stealers += stealers;
       g.suspended += suspended;
       return g;
     }
@@ -152,7 +152,9 @@ public:
   }
   
   static
-  auto update_path(delta_type delta, std::vector<node_type*>& path, size_t id = perworker::my_id()) -> gamma_type {
+  auto update_path(delta_type delta,
+                   std::vector<node_type*>& path,
+                   size_t id = perworker::my_id()) -> gamma_type {
     gamma_type result = root_node()->gamma.load();
     auto nb_workers = perworker::nb_workers();
     if (nb_workers == 1) {
@@ -265,13 +267,13 @@ public:
 
   static
   auto incr_stealing(size_t my_id = perworker::my_id()) -> void {
-    auto delta = delta_type{.stealing = +1};
+    auto delta = delta_type{.stealers = +1};
     update_path(delta, my_id);
   }
 
   static
   auto decr_stealing(size_t my_id = perworker::my_id()) -> void {
-    auto delta = delta_type{.stealing = -1};
+    auto delta = delta_type{.stealers = -1};
     auto n = leaf_node(my_id);
     auto g = update([=] (gamma_type g) { return delta.apply(g); }, n->gamma);
     // scale up
@@ -290,13 +292,13 @@ public:
 
   static
   auto incr_suspended(size_t my_id = perworker::my_id()) -> void {
-    auto delta = delta_type{.suspended = +1, .stealing = -1};
+    auto delta = delta_type{.suspended = +1, .stealers = -1};
     update_path(delta, my_id);
   }
 
   static
   auto decr_suspended(size_t my_id = perworker::my_id()) -> void {
-    auto delta = delta_type{.surplus = 0, .suspended = -1, .stealing = +1};
+    auto delta = delta_type{.surplus = 0, .suspended = -1, .stealers = +1};
     update_path(delta, my_id);
   }
 
@@ -308,7 +310,7 @@ public:
     if (! flip()) {
       return;
     }
-    auto delta1 = delta_type{.suspended = +1, .stealing = -1};
+    auto delta1 = delta_type{.suspended = +1, .stealers = -1};
     auto n = leaf_node(my_id);
     auto g = n->gamma.load();
     n->gamma.store(delta1.apply(g));
@@ -324,7 +326,7 @@ public:
       Logging::log_event(exit_sleep);
       Stats::on_enter_acquire();
     } // end suspending the caller
-    auto delta2 = delta_type{.suspended = -1, .stealing = +1};
+    auto delta2 = delta_type{.suspended = -1, .stealers = +1};
     update_path(delta2, my_id);
   }
 
@@ -338,7 +340,7 @@ public:
     auto orig = g;
     auto next = orig;
     next.suspended = 0;
-    next.stealing = 1;
+    next.stealers = 1;
     if (! n->gamma.compare_exchange_strong(orig, next)) {
       return false;
     }
@@ -501,7 +503,8 @@ public:
   
   template <typename Update>
   static
-  auto update_counters(std::atomic<counters_type>& c, const Update& u) -> counters_type {
+  auto update_counters(std::atomic<counters_type>& c, const Update& u,
+                       size_t my_id = perworker::my_id()) -> counters_type {
     auto valid_counters = [] (counters_type c) -> bool {
       auto nb_workers = perworker::nb_workers();
       auto valid_nb_workers = [&] (int n) {
@@ -774,6 +777,191 @@ template <typename Stats, typename Logging, typename Semaphore>
 int elastic_surplus<Stats, Logging, Semaphore>::beta;
 
 template <typename Stats, typename Logging, typename Semaphore>
-perworker::array<uint64_t> elastic_surplus<Stats, Logging, Semaphore>::rng;  
+perworker::array<uint64_t> elastic_surplus<Stats, Logging, Semaphore>::rng;
+
+/*---------------------------------------------------------------------*/
+/* Elastic work stealing (with S3 counter) */
+
+template <typename Stats, typename Logging, typename Semaphore=dflt_semaphore>
+class elastic_s3 {
+public:
+  
+  using cdata_type = struct cdata_struct {
+    int32_t surplus = 0;
+    int16_t suspended = 0;
+    int16_t stealers = 0;
+    auto needs_sentinel() -> bool {
+      return (surplus >= 1) && (stealers == 0) && (suspended >= 1);
+    }
+  };
+  
+  static
+  std::atomic<cdata_type> counter;
+  
+  static
+  perworker::array<std::atomic_bool> flags;
+  
+  static
+  perworker::array<Semaphore> semaphores;
+
+  static
+  perworker::array<uint64_t> rng;
+
+  static
+  int alpha;
+
+  static
+  int beta;
+  
+  static
+  auto initialize() {
+    if (const auto env_p = std::getenv("TASKPARTS_ELASTIC_ALPHA")) {
+      alpha = std::stoi(env_p);
+    } else {
+      alpha = 2;
+    }
+    if (const auto env_p = std::getenv("TASKPARTS_ELASTIC_BETA")) {
+      beta = std::max(2, std::stoi(env_p));
+    } else {
+      beta = 2;
+    }
+    for (size_t i = 0; i < perworker::nb_workers(); i++) {
+      flags[i].store(false);
+    }
+  }
+  
+  static constexpr
+  bool override_rand_worker = false;
+  
+  template <typename Update>
+  static
+  auto update_counters(const Update& u) -> cdata_type {
+    return update_atomic(counter, u);
+  }
+  
+  static
+  auto next_rng(size_t my_id = perworker::my_id()) -> size_t {
+    auto& nb = rng[my_id];
+    nb = (size_t)(hash(my_id) + hash(nb));
+    return nb;
+  }
+  
+  static
+  auto try_resume(size_t id) -> bool {
+    auto orig = true;
+    if (flags[id].compare_exchange_strong(orig, false)) {
+      semaphores[id].post();
+      return true;
+    }
+    return false;
+  }
+  
+  static
+  auto incr_surplus(size_t my_id = perworker::my_id()) {
+    auto next = update_counters([] (cdata_type d) {
+      d.surplus++;
+      return d;
+    });
+    while (next.needs_sentinel()) {
+      auto id = next_rng(my_id) % perworker::nb_workers();
+      if (try_resume(id)) {
+        break;
+      }
+      next = counter.load();
+    }
+    Stats::increment(Stats::configuration_type::nb_surplus_transitions);
+  }
+  
+  static
+  auto decr_surplus(size_t id) {
+    update_counters([] (cdata_type d) {
+      d.surplus--;
+      return d;
+    });
+  }
+  
+  static
+  auto incr_stealing(size_t my_id = perworker::my_id()) {
+    update_counters([] (cdata_type d) {
+      d.stealers++;
+      return d;
+    });
+  }
+  
+  static
+  auto decr_stealing(size_t my_id = perworker::my_id()) {
+    auto next = update_counters([] (cdata_type d) {
+      d.stealers--;
+      return d;
+    });
+    auto n = alpha;
+    while ((n > 0) || (next.needs_sentinel())) {
+      if (next.suspended == 0) {
+        break;
+      }
+      auto id = next_rng(my_id) % perworker::nb_workers();
+      if (try_resume(id)) {
+        n--;
+      }
+      next = counter.load();
+    }
+  }
+  
+  static
+  auto try_suspend(size_t) {
+    auto my_id = perworker::my_id();
+    auto flip = [&] () -> bool {
+      auto n = next_rng(my_id);
+      // LATER: replace the coin flip below b/c currently the
+      // calculation inconsistent with the defintion of beta given in
+      // the paper
+      return (n % beta) == 0;
+      //return (beta == 1) ? true : (n % beta) < (beta - 1);
+    };
+    if (! flip()) {
+      return;
+    }
+    Stats::on_exit_acquire();
+    Logging::log_enter_sleep(my_id, 0l, 0l);
+    Stats::on_enter_sleep();
+    flags[my_id].store(true);
+    auto next = update_counters([] (cdata_type d) {
+      d.stealers--;
+      d.suspended++;
+      return d;
+    });
+    if (next.needs_sentinel()) {
+      try_resume(my_id);
+    }
+    semaphores[my_id].wait();
+    update_counters([=] (cdata_type d) {
+      d.stealers++;
+      d.suspended--;
+      return d;
+    });
+    Stats::on_exit_sleep();
+    Logging::log_event(exit_sleep);
+    Stats::on_enter_acquire();
+  }
+  
+};
+
+template <typename Stats, typename Logging, typename Semaphore>
+std::atomic<typename elastic_s3<Stats, Logging, Semaphore>::cdata_type> elastic_s3<Stats, Logging, Semaphore>::counter;
+
+template <typename Stats, typename Logging, typename Semaphore>
+perworker::array<std::atomic_bool> elastic_s3<Stats, Logging, Semaphore>::flags;
+
+template <typename Stats, typename Logging, typename Semaphore>
+perworker::array<Semaphore> elastic_s3<Stats, Logging, Semaphore>::semaphores;
+
+template <typename Stats, typename Logging, typename Semaphore>
+int elastic_s3<Stats, Logging, Semaphore>::alpha;
+
+template <typename Stats, typename Logging, typename Semaphore>
+int elastic_s3<Stats, Logging, Semaphore>::beta;
+
+template <typename Stats, typename Logging, typename Semaphore>
+perworker::array<uint64_t> elastic_s3<Stats, Logging, Semaphore>::rng;
 
 } // end namespace
