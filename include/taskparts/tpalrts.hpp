@@ -3,7 +3,7 @@
 #include <cstdint>
 
 #include "defaults.hpp"
-#include "taskparts/timing.hpp"
+#include "timing.hpp"
 
 namespace taskparts {
 
