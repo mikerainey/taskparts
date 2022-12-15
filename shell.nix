@@ -53,6 +53,8 @@ stdenv.mkDerivation rec {
       "${hbtimer-kmod}/libhb.so";
   HBTIMER_KMOD_RF_COMPILER= if hbtimer-kmod == null then "" else
     "${hbtimer-kmod}/rf_compiler";
+  HBTIMER_KMOD_SRC= if hbtimer-kmod == null then "" else
+    "${hbtimer-kmod}/src";
 
   PARLAYLIB_PATH="${parlaylib}";
   PBBSBENCH_PATH="${pbbsbench}";
