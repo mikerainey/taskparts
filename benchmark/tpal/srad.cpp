@@ -34,7 +34,7 @@ void srad_interrupt_inner_2(int rows, int cols, int rows_lo, int rows_hi, int co
 /* Handler functions */
 /* ================= */
 
-void taskparts_tpal_handler __rf_handle_srad_0(int rows, int cols, int rows_lo, int rows_hi, int cols_lo, int cols_hi, int size_I, int size_R, float* I, float* J, float q0sqr, float *dN, float *dS, float *dW, float *dE, float* c, int* iN, int* iS, int* jE, int* jW, float lambda, bool& promoted) {
+void rollforward_handler_annotation __rf_handle_srad_0(int rows, int cols, int rows_lo, int rows_hi, int cols_lo, int cols_hi, int size_I, int size_R, float* I, float* J, float q0sqr, float *dN, float *dS, float *dW, float *dE, float* c, int* iN, int* iS, int* jE, int* jW, float lambda, bool& promoted) {
   auto nb_rows = rows_hi - rows_lo;
   if (nb_rows <= 1) {
     promoted = false;
@@ -62,10 +62,10 @@ void taskparts_tpal_handler __rf_handle_srad_0(int rows, int cols, int rows_lo, 
     }
     promoted = true;
   }
-  taskparts_tpal_rollbackward
+  rollbackward
 }
 
-void taskparts_tpal_handler __rf_handle_srad_1(int rows, int cols, int rows_lo, int rows_hi, int cols_lo, int cols_hi, int size_I, int size_R, float* I, float* J, float q0sqr, float *dN, float *dS, float *dW, float *dE, float* c, int* iN, int* iS, int* jE, int* jW, float lambda, bool& promoted) {
+void rollforward_handler_annotation __rf_handle_srad_1(int rows, int cols, int rows_lo, int rows_hi, int cols_lo, int cols_hi, int size_I, int size_R, float* I, float* J, float q0sqr, float *dN, float *dS, float *dW, float *dE, float* c, int* iN, int* iS, int* jE, int* jW, float lambda, bool& promoted) {
   auto nb_rows = rows_hi - rows_lo;
   if (nb_rows <= 1) {
     promoted = false;
@@ -90,10 +90,10 @@ void taskparts_tpal_handler __rf_handle_srad_1(int rows, int cols, int rows_lo, 
     }
     promoted = true;
   }
-  taskparts_tpal_rollbackward
+  rollbackward
 }
 
-void taskparts_tpal_handler __rf_handle_srad_inner_1(int rows, int cols, int rows_lo, int rows_hi, int cols_lo, int cols_hi, int size_I, int size_R, float* I, float* J, float q0sqr, float *dN, float *dS, float *dW, float *dE, float* c, int* iN, int* iS, int* jE, int* jW, float lambda, bool& promoted) {
+void rollforward_handler_annotation __rf_handle_srad_inner_1(int rows, int cols, int rows_lo, int rows_hi, int cols_lo, int cols_hi, int size_I, int size_R, float* I, float* J, float q0sqr, float *dN, float *dS, float *dW, float *dE, float* c, int* iN, int* iS, int* jE, int* jW, float lambda, bool& promoted) {
   if ((cols_hi - cols_lo) <= 1) {
     promoted = false;
   } else {
@@ -105,10 +105,10 @@ void taskparts_tpal_handler __rf_handle_srad_inner_1(int rows, int cols, int row
     }, [&] {}, taskparts::bench_scheduler());
     promoted = true;
   }
-  taskparts_tpal_rollbackward
+  rollbackward
 }
 
-void taskparts_tpal_handler __rf_handle_srad_2(int rows, int cols, int rows_lo, int rows_hi, int cols_lo, int cols_hi, int size_I, int size_R, float* I, float* J, float q0sqr, float *dN, float *dS, float *dW, float *dE, float* c, int* iN, int* iS, int* jE, int* jW, float lambda, bool& promoted) {
+void rollforward_handler_annotation __rf_handle_srad_2(int rows, int cols, int rows_lo, int rows_hi, int cols_lo, int cols_hi, int size_I, int size_R, float* I, float* J, float q0sqr, float *dN, float *dS, float *dW, float *dE, float* c, int* iN, int* iS, int* jE, int* jW, float lambda, bool& promoted) {
   auto nb_rows = rows_hi - rows_lo;
   if (nb_rows <= 1) {
     promoted = false;
@@ -134,10 +134,10 @@ void taskparts_tpal_handler __rf_handle_srad_2(int rows, int cols, int rows_lo, 
     }
     promoted = true;
   }
-  taskparts_tpal_rollbackward
+  rollbackward
 }
 
-void taskparts_tpal_handler __rf_handle_srad_inner_2(int rows, int cols, int rows_lo, int rows_hi, int cols_lo, int cols_hi, int size_I, int size_R, float* I, float* J, float q0sqr, float *dN, float *dS, float *dW, float *dE, float* c, int* iN, int* iS, int* jE, int* jW, float lambda, bool& promoted) {
+void rollforward_handler_annotation __rf_handle_srad_inner_2(int rows, int cols, int rows_lo, int rows_hi, int cols_lo, int cols_hi, int size_I, int size_R, float* I, float* J, float q0sqr, float *dN, float *dS, float *dW, float *dE, float* c, int* iN, int* iS, int* jE, int* jW, float lambda, bool& promoted) {
   if ((cols_hi - cols_lo) <= 1) {
     promoted = false;
   } else {
@@ -149,7 +149,7 @@ void taskparts_tpal_handler __rf_handle_srad_inner_2(int rows, int cols, int row
     }, [&] {}, taskparts::bench_scheduler());
     promoted = true;
   }
-  taskparts_tpal_rollbackward
+  rollbackward
 }
 
 /* Outlined-loop functions */
@@ -201,7 +201,7 @@ void srad_interrupt(int rows, int cols, int size_I, int size_R, float* I, float*
       }
       bool promoted = false;
       __rf_handle_srad_0(rows, cols, i, rows, col_lo, col_hi, size_I, size_R, I, J, q0sqr, dN, dS, dW, dE, c, iN, iS, jE, jW, lambda, promoted);
-      if (taskparts_tpal_unlikely(promoted)) {
+      if (rollforward_branch_unlikely(promoted)) {
 	return;
       }
 
@@ -272,7 +272,7 @@ void srad_interrupt_1(int rows, int cols, int rows_lo, int rows_hi, int size_I, 
       }
       bool promoted = false;
       __rf_handle_srad_1(rows, cols, i, rows_hi, col_lo, col_hi, size_I, size_R, I, J, q0sqr, dN, dS, dW, dE, c, iN, iS, jE, jW, lambda, promoted);
-      if (taskparts_tpal_unlikely(promoted)) {
+      if (rollforward_branch_unlikely(promoted)) {
 	return;
       }
     }
@@ -323,7 +323,7 @@ void srad_interrupt_inner_1(int rows, int cols, int rows_lo, int rows_hi, int co
     }
     bool promoted = false;
     __rf_handle_srad_inner_1(rows, cols, rows_lo, rows_hi, col_lo, col_hi, size_I, size_R, I, J, q0sqr, dN, dS, dW, dE, c, iN, iS, jE, jW, lambda, promoted);
-    if (taskparts_tpal_unlikely(promoted)) {
+    if (rollforward_branch_unlikely(promoted)) {
       return;
     }
   }
@@ -363,7 +363,7 @@ void srad_interrupt_2(int rows, int cols, int rows_lo, int rows_hi, int cols_lo,
       }
       bool promoted = false;
       __rf_handle_srad_2(rows, cols, i, rows_hi, col_lo, col_hi, size_I, size_R, I, J, q0sqr, dN, dS, dW, dE, c, iN, iS, jE, jW, lambda, promoted);
-      if (taskparts_tpal_unlikely(promoted)) {
+      if (rollforward_branch_unlikely(promoted)) {
 	return;
       }
     }
@@ -404,7 +404,7 @@ void srad_interrupt_inner_2(int rows, int cols, int rows_lo, int rows_hi, int co
     }
     bool promoted = false;
     __rf_handle_srad_inner_2(rows, cols, rows_lo, rows_hi, col_lo, col_hi, size_I, size_R, I, J, q0sqr, dN, dS, dW, dE, c, iN, iS, jE, jW, lambda, promoted);
-    if (taskparts_tpal_unlikely(promoted)) {
+    if (rollforward_branch_unlikely(promoted)) {
       return;
     }
   }

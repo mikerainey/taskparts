@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-RF_COMPILER=$HBTIMER_KMOD_RF_COMPILER/transform.pl
+RF_COMPILER=$ROLLFORWARD_PATH/x64/transform.pl
 
 trap 'rm -f "$ORIG_ASM_TMPFILE"' EXIT
 ORIG_ASM_TMPFILE=$(mktemp --suffix .s) || exit 1
@@ -34,6 +34,6 @@ echo
 # Compile x64 rollforward assembly to binary
 
 m=$(( ${#t} - $n ))
-TO_BIN="$CXX $HBTIMER_KMOD_SRC/entry.S $RF_ASM_TMPFILE ${t:$n:$m}"
+TO_BIN="$CXX $RF_ASM_TMPFILE ${t:$n:$m}"
 echo "$TO_BIN"
 $TO_BIN

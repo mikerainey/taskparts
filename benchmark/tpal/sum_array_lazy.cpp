@@ -47,11 +47,11 @@ void sum_array_handler(double *a, uint64_t lo, uint64_t hi, double r, double *ds
   }
 }
 
-void taskparts_tpal_handler __rf_handle_sum_array_heartbeat(double* a, uint64_t lo, uint64_t hi,
+void rollforward_handler_annotation __rf_handle_sum_array_heartbeat(double* a, uint64_t lo, uint64_t hi,
 							    double r, double* dst,
 							    future*& fut) {
   sum_array_handler(a, lo, hi, r, dst, fut);
-  taskparts_tpal_rollbackward
+  rollbackward
 }
 
 /* Outlined-loop functions */
@@ -76,7 +76,7 @@ void sum_array_heartbeat(double* a, uint64_t lo, uint64_t hi, double r, double* 
     }
     assert(fut == nullptr);
     __rf_handle_sum_array_heartbeat(a, lo, hi, r, dst, fut);
-    if (taskparts_tpal_unlikely(fut != nullptr)) {
+    if (rollforward_branch_unlikely(fut != nullptr)) {
       hi = lo + 1;
       auto fut0 = (fiber<bench_scheduler>*)fut;
       fut0->release();

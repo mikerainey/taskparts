@@ -59,7 +59,7 @@ void row_loop_spawn(
     }, [=] { }, taskparts::bench_scheduler());
 }
 
-void taskparts_tpal_handler __rf_handle_row_loop(
+void rollforward_handler_annotation __rf_handle_row_loop(
   double* val,
   uint64_t* row_ptr,
   uint64_t* col_ind,
@@ -74,7 +74,7 @@ void taskparts_tpal_handler __rf_handle_row_loop(
     row_loop_spawn(val, row_ptr, col_ind, x, y, row_lo, row_hi);    
     promoted = true;
   }
-  taskparts_tpal_rollbackward
+  rollbackward
 }
 
 void col_loop_spawn(
@@ -110,7 +110,7 @@ void col_loop_spawn(
     }
 }
 
-void taskparts_tpal_handler __rf_handle_col_loop(
+void rollforward_handler_annotation __rf_handle_col_loop(
   double* val,
   uint64_t* row_ptr,
   uint64_t* col_ind,
@@ -130,7 +130,7 @@ void taskparts_tpal_handler __rf_handle_col_loop(
     col_loop_spawn(val, row_ptr, col_ind, x, y, row_lo, row_hi, col_lo, col_hi, t, nb_rows);
   }
  exit:
-  taskparts_tpal_rollbackward
+  rollbackward
 }
 
 void col_loop_col_loop_spawn(
@@ -155,7 +155,7 @@ void col_loop_col_loop_spawn(
     }, taskparts::bench_scheduler());
 }
 
-void taskparts_tpal_handler __rf_handle_col_loop_col_loop(
+void rollforward_handler_annotation __rf_handle_col_loop_col_loop(
   double* val,
   uint64_t* row_ptr,
   uint64_t* col_ind,
@@ -172,7 +172,7 @@ void taskparts_tpal_handler __rf_handle_col_loop_col_loop(
     promoted = true;
     col_loop_col_loop_spawn(val, row_ptr, col_ind, x, y, col_lo, col_hi, t, dst);
   }
-  taskparts_tpal_rollbackward
+  rollbackward
 }
 
 /* Outlined-loop functions */
@@ -210,7 +210,7 @@ void spmv_interrupt(
       }
       bool promoted = false;
       __rf_handle_col_loop(val, row_ptr, col_ind, x, y, row_lo, row_hi, col_lo, col_hi, r, promoted);
-      if (taskparts_tpal_unlikely(promoted)) {
+      if (rollforward_branch_unlikely(promoted)) {
 	return;
       }
     }
@@ -222,7 +222,7 @@ void spmv_interrupt(
     }
     bool promoted = false;
     __rf_handle_row_loop(val, row_ptr, col_ind, x, y, row_lo, row_hi, promoted);
-    if (taskparts_tpal_unlikely(promoted)) {
+    if (rollforward_branch_unlikely(promoted)) {
       return;
     }
   }
@@ -253,7 +253,7 @@ void spmv_interrupt_col_loop(
     }
     bool promoted = false;
     __rf_handle_col_loop_col_loop(val, row_ptr, col_ind, x, y, col_lo, col_hi, r, dst, promoted);
-    if (taskparts_tpal_unlikely(promoted)) {
+    if (rollforward_branch_unlikely(promoted)) {
       return;
     }
   }

@@ -32,7 +32,7 @@ void mandelbrot_interrupt_row_loop(double x0, double y0, double x1, double y1,
 /* Handler functions */
 /* ================= */
 
-void taskparts_tpal_handler __rf_handle_col_loop(
+void rollforward_handler_annotation __rf_handle_col_loop(
   double x0, double y0, double x1, double y1,
   int width, int height, int max_depth,
   unsigned char* output, double xstep, double ystep,
@@ -48,10 +48,10 @@ void taskparts_tpal_handler __rf_handle_col_loop(
     }, [&] { }, taskparts::bench_scheduler());
     promoted = true;
   }
-  taskparts_tpal_rollbackward
+  rollbackward
 }
 
-void taskparts_tpal_handler __rf_handle_row_loop(
+void rollforward_handler_annotation __rf_handle_row_loop(
   double x0, double y0, double x1, double y1,
   int width, int height, int max_depth,
   unsigned char* output, double xstep, double ystep,
@@ -87,10 +87,10 @@ void taskparts_tpal_handler __rf_handle_row_loop(
     promoted = true;
   }
  exit:
-  taskparts_tpal_rollbackward
+  rollbackward
 }
 
-void taskparts_tpal_handler __rf_handle_row_row_loop(
+void rollforward_handler_annotation __rf_handle_row_row_loop(
   double x0, double y0, double x1, double y1,
   int width, int height, int max_depth,
   unsigned char* output, double xstep, double ystep,
@@ -106,7 +106,7 @@ void taskparts_tpal_handler __rf_handle_row_row_loop(
     }, [&] {}, taskparts::bench_scheduler());
     promoted = true;
   }
-  taskparts_tpal_rollbackward
+  rollbackward
 }
 
 /* Outlined-loop functions */
@@ -152,7 +152,7 @@ void mandelbrot_interrupt_col_loop(double x0, double y0, double x1, double y1,
       }
       bool promoted = false;
       __rf_handle_row_loop(x0, y0, x1, y1, width, height, max_depth, output, xstep, ystep, col_lo, col_hi, row_lo, row_hi, promoted);
-      if (taskparts_tpal_unlikely(promoted)) {
+      if (rollforward_branch_unlikely(promoted)) {
 	return;
       }
     }
@@ -162,7 +162,7 @@ void mandelbrot_interrupt_col_loop(double x0, double y0, double x1, double y1,
     }
     bool promoted = false;
     __rf_handle_col_loop(x0, y0, x1, y1, width, height, max_depth, output, xstep, ystep, col_lo, col_hi, promoted);
-    if (taskparts_tpal_unlikely(promoted)) {
+    if (rollforward_branch_unlikely(promoted)) {
       return;
     }
   }
@@ -202,7 +202,7 @@ void mandelbrot_interrupt_row_loop(double x0, double y0, double x1, double y1,
     }
     bool promoted = false;
     __rf_handle_row_row_loop(x0, y0, x1, y1, width, height, max_depth, output, xstep, ystep, col_lo, col_hi, row_lo, row_hi, promoted);
-    if (taskparts_tpal_unlikely(promoted)) {
+    if (rollforward_branch_unlikely(promoted)) {
       return;
     }
   }

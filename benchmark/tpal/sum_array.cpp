@@ -29,10 +29,10 @@ void sum_array_handler(double* a, uint64_t lo, uint64_t hi, double r, double* ds
   }
 }
 
-void taskparts_tpal_handler __rf_handle_sum_array_heartbeat(double* a, uint64_t lo, uint64_t hi,
+void rollforward_handler_annotation __rf_handle_sum_array_heartbeat(double* a, uint64_t lo, uint64_t hi,
 							    double r, double* dst, bool& promoted) {
   sum_array_handler(a, lo, hi, r, dst, promoted);
-  taskparts_tpal_rollbackward
+  rollbackward
 }
 
 /* Outlined-loop functions */
@@ -56,7 +56,7 @@ void sum_array_heartbeat(double* a, uint64_t lo, uint64_t hi, double r, double* 
     }
     bool promoted = false;
     __rf_handle_sum_array_heartbeat(a, lo, hi, r, dst, promoted);
-    if (taskparts_tpal_unlikely(promoted)) {
+    if (rollforward_branch_unlikely(promoted)) {
       return;
     }
   }
