@@ -8,16 +8,18 @@
 size_t nb_par_iters;
 size_t nb_iterations = 0;
 
+using hash_value_type = uint64_t;
+
 template <typename Scheduler=taskparts::minimal_scheduler<>>
 class alternate_par : public taskparts::fiber<Scheduler> {
 public:
   using trampoline_type = enum trampoline_enum { entry, work };
   trampoline_type trampoline = entry;
   size_t lo, hi, k;
-  taskparts::hash_value_type hv;
-  taskparts::hash_value_type* hvp;
+  hash_value_type hv;
+  hash_value_type* hvp;
   taskparts::fiber<Scheduler>* tk;
-  alternate_par(size_t lo, size_t hi, taskparts::hash_value_type* hvp
+  alternate_par(size_t lo, size_t hi, hash_value_type* hvp
 		, taskparts::fiber<Scheduler>* tk, Scheduler sched=Scheduler())
     : taskparts::fiber<Scheduler>(), lo(lo), hi(hi), hvp(hvp), tk(tk) { }
   auto run() -> taskparts::fiber_status_type {
@@ -69,8 +71,8 @@ class alternate : public taskparts::fiber<Scheduler> {
 public:
   using trampoline_type = enum trampoline_enum { entry };
   trampoline_type trampoline = entry;
-  taskparts::hash_value_type hv = 0;
-  std::vector<taskparts::hash_value_type> hvs;
+  hash_value_type hv = 0;
+  std::vector<hash_value_type> hvs;
   alternate(Scheduler sched=Scheduler())
     : taskparts::fiber<Scheduler>() {
     keep_going = true;
