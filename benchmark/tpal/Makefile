@@ -2,9 +2,10 @@
 # ====================
 
 include ../Makefile_benchmark
+CXX?=g++
 TASKPARTS_PATH=../../
 ROLLFORWARD_PATH?=../$(TASKPARTS_PATH)/rollforward/src/
-TPALXX?=ROLLFORWARD_PATH=$(ROLLFORWARD_PATH)./tpal++
+TPALXX?=ROLLFORWARD_PATH=$(ROLLFORWARD_PATH) CXX=$(CXX) ./tpal++
 
 # TPAL build flags
 # ----------------
