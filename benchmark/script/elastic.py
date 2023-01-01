@@ -620,8 +620,9 @@ def pctdiff_table(f, difference_keys, avg_keys, comparison_key, baseline_value):
     qavs = 'SELECT ' + ds + ', ' + avs + ' FROM {} GROUP BY  ' + ds + ', ' + comparison_key
     print(qavs)
     ks = ','.join(['baseline.' + a for a in difference_keys + avg_keys]) + ', ' + ','.join(['nonbaseline.' + a + ' AS nonbaseline_' + a for a in avg_keys])
+    ks2 = ks + ', ' + ', '.join(['ROUND(100 * ((baseline.' + k + ' - nonbaseline.' + k + ') / nonbaseline.' + k + '), 1) as pctdiff_' + k for k in avg_keys])
     js = ' AND '.join(['baseline.' + k + ' = nonbaseline.' + k for k in difference_keys])
-    qds = 'SELECT ' + ks + ' FROM (' + qavs + ') nonbaseline INNER JOIN (' + qavs + ') baseline ON ' + js + ' AND baseline.' + comparison_key + ' = \"' + baseline_value + '\" WHERE baseline.' + comparison_key + ' != nonbaseline.' + comparison_key
+    qds = 'SELECT ' + ks2 + ' FROM (' + qavs + ') nonbaseline INNER JOIN (' + qavs + ') baseline ON ' + js + ' AND baseline.' + comparison_key + ' = \"' + baseline_value + '\" WHERE baseline.' + comparison_key + ' != nonbaseline.' + comparison_key
     print(qds)
     cmd = 'dsq --pretty ' + stats_path + ' \'' + qds + '\''
     print(cmd)
