@@ -3,8 +3,8 @@
 
 include ../Makefile_benchmark
 TASKPARTS_PATH=../../
-TPALXX?=./tpal++
 ROLLFORWARD_PATH?=../$(TASKPARTS_PATH)/rollforward/src/
+TPALXX?=ROLLFORWARD_PATH=$(ROLLFORWARD_PATH)./tpal++
 
 # TPAL build flags
 # ----------------
