@@ -133,10 +133,6 @@ parser.add_argument('-load_results_file', action='append',
                     help = 'specifies a results file to load')
 parser.add_argument('-split_into_files_by_keys', action='append',
                     help = 'specifies a results key to split into multiple files by all values')
-parser.add_argument('--generate_table', dest ='generate_table',
-                    action ='store_true',
-                    help = ('generate results table '))
-
 
 args = parser.parse_args()
 
@@ -602,6 +598,50 @@ def output_merged_results():
         write_json_to_file_path(rs, file_path = mf)
     return merged_results_path
     
+
+def table_of_value(r):
+    rows = rows_of(r)
+    dicts = []
+    for row in rows:
+        dicts += [row_to_dictionary(row)]
+    return dicts
+
+def table_of_results(f):
+    return table_of_value(read_json_from_file_path(f))
+
+def pctdiff_table(f, difference_keys, avg_keys, comparison_key, baseline_value):
+    dicts = table_of_results(f)
+    stats_fd, stats_path = tempfile.mkstemp(suffix = '.json', text = True)
+    os.close(stats_fd)
+    write_json_to_file_path(dicts, stats_path)
+    # take the average of any rows having duplicate keys wrt difference_keys
+    ds = ', '.join(difference_keys + [comparison_key])
+    avs = ', '.join(['AVG(' + a + ') AS ' + a for a in avg_keys])
+    qavs = 'SELECT ' + ds + ', ' + avs + ' FROM {} GROUP BY  ' + ds + ', ' + comparison_key
+    print(qavs)
+    ks = ','.join(['baseline.' + a for a in difference_keys + avg_keys]) + ', ' + ','.join(['nonbaseline.' + a + ' AS nonbaseline_' + a for a in avg_keys])
+    ks2 = ks + ', ' + ', '.join(['ROUND(100 * ((baseline.' + k + ' - nonbaseline.' + k + ') / nonbaseline.' + k + '), 1) as pctdiff_' + k for k in avg_keys])
+    js = ' AND '.join(['baseline.' + k + ' = nonbaseline.' + k for k in difference_keys])
+    qds = 'SELECT ' + ks2 + ' FROM (' + qavs + ') nonbaseline INNER JOIN (' + qavs + ') baseline ON ' + js + ' AND baseline.' + comparison_key + ' = \"' + baseline_value + '\" WHERE baseline.' + comparison_key + ' != nonbaseline.' + comparison_key
+    print(qds)
+    cmd = 'dsq --pretty ' + stats_path + ' \'' + qds + '\''
+    print(cmd)
+    current_child = subprocess.Popen(cmd, shell = True,
+                                     stdout = subprocess.PIPE, stderr = subprocess.PIPE )
+    child_stdout, child_stderr = current_child.communicate(timeout = 1000)
+    child_stdout = child_stdout.decode('utf-8')
+    child_stderr = child_stderr.decode('utf-8')
+    return_code = current_child.returncode
+    if return_code != 0:
+        print('Error: export to git returned error code ' + str(return_code))
+        print('stdout:')
+        print(str(child_stdout))
+        print('stderr:')
+        print(str(child_stderr))
+        exit
+    print(child_stdout)
+    os.unlink(stats_path)
+
 # Driver
 # ======
 
@@ -663,58 +703,14 @@ for (e, mk) in experiments_to_run.items():
     results, traces = run_elastic_benchmarks(mk)
     write_json_to_file_path(results, file_path = results_file)
     write_json_to_file_path(traces, file_path = trace_file)
+    if e == 'high_parallelism':
+        pctdiff_table(results_file, ['benchmark'], ['exectime', 'usertime'], 'scheduler', 'nonelastic')
     
 export_results_to_git(local_results_path)
 
 export_results_to_git(output_merged_results())
 
 # Generate tables
-
-def table_of_value(r):
-    rows = rows_of(r)
-    dicts = []
-    for row in rows:
-        dicts += [row_to_dictionary(row)]
-    return dicts
-
-def table_of_results(f):
-    return table_of_value(read_json_from_file_path(f))
-
-def pctdiff_table(difference_keys, avg_keys, comparison_key, baseline_value):
-    f = args.load_results_file[0]
-    print(f)
-    dicts = table_of_results(f)
-    stats_fd, stats_path = tempfile.mkstemp(suffix = '.json', text = True)
-    os.close(stats_fd)
-    write_json_to_file_path(dicts, stats_path)
-    # take the average of any rows having duplicate keys wrt difference_keys
-    ds = ', '.join(difference_keys + [comparison_key])
-    avs = ', '.join(['AVG(' + a + ') AS ' + a for a in avg_keys])
-    qavs = 'SELECT ' + ds + ', ' + avs + ' FROM {} GROUP BY  ' + ds + ', ' + comparison_key
-    print(qavs)
-    ks = ','.join(['baseline.' + a for a in difference_keys + avg_keys]) + ', ' + ','.join(['nonbaseline.' + a + ' AS nonbaseline_' + a for a in avg_keys])
-    js = ' AND '.join(['baseline.' + k + ' = nonbaseline.' + k for k in difference_keys])
-    qds = 'SELECT ' + ks + ' FROM (' + qavs + ') nonbaseline INNER JOIN (' + qavs + ') baseline ON ' + js + ' AND baseline.' + comparison_key + ' = \"' + baseline_value + '\" WHERE baseline.' + comparison_key + ' != nonbaseline.' + comparison_key
-    print(qds)
-    cmd = 'dsq --pretty ' + stats_path + ' \'' + qds + '\''
-    print(cmd)
-    current_child = subprocess.Popen(cmd, shell = True,
-                                     stdout = subprocess.PIPE, stderr = subprocess.PIPE )
-    child_stdout, child_stderr = current_child.communicate(timeout = 1000)
-    child_stdout = child_stdout.decode('utf-8')
-    child_stderr = child_stderr.decode('utf-8')
-    return_code = current_child.returncode
-    if return_code != 0:
-        print('Error: export to git returned error code ' + str(return_code))
-        print('stdout:')
-        print(str(child_stdout))
-        print('stderr:')
-        print(str(child_stderr))
-        exit
-    print(child_stdout)
-    os.unlink(stats_path)
-
-pctdiff_table(['benchmark'], ['exectime', 'usertime'], 'scheduler', 'nonelastic')
 
 # for e in experiments_to_run:
 #     if e != 'high_parallelism':
