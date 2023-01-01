@@ -132,7 +132,11 @@ parser.add_argument('-merge_results', action='append',
 parser.add_argument('-load_results_file', action='append',
                     help = 'specifies a results file to load')
 parser.add_argument('-split_into_files_by_keys', action='append',
-                    help = 'specifies a results key to split into multiple files by all values')  
+                    help = 'specifies a results key to split into multiple files by all values')
+parser.add_argument('--generate_table', dest ='generate_table',
+                    action ='store_true',
+                    help = ('generate results table '))
+
 
 args = parser.parse_args()
 
@@ -663,6 +667,88 @@ for (e, mk) in experiments_to_run.items():
 export_results_to_git(local_results_path)
 
 export_results_to_git(output_merged_results())
+
+# Generate tables
+
+def table_of_value(r):
+    rows = rows_of(r)
+    dicts = []
+    for row in rows:
+        dicts += [row_to_dictionary(row)]
+    return dicts
+
+def table_of_results(f):
+    return table_of_value(read_json_from_file_path(f))
+
+def pctdiff_table(difference_keys, avg_keys, comparison_key, baseline_value):
+    f = args.load_results_file[0]
+    print(f)
+    dicts = table_of_results(f)
+    stats_fd, stats_path = tempfile.mkstemp(suffix = '.json', text = True)
+    os.close(stats_fd)
+    write_json_to_file_path(dicts, stats_path)
+    # take the average of any rows having duplicate keys wrt difference_keys
+    ds = ', '.join(difference_keys + [comparison_key])
+    avs = ', '.join(['AVG(' + a + ') AS ' + a for a in avg_keys])
+    qavs = 'SELECT ' + ds + ', ' + avs + ' FROM {} GROUP BY  ' + ds + ', ' + comparison_key
+    print(qavs)
+    ks = ','.join(['baseline.' + a for a in difference_keys + avg_keys]) + ', ' + ','.join(['nonbaseline.' + a + ' AS nonbaseline_' + a for a in avg_keys])
+    js = ' AND '.join(['baseline.' + k + ' = nonbaseline.' + k for k in difference_keys])
+    qds = 'SELECT ' + ks + ' FROM (' + qavs + ') nonbaseline INNER JOIN (' + qavs + ') baseline ON ' + js + ' AND baseline.' + comparison_key + ' = \"' + baseline_value + '\" WHERE baseline.' + comparison_key + ' != nonbaseline.' + comparison_key
+    print(qds)
+    cmd = 'dsq --pretty ' + stats_path + ' \'' + qds + '\''
+    print(cmd)
+    current_child = subprocess.Popen(cmd, shell = True,
+                                     stdout = subprocess.PIPE, stderr = subprocess.PIPE )
+    child_stdout, child_stderr = current_child.communicate(timeout = 1000)
+    child_stdout = child_stdout.decode('utf-8')
+    child_stderr = child_stderr.decode('utf-8')
+    return_code = current_child.returncode
+    if return_code != 0:
+        print('Error: export to git returned error code ' + str(return_code))
+        print('stdout:')
+        print(str(child_stdout))
+        print('stderr:')
+        print(str(child_stderr))
+        exit
+    print(child_stdout)
+    os.unlink(stats_path)
+
+pctdiff_table(['benchmark'], ['exectime', 'usertime'], 'scheduler', 'nonelastic')
+
+# for e in experiments_to_run:
+#     if e != 'high_parallelism':
+#         continue
+#     print(e)
+#     f = args.load_results_file[0]
+#     print(f)
+#     r = read_json_from_file_path(f)
+#     rows = rows_of(r)
+#     dicts = []
+#     for row in rows:
+#         dicts += [row_to_dictionary(row)]
+#     stats_fd, stats_path = tempfile.mkstemp(suffix = '.json', text = True)
+#     os.close(stats_fd)
+#     write_json_to_file_path(dicts, stats_path)
+#     q1 = '(SELECT benchmark, scheduler, AVG(exectime) as exectime FROM {} GROUP BY benchmark, scheduler)'
+#     cmd = 'dsq --pretty ' + stats_path + ' \'SELECT t1.benchmark, t1.exectime as e1, t2.exectime as e2, ROUND(100 * ((t1.exectime - t2.exectime) / t2.exectime), 1) as pctdiff FROM ' + q1 + ' t1 INNER JOIN ' + q1 + ' t2 ON t1.benchmark = t2.benchmark AND t2.scheduler = \"nonelastic\" WHERE t1.scheduler != t2.scheduler\''
+#     current_child = subprocess.Popen(cmd, shell = True,
+#                                      stdout = subprocess.PIPE, stderr = subprocess.PIPE )
+#     child_stdout, child_stderr = current_child.communicate(timeout = 1000)
+#     child_stdout = child_stdout.decode('utf-8')
+#     child_stderr = child_stderr.decode('utf-8')
+#     return_code = current_child.returncode
+#     if return_code != 0:
+#         print('Error: export to git returned error code ' + str(return_code))
+#         print('stdout:')
+#         print(str(child_stdout))
+#         print('stderr:')
+#         print(str(child_stderr))
+#         exit
+#     print(child_stdout)
+#     os.unlink(stats_path)
+
+    
 
 def merge_k1v1_with_values_of_k2_in_results(k1, k2, results):
     rows = rows_of(results)
