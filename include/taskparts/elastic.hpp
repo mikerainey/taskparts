@@ -76,7 +76,6 @@ public:
 
   using node_type = struct node_struct {
     int i = -1;                   // index of leaf node (-1 for interior nodes)
-    int worker_id = -1;           // id of worker assigned to leaf node (-1 for interior nodes)
     std::atomic<gamma_type> gamma;
     std::atomic<delta_type> delta;
   };
@@ -159,22 +158,18 @@ public:
     } else {
       beta = 2;
     }
-    // find the nearest setting of lg_tree_sz s.t. lg_tree_sz is the smallest
-    // number for which 2^{lg_tree_sz} < perworker::nb_workers()
-    lg_tree_sz = 0;
-    while ((1 << lg_tree_sz) < perworker::nb_workers()) {
-      lg_tree_sz++;
+    if (const auto env_p = std::getenv("TASKPARTS_ELASTIC_LG_TREE_SZ")) {
+      lg_tree_sz = std::min(0, std::stoi(env_p));
+    } else {
+      lg_tree_sz = 0;
+      while ((1 << lg_tree_sz) < perworker::nb_workers()) {
+        lg_tree_sz++;
+      }
+      lg_tree_sz = std::min(0, lg_tree_sz - 1);
     }
-    // initialize tree nodes
     for (int i = 0; i < nb_nodes(); i++) {
       new (&nodes_array[i]) node_type;
       nodes_array[i].i = i;
-    }
-    { // write ids of workers in their leaf nodes
-      auto j = tree_index_of_first_leaf();
-      for (auto i = 0; i < nb_leaves(); i++, j++) {
-        nodes_array[j].worker_id = i;
-      }
     }
     // initialize each array in the paths structure s.t. each such array stores its
     // leaf-to-root path in the tree
@@ -193,11 +188,11 @@ public:
       std::reverse(r.begin(), r.end());
       return r;
     };
+    // need this loop to create a path for each worker
     for (auto i = 0; i < nb_leaves(); i++) {
       auto nd = tree_index_of_leaf_node_at(i);
       paths[i] = mk_path(nd);
       assert(paths[i].size() == path_size());
-      paths[i][path_size() - 1]->worker_id = i;
     }
   }
   
@@ -237,14 +232,7 @@ public:
     if (nb_workers == 1) {
       return result;
     }
-    auto update_root = [id, &result] (delta_type d) {
-      result = update_atomic(root_node()->gamma, [=] (gamma_type g) { return d.apply(g); });
-    };
-    if (nb_workers == 2) {
-      update_root(delta);
-      return result;
-    }
-    auto up = [id, update_root] (int i, delta_type d) -> int {
+    auto up = [id, &result] (int i, delta_type d) -> int {
       int j;
       for (j = i; j > 0; j--) {
         auto n = paths[id][j];
@@ -271,7 +259,9 @@ public:
         }
       }
       assert(j == 0);
-      update_root(d);
+      result = update_atomic(root_node()->gamma, [=] (gamma_type g) {
+        return d.apply(g);
+      });
       return j;
     };
     auto down = [id] (int i) -> std::pair<int, delta_type> {
@@ -301,7 +291,7 @@ public:
       assert(j == path_index_of_leaf());
       return std::make_pair(j, d_n);      
     };
-    auto i = path_index_of_leaf() - 1;
+    auto i = path_index_of_leaf();
     while (true) {
       i = up(i, delta);
       auto [_i, _delta] = down(i);
@@ -387,8 +377,8 @@ public:
     }
     // ramp down
     flags[my_id].store(true);
-    auto next = update_path(delta_type{.stealers = -1, .suspended = +1}, my_id);
-    if (next.needs_sentinel() || root_node(my_id)->gamma.load().needs_sentinel()) {
+    update_path(delta_type{.stealers = -1, .suspended = +1}, my_id);
+    if (root_node(my_id)->gamma.load().needs_sentinel()) {
       try_resume(my_id);
     }
     { // start suspending the caller
@@ -400,8 +390,7 @@ public:
       Logging::log_event(exit_sleep);
       Stats::on_enter_acquire();
     } // end suspending the caller
-    auto d2 = delta_type{.stealers = +1, .suspended = -1};
-    update_path(d2, my_id);
+    update_path(delta_type{.stealers = +1, .suspended = -1}, my_id);
   }
 
 };

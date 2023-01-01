@@ -237,7 +237,7 @@ public:
   void launch_ping_thread(size_t nb_workers) {
     launch_ping_thread0(nb_workers, [&] (size_t nb_workers) {
       for (size_t i = 0; i < nb_workers; ++i) {
-	heartbeat_flags[i].store(true);
+        heartbeat_flags[i].store(true);
       }
     });
   }

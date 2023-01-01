@@ -43,12 +43,12 @@ auto try_to_initiate_rollforward(void** rip) {
     while (i <= j) {
       k = i + ((j - i) / 2);
       if ((uint64_t)rollforward_table[k].from == (uint64_t)ra_src) {
-	ra_dst = rollforward_table[k].to;
-	break;
+        ra_dst = rollforward_table[k].to;
+        break;
       } else if ((uint64_t)rollforward_table[k].from < (uint64_t)ra_src) {
-	i = k + 1;
+        i = k + 1;
       } else {
-	j = k - 1;
+        j = k - 1;
       }
     }
   } 
@@ -66,12 +66,12 @@ auto try_to_initiate_rollbackward(void* ra_dst) -> void* {
     while (i <= j) {
       k = i + ((j - i) / 2);
       if ((uint64_t)rollback_table[k].from == (uint64_t)ra_dst) {
-	ra_src = rollback_table[k].to;
-	break;
+        ra_src = rollback_table[k].to;
+        break;
       } else if ((uint64_t)rollback_table[k].from < (uint64_t)ra_dst) {
-	i = k + 1;
+        i = k + 1;
       } else {
-	j = k - 1;
+        j = k - 1;
       }
     }
   }
