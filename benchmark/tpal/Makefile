@@ -4,6 +4,7 @@
 include ../Makefile_benchmark
 TASKPARTS_PATH=../../
 TPALXX?=./tpal++
+ROLLFORWARD_PATH?=../$(TASKPARTS_PATH)/rollforward/src/
 
 # TPAL build flags
 # ----------------
