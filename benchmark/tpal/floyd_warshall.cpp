@@ -67,24 +67,24 @@ void to_loop_handler(int* dist, int vertices, int via_lo, int via_hi, int from_l
   promoted = true;
 }
 
-void taskparts_tpal_handler __rf_handle_from_loop_handler(int* dist, int vertices, int via_lo, int via_hi, int from_lo, int from_hi, bool& promoted) {
+void rollforward_handler_annotation __rf_handle_from_loop_handler(int* dist, int vertices, int via_lo, int via_hi, int from_lo, int from_hi, bool& promoted) {
   to_loop_handler(dist, vertices, via_lo, via_hi, from_lo, from_hi, 0, 0, promoted);
-  taskparts_tpal_rollbackward
+  rollbackward
 }
 
-void taskparts_tpal_handler __rf_handle_from_from_loop_handler(int* dist, int vertices, int via_lo, int via_hi, int from_lo, int from_hi, bool& promoted) {
+void rollforward_handler_annotation __rf_handle_from_from_loop_handler(int* dist, int vertices, int via_lo, int via_hi, int from_lo, int from_hi, bool& promoted) {
   to_loop_handler(dist, vertices, via_lo, via_hi, from_lo, from_hi, 0, 0, promoted);
-  taskparts_tpal_rollbackward
+  rollbackward
 }
 
-void taskparts_tpal_handler __rf_handle_to_to_loop_handler(int* dist, int vertices, int via_lo, int via_hi, int from_lo, int from_hi, int to_lo, int to_hi, bool& promoted) {
+void rollforward_handler_annotation __rf_handle_to_to_loop_handler(int* dist, int vertices, int via_lo, int via_hi, int from_lo, int from_hi, int to_lo, int to_hi, bool& promoted) {
   to_loop_handler(dist, vertices, via_lo, via_hi, from_lo, from_hi, to_lo, to_hi, promoted);
-  taskparts_tpal_rollbackward
+  rollbackward
 }
 
-void taskparts_tpal_handler __rf_handle_from_to_loop_handler(int* dist, int vertices, int via_lo, int via_hi, int from_lo, int from_hi, int to_lo, int to_hi, bool& promoted) {
+void rollforward_handler_annotation __rf_handle_from_to_loop_handler(int* dist, int vertices, int via_lo, int via_hi, int from_lo, int from_hi, int to_lo, int to_hi, bool& promoted) {
   to_loop_handler(dist, vertices, via_lo, via_hi, from_lo, from_hi, to_lo, to_hi, promoted);
-  taskparts_tpal_rollbackward
+  rollbackward
 }
 
 /* Outlined-loop functions */
@@ -119,7 +119,7 @@ void floyd_warshall_interrupt(int* dist, int vertices, int via_lo, int via_hi) {
         }
 	bool promoted = false;
 	__rf_handle_from_to_loop_handler(dist, vertices, via_lo, via_hi, from_lo, from_hi, to_lo, to_hi, promoted);
-	if (taskparts_tpal_unlikely(promoted)) {
+	if (rollforward_branch_unlikely(promoted)) {
 	  return;
 	}
       }
@@ -129,7 +129,7 @@ void floyd_warshall_interrupt(int* dist, int vertices, int via_lo, int via_hi) {
       }
       bool promoted = false;
       __rf_handle_from_loop_handler(dist, vertices, via_lo, via_hi, from_lo, from_hi, promoted);
-      if (taskparts_tpal_unlikely(promoted)) {
+      if (rollforward_branch_unlikely(promoted)) {
 	return;
       }
     }
@@ -162,7 +162,7 @@ void floyd_warshall_interrupt_from(int* dist, int vertices, int via_lo, int via_
       }
       bool promoted = false;
       __rf_handle_from_to_loop_handler(dist, vertices, via_lo, via_hi, from_lo, from_hi, to_lo, to_hi, promoted);
-      if (taskparts_tpal_unlikely(promoted)) {
+      if (rollforward_branch_unlikely(promoted)) {
 	return;
       }
     }
@@ -172,7 +172,7 @@ void floyd_warshall_interrupt_from(int* dist, int vertices, int via_lo, int via_
     }
     bool promoted = false;
     __rf_handle_from_from_loop_handler(dist, vertices, via_lo, via_hi, from_lo, from_hi, promoted);
-    if (taskparts_tpal_unlikely(promoted)) {
+    if (rollforward_branch_unlikely(promoted)) {
       return;
     }
   }
@@ -198,7 +198,7 @@ void floyd_warshall_interrupt_to(int* dist, int vertices, int via_lo, int via_hi
     }
     bool promoted = false;
     __rf_handle_to_to_loop_handler(dist, vertices, via_lo, via_hi, from_lo, from_hi, to_lo, to_hi, promoted);
-    if (taskparts_tpal_unlikely(promoted)) {
+    if (rollforward_branch_unlikely(promoted)) {
       return;
     }
   }

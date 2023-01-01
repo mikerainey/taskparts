@@ -17,10 +17,10 @@
   hwloc ? pkgs.hwloc,
   jemalloc ? pkgs.jemalloc,
   cilk-stats-rts ? import ../cilk-plus-rts-with-stats {},
-  hbtimer-kmod ? import ../heartbeat-linux { pkgs=pkgs; stdenv=stdenv; },
   parlaylib ? import ../parlaylib {},
   pbbsbench ? import ../pbbsbench { parlaylib=parlaylib; },
-  chunkedseq ? import ../chunkedseq/script { }
+  chunkedseq ? import ../chunkedseq/script { },
+  rollforward ? import ../rollforward {}
 }:
 
 let cilk-stats-rts-params =
@@ -44,20 +44,13 @@ stdenv.mkDerivation rec {
   HWLOC_INCLUDE_PREFIX="-DTASKPARTS_HAVE_HWLOC -I${hwloc.dev}/include/";
   HWLOC_LIBRARY_PREFIX="-L${hwloc.lib}/lib/ -lhwloc";
 
-  # heartbeat kernel module to support the tpal runtime
-  HBTIMER_KMOD_INCLUDE_PREFIX=
-    if hbtimer-kmod == null then "" else
-      "-I ${hbtimer-kmod}/include -DTASKPARTS_TPALRTS_HBTIMER_KMOD";
-  HBTIMER_KMOD_LINKER_FLAGS=
-    if hbtimer-kmod == null then "" else
-      "${hbtimer-kmod}/libhb.so";
-  HBTIMER_KMOD_RF_COMPILER= if hbtimer-kmod == null then "" else
-    "${hbtimer-kmod}/rf_compiler";
-
   PARLAYLIB_PATH="${parlaylib}";
   PBBSBENCH_PATH="${pbbsbench}";
   CHUNKEDSEQ_PATH="${chunkedseq}";
   TASKPARTS_BENCHMARK_INFILE_PATH="../../../infiles";
+
+  # TPAL/rollforward configuration
+  ROLLFORWARD_PATH="${rollforward}";
   
   shellHook = ''
     export NUM_SYSTEM_CORES=$( ${hwloc}/bin/hwloc-ls|grep Core|wc -l )
