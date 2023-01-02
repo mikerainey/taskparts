@@ -42,8 +42,8 @@ experiment_key = 'experiment'
 experiments = [ 'high_parallelism',
                 'parallel_sequential_mix', 'graph',
                 'cilk_shootout',
-                'vary_elastic_params'
-                #'multiprogrammed',
+                'vary_elastic_params',
+                'multiprogrammed'
                ]
 
 modes = ['dry', 'from_scratch' ] # LATER: add append mode
@@ -241,12 +241,14 @@ mk_elastic_shared = mk_cross_sequence([
 # Scheduler configurations
 # ------------------------
 
+elastic_scheduler_value = 'elastic2' 
+
 # - default scheduler (nonelastic)
 mk_sched_nonelastic = mk_cross_sequence(
     [ mk_parameter(scheduler_key, 'nonelastic') ])
 # - elastic two-level tree scheduler
 mk_sched_elastic2 = mk_cross_sequence(
-    [ mk_parameter(scheduler_key, 'elastic2'),
+    [ mk_parameter(scheduler_key, elastic_scheduler_value),
       mk_elastic_shared,      
       mk_parameter(elastic_key, 'surplus2') ])
 # - versions of the two schedulers above, in which the semaphore is
@@ -301,9 +303,7 @@ mk_large_parallelism = mk_cross_sequence([
     mk_parameter(mix_level_key, 'large')
 ])
 
-mk_low_med_large = mk_append_sequence([mk_low_parallelism,
-                                       mk_med_parallelism,
-                                       mk_large_parallelism])
+mk_low_med_large = mk_append_sequence([mk_low_parallelism, mk_med_parallelism, mk_large_parallelism])
 
 mk_parallel_sequential_mix = mk_cross_sequence(
     [ mk_parameter(experiment_key, 'parallel-sequential-mix'),
@@ -333,16 +333,18 @@ mk_sched_multiprogrammed = mk_cross_sequence(
     [ mk_parameter(scheduler_key, 'multiprogrammed'),
       mk_parameter(workstealing_key, 'multiprogrammed') ])
 
+multiprogrammed_num_workers = [ args.num_workers * i for i in [1, 2, 3, 4] ]
+
 mk_multiprogrammed = mk_cross_sequence(
     [ mk_parameter(experiment_key, 'multiprogrammed'),
       mk_taskparts_basis,
       mk_parameters(benchmark_key, benchmarks),
       mk_append_sequence([
-          mk_sched_nonelastic,
+#          mk_sched_nonelastic,
           mk_sched_elastic2,
           mk_sched_multiprogrammed ]),
       mk_parameters(taskparts_num_workers_key,
-                    [ args.num_workers * i for i in [1, 2, 3, 4] ]) ])
+                    multiprogrammed_num_workers) ])
 
 # Graph experiment
 # ----------------
@@ -609,20 +611,23 @@ def table_of_value(r):
 def table_of_results(f):
     return table_of_value(read_json_from_file_path(f))
 
-def pctdiff_table(f, difference_keys, avg_keys, comparison_key, baseline_value):
+def pctdiff_table(f, benchmark_keys, avg_keys, comparison_key, baseline_value, nonbaseline_value, filter_kvps=[]):
     dicts = table_of_results(f)
     stats_fd, stats_path = tempfile.mkstemp(suffix = '.json', text = True)
     os.close(stats_fd)
     write_json_to_file_path(dicts, stats_path)
-    # take the average of any rows having duplicate keys wrt difference_keys
-    ds = ', '.join(difference_keys + [comparison_key])
+    # take the average of any rows having duplicate keys wrt benchmark_keys
+    ds = ', '.join(benchmark_keys + [comparison_key])
     avs = ', '.join(['AVG(' + a + ') AS ' + a for a in avg_keys])
-    qavs = 'SELECT ' + ds + ', ' + avs + ' FROM {} GROUP BY  ' + ds + ', ' + comparison_key
+    qfs = '' if filter_kvps == [] else ('WHERE ' + filter_kvps[0][0] + ' = ' + filter_kvps[0][1] + '' + ' AND '.join([fkvp[0] + ' = ' + fkvp[1] for fkvp in filter_kvps[1:]]))
+    qavs = 'SELECT ' + ds + ', ' + avs + ' FROM {} ' + qfs + ' GROUP BY  ' + ds
     print(qavs)
-    ks = ','.join(['baseline.' + a for a in difference_keys + avg_keys]) + ', ' + ','.join(['nonbaseline.' + a + ' AS nonbaseline_' + a for a in avg_keys])
-    ks2 = ks + ', ' + ', '.join(['ROUND(100 * ((baseline.' + k + ' - nonbaseline.' + k + ') / nonbaseline.' + k + '), 1) as pctdiff_' + k for k in avg_keys])
-    js = ' AND '.join(['baseline.' + k + ' = nonbaseline.' + k for k in difference_keys])
-    qds = 'SELECT ' + ks2 + ' FROM (' + qavs + ') nonbaseline INNER JOIN (' + qavs + ') baseline ON ' + js + ' AND baseline.' + comparison_key + ' = \"' + baseline_value + '\" WHERE baseline.' + comparison_key + ' != nonbaseline.' + comparison_key
+    # add columns for raw values (baseline and nonbaseline)
+    ks = ','.join(['baseline.' + a for a in benchmark_keys + avg_keys]) + ', ' + ','.join([nonbaseline_value + '.' + a + ' AS ' + a + '_' + nonbaseline_value for a in avg_keys])
+    # add columns for pctdiff fields
+    ks2 = ks + ', ' + ', '.join(['ROUND(100 * ((baseline.' + k + ' - ' + nonbaseline_value + '.' + k + ') / ' + nonbaseline_value + '.' + k + '), 1) as ' + k + '_pctdiff' for k in avg_keys])
+    js = ' AND '.join(['baseline.' + k + ' = ' + nonbaseline_value + '.' + k for k in benchmark_keys])
+    qds = 'SELECT ' + ks2 + ' FROM (' + qavs + ') ' + nonbaseline_value + ' INNER JOIN (' + qavs + ') baseline ON ' + js + ' AND baseline.' + comparison_key + ' = \"' + baseline_value + '\" WHERE baseline.' + comparison_key + ' != ' + nonbaseline_value + '.' + comparison_key
     print(qds)
     cmd = 'dsq --pretty ' + stats_path + ' \'' + qds + '\''
     print(cmd)
@@ -704,7 +709,16 @@ for (e, mk) in experiments_to_run.items():
     write_json_to_file_path(results, file_path = results_file)
     write_json_to_file_path(traces, file_path = trace_file)
     if e == 'high_parallelism':
-        pctdiff_table(results_file, ['benchmark'], ['exectime', 'usertime'], 'scheduler', 'nonelastic')
+        pctdiff_table(results_file, ['benchmark'], ['exectime', 'usertime'], 'scheduler', 'nonelastic', elastic_scheduler_value)
+    elif e == 'parallel_sequential_mix':
+        for v in ['low', 'med', 'large']:
+            pctdiff_table(results_file, ['benchmark'], ['exectime', 'usertime'], 'scheduler', 'nonelastic', elastic_scheduler_value, [[mix_level_key, '\"' + v + '\"']])
+            print(v)
+    elif e == 'multiprogrammed':
+        for p in multiprogrammed_num_workers:
+            pctdiff_table(results_file, ['benchmark'], ['exectime', 'usertime'], 'scheduler', 'multiprogrammed', elastic_scheduler_value, [[taskparts_num_workers_key, str(p)]])
+            print('P = ' + str(p))
+
     
 export_results_to_git(local_results_path)
 
