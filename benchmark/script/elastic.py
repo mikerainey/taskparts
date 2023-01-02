@@ -618,7 +618,7 @@ def pctdiff_table(f, benchmark_keys, avg_keys, comparison_key, baseline_value, n
     write_json_to_file_path(dicts, stats_path)
     # take the average of any rows having duplicate keys wrt benchmark_keys
     ds = ', '.join(benchmark_keys + [comparison_key])
-    avs = ', '.join(['AVG(' + a + ') AS ' + a for a in avg_keys])
+    avs = ', '.join(['ROUND(AVG(' + a + '),3) AS ' + a for a in avg_keys])
     qfs = '' if filter_kvps == [] else ('WHERE ' + filter_kvps[0][0] + ' = ' + filter_kvps[0][1] + '' + ' AND '.join([fkvp[0] + ' = ' + fkvp[1] for fkvp in filter_kvps[1:]]))
     qavs = 'SELECT ' + ds + ', ' + avs + ' FROM {} ' + qfs + ' GROUP BY  ' + ds
     print(qavs)
