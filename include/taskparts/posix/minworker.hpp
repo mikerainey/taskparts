@@ -47,7 +47,7 @@ public:
 };
 
 auto worker_yield() {
-#if defined(TASKPARTS_MULTIPROGRAMMED)
+#if defined(TASKPARTS_MULTIPROGRAMMED) || defined(TASKPARTS_ELASTIC_S3)
   std::this_thread::yield();
 #else
   cycles::spin_for(1000);

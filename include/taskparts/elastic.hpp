@@ -669,6 +669,7 @@ public:
     Stats::on_exit_sleep();
     Logging::log_event(exit_sleep);
     Stats::on_enter_acquire();
+    
   }
 
   static
@@ -858,6 +859,7 @@ public:
       d.suspended--;
       return d;
     });
+    worker_yield();
   }
   
 };

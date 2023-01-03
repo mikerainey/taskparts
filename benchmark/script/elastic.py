@@ -43,7 +43,8 @@ experiments = [ 'high_parallelism',
                 'parallel_sequential_mix', 'graph',
                 'cilk_shootout',
                 'vary_elastic_params',
-                'multiprogrammed'
+                'multiprogrammed',
+                'try_without_binding'
                ]
 
 modes = ['dry', 'from_scratch' ] # LATER: add append mode
@@ -58,7 +59,7 @@ path_to_infiles = os.getcwd() + '/../../../infiles'
 #               in glob.glob(path_to_benchmarks + "*.cpp")] #
 #############################################################
 
-pbbs_benchmarks = [ 'classify', 'index', 'raycast', 'dedup' ]
+pbbs_benchmarks = [ 'classify', 'raycast', 'dedup' ] # 'index', (index always segfaults currently)
 
 parlay_benchmarks = [ 'quickhull', 'bellmanford', 'samplesort',
                       'suffixarray', 'setcover', 
@@ -178,7 +179,8 @@ workstealing_values = [ 'elastic', 'multiprogrammed', 'cilk', 'abp',
                        ]
 
 elastic_key = 'elastic'
-elastic_values = [ 'surplus2', 'surplus' ]
+elastic_default = 's3'
+elastic_values = [ elastic_default, 'surplus' ]
 
 semaphore_key = 'semaphore'
 semaphore_values = [ 'spin' ]
@@ -190,7 +192,7 @@ prog_keys = [ binary_key, workstealing_key, elastic_key, semaphore_key,
               benchmark_key ]
 
 scheduler_key = 'scheduler'
-scheduler_values = [ 'nonelastic', 'multiprogrammed', 'elastic2',
+scheduler_values = [ 'nonelastic', 'multiprogrammed', elastic_default,
                      'elastic', 'elastic2_spin', 'elastic_spin' ]
 
 alpha_key = 'TASKPARTS_ELASTIC_ALPHA'
@@ -250,14 +252,14 @@ mk_sched_nonelastic = mk_cross_sequence(
 mk_sched_elastic2 = mk_cross_sequence(
     [ mk_parameter(scheduler_key, elastic_scheduler_value),
       mk_elastic_shared,      
-      mk_parameter(elastic_key, 'surplus2') ])
+      mk_parameter(elastic_key, elastic_default) ])
 # - versions of the two schedulers above, in which the semaphore is
 # replaced by our own version that blocks by spinning instead of via
 # the OS/semaphore mechanism
 mk_sched_elastic2_spin = mk_cross_sequence(
     [ mk_parameter(scheduler_key, 'elastic2_spin'),
       mk_elastic_shared,
-      mk_parameter(elastic_key, 'surplus2'),
+      mk_parameter(elastic_key, elastic_default),
       mk_parameter(semaphore_key, 'spin') ])
 
 mk_sched_elastic_all = mk_append(mk_sched_elastic2, mk_sched_elastic2_spin if args.use_elastic_spin else mk_unit())
@@ -275,6 +277,27 @@ mk_high_parallelism = mk_cross_sequence(
       mk_taskparts_basis,
       mk_parameters(benchmark_key, benchmarks),
       mk_schedulers,
+      mk_parameter(taskparts_num_workers_key, args.num_workers) ])
+
+# Try without binding
+# -------------------
+
+mk_core_bindings2 = mk_append(mk_parameter(taskparts_pin_worker_threads_key, 0),
+                              mk_cross(
+                                  mk_parameter(taskparts_pin_worker_threads_key, 1),
+                                  mk_parameter(taskparts_resource_binding_key, args.binding)))
+
+mk_taskparts_basis2 = mk_cross_sequence([
+    mk_parameter(binary_key, 'sta'),
+    mk_parameter(taskparts_numa_alloc_interleaved_key, 1),
+    mk_core_bindings2,
+    mk_parameter(infiles_path_key, path_to_infiles),])
+
+mk_try_without_binding = mk_cross_sequence(
+    [ mk_parameter(experiment_key, 'try_without_binding'),
+      mk_taskparts_basis2,
+      mk_parameters(benchmark_key, benchmarks),
+      mk_sched_elastic_all,
       mk_parameter(taskparts_num_workers_key, args.num_workers) ])
 
 # Parallel-sequential-mix experiment
@@ -380,6 +403,8 @@ mk_cilk_shootout = mk_cross_sequence(
       mk_cilk_shootout_schedulers,
       mk_parameter(taskparts_num_workers_key, args.num_workers) ])
 
+
+
 # All experiments
 # ---------------
 
@@ -388,7 +413,8 @@ all_experiments = { 'high_parallelism': mk_high_parallelism,
                     'vary_elastic_params': mk_vary_elastic_params,
                     'multiprogrammed': mk_multiprogrammed, 
                     'graph': mk_graph,
-                    'cilk_shootout': mk_cilk_shootout }
+                    'cilk_shootout': mk_cilk_shootout,
+                    'try_without_binding': mk_try_without_binding }
 experiments_to_run = { k: all_experiments[k] for k in experiment_values }
 
 # Benchmark runs
@@ -718,47 +744,17 @@ for (e, mk) in experiments_to_run.items():
         for p in multiprogrammed_num_workers:
             pctdiff_table(results_file, ['benchmark'], ['exectime', 'usertime'], 'scheduler', 'multiprogrammed', elastic_scheduler_value, [[taskparts_num_workers_key, str(p)]])
             print('P = ' + str(p))
+    elif e == 'try_without_binding':
+        pctdiff_table(results_file, ['benchmark'], ['exectime', 'usertime'], taskparts_pin_worker_threads_key, '1', elastic_scheduler_value)
+            
 
     
 export_results_to_git(local_results_path)
 
 export_results_to_git(output_merged_results())
 
-# Generate tables
-
-# for e in experiments_to_run:
-#     if e != 'high_parallelism':
-#         continue
-#     print(e)
-#     f = args.load_results_file[0]
-#     print(f)
-#     r = read_json_from_file_path(f)
-#     rows = rows_of(r)
-#     dicts = []
-#     for row in rows:
-#         dicts += [row_to_dictionary(row)]
-#     stats_fd, stats_path = tempfile.mkstemp(suffix = '.json', text = True)
-#     os.close(stats_fd)
-#     write_json_to_file_path(dicts, stats_path)
-#     q1 = '(SELECT benchmark, scheduler, AVG(exectime) as exectime FROM {} GROUP BY benchmark, scheduler)'
-#     cmd = 'dsq --pretty ' + stats_path + ' \'SELECT t1.benchmark, t1.exectime as e1, t2.exectime as e2, ROUND(100 * ((t1.exectime - t2.exectime) / t2.exectime), 1) as pctdiff FROM ' + q1 + ' t1 INNER JOIN ' + q1 + ' t2 ON t1.benchmark = t2.benchmark AND t2.scheduler = \"nonelastic\" WHERE t1.scheduler != t2.scheduler\''
-#     current_child = subprocess.Popen(cmd, shell = True,
-#                                      stdout = subprocess.PIPE, stderr = subprocess.PIPE )
-#     child_stdout, child_stderr = current_child.communicate(timeout = 1000)
-#     child_stdout = child_stdout.decode('utf-8')
-#     child_stderr = child_stderr.decode('utf-8')
-#     return_code = current_child.returncode
-#     if return_code != 0:
-#         print('Error: export to git returned error code ' + str(return_code))
-#         print('stdout:')
-#         print(str(child_stdout))
-#         print('stderr:')
-#         print(str(child_stderr))
-#         exit
-#     print(child_stdout)
-#     os.unlink(stats_path)
-
-    
+# Original SQL query:
+# dsq --pretty pctdiff_data.json 'SELECT t1.prog, t1.exectime, t1.ext as ext1, t2.ext as ext2, ROUND(100 * ((t1.exectime - t2.exectime) / t2.exectime), 1) as pctdiff FROM {} t1 INNER JOIN {} t2 ON t1.prog = t2.prog AND t2.ext = "elastic" WHERE ext1 != ext2' 
 
 def merge_k1v1_with_values_of_k2_in_results(k1, k2, results):
     rows = rows_of(results)
