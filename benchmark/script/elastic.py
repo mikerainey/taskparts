@@ -358,6 +358,9 @@ mk_sched_multiprogrammed = mk_cross_sequence(
 
 multiprogrammed_num_workers = [ args.num_workers * i for i in [1, 2, 3, 4] ]
 
+# later: see about doing multiple comparison values, which will require dealing with additional inner joins in table generation
+# https://www.w3schools.com/sql/sql_join_inner.asp
+
 mk_multiprogrammed = mk_cross_sequence(
     [ mk_parameter(experiment_key, 'multiprogrammed'),
       mk_taskparts_basis,

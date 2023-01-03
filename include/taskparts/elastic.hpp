@@ -836,6 +836,7 @@ public:
       //return (beta == 1) ? true : (n % beta) < (beta - 1);
     };
     if (! flip()) {
+      worker_yield();
       return;
     }
     flags[my_id].store(true);
