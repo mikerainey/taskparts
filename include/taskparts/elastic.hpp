@@ -39,10 +39,10 @@ template <typename Stats, typename Logging, typename Semaphore=dflt_semaphore,
 class elastic {
 public:
   
-  using gamma_type = struct gamma_struct {
+  using cdata_type = struct cdata_struct {
     int32_t surplus = 0;
-    int16_t stealers = 0;
     int16_t suspended = 0;
+    int16_t stealers = 0;
     auto needs_sentinel() -> bool {
       return (surplus >= 1) && (stealers == 0) && (suspended >= 1);
     }
@@ -51,314 +51,191 @@ public:
   static constexpr
   char node_locked = 0, node_unlocked = 1;
 
-  using delta_type = struct delta_struct {
-    unsigned int lock : 1 = node_unlocked;
+  using cdelta_type = struct cdelta_struct {
+    unsigned int locked : 1 = node_unlocked;
     int surplus : 31 = 0;
     int16_t stealers = 0;
     int16_t suspended = 0;
-    struct delta_struct operator+(struct delta_struct other) {
-      delta_type d = *this;
+    struct cdelta_struct operator+(struct cdelta_struct other) {
+      cdelta_type d = *this;
       d.surplus += other.surplus;
       d.stealers += other.stealers;
       d.suspended += other.suspended;
       return d;
     }
-    auto empty() -> bool {
+    auto is_inert() -> bool {
       return (surplus == 0) && (stealers == 0) && (suspended == 0);
     }
-    gamma_type apply(gamma_type g) const {
-      g.surplus += surplus;
-      g.stealers += stealers;
-      g.suspended += suspended;
-      return g;
+    cdata_type apply(cdata_type c) const {
+      c.surplus += surplus;
+      c.stealers += stealers;
+      c.suspended += suspended;
+      return c;
     }
   };
 
-  using node_type = struct node_struct {
-    int i = -1;                   // index of leaf node (-1 for interior nodes)
-    std::atomic<gamma_type> gamma;
-    std::atomic<delta_type> delta;
+  using cnode_type = struct cnode_struct {
+    std::atomic<cdata_type> counter;
+    std::atomic<cdelta_type> delta;
+    auto update_counter(cdelta_type d) {
+      if (d.is_inert()) {
+        return;
+      }
+      while (true) {
+        auto orig = counter.load();
+        auto next = orig;
+        next.suspended = orig.suspended + d.suspended;
+        next.stealers = orig.stealers + d.stealers;
+        next.surplus = orig.surplus + d.surplus;
+        if (counter.compare_exchange_strong(orig, next)) {
+          break;
+        }
+      }
+    }
   };
-
-  // for now...
-  static constexpr 
-  bool override_rand_worker = false;
 
   static
   int alpha, beta;
+  
+  static
+  size_t tree_height;
 
   static
-  cache_aligned_fixed_capacity_array<node_type, 1 << max_lg_tree_sz> nodes_array;
+  cnode_type* tree;
 
   static
-  perworker::array<std::vector<node_type*>> paths;
+  perworker::array<std::vector<cnode_type*>> paths;
 
   static
   perworker::array<Semaphore> semaphores;
 
   static
   perworker::array<std::atomic_bool> flags;
-
+  
   static
-  int lg_tree_sz;
-
+  cnode_type* nr; // root node
+  
   static
-  auto nb_leaves() -> int {
-    return 1 << lg_tree_sz;
-  }
-
-  static
-  auto nb_nodes(int lg) -> int {
-    return (1 << lg) - 1;
-  }
-
-  static
-  auto nb_nodes() -> int {
-    return nb_nodes(lg_tree_sz + 1);
-  }
-
-  static
-  auto tree_index_of_first_leaf() -> int {
-    return nb_nodes(lg_tree_sz);
-  }
-
-  static
-  auto is_root(int n) -> bool {
-    return n == 0;
-  }
-
-  static
-  auto parent_of(int n) -> int {
-    assert(! is_root(n));
-    return (n - 1) / 2;
+  auto needs_sentinel() -> bool {
+    return nr->counter.load().needs_sentinel();
   }
   
   static
-  auto tree_index_of_leaf_node_at(int i) -> int {
-    if (lg_tree_sz == 0) {
-      assert(i == 0);
-      return 0;
-    }
-    assert((i >= 0) && (i < nb_leaves()));
-    auto l = tree_index_of_first_leaf();
-    auto k = l + i;
-    assert(k > 0 && k < nb_nodes());
-    return k;
-  }
-
-  static
-  auto initialize() {
-    if (const auto env_p = std::getenv("TASKPARTS_ELASTIC_ALPHA")) {
-      alpha = std::stoi(env_p);
-    } else {
-      alpha = 2;
-    }
-    if (const auto env_p = std::getenv("TASKPARTS_ELASTIC_BETA")) {
-      beta = std::max(2, std::stoi(env_p));
-    } else {
-      beta = 2;
-    }
-    if (const auto env_p = std::getenv("TASKPARTS_ELASTIC_LG_TREE_SZ")) {
-      lg_tree_sz = std::min(0, std::stoi(env_p));
-    } else {
-      lg_tree_sz = 0;
-      while ((1 << lg_tree_sz) < perworker::nb_workers()) {
-        lg_tree_sz++;
+  auto ensure_sentinel() -> void {
+    while (needs_sentinel()) {
+      if (try_resume(random_suspended_worker())) {
+        break;
       }
-      lg_tree_sz = std::min(0, lg_tree_sz - 1);
-    }
-    for (int i = 0; i < nb_nodes(); i++) {
-      new (&nodes_array[i]) node_type;
-      nodes_array[i].i = i;
-    }
-    // initialize each array in the paths structure s.t. each such array stores its
-    // leaf-to-root path in the tree
-    // n: index of a leaf node in the heap array
-    auto mk_path = [] (int n) -> std::vector<node_type*> {
-      std::vector<node_type*> r;
-      if (lg_tree_sz == 0) {
-        r.push_back(&nodes_array[0]);
-        return r;
-      }
-      do {
-        r.push_back(&nodes_array[n]);
-        n = parent_of(n);
-      } while (! is_root(n));
-      r.push_back(&nodes_array[n]);
-      std::reverse(r.begin(), r.end());
-      return r;
-    };
-    // need this loop to create a path for each worker
-    for (auto i = 0; i < nb_leaves(); i++) {
-      auto nd = tree_index_of_leaf_node_at(i);
-      paths[i] = mk_path(nd);
-      assert(paths[i].size() == path_size());
     }
   }
   
   static
-  auto apply_delta(node_type* n, delta_type d) -> void {
-    n->gamma.store(d.apply(n->gamma.load()));
-  }
-
-  static
-  auto path_size() -> int {
-    assert((int)paths.mine().size() == (lg_tree_sz + 1));
-    return lg_tree_sz + 1;
-  }
-
-  static
-  auto path_index_of_leaf() -> int {
-    return path_size() - 1;
-  }
-
-  static
-  auto root_node(size_t my_id = perworker::my_id()) -> node_type* {
-    return paths[my_id][0];
-  }
-
-  static
-  auto leaf_node(size_t id = perworker::my_id()) -> node_type* {
-    auto i = path_index_of_leaf();
-    return paths[id][i];
-  }
-  
-  static
-  auto update_path(delta_type delta,
-                   std::vector<node_type*>& path,
-                   size_t id = perworker::my_id()) -> gamma_type {
-    gamma_type result = root_node()->gamma.load();
-    auto nb_workers = perworker::nb_workers();
-    if (nb_workers == 1) {
-      return result;
-    }
-    auto up = [id, &result] (int i, delta_type d) -> int {
-      int j;
-      for (j = i; j > 0; j--) {
-        auto n = paths[id][j];
-        delta_type d_o;
-        while (true) {
-          d_o = n->delta.load();
-          delta_type d_n;
-          d_n.lock = node_locked;
-          if (d_o.lock == node_unlocked) { // no delegation
-            if (n->delta.compare_exchange_strong(d_o, d_n)) {
-              apply_delta(n, d);
-              break;
-            }
-          } else { // delegation
-            assert(d_o.lock == node_locked);
-            d_n = d_o + d;
-            if (n->delta.compare_exchange_strong(d_o, d_n)) {
-              // delegate the update of d_n to the worker holding the lock on d_o
-              assert(j >= 1);
-              assert(d_n.lock == node_locked);
-              return j;
-            }
-          }
-        }
-      }
-      assert(j == 0);
-      result = update_atomic(root_node()->gamma, [=] (gamma_type g) {
-        return d.apply(g);
-      });
-      return j;
-    };
-    auto down = [id] (int i) -> std::pair<int, delta_type> {
-      int j;
-      delta_type d_n;
-      for (j = (i + 1); j < path_index_of_leaf(); j++) {
-        auto n = paths[id][j];
-        delta_type d_o;
-        while (true) {
-          d_o = n->delta.load();
-          assert(d_o.lock == node_locked);
-          if (d_o.empty()) { // no delegation to handle
-            d_n.lock = node_unlocked;
-            if (n->delta.compare_exchange_strong(d_o, d_n)) {
-              break;
-            }
-          } else { // handle delegation
-            d_n.lock = node_locked;
-            if (n->delta.compare_exchange_strong(d_o, d_n)) {
-              apply_delta(n, d_o);
-              return std::make_pair(j - 1, d_o);
-            }
-          }
-        }
-      }
-      assert(d_n.empty());
-      assert(j == path_index_of_leaf());
-      return std::make_pair(j, d_n);      
-    };
-    auto i = path_index_of_leaf();
+  auto try_lock_and_update_node(cnode_type* ni, cdelta_type d) -> bool {
     while (true) {
-      i = up(i, delta);
-      auto [_i, _delta] = down(i);
-      i = _i;
-      delta = _delta;
-      if (i == path_index_of_leaf()) {
-        break;
+      auto orig = ni->delta.load();
+      auto next = orig;
+      next.locked = node_locked;
+      if (orig.locked == node_locked) {
+        auto next = orig;
+        next.suspended = orig.suspended + d.suspended;
+        next.stealers = orig.stealers + d.stealers;
+        next.surplus = orig.surplus + d.surplus;
+        if (ni->delta.compare_exchange_strong(orig, next)) {
+          return false;
+        }
+      } else {
+        if (ni->delta.compare_exchange_strong(orig, next)) {
+          ni->update_counter(d);
+          return true;
+        }
       }
     }
-    return result;
   }
-
+  
   static
-  auto try_resume(size_t id) -> bool {
-    auto orig = true;
-    if (flags[id].compare_exchange_strong(orig, false)) {
-      semaphores[id].post();
-      return true;
-    }
-    return false;
-  }
-
-  static
-  auto update_path(delta_type delta, size_t my_id = perworker::my_id()) -> gamma_type {
-    auto g = update_path(delta, paths[my_id], my_id);
-    // restore sentinel invariant, if need be
-    while (g.needs_sentinel()) {
-      auto id = random_number(my_id) % perworker::nb_workers();
-      if (try_resume(id)) {
-        break;
+  auto try_unlock_node(cnode_type* ni) -> std::pair<bool, cdelta_type> {
+    while (true) {
+      auto orig = ni->delta.load();
+      auto next = cdelta_type{.locked = node_locked};
+      if (orig.is_inert()) {
+        next.locked = node_unlocked;
+        if (ni->delta.compare_exchange_strong(orig, next)) {
+          return std::make_pair(false, orig);
+        }
+      } else {
+        if (! ni->delta.compare_exchange_strong(orig, next)) {
+          continue;;
+        }
+        ni->update_counter(orig);
+        return std::make_pair(true, orig);
       }
-      g = root_node()->gamma.load();
     }
-    return g;
+  }
+  
+  static
+  auto update_tree(cdelta_type d,
+                   size_t id = perworker::my_id(),
+                   size_t h = tree_height) -> void {
+    auto i = h;
+    do {
+      while (i > 0) {
+        i--;
+        if (i == 0) {
+          nr->update_counter(d);
+          break;
+        }
+        auto ni = paths[id][i];
+        if (try_lock_and_update_node(ni, d)) {
+          break;
+        }
+      }
+      i--;
+      while ((i + 1) < h) {
+        i++;
+        if (i == 0) {
+          continue;;
+        }
+        auto ni = paths[id][i];
+        auto [delegated, _d] = try_unlock_node(ni);
+        if (delegated) {
+          break;
+        }
+        d = _d;
+      }
+    } while ((i + 1) < h);
+    ensure_sentinel();
   }
 
   static
   auto incr_surplus(size_t my_id = perworker::my_id()) -> void {
-    update_path(delta_type{.surplus = +1}, my_id);
+    update_tree(cdelta_type{.surplus = +1}, my_id);
     Stats::increment(Stats::configuration_type::nb_surplus_transitions);
   }
 
   static
   auto decr_surplus(size_t my_id = perworker::my_id()) -> void {
-    update_path(delta_type{.surplus = -1}, my_id);
+    update_tree(cdelta_type{.surplus = -1}, my_id);
   }
 
   static
   auto incr_stealing(size_t my_id = perworker::my_id()) -> void {
-    update_path(delta_type{.stealers = +1}, my_id);
+    update_tree(cdelta_type{.stealers = +1}, my_id);
   }
 
   static
   auto decr_stealing(size_t my_id = perworker::my_id()) -> void {
-    auto next = update_path(delta_type{.stealers = -1}, my_id);
-    // ramp up
+    update_tree(cdelta_type{.stealers = -1}, my_id);
+    // scale up
     auto n = alpha;
-    while ((n > 0) || (next.needs_sentinel())) {
-      if (next.suspended == 0) {
+    do {
+      if (nr->counter.load().suspended == 0) {
         break;
       }
-      auto id = random_number(my_id) % perworker::nb_workers();
-      if (try_resume(id)) {
+      if (try_resume(random_suspended_worker())) {
         n--;
       }
-      next = root_node()->gamma.load();
-    }
+    } while (n > 0);
+    ensure_sentinel();
   }
 
   static
@@ -375,10 +252,10 @@ public:
     if (! flip()) {
       return;
     }
-    // ramp down
+    // scale down
     flags[my_id].store(true);
-    update_path(delta_type{.stealers = -1, .suspended = +1}, my_id);
-    if (root_node(my_id)->gamma.load().needs_sentinel()) {
+    update_tree(cdelta_type{.stealers = -1, .suspended = +1}, my_id);
+    if (needs_sentinel()) {
       try_resume(my_id);
     }
     { // start suspending the caller
@@ -390,7 +267,173 @@ public:
       Logging::log_event(exit_sleep);
       Stats::on_enter_acquire();
     } // end suspending the caller
-    update_path(delta_type{.stealers = +1, .suspended = -1}, my_id);
+    update_tree(cdelta_type{.stealers = +1, .suspended = -1}, my_id);
+  }
+  
+  static
+  auto try_resume(int id) -> bool {
+    if (id == -1) {
+      return false;
+    }
+    auto orig = true;
+    if (flags[id].compare_exchange_strong(orig, false)) {
+      semaphores[id].post();
+      return true;
+    }
+    return false;
+  }
+  
+  // for now...
+  static constexpr
+  bool override_rand_worker = false;
+  
+  static
+  auto random_in_range(std::pair<size_t, size_t> r) -> int {
+    if (r.second <= r.first) {
+      return -1;
+    }
+    auto i = random_number() % (r.second - r.first);
+    return i + r.first;
+  }
+  
+  static
+  auto workers(int i) -> std::pair<size_t, size_t> {
+    auto ps = std::make_pair(0l, 0l);
+    assert(false); // todo
+    return ps;
+  }
+  
+  static
+  auto random_suspended_worker(size_t my_id = perworker::my_id()) -> int {
+    auto id = override_rand_worker ? random_in_range(random_worker_group([] (cdata_type c) { return c.suspended; })) : random_other_worker(my_id);
+    auto is_suspended = flags[id].load();
+    return is_suspended ? id : -1;
+  }
+  
+  template <typename Is_deque_empty>
+  static
+  auto random_worker_with_surplus(const Is_deque_empty& is_deque_empty,
+                                  size_t my_id = perworker::my_id()) -> int {
+    auto id = override_rand_worker ? random_in_range(random_worker_group([] (cdata_type c) { return c.surplus; })) : random_other_worker(my_id);
+    auto has_surplus = is_deque_empty(id);
+    return has_surplus ? id : -1;
+  }
+  
+  template <typename F>
+  static
+  auto random_worker_group(const F& f,
+                           size_t h = tree_height) -> std::pair<size_t, size_t> {
+    std::pair<size_t, size_t> ps;
+    auto i = 0;
+    auto l = 0;
+    while (true) {
+      auto ni = &tree[i];
+      auto wi = f(ni->counter.load());
+      if (wi == 0) {
+        break;
+      }
+      if ((l + 1) == h) {
+        if (wi > 0) {
+          ps = workers(i);
+        }
+        break;
+      }
+      auto il = i;
+      auto ir = i + nb_nodes(h - l);
+      auto wl = f(tree[il].counter.load());
+      auto wr = f(tree[ir].counter.load());
+      i = ((random_number() % (wl + wr)) < wl) ? il : ir;
+      l++;
+    }
+    return ps;
+  }
+  
+  static
+  auto nb_nodes(int lg) -> int {
+    assert(lg >= 0);
+    return (1 << lg) - 1;
+  }
+  
+  static
+  auto nb_nodes() -> int {
+    return nb_nodes(tree_height + 1);
+  }
+  
+  static
+  auto initialize() {
+    auto nb_leaves = [] () -> int {
+      return 1 << tree_height;
+    };
+
+    if (const auto env_p = std::getenv("TASKPARTS_ELASTIC_ALPHA")) {
+      alpha = std::stoi(env_p);
+    } else {
+      alpha = 2;
+    }
+    if (const auto env_p = std::getenv("TASKPARTS_ELASTIC_BETA")) {
+      beta = std::max(2, std::stoi(env_p));
+    } else {
+      beta = 2;
+    }
+    if (const auto env_p = std::getenv("TASKPARTS_ELASTIC_TREE_HEIGHT")) {
+      tree_height = std::min(0, std::stoi(env_p));
+    } else {
+      tree_height = 0;
+      while ((1 << tree_height) < perworker::nb_workers()) {
+        tree_height++;
+      }
+      tree_height = std::min((size_t)0, tree_height - 1);
+    }
+    tree = new cnode_type[nb_nodes()];
+    auto tree_index_of_first_leaf = [&] () -> int {
+      return nb_nodes(tree_height);
+    };
+    auto is_root = [&] (int n) -> bool {
+      return n == 0;
+    };
+    auto parent_of = [&] (int n) -> int {
+      assert(! is_root(n));
+      return (n - 1) / 2;
+    };
+    auto tree_index_of_leaf_node_at = [&] (int i) -> int {
+      if (tree_height == 0) {
+        assert(i == 0);
+        return 0;
+      }
+      assert((i >= 0) && (i < nb_leaves()));
+      auto l = tree_index_of_first_leaf();
+      auto k = l + i;
+      assert(k > 0 && k < nb_nodes());
+      return k;
+    };
+    // initialize each array in the paths structure s.t. each such array stores its
+    // leaf-to-root path in the tree
+    // n: index of a leaf node in the heap array
+    auto mk_path = [&] (int n) -> std::vector<cnode_type*> {
+      std::vector<cnode_type*> r;
+      if (tree_height == 0) {
+        r.push_back(&tree[0]);
+        return r;
+      }
+      do {
+        r.push_back(&tree[n]);
+        n = parent_of(n);
+      } while (! is_root(n));
+      r.push_back(&tree[n]);
+      std::reverse(r.begin(), r.end());
+      return r;
+    };
+    auto path_size = [&] () -> int {
+      assert((int)paths.mine().size() == (tree_height + 1));
+      return tree_height + 1;
+    };
+    // need this loop to create a path for each worker
+    for (auto i = 0; i < nb_leaves(); i++) {
+      auto nd = tree_index_of_leaf_node_at(i);
+      paths[i] = mk_path(nd);
+      assert(paths[i].size() == path_size());
+    }
+    nr = paths[0][0];
   }
 
 };
@@ -402,10 +445,13 @@ template <typename Stats, typename Logging, typename Semaphore, size_t max_lg_tr
 int elastic<Stats, Logging, Semaphore, max_lg_tree_sz>::beta;
 
 template <typename Stats, typename Logging, typename Semaphore, size_t max_lg_tree_sz>
-cache_aligned_fixed_capacity_array<typename elastic<Stats, Logging, Semaphore, max_lg_tree_sz>::node_type, 1 << max_lg_tree_sz> elastic<Stats, Logging, Semaphore, max_lg_tree_sz>::nodes_array;
+typename elastic<Stats, Logging, Semaphore, max_lg_tree_sz>::cnode_type* elastic<Stats, Logging, Semaphore, max_lg_tree_sz>::tree;
 
 template <typename Stats, typename Logging, typename Semaphore, size_t max_lg_tree_sz>
-perworker::array<std::vector<typename elastic<Stats, Logging, Semaphore, max_lg_tree_sz>::node_type*>> elastic<Stats, Logging, Semaphore, max_lg_tree_sz>::paths;
+typename elastic<Stats, Logging, Semaphore, max_lg_tree_sz>::cnode_type* elastic<Stats, Logging, Semaphore, max_lg_tree_sz>::nr;
+
+template <typename Stats, typename Logging, typename Semaphore, size_t max_lg_tree_sz>
+perworker::array<std::vector<typename elastic<Stats, Logging, Semaphore, max_lg_tree_sz>::cnode_type*>> elastic<Stats, Logging, Semaphore, max_lg_tree_sz>::paths;
 
 template <typename Stats, typename Logging, typename Semaphore, size_t max_lg_tree_sz>
 perworker::array<Semaphore> elastic<Stats, Logging, Semaphore, max_lg_tree_sz>::semaphores;
@@ -414,7 +460,7 @@ template <typename Stats, typename Logging, typename Semaphore, size_t max_lg_tr
 perworker::array<std::atomic_bool> elastic<Stats, Logging, Semaphore, max_lg_tree_sz>::flags;
 
 template <typename Stats, typename Logging, typename Semaphore, size_t max_lg_tree_sz>
-int elastic<Stats, Logging, Semaphore, max_lg_tree_sz>::lg_tree_sz;
+size_t elastic<Stats, Logging, Semaphore, max_lg_tree_sz>::tree_height;
 
 /*---------------------------------------------------------------------*/
 /* Elastic work stealing (with S3 counter) */
