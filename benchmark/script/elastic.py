@@ -628,7 +628,6 @@ def output_merged_results():
         rs = eval(all_results[results_file])
         write_json_to_file_path(rs, file_path = mf)
     return merged_results_path
-    
 
 def table_of_value(r):
     rows = rows_of(r)
@@ -639,6 +638,141 @@ def table_of_value(r):
 
 def table_of_results(f):
     return table_of_value(read_json_from_file_path(f))
+
+def sql_query_via_json(query, json_table,
+                       output=''):
+    stats_fd, stats_path = tempfile.mkstemp(suffix = '.json', text = True)
+    os.close(stats_fd)
+    write_json_to_file_path(json_table, stats_path)
+    cmd = 'dsq ' + output + ' ' + stats_path + ' \'' + query + '\''
+    current_child = subprocess.Popen(cmd, shell = True,
+                                     stdout = subprocess.PIPE, stderr = subprocess.PIPE )
+    child_stdout, child_stderr = current_child.communicate(timeout = 1000)
+    child_stdout = child_stdout.decode('utf-8')
+    child_stderr = child_stderr.decode('utf-8')
+    return_code = current_child.returncode
+    if return_code != 0:
+        print('Error: sql_query_via_json returned error code ' + str(return_code))
+        print('stdout:')
+        print(str(child_stdout))
+        print('stderr:')
+        print(str(child_stderr))
+        exit
+    os.unlink(stats_path)
+    json_table_out = json.loads(child_stdout) if output == '' else child_stdout
+    return json_table_out
+
+def sql_make_table_select(table, key):
+    return table + '.' + key
+
+def sql_make_table_prefix(table, key):
+    return table + '_' + key
+
+def sql_make_equality_constraint(x, y):
+    return x + ' = ' + y
+
+def sql_all_distinct_of_key(json_table, key):
+    return sql_query_via_json('SELECT DISTINCT(' + key + ') FROM {}', json_table)
+
+def sql_average_of_samples(json_table, grouping_keys, avg_keys, qfs=''):
+    gs = ', '.join(grouping_keys)
+    avs = ', '.join(['AVG(' + a + ') AS ' + a for a in avg_keys])
+    q = 'SELECT ' + gs + ', ' + avs + ' FROM {} ' + qfs + ' GROUP BY  ' + gs
+    return sql_query_via_json(q, json_table)
+
+def sql_where_clause(conjuncts):
+    return '' if conjuncts == [] else 'WHERE ' + ' AND '.join(conjuncts)
+
+def sql_make_cross_table_binding_constraints(baseline_table, comparison_table, keys):
+    return ' AND '.join([sql_make_equality_constraint(sql_make_table_select(baseline_table, k),
+                                                      sql_make_table_select(comparison_table, k))
+                         for k in keys])
+
+def sql_make_comparison_table(baseline_table, comparison_table, keys, binding_kvps,
+                              source_table='{}'):
+    qcs = sql_make_cross_table_binding_constraints(baseline_table, comparison_table, keys)
+    qbs = ' AND '.join([sql_make_equality_constraint(sql_make_table_select(comparison_table, kvp[0]), kvp[1])
+                        for kvp in binding_kvps])
+    constraints = qcs + ('' if keys == [] else ' AND ') + qbs
+    return 'INNER JOIN ' + source_table + ' AS ' + comparison_table + ' ON ' + constraints
+
+def sql_make_comparison_tables(baseline_table, keys, binding_kvps,
+                              source_table='{}'):
+    return ' '.join([sql_make_comparison_table(baseline_table, bkvps[0], keys, bkvps[1:])
+                     for bkvps in binding_kvps])
+
+def sql_make_comparison(baseline_table, comparison_tables, binding_kvps, keys, output_keys,
+                        baseline_key, baseline_value,
+                        source_table='{}'):
+    fields = ','.join([sql_make_table_select(n, f) + ' AS ' + sql_make_table_prefix(n, f)
+                       for f in output_keys
+                       for n in comparison_tables])
+    qij = sql_make_comparison_tables(baseline_table, keys, binding_kvps)
+    qcs = 'WHERE ' + sql_make_equality_constraint(sql_make_table_select(baseline_table, baseline_key), baseline_value)
+    return 'SELECT ' + fields + ' FROM ' + source_table + ' AS ' + baseline_table + ' ' + qij + ' ' + qcs
+
+def sql_pctdiff(baseline_key, nonbaseline_key, key):
+    return 'ROUND(100 * ((' + baseline_key + ' - ' + nonbaseline_key + ') / ' + nonbaseline_key + '), 1) AS ' + key
+
+def sql_pctdiffs(pctdiff_keys):
+    return [sql_pctdiff(sql_make_table_prefix(kvp['baseline_table'], kvp['key']),
+                        sql_make_table_prefix(kvp['nonbaseline_table'], kvp['key']),
+                        sql_make_table_prefix(kvp['nonbaseline_table'], kvp['key']) + '_pctdiff')
+            for kvp in pctdiff_keys]    
+
+def sql_postprocess(json_table, alias_kvps, pctdiff_keys):
+    aliases = [sql_make_table_prefix(akvp['table'], akvp['key']) + ' AS ' + akvp['alias'] for akvp in alias_kvps]
+    q = 'SELECT ' + ', '.join(aliases + sql_pctdiffs(pctdiff_keys)) + ' ' + ' FROM {}'
+    print(sql_query_via_json(q, json_table, '--pretty'))
+
+def sql_output_comparison(json_table, comparison_tables,
+                          binding_kvps, input_keys, output_keys,
+                          baseline_key, baseline_value,
+                          grouping_keys, averages_keys,
+                          alias_kvps, pctdiff_keys):
+    baseline_table = comparison_tables[0]
+    json_averages_table = sql_average_of_samples(json_table, grouping_keys, averages_keys)
+    q = sql_make_comparison(comparison_tables[0], comparison_tables, binding_kvps,
+                            input_keys, output_keys, baseline_key, baseline_value)
+    sql_postprocess(sql_query_via_json(q, json_averages_table), alias_kvps, pctdiff_keys)
+
+
+def experiment_table():
+    #f = '/Users/rainey/Work/draft-elastic/drafts/draft-elastic/experiments/results-2022-11-07-14-19-20/multiprogrammed-results.json'
+    f = 'test.json'
+    json_table0 = read_json_from_file_path(f)
+    experiments = [kvp['experiment']
+                   for kvp in sql_all_distinct_of_key(json_table0, 'experiment')]
+    for experiment in experiments:
+        if experiment == 'multiprogrammed':
+            Ps = [kvp[taskparts_num_workers_key]
+                  for kvp in sql_all_distinct_of_key(json_table0, taskparts_num_workers_key)]
+            q1 = 'SELECT * FROM {} ' + sql_where_clause([sql_make_equality_constraint('experiment', '"' + experiment + '"')])
+            json_table1 = sql_query_via_json(q1, json_table0)
+            for P in Ps:
+                q = 'SELECT * FROM {} ' + sql_where_clause([sql_make_equality_constraint(taskparts_num_workers_key, str(P))])
+                json_table = sql_query_via_json(q, json_table1)
+                comparison_tables = ['NE', 'ABP', 'S3']
+                baseline_table = comparison_tables[0]
+                averages_keys = ['exectime', 'usertime']
+                input_keys = ['benchmark']
+                input_key_aliases = input_keys # no need for formatting here
+                comparison_keys = ['scheduler']
+                output_keys = input_keys + comparison_keys + averages_keys
+                binding_kvpss = [['ABP', ['scheduler', '"multiprogrammed"']], ['S3', ['scheduler', '"s3"']]]
+                grouping_keys = input_keys + comparison_keys
+                alias_kvps1 = [{'table': baseline_table, 'key': input_keys[i], 'alias': input_key_aliases[i]}
+                               for i in range(len(input_keys))]
+                alias_kvps2 = [{'table': comparison_table, 'key': key, 'alias': sql_make_table_prefix(comparison_table, key)}
+                               for comparison_table in comparison_tables
+                               for key in averages_keys]
+                alias_kvps = alias_kvps1 + alias_kvps2
+                pctdiff_keys = [{'baseline_table': baseline_table, 'nonbaseline_table': comparison_table, 'key': key}
+                                for comparison_table in comparison_tables[1:]
+                                for key in averages_keys]
+                sql_output_comparison(json_table, comparison_tables, binding_kvpss, input_keys, output_keys, 'scheduler', '"nonelastic"', grouping_keys, averages_keys, alias_kvps, pctdiff_keys)
+
+experiment_table()
 
 def pctdiff_table(f, benchmark_keys, avg_keys, comparison_key, baseline_value, nonbaseline_value, filter_kvps=[]):
     dicts = table_of_results(f)
