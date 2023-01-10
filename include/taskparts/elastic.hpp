@@ -193,7 +193,7 @@ public:
       while ((i + 1) < h) {
         i++;
         if (i == 0) {
-          continue;;
+          continue;
         }
         auto ni = paths[id][i];
         auto [delegated, _d] = try_unlock_node(ni);
