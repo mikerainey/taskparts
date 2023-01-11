@@ -742,80 +742,110 @@ def sql_instances_of_key(json_table, key):
 def sql_quote_string(s):
     return '"' + s + '"'
 
-def experiment_table():
-    #f = '/Users/rainey/Work/draft-elastic/drafts/draft-elastic/experiments/results-2022-11-07-14-19-20/multiprogrammed-results.json'
-    f = 'test.json'
+def experiment_table(f = 'hp.json'):
     json_table0 = read_json_from_file_path(f)
+    
+
     experiments = sql_instances_of_key(json_table0, 'experiment')
+    print('========= ' + str(experiments) + ' =========')
     for experiment in experiments:
+        print('---------- ' + experiment + ' ----------')
+        q = 'SELECT * FROM {} ' + sql_where_clause([sql_make_equality_constraint('experiment', sql_quote_string(experiment))])
+        json_table1 = sql_query_via_json(q, json_table0)
         if experiment == 'multiprogrammed':
+            
+            baseline_table = 'NE'
+            comparison_tables = [baseline_table, 'ABP', 'S3']
+            binding_kvpss = {
+                'ABP': [{'key': 'scheduler', 'value': sql_quote_string('multiprogrammed')}],
+                'S3': [{'key': 'scheduler', 'value': sql_quote_string('s3')}]}
+
+            averages_keys = ['exectime', 'usertime']
+            input_keys = ['benchmark']
+            input_key_aliases = input_keys
+            comparison_keys = ['scheduler']
+            output_keys = input_keys + comparison_keys + averages_keys
+            grouping_keys = input_keys + comparison_keys
+            alias_kvps1 = [{'table': baseline_table, 'key': input_keys[i], 'alias': input_key_aliases[i]}
+                           for i in range(len(input_keys))]
+            alias_kvps2 = [{'table': comparison_table, 'key': key, 'alias': sql_make_table_prefix(comparison_table, key)}
+                           for comparison_table in comparison_tables
+                           for key in averages_keys]
+            alias_kvps = alias_kvps1 + alias_kvps2
+            pctdiff_keys = [{'baseline_table': baseline_table, 'nonbaseline_table': comparison_table, 'key': key}
+                            for comparison_table in comparison_tables[1:]
+                            for key in averages_keys]
+
             Ps = sql_instances_of_key(json_table0, taskparts_num_workers_key)
-            q1 = 'SELECT * FROM {} ' + sql_where_clause([sql_make_equality_constraint('experiment', sql_quote_string(experiment))])
-            json_table1 = sql_query_via_json(q1, json_table0)
             for P in Ps:
                 q = 'SELECT * FROM {} ' + sql_where_clause([sql_make_equality_constraint(taskparts_num_workers_key, str(P))])
                 json_table = sql_query_via_json(q, json_table1)
-                baseline_table = 'NE'
-                comparison_tables = [baseline_table, 'ABP', 'S3']
-                averages_keys = ['exectime', 'usertime']
-                input_keys = ['benchmark']
-                input_key_aliases = input_keys # no need for formatting here
-                comparison_keys = ['scheduler']
-                output_keys = input_keys + comparison_keys + averages_keys
-                binding_kvpss = {'ABP': [{'key': 'scheduler', 'value': sql_quote_string('multiprogrammed')}],
-                                 'S3': [{'key': 'scheduler', 'value': sql_quote_string('s3')}]}
-                grouping_keys = input_keys + comparison_keys
-                alias_kvps1 = [{'table': baseline_table, 'key': input_keys[i], 'alias': input_key_aliases[i]}
-                               for i in range(len(input_keys))]
-                alias_kvps2 = [{'table': comparison_table, 'key': key, 'alias': sql_make_table_prefix(comparison_table, key)}
-                               for comparison_table in comparison_tables
-                               for key in averages_keys]
-                alias_kvps = alias_kvps1 + alias_kvps2
-                pctdiff_keys = [{'baseline_table': baseline_table, 'nonbaseline_table': comparison_table, 'key': key}
-                                for comparison_table in comparison_tables[1:]
-                                for key in averages_keys]
-                print('---------- ' + experiment + ' ----------')
                 sql_output_comparison(json_table, comparison_tables, binding_kvpss, input_keys, output_keys,
-                                      'scheduler', '"nonelastic"', grouping_keys, averages_keys, alias_kvps, pctdiff_keys)
+                                      'scheduler', sql_quote_string('nonelastic'), grouping_keys, averages_keys,
+                                      alias_kvps, pctdiff_keys)
                 print('P = ' + str(P))
+        elif experiment == 'high_parallelism':
+            baseline_table = 'NE'
+            comparison_tables = [baseline_table, 'S3']
+            binding_kvpss = {'S3': [{'key': 'scheduler', 'value': sql_quote_string('s3')}]}
+
+            averages_keys = ['exectime', 'usertime', 'nb_steals', 'nb_surplus_transitions']
+            input_keys = ['benchmark']
+            input_key_aliases = input_keys
+            comparison_keys = ['scheduler']
+            output_keys = input_keys + comparison_keys + averages_keys
+            grouping_keys = input_keys + comparison_keys
+            alias_kvps1 = [{'table': baseline_table, 'key': input_keys[i], 'alias': input_key_aliases[i]}
+                           for i in range(len(input_keys))]
+            alias_kvps2 = [{'table': comparison_table, 'key': key, 'alias': sql_make_table_prefix(comparison_table, key)}
+                           for comparison_table in comparison_tables
+                           for key in averages_keys]
+            alias_kvps = alias_kvps1 + alias_kvps2
+            pctdiff_keys = [{'baseline_table': baseline_table, 'nonbaseline_table': comparison_table, 'key': key}
+                            for comparison_table in comparison_tables[1:]
+                            for key in averages_keys]
+
+            sql_output_comparison(json_table1, comparison_tables, binding_kvpss, input_keys, output_keys,
+                                  'scheduler', sql_quote_string('nonelastic'), grouping_keys, averages_keys,
+                                  alias_kvps, pctdiff_keys)
 
 experiment_table()
 
-def pctdiff_table(f, benchmark_keys, avg_keys, comparison_key, baseline_value, nonbaseline_value, filter_kvps=[]):
-    dicts = table_of_results(f)
-    stats_fd, stats_path = tempfile.mkstemp(suffix = '.json', text = True)
-    os.close(stats_fd)
-    write_json_to_file_path(dicts, stats_path)
-    # take the average of any rows having duplicate keys wrt benchmark_keys
-    ds = ', '.join(benchmark_keys + [comparison_key])
-    avs = ', '.join(['ROUND(AVG(' + a + '),3) AS ' + a for a in avg_keys])
-    qfs = '' if filter_kvps == [] else ('WHERE ' + filter_kvps[0][0] + ' = ' + filter_kvps[0][1] + '' + ' AND '.join([fkvp[0] + ' = ' + fkvp[1] for fkvp in filter_kvps[1:]]))
-    qavs = 'SELECT ' + ds + ', ' + avs + ' FROM {} ' + qfs + ' GROUP BY  ' + ds
-    print(qavs)
-    # add columns for raw values (baseline and nonbaseline)
-    ks = ','.join(['baseline.' + a for a in benchmark_keys + avg_keys]) + ', ' + ','.join([nonbaseline_value + '.' + a + ' AS ' + a + '_' + nonbaseline_value for a in avg_keys])
-    # add columns for pctdiff fields
-    ks2 = ks + ', ' + ', '.join(['ROUND(100 * ((baseline.' + k + ' - ' + nonbaseline_value + '.' + k + ') / ' + nonbaseline_value + '.' + k + '), 1) as ' + k + '_pctdiff' for k in avg_keys])
-    js = ' AND '.join(['baseline.' + k + ' = ' + nonbaseline_value + '.' + k for k in benchmark_keys])
-    qds = 'SELECT ' + ks2 + ' FROM (' + qavs + ') ' + nonbaseline_value + ' INNER JOIN (' + qavs + ') baseline ON ' + js + ' AND baseline.' + comparison_key + ' = \"' + baseline_value + '\" WHERE baseline.' + comparison_key + ' != ' + nonbaseline_value + '.' + comparison_key
-    print(qds)
-    cmd = 'dsq --pretty ' + stats_path + ' \'' + qds + '\''
-    print(cmd)
-    current_child = subprocess.Popen(cmd, shell = True,
-                                     stdout = subprocess.PIPE, stderr = subprocess.PIPE )
-    child_stdout, child_stderr = current_child.communicate(timeout = 1000)
-    child_stdout = child_stdout.decode('utf-8')
-    child_stderr = child_stderr.decode('utf-8')
-    return_code = current_child.returncode
-    if return_code != 0:
-        print('Error: export to git returned error code ' + str(return_code))
-        print('stdout:')
-        print(str(child_stdout))
-        print('stderr:')
-        print(str(child_stderr))
-        exit
-    print(child_stdout)
-    os.unlink(stats_path)
+# def pctdiff_table(f, benchmark_keys, avg_keys, comparison_key, baseline_value, nonbaseline_value, filter_kvps=[]):
+#     dicts = table_of_results(f)
+#     stats_fd, stats_path = tempfile.mkstemp(suffix = '.json', text = True)
+#     os.close(stats_fd)
+#     write_json_to_file_path(dicts, stats_path)
+#     # take the average of any rows having duplicate keys wrt benchmark_keys
+#     ds = ', '.join(benchmark_keys + [comparison_key])
+#     avs = ', '.join(['ROUND(AVG(' + a + '),3) AS ' + a for a in avg_keys])
+#     qfs = '' if filter_kvps == [] else ('WHERE ' + filter_kvps[0][0] + ' = ' + filter_kvps[0][1] + '' + ' AND '.join([fkvp[0] + ' = ' + fkvp[1] for fkvp in filter_kvps[1:]]))
+#     qavs = 'SELECT ' + ds + ', ' + avs + ' FROM {} ' + qfs + ' GROUP BY  ' + ds
+#     print(qavs)
+#     # add columns for raw values (baseline and nonbaseline)
+#     ks = ','.join(['baseline.' + a for a in benchmark_keys + avg_keys]) + ', ' + ','.join([nonbaseline_value + '.' + a + ' AS ' + a + '_' + nonbaseline_value for a in avg_keys])
+#     # add columns for pctdiff fields
+#     ks2 = ks + ', ' + ', '.join(['ROUND(100 * ((baseline.' + k + ' - ' + nonbaseline_value + '.' + k + ') / ' + nonbaseline_value + '.' + k + '), 1) as ' + k + '_pctdiff' for k in avg_keys])
+#     js = ' AND '.join(['baseline.' + k + ' = ' + nonbaseline_value + '.' + k for k in benchmark_keys])
+#     qds = 'SELECT ' + ks2 + ' FROM (' + qavs + ') ' + nonbaseline_value + ' INNER JOIN (' + qavs + ') baseline ON ' + js + ' AND baseline.' + comparison_key + ' = \"' + baseline_value + '\" WHERE baseline.' + comparison_key + ' != ' + nonbaseline_value + '.' + comparison_key
+#     print(qds)
+#     cmd = 'dsq --pretty ' + stats_path + ' \'' + qds + '\''
+#     print(cmd)
+#     current_child = subprocess.Popen(cmd, shell = True,
+#                                      stdout = subprocess.PIPE, stderr = subprocess.PIPE )
+#     child_stdout, child_stderr = current_child.communicate(timeout = 1000)
+#     child_stdout = child_stdout.decode('utf-8')
+#     child_stderr = child_stderr.decode('utf-8')
+#     return_code = current_child.returncode
+#     if return_code != 0:
+#         print('Error: export to git returned error code ' + str(return_code))
+#         print('stdout:')
+#         print(str(child_stdout))
+#         print('stderr:')
+#         print(str(child_stderr))
+#         exit
+#     print(child_stdout)
+#     os.unlink(stats_path)
 
 # Driver
 # ======
@@ -878,18 +908,18 @@ for (e, mk) in experiments_to_run.items():
     results, traces = run_elastic_benchmarks(mk)
     write_json_to_file_path(results, file_path = results_file)
     write_json_to_file_path(traces, file_path = trace_file)
-    if e == 'high_parallelism':
-        pctdiff_table(results_file, ['benchmark'], ['exectime', 'usertime'], 'scheduler', 'nonelastic', elastic_scheduler_value)
-    elif e == 'parallel_sequential_mix':
-        for v in ['low', 'med', 'large']:
-            pctdiff_table(results_file, ['benchmark'], ['exectime', 'usertime'], 'scheduler', 'nonelastic', elastic_scheduler_value, [[mix_level_key, '\"' + v + '\"']])
-            print(v)
-    elif e == 'multiprogrammed':
-        for p in multiprogrammed_num_workers:
-            pctdiff_table(results_file, ['benchmark'], ['exectime', 'usertime'], 'scheduler', 'multiprogrammed', elastic_scheduler_value, [[taskparts_num_workers_key, str(p)]])
-            print('P = ' + str(p))
-    elif e == 'try_without_binding':
-        pctdiff_table(results_file, ['benchmark'], ['exectime', 'usertime'], taskparts_pin_worker_threads_key, '1', elastic_scheduler_value)
+    # if e == 'high_parallelism':
+    #     pctdiff_table(results_file, ['benchmark'], ['exectime', 'usertime'], 'scheduler', 'nonelastic', elastic_scheduler_value)
+    # elif e == 'parallel_sequential_mix':
+    #     for v in ['low', 'med', 'large']:
+    #         pctdiff_table(results_file, ['benchmark'], ['exectime', 'usertime'], 'scheduler', 'nonelastic', elastic_scheduler_value, [[mix_level_key, '\"' + v + '\"']])
+    #         print(v)
+    # elif e == 'multiprogrammed':
+    #     for p in multiprogrammed_num_workers:
+    #         pctdiff_table(results_file, ['benchmark'], ['exectime', 'usertime'], 'scheduler', 'multiprogrammed', elastic_scheduler_value, [[taskparts_num_workers_key, str(p)]])
+    #         print('P = ' + str(p))
+    # elif e == 'try_without_binding':
+    #     pctdiff_table(results_file, ['benchmark'], ['exectime', 'usertime'], taskparts_pin_worker_threads_key, '1', elastic_scheduler_value)
             
 
     
@@ -916,33 +946,33 @@ def merge_k1v1_with_values_of_k2_in_results(k1, k2, results):
 # graph_results2 = merge_k1v1_with_values_of_k2_in_results('experiment', 'input', graph_results)
 # write_json_to_file_path(graph_results2, file_path = 'merged-results.json')
 
-def process_results_file():
-    if args.load_results_file == [] or args.load_results_file == None:
-        return
-    if args.split_into_files_by_keys == [] or args.split_into_files_by_keys == None:
-        return
-    f = args.load_results_file[0]
-    k = args.split_into_files_by_keys[0]
-    r = read_json_from_file_path(f)
-    rows = rows_of(r)
-    vals = set()
-    for row in rows:
-        vo = val_of_key_in_row(row, k)
-        if vo != []:
-            vals.add(vo[0])
-    bn = os.path.basename(f)
-    n, e = os.path.splitext(bn)
-    print(n)
-    print(e)
-    for v in vals:
-        n2 = n + '_' + v + e
-        print(n2)
-        vrows = []
-        for row in rows:
-            if does_row_contain_kvp(row, {'key': k, 'val': v}):
-                vrows = vrows + [ row]
-        vr = {'value': vrows}
-        write_json_to_file_path(vr, file_path = n2)
-    print(vals)
+# def process_results_file():
+#     if args.load_results_file == [] or args.load_results_file == None:
+#         return
+#     if args.split_into_files_by_keys == [] or args.split_into_files_by_keys == None:
+#         return
+#     f = args.load_results_file[0]
+#     k = args.split_into_files_by_keys[0]
+#     r = read_json_from_file_path(f)
+#     rows = rows_of(r)
+#     vals = set()
+#     for row in rows:
+#         vo = val_of_key_in_row(row, k)
+#         if vo != []:
+#             vals.add(vo[0])
+#     bn = os.path.basename(f)
+#     n, e = os.path.splitext(bn)
+#     print(n)
+#     print(e)
+#     for v in vals:
+#         n2 = n + '_' + v + e
+#         print(n2)
+#         vrows = []
+#         for row in rows:
+#             if does_row_contain_kvp(row, {'key': k, 'val': v}):
+#                 vrows = vrows + [ row]
+#         vr = {'value': vrows}
+#         write_json_to_file_path(vr, file_path = n2)
+#     print(vals)
 
-process_results_file()
+# process_results_file()
