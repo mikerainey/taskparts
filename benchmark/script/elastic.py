@@ -691,15 +691,15 @@ def sql_make_cross_table_binding_constraints(baseline_table, comparison_table, k
 def sql_make_comparison_table(baseline_table, comparison_table, keys, binding_kvps,
                               source_table='{}'):
     qcs = sql_make_cross_table_binding_constraints(baseline_table, comparison_table, keys)
-    qbs = ' AND '.join([sql_make_equality_constraint(sql_make_table_select(comparison_table, kvp[0]), kvp[1])
+    qbs = ' AND '.join([sql_make_equality_constraint(sql_make_table_select(comparison_table, kvp['key']), kvp['value'])
                         for kvp in binding_kvps])
     constraints = qcs + ('' if keys == [] else ' AND ') + qbs
     return 'INNER JOIN ' + source_table + ' AS ' + comparison_table + ' ON ' + constraints
 
 def sql_make_comparison_tables(baseline_table, keys, binding_kvps,
-                              source_table='{}'):
-    return ' '.join([sql_make_comparison_table(baseline_table, bkvps[0], keys, bkvps[1:])
-                     for bkvps in binding_kvps])
+                               source_table='{}'):
+    return ' '.join([sql_make_comparison_table(baseline_table, k, keys, binding_kvps[k])
+                     for k in binding_kvps])
 
 def sql_make_comparison(baseline_table, comparison_tables, binding_kvps, keys, output_keys,
                         baseline_key, baseline_value,
@@ -732,34 +732,38 @@ def sql_output_comparison(json_table, comparison_tables,
                           alias_kvps, pctdiff_keys):
     baseline_table = comparison_tables[0]
     json_averages_table = sql_average_of_samples(json_table, grouping_keys, averages_keys)
-    q = sql_make_comparison(comparison_tables[0], comparison_tables, binding_kvps,
+    q = sql_make_comparison(baseline_table, comparison_tables, binding_kvps,
                             input_keys, output_keys, baseline_key, baseline_value)
     sql_postprocess(sql_query_via_json(q, json_averages_table), alias_kvps, pctdiff_keys)
 
+def sql_instances_of_key(json_table, key):
+    return [kvp[key] for kvp in sql_all_distinct_of_key(json_table, key)]
+
+def sql_quote_string(s):
+    return '"' + s + '"'
 
 def experiment_table():
     #f = '/Users/rainey/Work/draft-elastic/drafts/draft-elastic/experiments/results-2022-11-07-14-19-20/multiprogrammed-results.json'
     f = 'test.json'
     json_table0 = read_json_from_file_path(f)
-    experiments = [kvp['experiment']
-                   for kvp in sql_all_distinct_of_key(json_table0, 'experiment')]
+    experiments = sql_instances_of_key(json_table0, 'experiment')
     for experiment in experiments:
         if experiment == 'multiprogrammed':
-            Ps = [kvp[taskparts_num_workers_key]
-                  for kvp in sql_all_distinct_of_key(json_table0, taskparts_num_workers_key)]
-            q1 = 'SELECT * FROM {} ' + sql_where_clause([sql_make_equality_constraint('experiment', '"' + experiment + '"')])
+            Ps = sql_instances_of_key(json_table0, taskparts_num_workers_key)
+            q1 = 'SELECT * FROM {} ' + sql_where_clause([sql_make_equality_constraint('experiment', sql_quote_string(experiment))])
             json_table1 = sql_query_via_json(q1, json_table0)
             for P in Ps:
                 q = 'SELECT * FROM {} ' + sql_where_clause([sql_make_equality_constraint(taskparts_num_workers_key, str(P))])
                 json_table = sql_query_via_json(q, json_table1)
-                comparison_tables = ['NE', 'ABP', 'S3']
-                baseline_table = comparison_tables[0]
+                baseline_table = 'NE'
+                comparison_tables = [baseline_table, 'ABP', 'S3']
                 averages_keys = ['exectime', 'usertime']
                 input_keys = ['benchmark']
                 input_key_aliases = input_keys # no need for formatting here
                 comparison_keys = ['scheduler']
                 output_keys = input_keys + comparison_keys + averages_keys
-                binding_kvpss = [['ABP', ['scheduler', '"multiprogrammed"']], ['S3', ['scheduler', '"s3"']]]
+                binding_kvpss = {'ABP': [{'key': 'scheduler', 'value': sql_quote_string('multiprogrammed')}],
+                                 'S3': [{'key': 'scheduler', 'value': sql_quote_string('s3')}]}
                 grouping_keys = input_keys + comparison_keys
                 alias_kvps1 = [{'table': baseline_table, 'key': input_keys[i], 'alias': input_key_aliases[i]}
                                for i in range(len(input_keys))]
@@ -770,7 +774,10 @@ def experiment_table():
                 pctdiff_keys = [{'baseline_table': baseline_table, 'nonbaseline_table': comparison_table, 'key': key}
                                 for comparison_table in comparison_tables[1:]
                                 for key in averages_keys]
-                sql_output_comparison(json_table, comparison_tables, binding_kvpss, input_keys, output_keys, 'scheduler', '"nonelastic"', grouping_keys, averages_keys, alias_kvps, pctdiff_keys)
+                print('---------- ' + experiment + ' ----------')
+                sql_output_comparison(json_table, comparison_tables, binding_kvpss, input_keys, output_keys,
+                                      'scheduler', '"nonelastic"', grouping_keys, averages_keys, alias_kvps, pctdiff_keys)
+                print('P = ' + str(P))
 
 experiment_table()
 
