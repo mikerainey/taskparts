@@ -134,9 +134,7 @@ public:
     while (true) {
       auto orig = ni->delta.load();
       auto next = orig;
-      next.locked = node_locked;
       if (orig.locked == node_locked) {
-        auto next = orig;
         next.suspended = orig.suspended + d.suspended;
         next.stealers = orig.stealers + d.stealers;
         next.surplus = orig.surplus + d.surplus;
@@ -144,6 +142,7 @@ public:
           return false;
         }
       } else {
+        next.locked = node_locked;
         if (ni->delta.compare_exchange_strong(orig, next)) {
           ni->update_counter(d);
           return true;
@@ -156,15 +155,16 @@ public:
   auto try_unlock_node(cnode_type* ni) -> std::pair<bool, cdelta_type> {
     while (true) {
       auto orig = ni->delta.load();
-      auto next = cdelta_type{.locked = node_locked};
+      auto next = cdelta_type{};
       if (orig.is_inert()) {
-        next.locked = node_unlocked;
+        assert(next.locked == node_unlocked);
         if (ni->delta.compare_exchange_strong(orig, next)) {
           return std::make_pair(false, orig);
         }
       } else {
+        next.locked = node_locked;
         if (! ni->delta.compare_exchange_strong(orig, next)) {
-          continue;;
+          continue;
         }
         ni->update_counter(orig);
         return std::make_pair(true, orig);
@@ -176,7 +176,7 @@ public:
   auto update_tree(cdelta_type d,
                    size_t id = perworker::my_id(),
                    size_t h = tree_height) -> void {
-    auto i = h;
+    auto i = h + 1;
     do {
       while (i > 0) {
         i--;
@@ -184,8 +184,7 @@ public:
           nr->update_counter(d);
           break;
         }
-        auto ni = paths[id][i];
-        if (try_lock_and_update_node(ni, d)) {
+        if (try_lock_and_update_node(paths[id][i], d)) {
           break;
         }
       }
@@ -195,8 +194,7 @@ public:
         if (i == 0) {
           continue;
         }
-        auto ni = paths[id][i];
-        auto [delegated, _d] = try_unlock_node(ni);
+        auto [delegated, _d] = try_unlock_node(paths[id][i]);
         if (delegated) {
           break;
         }
@@ -351,12 +349,12 @@ public:
   static
   auto nb_nodes(int lg) -> int {
     assert(lg >= 0);
-    return (1 << lg) - 1;
+    return (1 << (lg + 1)) - 1;
   }
   
   static
   auto nb_nodes() -> int {
-    return nb_nodes(tree_height + 1);
+    return nb_nodes(tree_height);
   }
   
   static
@@ -364,7 +362,6 @@ public:
     auto nb_leaves = [] () -> int {
       return 1 << tree_height;
     };
-
     if (const auto env_p = std::getenv("TASKPARTS_ELASTIC_ALPHA")) {
       alpha = std::stoi(env_p);
     } else {

@@ -157,7 +157,7 @@ public:
       if constexpr (elastic_type::override_rand_worker) {
         return elastic_type::random_other_worker(my_id);
       } else {
-	return random_other_worker(my_id);
+        return random_other_worker(my_id);
       }
     };
 
