@@ -366,7 +366,7 @@ mk_multiprogrammed = mk_cross_sequence(
       mk_taskparts_basis,
       mk_parameters(benchmark_key, benchmarks),
       mk_append_sequence([
-#          mk_sched_nonelastic,
+          mk_sched_nonelastic,
           mk_sched_elastic2,
           mk_sched_multiprogrammed ]),
       mk_parameters(taskparts_num_workers_key,
@@ -743,8 +743,8 @@ def sql_quote_string(s):
     return '"' + s + '"'
 
 def experiment_table(f = 'hp.json'):
-    json_table0 = read_json_from_file_path(f)
-    
+    #json_table0 = read_json_from_file_path(f)
+    json_table0 = table_of_results(f)
 
     experiments = sql_instances_of_key(json_table0, 'experiment')
     print('========= ' + str(experiments) + ' =========')
@@ -758,7 +758,7 @@ def experiment_table(f = 'hp.json'):
             comparison_tables = [baseline_table, 'ABP', 'S3']
             binding_kvpss = {
                 'ABP': [{'key': 'scheduler', 'value': sql_quote_string('multiprogrammed')}],
-                'S3': [{'key': 'scheduler', 'value': sql_quote_string('s3')}]}
+                'S3': [{'key': 'scheduler', 'value': sql_quote_string('elastic2')}]}
 
             averages_keys = ['exectime', 'usertime']
             input_keys = ['benchmark']
@@ -787,7 +787,7 @@ def experiment_table(f = 'hp.json'):
         elif experiment == 'high_parallelism':
             baseline_table = 'NE'
             comparison_tables = [baseline_table, 'S3']
-            binding_kvpss = {'S3': [{'key': 'scheduler', 'value': sql_quote_string('s3')}]}
+            binding_kvpss = {'S3': [{'key': 'scheduler', 'value': sql_quote_string('elastic2')}]}
 
             averages_keys = ['exectime', 'usertime', 'nb_steals', 'nb_surplus_transitions']
             input_keys = ['benchmark']
@@ -809,7 +809,8 @@ def experiment_table(f = 'hp.json'):
                                   'scheduler', sql_quote_string('nonelastic'), grouping_keys, averages_keys,
                                   alias_kvps, pctdiff_keys)
 
-experiment_table()
+for f in args.load_results_file:
+    experiment_table(f)
 
 # def pctdiff_table(f, benchmark_keys, avg_keys, comparison_key, baseline_value, nonbaseline_value, filter_kvps=[]):
 #     dicts = table_of_results(f)
