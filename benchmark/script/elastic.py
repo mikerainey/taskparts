@@ -809,8 +809,9 @@ def experiment_table(f = 'hp.json'):
                                   'scheduler', sql_quote_string('nonelastic'), grouping_keys, averages_keys,
                                   alias_kvps, pctdiff_keys)
 
-for f in args.load_results_file:
-    experiment_table(f)
+if args.load_results_file != None:
+    for f in args.load_results_file:
+        experiment_table(f)
 
 # def pctdiff_table(f, benchmark_keys, avg_keys, comparison_key, baseline_value, nonbaseline_value, filter_kvps=[]):
 #     dicts = table_of_results(f)
@@ -909,6 +910,7 @@ for (e, mk) in experiments_to_run.items():
     results, traces = run_elastic_benchmarks(mk)
     write_json_to_file_path(results, file_path = results_file)
     write_json_to_file_path(traces, file_path = trace_file)
+    experiment_table(results_file)
     # if e == 'high_parallelism':
     #     pctdiff_table(results_file, ['benchmark'], ['exectime', 'usertime'], 'scheduler', 'nonelastic', elastic_scheduler_value)
     # elif e == 'parallel_sequential_mix':
