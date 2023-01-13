@@ -373,7 +373,7 @@ public:
       beta = 2;
     }
     if (const auto env_p = std::getenv("TASKPARTS_ELASTIC_TREE_HEIGHT")) {
-      tree_height = std::min(0, std::stoi(env_p));
+      tree_height = std::max(0, std::stoi(env_p));
     } else {
       tree_height = 0;
       while ((1 << tree_height) < perworker::nb_workers()) {
