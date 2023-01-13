@@ -383,7 +383,7 @@ public:
     }
     tree = new cnode_type[nb_nodes()];
     auto tree_index_of_first_leaf = [&] () -> int {
-      return nb_nodes(tree_height);
+      return nb_nodes(tree_height - 1);
     };
     auto is_root = [&] (int n) -> bool {
       return n == 0;
@@ -422,11 +422,11 @@ public:
     };
     auto path_size = [&] () -> int {
       assert((int)paths.mine().size() == (tree_height + 1));
-      return tree_height + 1;
+      return (int)tree_height + 1;
     };
     // need this loop to create a path for each worker
-    for (auto i = 0; i < nb_leaves(); i++) {
-      auto nd = tree_index_of_leaf_node_at(i);
+    for (auto i = 0; i < perworker::nb_workers(); i++) {
+      auto nd = tree_index_of_leaf_node_at(i % nb_leaves());
       paths[i] = mk_path(nd);
       assert(paths[i].size() == path_size());
     }
