@@ -180,6 +180,7 @@ public:
     do {
       while (i > 0) {
         i--;
+        aprintf("update1 i=%d h=%d ste=%d sus=%d sur=%d\n",i,h,d.stealers,d.suspended,d.surplus);
         if (i == 0) {
           nr->update_counter(d);
           break;
@@ -187,20 +188,27 @@ public:
         if (try_lock_and_update_node(paths[id][i], d)) {
           break;
         }
+        aprintf("delegate i=%d h=%d ste=%d sus=%d sur=%d\n",i,h,d.stealers,d.suspended,d.surplus);
+
       }
       i--;
+      aprintf("update2 i=%d\n",i);
       while ((i + 1) < h) {
         i++;
+        aprintf("update3 i=%d\n",i);
         if (i == 0) {
           continue;
         }
         auto [delegated, _d] = try_unlock_node(paths[id][i]);
         if (delegated) {
+          aprintf("delegated i=%d\n",i);
           break;
         }
         d = _d;
+        aprintf("update4 i=%d ste=%d sus=%d sur=%d\n",i,d.stealers,d.suspended,d.surplus);
       }
     } while ((i + 1) < h);
+    aprintf("update5 i=%d\n",i);
     ensure_sentinel();
   }
 
@@ -225,14 +233,15 @@ public:
     update_tree(cdelta_type{.stealers = -1}, my_id);
     // scale up
     auto n = alpha;
-    do {
-      if (nr->counter.load().suspended == 0) {
+    while (n > 0) {
+      auto c = nr->counter.load();
+      if ((! c.needs_sentinel()) || c.suspended == 0) {
         break;
       }
       if (try_resume(random_suspended_worker())) {
         n--;
       }
-    } while (n > 0);
+    }
     ensure_sentinel();
   }
 
@@ -313,7 +322,7 @@ public:
   auto random_worker_with_surplus(const Is_deque_empty& is_deque_empty,
                                   size_t my_id = perworker::my_id()) -> int {
     auto id = override_rand_worker ? random_in_range(random_worker_group([] (cdata_type c) { return c.surplus; })) : random_other_worker(my_id);
-    auto has_surplus = is_deque_empty(id);
+    auto has_surplus = ! is_deque_empty(id);
     return has_surplus ? id : -1;
   }
   

@@ -9,6 +9,7 @@ let
                   pkgs.python310Packages.psutil
                   pkgs.python310Packages.py-cpuinfo
                   pkgs.python310Packages.sqlalchemy
+                  pkgs.python310Packages.python-sql
                 ];
   };
 in

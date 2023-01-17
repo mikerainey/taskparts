@@ -1,7 +1,7 @@
 #pragma once
 
 #include <sys/signal.h>
-#include <cassert>>
+#include <cassert>
 
 namespace taskparts {
 
