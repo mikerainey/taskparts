@@ -49,13 +49,13 @@ public:
   };
 
   static constexpr
-  char node_locked = 0, node_unlocked = 1;
+  char node_locked = 1, node_unlocked = 0;
 
   using cdelta_type = struct cdelta_struct {
-    unsigned int locked : 1 = node_unlocked;
-    int surplus : 31 = 0;
-    int16_t stealers = 0;
-    int16_t suspended = 0;
+    unsigned int locked : 1;
+    int surplus : 31;
+    int16_t stealers;
+    int16_t suspended;
     struct cdelta_struct operator+(struct cdelta_struct other) {
       cdelta_type d = *this;
       d.surplus += other.surplus;
@@ -84,10 +84,11 @@ public:
       while (true) {
         auto orig = counter.load();
         auto next = orig;
-        next.suspended = orig.suspended + d.suspended;
-        next.stealers = orig.stealers + d.stealers;
-        next.surplus = orig.surplus + d.surplus;
+        next.suspended += d.suspended;
+        next.stealers += d.stealers;
+        next.surplus += d.surplus;
         if (counter.compare_exchange_strong(orig, next)) {
+          //aprintf("node updated ni=%p ste=%d sus=%d sur=%d\n", this,next.stealers,next.suspended,next.surplus);
           break;
         }
       }
@@ -129,45 +130,51 @@ public:
     }
   }
   
+  using node_update_type = enum node_update_enum {
+    node_update_finalized, node_update_delegated
+  };
+  
   static
-  auto try_lock_and_update_node(cnode_type* ni, cdelta_type d) -> bool {
+  auto try_lock_and_update_node(cnode_type* ni, cdelta_type d)
+  -> node_update_type {
     while (true) {
       auto orig = ni->delta.load();
       auto next = orig;
       if (orig.locked == node_locked) {
-        next.suspended = orig.suspended + d.suspended;
-        next.stealers = orig.stealers + d.stealers;
-        next.surplus = orig.surplus + d.surplus;
+        next.suspended += d.suspended;
+        next.stealers += d.stealers;
+        next.surplus += d.surplus;
         if (ni->delta.compare_exchange_strong(orig, next)) {
-          return false;
+          return node_update_delegated; // delegated d to the worker holding the lock
         }
       } else {
         next.locked = node_locked;
         if (ni->delta.compare_exchange_strong(orig, next)) {
           ni->update_counter(d);
-          return true;
+          return node_update_finalized; // updated ni wrt d (no delegation)
         }
       }
     }
   }
   
   static
-  auto try_unlock_node(cnode_type* ni) -> std::pair<bool, cdelta_type> {
+  auto try_unlock_node(cnode_type* ni)
+  -> std::pair<node_update_type, cdelta_type> {
     while (true) {
       auto orig = ni->delta.load();
       auto next = cdelta_type{};
-      if (orig.is_inert()) {
+      if (orig.is_inert()) { // nothing delegated to the caller
         assert(next.locked == node_unlocked);
         if (ni->delta.compare_exchange_strong(orig, next)) {
-          return std::make_pair(false, orig);
+          return std::make_pair(node_update_finalized, orig);
         }
-      } else {
-        next.locked = node_locked;
+      } else { // delta in orig delegated to the caller
+        assert(orig.locked == node_locked);
         if (! ni->delta.compare_exchange_strong(orig, next)) {
           continue;
         }
         ni->update_counter(orig);
-        return std::make_pair(true, orig);
+        return std::make_pair(node_update_delegated, orig);
       }
     }
   }
@@ -177,55 +184,56 @@ public:
                    size_t id = perworker::my_id(),
                    size_t h = tree_height) -> void {
     auto i = h + 1;
-    do {
-      while (i > 0) {
+    while (true) {
+      while (true) {
+        // lock along path until seeing the root node or a delegation
         i--;
-        aprintf("update1 i=%d h=%d ste=%d sus=%d sur=%d\n",i,h,d.stealers,d.suspended,d.surplus);
+        //aprintf("update1 ni=%p i=%d h=%d ste=%d sus=%d sur=%d\n", paths[id][i],i,h,d.stealers,d.suspended,d.surplus);
         if (i == 0) {
           nr->update_counter(d);
           break;
         }
-        if (try_lock_and_update_node(paths[id][i], d)) {
+        if (try_lock_and_update_node(paths[id][i], d) ==
+            node_update_delegated) {
+          //aprintf("delegate i=%d h=%d ste=%d sus=%d sur=%d\n",i,h,d.stealers,d.suspended,d.surplus);
           break;
         }
-        aprintf("delegate i=%d h=%d ste=%d sus=%d sur=%d\n",i,h,d.stealers,d.suspended,d.surplus);
-
       }
-      i--;
-      aprintf("update2 i=%d\n",i);
-      while ((i + 1) < h) {
+      while (true) {
+        // unlock along path until seeing a leaf or a delegation
         i++;
-        aprintf("update3 i=%d\n",i);
-        if (i == 0) {
-          continue;
+        if (i > h) {
+          //aprintf("update exit i=%d\n",i);
+          return;
         }
         auto [delegated, _d] = try_unlock_node(paths[id][i]);
-        if (delegated) {
-          aprintf("delegated i=%d\n",i);
+        if (delegated == node_update_delegated) {
+          d = _d;
+          //aprintf("delegated1 i=%d ste=%d sus=%d sur=%d\n",i,d.stealers,d.suspended,d.surplus);
           break;
         }
-        d = _d;
-        aprintf("update4 i=%d ste=%d sus=%d sur=%d\n",i,d.stealers,d.suspended,d.surplus);
+        //aprintf("update4 i=%d ste=%d sus=%d sur=%d\n",i,d.stealers,d.suspended,d.surplus);
       }
-    } while ((i + 1) < h);
-    aprintf("update5 i=%d\n",i);
-    ensure_sentinel();
+    }
   }
 
   static
   auto incr_surplus(size_t my_id = perworker::my_id()) -> void {
     update_tree(cdelta_type{.surplus = +1}, my_id);
     Stats::increment(Stats::configuration_type::nb_surplus_transitions);
+    ensure_sentinel();
   }
 
   static
   auto decr_surplus(size_t my_id = perworker::my_id()) -> void {
     update_tree(cdelta_type{.surplus = -1}, my_id);
+    ensure_sentinel();
   }
 
   static
   auto incr_stealing(size_t my_id = perworker::my_id()) -> void {
     update_tree(cdelta_type{.stealers = +1}, my_id);
+    ensure_sentinel();
   }
 
   static
@@ -275,6 +283,7 @@ public:
       Stats::on_enter_acquire();
     } // end suspending the caller
     update_tree(cdelta_type{.stealers = +1, .suspended = -1}, my_id);
+    ensure_sentinel();
   }
   
   static
@@ -391,6 +400,14 @@ public:
       tree_height = std::min((size_t)0, tree_height - 1);
     }
     tree = new cnode_type[nb_nodes()];
+    for (size_t i = 0; i < nb_nodes(); i++) {
+      auto& d = tree[i].delta;
+      cdelta_type d0{.locked = node_unlocked, .stealers = 0,
+          .suspended = 0, .surplus = 0
+      };
+      d.store(d0);
+      assert(d.load().is_inert());
+    }
     auto tree_index_of_first_leaf = [&] () -> int {
       return nb_nodes(tree_height - 1);
     };
