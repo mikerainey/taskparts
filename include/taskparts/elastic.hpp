@@ -320,8 +320,10 @@ public:
   static
   auto workers(int nd) -> std::pair<size_t, size_t> {
     auto i = nd - tree_index_of_first_leaf();
-    auto j = i * nb_workers_per_leaf();
-    return std::make_pair(j, j + nb_workers_per_leaf());
+    auto lo = i * nb_workers_per_leaf();
+    auto hi = std::min(nb_workers_per_leaf() + lo,
+                       perworker::nb_workers());
+    return std::make_pair(lo, hi);
   }
   
   static
