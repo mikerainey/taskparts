@@ -58,13 +58,7 @@ _taskparts_ctx_restore:
 )");
 
 namespace taskparts {
-
-static constexpr
-size_t stack_alignb = 16;
-
-static constexpr
-size_t thread_stack_szb = stack_alignb * (1<<12);
-
+     
 class context {  
 public:
   
@@ -108,13 +102,18 @@ public:
       target->enter(target);
       assert(false);
     }
-    char* stack = (char*)malloc(thread_stack_szb);
-    char* stack_end = &stack[thread_stack_szb];
-    stack_end -= (size_t)stack_end % stack_alignb;
-    void** _ctx = (void**)ctx;
+    static constexpr
+    size_t thread_stack_alignb = 16L;
+    static constexpr
+    size_t thread_stack_szb = thread_stack_alignb * (1<<12);
     static constexpr
     int _X86_64_SP_OFFSET = 6;
-    _ctx[_X86_64_SP_OFFSET] = stack_end;
+    char* stack = (char*)malloc(thread_stack_szb);
+    char* sp = &stack[thread_stack_szb];
+    sp = (char*)((uintptr_t)sp & -thread_stack_alignb);  // align stack pointer on 16-byte boundary
+    sp -= 128; // for red zone
+    void** _ctx = (void**)ctx;
+    _ctx[_X86_64_SP_OFFSET] = sp;
     return stack;
   }
   

@@ -49,13 +49,13 @@ public:
   };
 
   static constexpr
-  char node_locked = 0, node_unlocked = 1;
+  char node_locked = 1, node_unlocked = 0;
 
   using cdelta_type = struct cdelta_struct {
-    unsigned int locked : 1 = node_unlocked;
-    int surplus : 31 = 0;
-    int16_t stealers = 0;
-    int16_t suspended = 0;
+    unsigned int locked : 1;
+    int surplus : 31;
+    int16_t stealers;
+    int16_t suspended;
     struct cdelta_struct operator+(struct cdelta_struct other) {
       cdelta_type d = *this;
       d.surplus += other.surplus;
@@ -84,10 +84,11 @@ public:
       while (true) {
         auto orig = counter.load();
         auto next = orig;
-        next.suspended = orig.suspended + d.suspended;
-        next.stealers = orig.stealers + d.stealers;
-        next.surplus = orig.surplus + d.surplus;
+        next.suspended += d.suspended;
+        next.stealers += d.stealers;
+        next.surplus += d.surplus;
         if (counter.compare_exchange_strong(orig, next)) {
+          //aprintf("node updated ni=%p ste=%d sus=%d sur=%d\n", this,next.stealers,next.suspended,next.surplus);
           break;
         }
       }
@@ -129,45 +130,51 @@ public:
     }
   }
   
+  using node_update_type = enum node_update_enum {
+    node_update_finalized, node_update_delegated
+  };
+  
   static
-  auto try_lock_and_update_node(cnode_type* ni, cdelta_type d) -> bool {
+  auto try_lock_and_update_node(cnode_type* ni, cdelta_type d)
+  -> node_update_type {
     while (true) {
       auto orig = ni->delta.load();
       auto next = orig;
       if (orig.locked == node_locked) {
-        next.suspended = orig.suspended + d.suspended;
-        next.stealers = orig.stealers + d.stealers;
-        next.surplus = orig.surplus + d.surplus;
+        next.suspended += d.suspended;
+        next.stealers += d.stealers;
+        next.surplus += d.surplus;
         if (ni->delta.compare_exchange_strong(orig, next)) {
-          return false;
+          return node_update_delegated; // delegated d to the worker holding the lock
         }
       } else {
         next.locked = node_locked;
         if (ni->delta.compare_exchange_strong(orig, next)) {
           ni->update_counter(d);
-          return true;
+          return node_update_finalized; // updated ni wrt d (no delegation)
         }
       }
     }
   }
   
   static
-  auto try_unlock_node(cnode_type* ni) -> std::pair<bool, cdelta_type> {
+  auto try_unlock_node(cnode_type* ni)
+  -> std::pair<node_update_type, cdelta_type> {
     while (true) {
       auto orig = ni->delta.load();
       auto next = cdelta_type{};
-      if (orig.is_inert()) {
+      if (orig.is_inert()) { // nothing delegated to the caller
         assert(next.locked == node_unlocked);
         if (ni->delta.compare_exchange_strong(orig, next)) {
-          return std::make_pair(false, orig);
+          return std::make_pair(node_update_finalized, orig);
         }
-      } else {
-        next.locked = node_locked;
+      } else { // delta in orig delegated to the caller
+        assert(orig.locked == node_locked);
         if (! ni->delta.compare_exchange_strong(orig, next)) {
           continue;
         }
         ni->update_counter(orig);
-        return std::make_pair(true, orig);
+        return std::make_pair(node_update_delegated, orig);
       }
     }
   }
@@ -177,47 +184,56 @@ public:
                    size_t id = perworker::my_id(),
                    size_t h = tree_height) -> void {
     auto i = h + 1;
-    do {
-      while (i > 0) {
+    while (true) {
+      while (true) {
+        // lock along path until seeing the root node or a delegation
         i--;
+        //aprintf("update1 ni=%p i=%d h=%d ste=%d sus=%d sur=%d\n", paths[id][i],i,h,d.stealers,d.suspended,d.surplus);
         if (i == 0) {
           nr->update_counter(d);
           break;
         }
-        if (try_lock_and_update_node(paths[id][i], d)) {
+        if (try_lock_and_update_node(paths[id][i], d) ==
+            node_update_delegated) {
+          //aprintf("delegate i=%d h=%d ste=%d sus=%d sur=%d\n",i,h,d.stealers,d.suspended,d.surplus);
           break;
         }
       }
-      i--;
-      while ((i + 1) < h) {
+      while (true) {
+        // unlock along path until seeing a leaf or a delegation
         i++;
-        if (i == 0) {
-          continue;
+        if (i > h) {
+          //aprintf("update exit i=%d\n",i);
+          return;
         }
         auto [delegated, _d] = try_unlock_node(paths[id][i]);
-        if (delegated) {
+        if (delegated == node_update_delegated) {
+          d = _d;
+          //aprintf("delegated1 i=%d ste=%d sus=%d sur=%d\n",i,d.stealers,d.suspended,d.surplus);
           break;
         }
-        d = _d;
+        //aprintf("update4 i=%d ste=%d sus=%d sur=%d\n",i,d.stealers,d.suspended,d.surplus);
       }
-    } while ((i + 1) < h);
-    ensure_sentinel();
+    }
   }
 
   static
   auto incr_surplus(size_t my_id = perworker::my_id()) -> void {
     update_tree(cdelta_type{.surplus = +1}, my_id);
     Stats::increment(Stats::configuration_type::nb_surplus_transitions);
+    ensure_sentinel();
   }
 
   static
   auto decr_surplus(size_t my_id = perworker::my_id()) -> void {
     update_tree(cdelta_type{.surplus = -1}, my_id);
+    ensure_sentinel();
   }
 
   static
   auto incr_stealing(size_t my_id = perworker::my_id()) -> void {
     update_tree(cdelta_type{.stealers = +1}, my_id);
+    ensure_sentinel();
   }
 
   static
@@ -225,14 +241,15 @@ public:
     update_tree(cdelta_type{.stealers = -1}, my_id);
     // scale up
     auto n = alpha;
-    do {
-      if (nr->counter.load().suspended == 0) {
+    while (n > 0) {
+      auto c = nr->counter.load();
+      if ((! c.needs_sentinel()) || c.suspended == 0) {
         break;
       }
       if (try_resume(random_suspended_worker())) {
         n--;
       }
-    } while (n > 0);
+    }
     ensure_sentinel();
   }
 
@@ -266,6 +283,7 @@ public:
       Stats::on_enter_acquire();
     } // end suspending the caller
     update_tree(cdelta_type{.stealers = +1, .suspended = -1}, my_id);
+    ensure_sentinel();
   }
   
   static
@@ -281,9 +299,13 @@ public:
     return false;
   }
   
-  // for now...
+#ifdef TASKPARTS_ELASTIC_OVERRIDE_RAND_WORKER
+  static constexpr
+  bool override_rand_worker = true;
+#else
   static constexpr
   bool override_rand_worker = false;
+#endif
   
   static
   auto random_in_range(std::pair<size_t, size_t> r) -> int {
@@ -294,16 +316,24 @@ public:
     return i + r.first;
   }
   
+  // nd: index of a leaf node in tree
   static
-  auto workers(int i) -> std::pair<size_t, size_t> {
-    auto ps = std::make_pair(0l, 0l);
-    assert(false); // todo
-    return ps;
+  auto workers(int nd) -> std::pair<size_t, size_t> {
+    auto i = nd - tree_index_of_first_leaf();
+    auto lo = i * nb_workers_per_leaf();
+    auto hi = std::min(nb_workers_per_leaf() + lo,
+                       perworker::nb_workers());
+    return std::make_pair(lo, hi);
   }
   
   static
   auto random_suspended_worker(size_t my_id = perworker::my_id()) -> int {
-    auto id = override_rand_worker ? random_in_range(random_worker_group([] (cdata_type c) { return c.suspended; })) : random_other_worker(my_id);
+    int id;
+    if (override_rand_worker) {
+      id = random_in_range(random_worker_group([] (cdata_type c) { return c.suspended; }));
+    } else {
+      id = random_other_worker(my_id);
+    }
     auto is_suspended = flags[id].load();
     return is_suspended ? id : -1;
   }
@@ -312,8 +342,13 @@ public:
   static
   auto random_worker_with_surplus(const Is_deque_empty& is_deque_empty,
                                   size_t my_id = perworker::my_id()) -> int {
-    auto id = override_rand_worker ? random_in_range(random_worker_group([] (cdata_type c) { return c.surplus; })) : random_other_worker(my_id);
-    auto has_surplus = is_deque_empty(id);
+    int id;
+    if (override_rand_worker) {
+      id = random_in_range(random_worker_group([] (cdata_type c) { return c.surplus; }));
+    } else {
+      id = (int)random_other_worker(my_id);
+    }
+    auto has_surplus = ! is_deque_empty(id);
     return has_surplus ? id : -1;
   }
   
@@ -322,25 +357,25 @@ public:
   auto random_worker_group(const F& f,
                            size_t h = tree_height) -> std::pair<size_t, size_t> {
     std::pair<size_t, size_t> ps;
-    auto i = 0;
+    auto nd = 0;
     auto l = 0;
     while (true) {
-      auto ni = &tree[i];
+      auto ni = &tree[nd];
       auto wi = f(ni->counter.load());
       if (wi == 0) {
         break;
       }
       if ((l + 1) == h) {
         if (wi > 0) {
-          ps = workers(i);
+          ps = workers(nd);
         }
         break;
       }
-      auto il = i;
-      auto ir = i + nb_nodes(h - l);
+      auto il = 2 * nd + 1;
+      auto ir = 2 * nd + 2;
       auto wl = f(tree[il].counter.load());
       auto wr = f(tree[ir].counter.load());
-      i = ((random_number() % (wl + wr)) < wl) ? il : ir;
+      nd = ((random_number() % (wl + wr)) < wl) ? il : ir;
       l++;
     }
     return ps;
@@ -358,10 +393,22 @@ public:
   }
   
   static
+  auto tree_index_of_first_leaf() -> int {
+    return nb_nodes(std::max(0, (int)tree_height - 1));
+  }
+  
+  static
+  auto nb_leaves() -> int {
+    return 1 << tree_height;
+  }
+  
+  static
+  auto nb_workers_per_leaf() -> size_t {
+    return perworker::nb_workers() / nb_leaves();
+  }
+  
+  static
   auto initialize() {
-    auto nb_leaves = [] () -> int {
-      return 1 << tree_height;
-    };
     if (const auto env_p = std::getenv("TASKPARTS_ELASTIC_ALPHA")) {
       alpha = std::stoi(env_p);
     } else {
@@ -373,7 +420,7 @@ public:
       beta = 2;
     }
     if (const auto env_p = std::getenv("TASKPARTS_ELASTIC_TREE_HEIGHT")) {
-      tree_height = std::min(0, std::stoi(env_p));
+      tree_height = std::max(0, std::stoi(env_p));
     } else {
       tree_height = 0;
       while ((1 << tree_height) < perworker::nb_workers()) {
@@ -382,26 +429,20 @@ public:
       tree_height = std::min((size_t)0, tree_height - 1);
     }
     tree = new cnode_type[nb_nodes()];
-    auto tree_index_of_first_leaf = [&] () -> int {
-      return nb_nodes(tree_height);
-    };
+    for (size_t i = 0; i < nb_nodes(); i++) {
+      auto& d = tree[i].delta;
+      cdelta_type d0{
+        .locked = node_unlocked, .stealers = 0,
+        .suspended = 0, .surplus = 0
+      };
+      d.store(d0);
+    }
     auto is_root = [&] (int n) -> bool {
       return n == 0;
     };
     auto parent_of = [&] (int n) -> int {
       assert(! is_root(n));
       return (n - 1) / 2;
-    };
-    auto tree_index_of_leaf_node_at = [&] (int i) -> int {
-      if (tree_height == 0) {
-        assert(i == 0);
-        return 0;
-      }
-      assert((i >= 0) && (i < nb_leaves()));
-      auto l = tree_index_of_first_leaf();
-      auto k = l + i;
-      assert(k > 0 && k < nb_nodes());
-      return k;
     };
     // initialize each array in the paths structure s.t. each such array stores its
     // leaf-to-root path in the tree
@@ -420,15 +461,12 @@ public:
       std::reverse(r.begin(), r.end());
       return r;
     };
-    auto path_size = [&] () -> int {
-      assert((int)paths.mine().size() == (tree_height + 1));
-      return tree_height + 1;
-    };
-    // need this loop to create a path for each worker
-    for (auto i = 0; i < nb_leaves(); i++) {
-      auto nd = tree_index_of_leaf_node_at(i);
-      paths[i] = mk_path(nd);
-      assert(paths[i].size() == path_size());
+    // create a path for each worker
+    for (size_t i = 0, j = 0; i < perworker::nb_workers(); i++) {
+      auto nd = tree_index_of_first_leaf() + j;
+      j += (((i + 1) % nb_workers_per_leaf()) == 0);
+      paths[i] = mk_path((int)nd);
+      assert(paths[i].size() == (tree_height + 1));
     }
     nr = paths[0][0];
   }
