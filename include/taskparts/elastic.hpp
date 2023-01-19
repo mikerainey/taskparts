@@ -299,9 +299,13 @@ public:
     return false;
   }
   
-  // for now...
+#ifdef TASKPARTS_ELASTIC_OVERRIDE_RAND_WORKER
+  static constexpr
+  bool override_rand_worker = true;
+#else
   static constexpr
   bool override_rand_worker = false;
+#endif
   
   static
   auto random_in_range(std::pair<size_t, size_t> r) -> int {
@@ -312,16 +316,22 @@ public:
     return i + r.first;
   }
   
+  // nd: index of a leaf node in tree
   static
-  auto workers(int i) -> std::pair<size_t, size_t> {
-    auto ps = std::make_pair(0l, 0l);
-    assert(false); // todo
-    return ps;
+  auto workers(int nd) -> std::pair<size_t, size_t> {
+    auto i = nd - tree_index_of_first_leaf();
+    auto j = i * nb_workers_per_leaf();
+    return std::make_pair(j, j + nb_workers_per_leaf());
   }
   
   static
   auto random_suspended_worker(size_t my_id = perworker::my_id()) -> int {
-    auto id = override_rand_worker ? random_in_range(random_worker_group([] (cdata_type c) { return c.suspended; })) : random_other_worker(my_id);
+    int id;
+    if (override_rand_worker) {
+      id = random_in_range(random_worker_group([] (cdata_type c) { return c.suspended; }));
+    } else {
+      id = random_other_worker(my_id);
+    }
     auto is_suspended = flags[id].load();
     return is_suspended ? id : -1;
   }
@@ -330,7 +340,12 @@ public:
   static
   auto random_worker_with_surplus(const Is_deque_empty& is_deque_empty,
                                   size_t my_id = perworker::my_id()) -> int {
-    auto id = override_rand_worker ? random_in_range(random_worker_group([] (cdata_type c) { return c.surplus; })) : random_other_worker(my_id);
+    int id;
+    if (override_rand_worker) {
+      id = random_in_range(random_worker_group([] (cdata_type c) { return c.surplus; }));
+    } else {
+      id = (int)random_other_worker(my_id);
+    }
     auto has_surplus = ! is_deque_empty(id);
     return has_surplus ? id : -1;
   }
@@ -376,10 +391,22 @@ public:
   }
   
   static
+  auto tree_index_of_first_leaf() -> int {
+    return nb_nodes(std::max(0, (int)tree_height - 1));
+  }
+  
+  static
+  auto nb_leaves() -> int {
+    return 1 << tree_height;
+  }
+  
+  static
+  auto nb_workers_per_leaf() -> size_t {
+    return perworker::nb_workers() / nb_leaves();
+  }
+  
+  static
   auto initialize() {
-    auto nb_leaves = [] () -> int {
-      return 1 << tree_height;
-    };
     if (const auto env_p = std::getenv("TASKPARTS_ELASTIC_ALPHA")) {
       alpha = std::stoi(env_p);
     } else {
@@ -402,32 +429,18 @@ public:
     tree = new cnode_type[nb_nodes()];
     for (size_t i = 0; i < nb_nodes(); i++) {
       auto& d = tree[i].delta;
-      cdelta_type d0{.locked = node_unlocked, .stealers = 0,
-          .suspended = 0, .surplus = 0
+      cdelta_type d0{
+        .locked = node_unlocked, .stealers = 0,
+        .suspended = 0, .surplus = 0
       };
       d.store(d0);
-      assert(d.load().is_inert());
     }
-    auto tree_index_of_first_leaf = [&] () -> int {
-      return nb_nodes(tree_height - 1);
-    };
     auto is_root = [&] (int n) -> bool {
       return n == 0;
     };
     auto parent_of = [&] (int n) -> int {
       assert(! is_root(n));
       return (n - 1) / 2;
-    };
-    auto tree_index_of_leaf_node_at = [&] (int i) -> int {
-      if (tree_height == 0) {
-        assert(i == 0);
-        return 0;
-      }
-      assert((i >= 0) && (i < nb_leaves()));
-      auto l = tree_index_of_first_leaf();
-      auto k = l + i;
-      assert(k > 0 && k < nb_nodes());
-      return k;
     };
     // initialize each array in the paths structure s.t. each such array stores its
     // leaf-to-root path in the tree
@@ -446,15 +459,12 @@ public:
       std::reverse(r.begin(), r.end());
       return r;
     };
-    auto path_size = [&] () -> int {
-      assert((int)paths.mine().size() == (tree_height + 1));
-      return (int)tree_height + 1;
-    };
-    // need this loop to create a path for each worker
-    for (auto i = 0; i < perworker::nb_workers(); i++) {
-      auto nd = tree_index_of_leaf_node_at(i % nb_leaves());
-      paths[i] = mk_path(nd);
-      assert(paths[i].size() == path_size());
+    // create a path for each worker
+    for (size_t i = 0, j = 0; i < perworker::nb_workers(); i++) {
+      auto nd = tree_index_of_first_leaf() + j;
+      j += (((i + 1) % nb_workers_per_leaf()) == 0);
+      paths[i] = mk_path((int)nd);
+      assert(paths[i].size() == (tree_height + 1));
     }
     nr = paths[0][0];
   }
