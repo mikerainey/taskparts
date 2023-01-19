@@ -357,25 +357,25 @@ public:
   auto random_worker_group(const F& f,
                            size_t h = tree_height) -> std::pair<size_t, size_t> {
     std::pair<size_t, size_t> ps;
-    auto i = 0;
+    auto nd = 0;
     auto l = 0;
     while (true) {
-      auto ni = &tree[i];
+      auto ni = &tree[nd];
       auto wi = f(ni->counter.load());
       if (wi == 0) {
         break;
       }
       if ((l + 1) == h) {
         if (wi > 0) {
-          ps = workers(i);
+          ps = workers(nd);
         }
         break;
       }
-      auto il = i;
-      auto ir = i + nb_nodes(h - l);
+      auto il = 2 * nd + 1;
+      auto ir = 2 * nd + 2;
       auto wl = f(tree[il].counter.load());
       auto wr = f(tree[ir].counter.load());
-      i = ((random_number() % (wl + wr)) < wl) ? il : ir;
+      nd = ((random_number() % (wl + wr)) < wl) ? il : ir;
       l++;
     }
     return ps;
