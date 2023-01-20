@@ -431,10 +431,7 @@ public:
     tree = new cnode_type[nb_nodes()];
     for (size_t i = 0; i < nb_nodes(); i++) {
       auto& d = tree[i].delta;
-      cdelta_type d0{
-        .locked = node_unlocked, .stealers = 0,
-        .suspended = 0, .surplus = 0
-      };
+      cdelta_type d0{.locked = node_unlocked, .surplus = 0, .stealers = 0, .suspended = 0 };
       d.store(d0);
     }
     auto is_root = [&] (int n) -> bool {
