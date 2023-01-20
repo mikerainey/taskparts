@@ -426,7 +426,7 @@ public:
       while ((1 << tree_height) < perworker::nb_workers()) {
         tree_height++;
       }
-      tree_height = std::min((size_t)0, tree_height - 1);
+      tree_height = std::max((size_t)0, tree_height - 1);
     }
     tree = new cnode_type[nb_nodes()];
     for (size_t i = 0; i < nb_nodes(); i++) {
