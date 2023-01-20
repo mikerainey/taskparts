@@ -88,7 +88,6 @@ public:
         next.stealers += d.stealers;
         next.surplus += d.surplus;
         if (counter.compare_exchange_strong(orig, next)) {
-          //aprintf("node updated ni=%p ste=%d sus=%d sur=%d\n", this,next.stealers,next.suspended,next.surplus);
           break;
         }
       }
@@ -188,14 +187,12 @@ public:
       while (true) {
         // lock along path until seeing the root node or a delegation
         i--;
-        //aprintf("update1 ni=%p i=%d h=%d ste=%d sus=%d sur=%d\n", paths[id][i],i,h,d.stealers,d.suspended,d.surplus);
         if (i == 0) {
           nr->update_counter(d);
           break;
         }
         if (try_lock_and_update_node(paths[id][i], d) ==
             node_update_delegated) {
-          //aprintf("delegate i=%d h=%d ste=%d sus=%d sur=%d\n",i,h,d.stealers,d.suspended,d.surplus);
           break;
         }
       }
@@ -203,16 +200,13 @@ public:
         // unlock along path until seeing a leaf or a delegation
         i++;
         if (i > h) {
-          //aprintf("update exit i=%d\n",i);
           return;
         }
         auto [delegated, _d] = try_unlock_node(paths[id][i]);
         if (delegated == node_update_delegated) {
           d = _d;
-          //aprintf("delegated1 i=%d ste=%d sus=%d sur=%d\n",i,d.stealers,d.suspended,d.surplus);
           break;
         }
-        //aprintf("update4 i=%d ste=%d sus=%d sur=%d\n",i,d.stealers,d.suspended,d.surplus);
       }
     }
   }
