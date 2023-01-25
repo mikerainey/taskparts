@@ -49,6 +49,9 @@ namespace cilk_heuristic {
   auto ceiling_div(uint64_t x, uint64_t y) -> uint64_t {
     return (x + y - 1) / y;
   }
+  auto get_grainsize(uint64_t n) -> uint64_t {
+    return std::min<uint64_t>(2048, ceiling_div(n, 8 * nworkers));
+  }
   template <typename T, typename P>
   auto nb_occurrences_rec(T* lo, T* hi, const P& p, uint64_t grainsize) -> uint64_t {
     auto n = hi - lo;
@@ -68,8 +71,7 @@ namespace cilk_heuristic {
   }
   template <typename T, typename P>
   auto nb_occurrences(T* lo, T* hi, const P& p) -> uint64_t {
-    uint64_t grainsize = std::min<uint64_t>(2048, ceiling_div(hi - lo, 8 * nworkers));
-    return nb_occurrences_rec(lo, hi, p, grainsize);
+    return nb_occurrences_rec(lo, hi, p, get_grainsize(hi - lo));
   }
 }
 
@@ -90,23 +92,25 @@ template <class T>
 void write_random_data(T* lo, T* hi) {
   for (auto it = lo; it != hi; it++) {
     auto lo2 = (char*)it;
-    auto hi2 = lo2 + sizeof(T);
-    write_random_chars(lo2, hi2);
+    write_random_chars(lo2, lo2 + sizeof(T));
   }
 }
   
 template <class T>
 T* create_random_array(int n) {
   T* data = (T*)malloc(sizeof(T) * n);
-  auto lo = data;
-  auto hi = data + n;
-  write_random_data(lo, hi);
+  write_random_data(data, data + n);
   return data;
 }
 
 template <typename T, typename P>
 auto using_item_type(const P& p) {
-  auto n = taskparts::cmdline::parse_or_default_long("n", 1l << 29);
+  auto nszb = taskparts::cmdline::parse_or_default_long("n", 1l << 28);
+  auto szb = sizeof(T);
+  auto n = nszb / szb;
+  assert(cilk_heuristic::nworkers != -1);
+  printf("cilk_grainsize %lu\n",cilk_heuristic::get_grainsize(n));
+  printf("nb_items %lu\n",n);
   T* data;
   taskparts::cmdline::dispatcher d;
   d.add("serial", [&] {
@@ -116,7 +120,6 @@ auto using_item_type(const P& p) {
     answer = manual_gc::nb_occurrences(data, data + n, p);
   });
   d.add("cilk", [&] {
-    assert(cilk_heuristic::nworkers != -1);
     answer = cilk_heuristic::nb_occurrences(data, data + n, p);
   });
   taskparts::benchmark_nativeforkjoin([&] (auto sched) { // benchmark
@@ -129,21 +132,6 @@ auto using_item_type(const P& p) {
     free(data);
   });
 }
-
-static constexpr
-int szb0 = 64;
-static constexpr
-int szb6 = 128;
-static constexpr
-int szb5 = 256;
-static constexpr
-int szb1 = 4 * 256;
-static constexpr
-int szb2 = 2*szb1;
-static constexpr
-int szb3 = 1 << 17;
-static constexpr
-int szb4 = 1 << 20;
 
 template <int szb>
 class bytes {
@@ -164,12 +152,28 @@ auto hash(bytes<szb>& b) -> uint64_t {
 
 auto select_item_type() {
   auto szb = taskparts::cmdline::parse_or_default_int("item_szb", 1);
-  if (szb == 1) {
+  static constexpr
+  auto szb1 = 1;
+  static constexpr
+  auto szb2 = 1<<4;
+  static constexpr
+  auto szb3 = 1<<11;
+  static constexpr
+  auto szb4 = 1<<17;
+  static constexpr
+  auto szb5 = 1<<23;
+  if (szb == szb1) {
     using_item_type<char>([] (char* c) { return *c == 'a'; });
     return;
   }
-  if (szb == szb0) {
-    using_item_type<bytes<szb0>>([] (bytes<szb0>* b) { return hash(*b) == 2017L; });
+  if (szb == szb2) {
+    using_item_type<bytes<szb2>>([] (auto* b) { return hash(*b) == 2017L; });
+  } else if (szb == szb3) {
+    using_item_type<bytes<szb3>>([] (auto* b) { return hash(*b) == 2017L; });
+  } else if (szb == szb4) {
+    using_item_type<bytes<szb4>>([] (auto* b) { return hash(*b) == 2017L; });
+  } else if (szb == szb5) {
+    using_item_type<bytes<szb5>>([] (auto* b) { return hash(*b) == 2017L; });
   } else {
     std::cerr << "bogus szb " <<  szb << std::endl;
     exit(0);
@@ -177,7 +181,7 @@ auto select_item_type() {
 }
 
 int main() {
-  manual_gc::threshold = taskparts::cmdline::parse_or_default_long("threshold", manual_gc::threshold);
+  manual_gc::threshold = taskparts::cmdline::parse_or_default_long("manual_threshold", manual_gc::threshold);
   cilk_heuristic::nworkers = taskparts::perworker::nb_workers();
   select_item_type();
   return 0;
