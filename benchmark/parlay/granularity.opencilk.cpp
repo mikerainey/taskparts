@@ -1,3 +1,4 @@
+#include "opencilk.hpp"
 #include "granularity.hpp"
 
 int main() {
