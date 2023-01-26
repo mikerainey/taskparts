@@ -21,7 +21,10 @@ namespace serial {
   }
 }
 
-using taskparts_scheduler = taskparts::bench_scheduler;
+template <typename F1, typename F2>
+auto fork2(const F1 &f1, const F2 &f2) {
+  taskparts::fork2join<F1, F2, taskparts::bench_scheduler>(f1, f2);  
+}
 
 namespace manual_gc {
   uint64_t threshold = 2048;
@@ -33,13 +36,11 @@ namespace manual_gc {
     }
     auto mid = lo + (n / 2);
     int64_t r1, r2;
-    auto lf = [&] {
+    fork2([&] {
       r1 = nb_occurrences(lo, mid, p);
-    };
-    auto rf = [&] {
+    }, [&] {
       r2 = nb_occurrences(mid, hi, p);
-    };
-    taskparts::fork2join<decltype(lf), decltype(rf), taskparts_scheduler>(lf, rf);
+    });
     return r1 + r2;
   }
 }
@@ -60,13 +61,11 @@ namespace cilk_heuristic {
     }
     auto mid = lo + (n / 2);
     int64_t r1, r2;
-    auto lf = [&] {
+    fork2([&] {
       r1 = nb_occurrences_rec(lo, mid, p, grainsize);
-    };
-    auto rf = [&] {
+    }, [&] {
       r2 = nb_occurrences_rec(mid, hi, p, grainsize);
-    };
-    taskparts::fork2join<decltype(lf), decltype(rf), taskparts_scheduler>(lf, rf);
+    });
     return r1 + r2;
   }
   template <typename T, typename P>
@@ -105,7 +104,7 @@ T* create_random_array(int n) {
 
 template <typename T, typename P>
 auto using_item_type(const P& p) {
-  auto nszb = taskparts::cmdline::parse_or_default_long("n", 1l << 28);
+  auto nszb = taskparts::cmdline::parse_or_default_long("n", 1l << 29);
   auto szb = sizeof(T);
   auto n = nszb / szb;
   assert(cilk_heuristic::nworkers != -1);
