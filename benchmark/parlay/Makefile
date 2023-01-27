@@ -137,6 +137,20 @@ CILK_COMMON_PREFIX=$(INCLUDE_PREFIX_ALL) -fcilkplus -lcilkrts -DCILK -ldl -DPARL
 %.cilk.dbg: %.cilk.cpp $(INCLUDE_FILES) install_folder
 	$(CXX) $(DBG_PREFIX) $(CILK_COMMON_PREFIX) -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
 
+# OpenCilk
+# --------
+
+OPENCILK_CXX?=clang++
+OPENCILK_COMMON_PREFIX=$(INCLUDE_PREFIX_ALL) -fopencilk -DOPENCILK -DPARLAY_OPENCILK
+
+%.opencilk.opt: %.opencilk.cpp $(INCLUDE_FILES) install_folder
+	$(OPENCILK_CXX) $(OPT_COMPILE_PREFIX) $(OPENCILK_COMMON_PREFIX) -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+%.opencilk.sta: %.opencilk.cpp $(INCLUDE_FILES) install_folder
+	$(OPENCILK_CXX) $(OPT_COMPILE_PREFIX) -o $(INSTALL_PATH)/$@ $< $(OPENCILK_COMMON_PREFIX) $(LINKER_PREFIX)
+%.opencilk.dbg: %.opencilk.cpp $(INCLUDE_FILES) install_folder
+	$(OPENCILK_CXX) $(DBG_PREFIX) $(OPENCILK_COMMON_PREFIX) -o $(INSTALL_PATH)/$@ $< $(LINKER_PREFIX)
+
+
 # Work staling w/ ABP deque
 # -------------------------
 

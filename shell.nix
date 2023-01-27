@@ -6,6 +6,8 @@
 #   $ nix-shell --arg stdenv '(import <nixpkgs> {}).gcc7Stdenv'
 # If you want to use Clang, then use the following:
 #   $ nix-shell --arg stdenv '(import <nixpkgs> {}).clangStdenv'
+# If you want to use OpenCilk, then use the following:
+#   $ nix-shell --arg opencilk 'import ./opencilk.nix {}'
 #
 # If you don't want to use jemalloc:
 #   $ nix-shell --arg jemalloc null
@@ -20,7 +22,8 @@
   parlaylib ? import ../parlaylib {},
   pbbsbench ? import ../pbbsbench { parlaylib=parlaylib; },
   chunkedseq ? import ../chunkedseq/script { },
-  rollforward ? import ../rollforward {}
+  rollforward ? import ../rollforward {},
+  opencilk ? null
 }:
 
 let cilk-stats-rts-params =
@@ -51,6 +54,9 @@ stdenv.mkDerivation rec {
 
   # TPAL/rollforward configuration
   ROLLFORWARD_PATH="${rollforward}";
+
+  # OpenCilk configuration
+  OPENCILK_CXX=if opencilk == null then "" else "${opencilk}/bin/clang++";
   
   shellHook = ''
     export NUM_SYSTEM_CORES=$( ${hwloc}/bin/hwloc-ls|grep Core|wc -l )
