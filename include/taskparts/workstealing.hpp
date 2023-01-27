@@ -152,10 +152,13 @@ public:
     if (const auto env_p = std::getenv("TASKPARTS_NB_STEAL_ATTEMPTS")) {
       nb_steal_attempts = std::stoi(env_p);
     }
+    
+    static constexpr
+    int not_a_worker = -1;
 
-    auto random_victim = [&] (size_t my_id) -> size_t {
+    auto random_victim = [&] (size_t my_id) -> int {
       if constexpr (elastic_type::override_rand_worker) {
-        return elastic_type::random_other_worker(my_id);
+        return elastic_type::random_worker_with_surplus([&] (size_t id) { return deques[id].empty(); }, my_id);
       } else {
         return random_other_worker(my_id);
       }
@@ -174,11 +177,11 @@ public:
       fiber_type* current = nullptr;
       while (current == nullptr) {
         assert(nb_steal_attempts >= 1);
-        auto i = nb_steal_attempts;
-        auto target = random_victim(my_id);
+        auto i = nb_steal_attempts + 1;
+        int target = not_a_worker;
         do {
           termination_barrier.set_active(true);
-          current = steal(target);
+          current = (target != not_a_worker) ? steal(target) : nullptr;
           if (current == nullptr) {
             termination_barrier.set_active(false);
           } else {

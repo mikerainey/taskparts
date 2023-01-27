@@ -252,6 +252,13 @@ public:
   
   static
   auto try_suspend(size_t) { }
+  
+  template <typename Is_deque_empty>
+  static
+  auto random_worker_with_surplus(const Is_deque_empty& is_deque_empty,
+                                  size_t my_id) -> int {
+    return -1;
+  }
 
 };
 

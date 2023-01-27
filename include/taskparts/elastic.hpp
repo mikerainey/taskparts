@@ -74,9 +74,14 @@ public:
     }
   };
 
+  // TODO: update the types below so that the atomic fields are properly aligned
   using cnode_type = struct cnode_struct {
-    std::atomic<cdata_type> counter;
-    std::atomic<cdelta_type> delta;
+//    struct alignas(int64_t) counter_struct {
+      std::atomic<cdata_type> counter;
+//    };
+    //    struct alignas(int64_t) delta_struct {
+      std::atomic<cdelta_type> delta;
+    //    };
     auto update_counter(cdelta_type d) {
       if (d.is_inert()) {
         return;
@@ -293,7 +298,7 @@ public:
     return false;
   }
   
-#ifdef TASKPARTS_ELASTIC_OVERRIDE_RAND_WORKER
+#ifndef TASKPARTS_ELASTIC_DISABLE_TREE_LOOKUP
   static constexpr
   bool override_rand_worker = true;
 #else
@@ -306,18 +311,7 @@ public:
     if (r.second <= r.first) {
       return -1;
     }
-    auto i = random_number() % (r.second - r.first);
-    return i + r.first;
-  }
-  
-  // nd: index of a leaf node in tree
-  static
-  auto workers(int nd) -> std::pair<size_t, size_t> {
-    auto i = nd - tree_index_of_first_leaf();
-    auto lo = i * nb_workers_per_leaf();
-    auto hi = std::min(nb_workers_per_leaf() + lo,
-                       perworker::nb_workers());
-    return std::make_pair(lo, hi);
+    return (random_number() % (r.second - r.first)) + r.first;
   }
   
   static
@@ -328,7 +322,7 @@ public:
     } else {
       id = random_other_worker(my_id);
     }
-    auto is_suspended = flags[id].load();
+    auto is_suspended = (id != -1) && flags[id].load();
     return is_suspended ? id : -1;
   }
   
@@ -342,37 +336,48 @@ public:
     } else {
       id = (int)random_other_worker(my_id);
     }
-    auto has_surplus = ! is_deque_empty(id);
+    auto has_surplus = (id != -1) && (! is_deque_empty(id));
     return has_surplus ? id : -1;
   }
   
+  // f: returns one field from a value of the cdata structure
   template <typename F>
   static
   auto random_worker_group(const F& f,
-                           size_t h = tree_height) -> std::pair<size_t, size_t> {
-    std::pair<size_t, size_t> ps;
-    auto nd = 0;
-    auto l = 0;
-    while (true) {
-      auto ni = &tree[nd];
-      auto wi = f(ni->counter.load());
-      if (wi == 0) {
+                           size_t h = tree_height) -> std::pair<int, int> {
+    auto weight = [&] (int nd) -> int { return f(tree[nd].counter.load()); };
+    auto workers = [] (int nd) -> std::pair<int, int> {
+      if (nd == 0) {
+        return std::make_pair(0, perworker::nb_workers());
+      }
+      auto i = nd - tree_index_of_first_leaf();
+      auto lo = i * nb_workers_per_leaf();
+      auto hi = std::min(nb_workers_per_leaf() + lo, perworker::nb_workers());
+      return std::make_pair(lo, hi);
+    };
+    auto child = [] (int nd, int i) -> int {
+      assert((i == 1) || (i == 2));
+      return 2 * nd + i;
+    };
+    auto has_children = [&] (int nd) -> bool {
+      return child(nd, 1) < nb_nodes();
+    };
+    int nd = 0;
+    int w = weight(nd);
+    while (has_children(nd)) {
+      auto nd1 = child(nd, 1);
+      auto nd2 = child(nd, 2);
+      auto w1 = weight(nd1);
+      auto w2 = weight(nd2);
+      w = w1 + w2;
+      if (w == 0) {
         break;
       }
-      if ((l + 1) == h) {
-        if (wi > 0) {
-          ps = workers(nd);
-        }
-        break;
-      }
-      auto il = 2 * nd + 1;
-      auto ir = 2 * nd + 2;
-      auto wl = f(tree[il].counter.load());
-      auto wr = f(tree[ir].counter.load());
-      nd = ((random_number() % (wl + wr)) < wl) ? il : ir;
-      l++;
+      assert(w > 0);
+      nd = ((random_number() % w) < w1) ? nd1 : nd2;
+      w = (nd == nd1) ? w1 : w2;
     }
-    return ps;
+    return (w > 0) ? workers(nd) : std::make_pair(0, 0);
   }
   
   static
@@ -383,7 +388,7 @@ public:
   
   static
   auto nb_nodes() -> int {
-    return nb_nodes(tree_height);
+    return nb_nodes((int)tree_height);
   }
   
   static
@@ -392,13 +397,9 @@ public:
   }
   
   static
-  auto nb_leaves() -> int {
-    return 1 << tree_height;
-  }
-  
-  static
   auto nb_workers_per_leaf() -> size_t {
-    return perworker::nb_workers() / nb_leaves();
+    size_t nb_leaves = 1 << tree_height;
+    return perworker::nb_workers() / nb_leaves;
   }
   
   static
