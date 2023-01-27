@@ -121,7 +121,7 @@ auto hash(bytes<szb>& b) -> uint64_t {
   return h;
 }
 
-auto select_item_type() {
+auto select_item_type() -> void {
   auto szb = taskparts::cmdline::parse_or_default_int("item_szb", 1);
   static constexpr
   auto szb1 = 1;
