@@ -7,6 +7,7 @@
 #include "taskparts/hash.hpp"
 #include "taskparts/nativeforkjoin.hpp"
 #include "taskparts/posix/perworkerid.hpp"
+#include <sys/types.h>
 #include <taskparts/benchmark.hpp>
 
 namespace serial {
@@ -79,6 +80,16 @@ namespace cilk_heuristic {
   }
 }
 
+template <typename B>
+auto serial_outer_loop(uint64_t iters, const B& b) -> uint64_t {
+  uint64_t n = 0;
+  for (uint64_t i = 0; i < iters; i++) {
+    n += b(i);
+  }
+  return n;
+}
+
+
 int64_t answer = -1;
 
 void write_random_chars(char* lo, char* hi) {
@@ -109,7 +120,8 @@ T* create_random_array(int n) {
 
 template <typename T, typename P>
 auto using_item_type(const P& p) {
-  auto nszb = taskparts::cmdline::parse_or_default_long("n", 1l << 29);
+  auto iters = taskparts::cmdline::parse_or_default_long("iters", 20);
+  auto nszb = taskparts::cmdline::parse_or_default_long("n", 1l << 28);
   auto szb = sizeof(T);
   auto n = nszb / szb;
   assert(cilk_heuristic::nworkers != -1);
@@ -118,13 +130,19 @@ auto using_item_type(const P& p) {
   T* data;
   taskparts::cmdline::dispatcher d;
   d.add("serial", [&] {
-    answer = serial::nb_occurrences(data, data + n, p);
+    answer = serial_outer_loop(iters, [&] (uint64_t i) {
+      return serial::nb_occurrences(data, data + n, p);
+    });
   });
   d.add("manual", [&] {
-    answer = manual_gc::nb_occurrences(data, data + n, p);
+    answer = serial_outer_loop(iters, [&] (uint64_t i) {
+      return manual_gc::nb_occurrences(data, data + n, p);
+    });
   });
   d.add("cilk", [&] {
-    answer = cilk_heuristic::nb_occurrences(data, data + n, p);
+    answer = serial_outer_loop(iters, [&] (uint64_t i) {
+      return cilk_heuristic::nb_occurrences(data, data + n, p);
+    });
   });
 #if defined (OPENCILK) || defined(CILK)
   taskparts::benchmark_cilk([&] { // benchmark
@@ -177,15 +195,13 @@ auto select_item_type() {
   static constexpr
   auto szb3 = 1<<11;
   static constexpr
-  auto szb4 = 1<<17;
+  auto szb4 = 1<<17; // 131072
   static constexpr
-  auto szb5 = 1<<23;
+  auto szb5 = 1<<23; // 8388608
   if (szb == szb1) {
     using_item_type<char>([] (char* c) { return *c == 'a'; });
-    return;
-  }
-  if (szb == szb2) {
-    using_item_type<bytes<szb2>>([] (auto* b) { return hash(*b) == 2017L; });
+  } else if (szb == szb2) {
+    using_item_type<bytes<szb2>>([] (auto* b) { return (*((uint64_t*)b) / std::max<uint64_t>(1, *(((uint64_t*)b)+1))) == 123; });
   } else if (szb == szb3) {
     using_item_type<bytes<szb3>>([] (auto* b) { return hash(*b) == 2017L; });
   } else if (szb == szb4) {
