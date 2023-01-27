@@ -74,25 +74,24 @@ public:
     }
   };
 
-  // TODO: update the types below so that the atomic fields are properly aligned
   using cnode_type = struct cnode_struct {
-//    struct alignas(int64_t) counter_struct {
-      std::atomic<cdata_type> counter;
-//    };
-    //    struct alignas(int64_t) delta_struct {
-      std::atomic<cdelta_type> delta;
-    //    };
+    struct alignas(int64_t) counter_struct {
+      std::atomic<cdata_type> ounter;
+    } c;
+    struct alignas(int64_t) delta_struct {
+      std::atomic<cdelta_type> elta;
+    } d;
     auto update_counter(cdelta_type d) {
       if (d.is_inert()) {
         return;
       }
       while (true) {
-        auto orig = counter.load();
+        auto orig = c.ounter.load();
         auto next = orig;
         next.suspended += d.suspended;
         next.stealers += d.stealers;
         next.surplus += d.surplus;
-        if (counter.compare_exchange_strong(orig, next)) {
+        if (c.ounter.compare_exchange_strong(orig, next)) {
           break;
         }
       }
@@ -122,7 +121,7 @@ public:
   
   static
   auto needs_sentinel() -> bool {
-    return nr->counter.load().needs_sentinel();
+    return nr->c.ounter.load().needs_sentinel();
   }
   
   static
@@ -142,18 +141,18 @@ public:
   auto try_lock_and_update_node(cnode_type* ni, cdelta_type d)
   -> node_update_type {
     while (true) {
-      auto orig = ni->delta.load();
+      auto orig = ni->d.elta.load();
       auto next = orig;
       if (orig.locked == node_locked) {
         next.suspended += d.suspended;
         next.stealers += d.stealers;
         next.surplus += d.surplus;
-        if (ni->delta.compare_exchange_strong(orig, next)) {
+        if (ni->d.elta.compare_exchange_strong(orig, next)) {
           return node_update_delegated; // delegated d to the worker holding the lock
         }
       } else {
         next.locked = node_locked;
-        if (ni->delta.compare_exchange_strong(orig, next)) {
+        if (ni->d.elta.compare_exchange_strong(orig, next)) {
           ni->update_counter(d);
           return node_update_finalized; // updated ni wrt d (no delegation)
         }
@@ -165,16 +164,16 @@ public:
   auto try_unlock_node(cnode_type* ni)
   -> std::pair<node_update_type, cdelta_type> {
     while (true) {
-      auto orig = ni->delta.load();
+      auto orig = ni->d.elta.load();
       auto next = cdelta_type{};
       if (orig.is_inert()) { // nothing delegated to the caller
         assert(next.locked == node_unlocked);
-        if (ni->delta.compare_exchange_strong(orig, next)) {
+        if (ni->d.elta.compare_exchange_strong(orig, next)) {
           return std::make_pair(node_update_finalized, orig);
         }
       } else { // delta in orig delegated to the caller
         assert(orig.locked == node_locked);
-        if (! ni->delta.compare_exchange_strong(orig, next)) {
+        if (! ni->d.elta.compare_exchange_strong(orig, next)) {
           continue;
         }
         ni->update_counter(orig);
@@ -241,7 +240,7 @@ public:
     // scale up
     auto n = alpha;
     while (n > 0) {
-      auto c = nr->counter.load();
+      auto c = nr->c.ounter.load();
       if ((! c.needs_sentinel()) || c.suspended == 0) {
         break;
       }
@@ -345,7 +344,7 @@ public:
   static
   auto random_worker_group(const F& f,
                            size_t h = tree_height) -> std::pair<int, int> {
-    auto weight = [&] (int nd) -> int { return f(tree[nd].counter.load()); };
+    auto weight = [&] (int nd) -> int { return f(tree[nd].c.ounter.load()); };
     auto workers = [] (int nd) -> std::pair<int, int> {
       if (nd == 0) {
         return std::make_pair(0, perworker::nb_workers());
@@ -425,7 +424,7 @@ public:
     }
     tree = new cnode_type[nb_nodes()];
     for (size_t i = 0; i < nb_nodes(); i++) {
-      auto& d = tree[i].delta;
+      auto& d = tree[i].d.elta;
       cdelta_type d0{.locked = node_unlocked, .surplus = 0, .stealers = 0, .suspended = 0 };
       d.store(d0);
     }
