@@ -105,7 +105,7 @@ public:
   size_t tree_height;
 
   static
-  cnode_type* tree;
+  std::unique_ptr<cnode_type[]> tree;
 
   static
   perworker::array<std::vector<cnode_type*>> paths;
@@ -422,7 +422,7 @@ public:
       }
       tree_height = std::max((size_t)0, tree_height - 1);
     }
-    tree = new cnode_type[nb_nodes()];
+    tree.reset(new cnode_type[nb_nodes()]);
     for (size_t i = 0; i < nb_nodes(); i++) {
       auto& d = tree[i].d.elta;
       cdelta_type d0{.locked = node_unlocked, .surplus = 0, .stealers = 0, .suspended = 0 };
@@ -471,7 +471,7 @@ template <typename Stats, typename Logging, typename Semaphore, size_t max_lg_tr
 int elastic<Stats, Logging, Semaphore, max_lg_tree_sz>::beta;
 
 template <typename Stats, typename Logging, typename Semaphore, size_t max_lg_tree_sz>
-typename elastic<Stats, Logging, Semaphore, max_lg_tree_sz>::cnode_type* elastic<Stats, Logging, Semaphore, max_lg_tree_sz>::tree;
+std::unique_ptr<typename elastic<Stats, Logging, Semaphore, max_lg_tree_sz>::cnode_type[]> elastic<Stats, Logging, Semaphore, max_lg_tree_sz>::tree;
 
 template <typename Stats, typename Logging, typename Semaphore, size_t max_lg_tree_sz>
 typename elastic<Stats, Logging, Semaphore, max_lg_tree_sz>::cnode_type* elastic<Stats, Logging, Semaphore, max_lg_tree_sz>::nr;
