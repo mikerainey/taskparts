@@ -504,8 +504,12 @@ public:
     }
   };
   
+  using counter_type = struct alignas(int64_t) counter_struct {
+    std::atomic<cdata_type> ounter;
+  };
+  
   static
-  std::atomic<cdata_type> counter;
+  counter_type c;
   
   static
   perworker::array<std::atomic_bool> flags;
@@ -542,7 +546,7 @@ public:
   template <typename Update>
   static
   auto update_counters(const Update& u) -> cdata_type {
-    return update_atomic(counter, u);
+    return update_atomic(c.ounter, u);
   }
     
   static
@@ -566,7 +570,7 @@ public:
       if (try_resume(id)) {
         break;
       }
-      next = counter.load();
+      next = c.ounter.load();
     }
     Stats::increment(Stats::configuration_type::nb_surplus_transitions);
   }
@@ -602,7 +606,7 @@ public:
       if (try_resume(id)) {
         n--;
       }
-      next = counter.load();
+      next = c.ounter.load();
     }
   }
   
@@ -648,7 +652,7 @@ public:
 };
 
 template <typename Stats, typename Logging, typename Semaphore>
-std::atomic<typename elastic_s3<Stats, Logging, Semaphore>::cdata_type> elastic_s3<Stats, Logging, Semaphore>::counter;
+typename elastic_s3<Stats, Logging, Semaphore>::counter_type elastic_s3<Stats, Logging, Semaphore>::c;
 
 template <typename Stats, typename Logging, typename Semaphore>
 perworker::array<std::atomic_bool> elastic_s3<Stats, Logging, Semaphore>::flags;
