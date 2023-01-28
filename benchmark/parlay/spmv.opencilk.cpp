@@ -12,20 +12,20 @@ auto get_grainsize(uint64_t n) -> uint64_t {
 
 auto dotprod_rec(int64_t lo, int64_t hi, float* val, float* x, uint64_t* col_ind,
 		 uint64_t grainsize) -> float {
-    auto n = hi - lo;
-    if (n <= grainsize) {
-      float t = 0.0;
-      for (int64_t k = lo; k < hi; k++) { // col loop
-	t += val[k] * x[col_ind[k]];
-      }
-      return t;
+  auto n = hi - lo;
+  if (n <= grainsize) {
+    float t = 0.0;
+    for (int64_t k = lo; k < hi; k++) { // col loop
+      t += val[k] * x[col_ind[k]];
     }
-    auto mid = (lo + hi) / 2;
-    float r1, r2;
-    r1 = cilk_spawn dotprod_rec(lo, mid, val, x, col_ind, grainsize);
-    r2 = dotprod_rec(mid, hi, val, x, col_ind, grainsize);
-    cilk_sync;
-    return r1 + r2;
+    return t;
+  }
+  auto mid = (lo + hi) / 2;
+  float r1, r2;
+  r1 = cilk_spawn dotprod_rec(lo, mid, val, x, col_ind, grainsize);
+  r2 = dotprod_rec(mid, hi, val, x, col_ind, grainsize);
+  cilk_sync;
+  return r1 + r2;
 }
 
 auto dotprod(int64_t lo, int64_t hi, float* val, float* x, uint64_t* col_ind) -> float {
