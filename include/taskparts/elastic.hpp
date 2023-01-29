@@ -362,21 +362,20 @@ public:
       return child(nd, 1) < nb_nodes();
     };
     int nd = 0;
-    int w = weight(nd);
     while (has_children(nd)) {
       auto nd1 = child(nd, 1);
       auto nd2 = child(nd, 2);
       auto w1 = weight(nd1);
       auto w2 = weight(nd2);
-      w = w1 + w2;
+      auto w = w1 + w2;
       if (w == 0) {
-        break;
+        return std::make_pair(0, 0);
       }
       assert(w > 0);
       nd = ((random_number() % w) < w1) ? nd1 : nd2;
       w = (nd == nd1) ? w1 : w2;
     }
-    return (w > 0) ? workers(nd) : std::make_pair(0, 0);
+    return workers(nd);
   }
   
   static
