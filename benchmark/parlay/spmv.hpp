@@ -230,28 +230,6 @@ void spmv_serial(
 }
 */
 
-extern
-void spmv_interrupt(
-  float* val,
-  uint64_t* row_ptr,
-  uint64_t* col_ind,
-  float* x,
-  float* y,
-  uint64_t row_lo,
-  uint64_t row_hi);
-
-extern
-void spmv_interrupt_col_loop(
-  float* val,
-  uint64_t* row_ptr,
-  uint64_t* col_ind,
-  float* x,
-  float* y,
-  uint64_t col_lo,
-  uint64_t col_hi,
-  float t,
-  float* dst);
-
 auto bench_pre() {
   taskparts::cmdline::dispatcher d;
   d.add("bigcols", bench_pre_bigcols);

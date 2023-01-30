@@ -6,41 +6,41 @@
 #define D 64
 
 void row_loop_spawn(
-  double* val,
+  float* val,
   uint64_t* row_ptr,
   uint64_t* col_ind,
-  double* x,
-  double* y,
+  float* x,
+  float* y,
   uint64_t row_lo,
   uint64_t row_hi);
 void col_loop_spawn(
-  double* val,
+  float* val,
   uint64_t* row_ptr,
   uint64_t* col_ind,
-  double* x,
-  double* y,
+  float* x,
+  float* y,
   uint64_t row_lo,
   uint64_t row_hi,
   uint64_t col_lo,
   uint64_t col_hi,
-  double t, uint64_t nb_rows);
+  float t, uint64_t nb_rows);
 void col_loop_col_loop_spawn(
-  double* val,
+  float* val,
   uint64_t* row_ptr,
   uint64_t* col_ind,
-  double* x,
-  double* y,
+  float* x,
+  float* y,
   uint64_t col_lo,
   uint64_t col_hi,
-  double t,
-  double* dst);
+  float t,
+  float* dst);
 
 void rollforward_handler_annotation __rf_handle_row_loop(
-  double* val,
+  float* val,
   uint64_t* row_ptr,
   uint64_t* col_ind,
-  double* x,
-  double* y,
+  float* x,
+  float* y,
   uint64_t row_lo,
   uint64_t row_hi, bool& promoted) {
   
@@ -54,16 +54,16 @@ void rollforward_handler_annotation __rf_handle_row_loop(
 }
 
 void rollforward_handler_annotation __rf_handle_col_loop(
-  double* val,
+  float* val,
   uint64_t* row_ptr,
   uint64_t* col_ind,
-  double* x,
-  double* y,
+  float* x,
+  float* y,
   uint64_t row_lo,
   uint64_t row_hi,
   uint64_t col_lo,
   uint64_t col_hi,
-  double t, bool& promoted) {
+  float t, bool& promoted) {
   
   auto nb_rows = row_hi - row_lo;
   if (nb_rows == 0) {
@@ -77,15 +77,15 @@ void rollforward_handler_annotation __rf_handle_col_loop(
 }
 
 void rollforward_handler_annotation __rf_handle_col_loop_col_loop(
-  double* val,
+  float* val,
   uint64_t* row_ptr,
   uint64_t* col_ind,
-  double* x,
-  double* y,
+  float* x,
+  float* y,
   uint64_t col_lo,
   uint64_t col_hi,
-  double t,
-  double* dst, bool& promoted) {
+  float t,
+  float* dst, bool& promoted) {
   
   if ((col_hi - col_lo) <= 1) {
     promoted = false;
@@ -99,18 +99,18 @@ void rollforward_handler_annotation __rf_handle_col_loop_col_loop(
 #define D 1024
 
 void spmv_interrupt(
-  double* val,
+  float* val,
   uint64_t* row_ptr,
   uint64_t* col_ind,
-  double* x,
-  double* y,
+  float* x,
+  float* y,
   uint64_t row_lo,
   uint64_t row_hi) {
   if (! (row_lo < row_hi)) { // row loop
     return;
   }
   for (; ; ) { 
-    double r = 0.0;
+    float r = 0.0;
     uint64_t col_lo = row_ptr[row_lo];
     uint64_t col_hi = row_ptr[row_lo + 1];
     if (! (col_lo < col_hi)) { // col loop (1)
@@ -147,15 +147,15 @@ void spmv_interrupt(
 }
 
 void spmv_interrupt_col_loop(
-  double* val,
+  float* val,
   uint64_t* row_ptr,
   uint64_t* col_ind,
-  double* x,
-  double* y,
+  float* x,
+  float* y,
   uint64_t col_lo,
   uint64_t col_hi,
-  double r,
-  double* dst) {
+  float r,
+  float* dst) {
   if (! (col_lo < col_hi)) {
     goto exit;
   }
