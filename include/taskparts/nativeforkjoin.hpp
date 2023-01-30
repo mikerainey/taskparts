@@ -142,7 +142,7 @@ public:
     f1->run();
     // if f2 was not stolen, then it can run in the same stack as parent
     auto f = Scheduler::template take<fiber>();
-    if (f == nullptr) {
+    if ((f == nullptr) || (f == &scale_up_fiber<Scheduler>)) {
       status = fiber_status_finish;
       //aprintf("%d detected steal of %p\n",perworker::my_id(),f2);
       exit_to_scheduler();

@@ -273,4 +273,24 @@ public:
   
 };
 
+/*---------------------------------------------------------------------*/
+/* Elastic ramp-up fibers */
+
+template <typename Scheduler=minimal_scheduler<>>
+class elastic_scale_up_fiber : public fiber<Scheduler> {
+public:
+  
+  elastic_scale_up_fiber(Scheduler sched=Scheduler()) : fiber<Scheduler>() {
+    fiber<Scheduler>::incounter.store(0);
+  }
+  
+  auto run() -> fiber_status_type {
+    return fiber_status_pause;
+  }
+  
+};
+
+template <typename Scheduler>
+elastic_scale_up_fiber<Scheduler> scale_up_fiber;
+
 } // end namespace

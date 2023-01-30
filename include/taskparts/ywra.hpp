@@ -72,7 +72,7 @@ struct ywra {
     auto backup = [&] (age_t orig) -> age_t {
       qidx j = 0;
       for (qidx i = orig.top; i < orig.bot; i++) {
-	backup_deq[j++] = deq[i].f.load(std::memory_order_relaxed);
+        backup_deq[j++] = deq[i].f.load(std::memory_order_relaxed);
       }
       assert(j == size(orig));
       return orig;
@@ -80,7 +80,7 @@ struct ywra {
     auto restore = [&] (age_t orig) -> age_t {
       auto n = size(orig);
       for (qidx i = 0; i < n; i++) {
-	deq[i].f.store(backup_deq[i], std::memory_order_relaxed);
+        deq[i].f.store(backup_deq[i], std::memory_order_relaxed);
       }
       orig.top = 0;
       orig.bot = n;
@@ -110,7 +110,7 @@ struct ywra {
     next.bot++;
     if (next.bot == max_sz) {
       if (size(orig) == max_sz) {
-	taskparts_die("internal error: scheduler queue overflow\n");
+        taskparts_die("internal error: scheduler queue overflow\n");
       }
       orig = relocate();
     }

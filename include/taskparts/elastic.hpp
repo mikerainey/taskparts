@@ -237,7 +237,12 @@ public:
   static
   auto decr_stealing(size_t my_id = perworker::my_id()) -> void {
     update_tree(cdelta_type{.stealers = -1}, my_id);
-    // scale up
+    scale_up(my_id);
+    ensure_sentinel();
+  }
+  
+  static
+  auto scale_up(size_t my_id = perworker::my_id()) -> void {
     auto n = alpha;
     while (n > 0) {
       auto c = nr->c.ounter.load();
@@ -248,7 +253,6 @@ public:
         n--;
       }
     }
-    ensure_sentinel();
   }
 
   static
@@ -596,6 +600,12 @@ public:
       d.stealers--;
       return d;
     });
+    //scale_up(next, my_id);
+  }
+  
+  static
+  auto scale_up(cdata_type next = c.ounter.load(),
+               size_t my_id = perworker::my_id()) -> void {
     auto n = alpha;
     while ((n > 0) || (next.needs_sentinel())) {
       if (next.suspended == 0) {

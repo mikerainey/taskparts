@@ -37,6 +37,7 @@ using deque = abp<Fiber>;
 // Configuration of deque data structure and the elastic
 // work-stealing policy.
 #include "ywra.hpp" // <- the only deque structure compatible w/ elastic
+#include "fiber.hpp"
 namespace taskparts {
 template <typename Fiber>
 using deque = ywra<Fiber>;
@@ -109,6 +110,9 @@ public:
     auto f = r.first;
     if (r.second == deque_surplus_down) {
       elastic_type::decr_surplus(target_id);
+      if (f == &scale_up_fiber<Scheduler>) {
+        elastic_type::scale_up();
+      }
     }
     return f;
   }
@@ -204,6 +208,7 @@ public:
           elastic_type::try_suspend(target);
         }
       }
+      push(deques.mine(), &scale_up_fiber<Scheduler>);
       assert(current != nullptr);
       schedule(current);
       Stats::on_exit_acquire();

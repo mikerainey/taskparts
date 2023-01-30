@@ -259,6 +259,9 @@ public:
                                   size_t my_id) -> int {
     return -1;
   }
+  
+  static
+  auto scale_up() -> void { }
 
 };
 
