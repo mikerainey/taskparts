@@ -245,7 +245,6 @@ public:
   static
   auto decr_stealing(size_t my_id = perworker::my_id()) -> void {
     update_tree(cdelta_type{.stealers = -1}, my_id);
-    scale_up(my_id);
     ensure_sentinel();
   }
 
