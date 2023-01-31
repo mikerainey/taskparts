@@ -43,8 +43,11 @@ public:
     int32_t surplus = 0;
     int16_t suspended = 0;
     int16_t stealers = 0;
+    auto exists_imbalance() -> bool {
+      return (surplus >= 1) && (suspended >= 1);
+    }
     auto needs_sentinel() -> bool {
-      return (surplus >= 1) && (stealers == 0) && (suspended >= 1);
+      return (stealers == 0) && exists_imbalance();
     }
   };
 
@@ -131,6 +134,11 @@ public:
         break;
       }
     }
+  }
+
+  static
+  auto exists_imbalance() -> bool {
+    return nr->c.ounter.load().exists_imbalance();
   }
   
   using node_update_type = enum node_update_enum {
@@ -240,21 +248,22 @@ public:
     scale_up(my_id);
     ensure_sentinel();
   }
-  
+
   static
-  auto scale_up(size_t my_id = perworker::my_id()) -> void {
+  auto scale_up(size_t my_id = perworker::my_id()) {
     auto n = alpha;
+    auto next = nr->c.ounter.load();
     while (n > 0) {
-      auto c = nr->c.ounter.load();
-      if ((! c.needs_sentinel()) || c.suspended == 0) {
-        break;
+      if (! next.exists_imbalance()) {
+	break;
       }
       if (try_resume(random_suspended_worker())) {
         n--;
       }
+      next = nr->c.ounter.load();
     }
   }
-
+  
   static
   auto try_suspend(size_t) -> void {
     auto my_id = perworker::my_id();
