@@ -502,8 +502,11 @@ public:
     int32_t surplus = 0;
     int16_t suspended = 0;
     int16_t stealers = 0;
+    auto exists_imbalance() -> bool {
+      return (surplus >= 1) && (suspended >= 1);
+    }
     auto needs_sentinel() -> bool {
-      return (surplus >= 1) && (stealers == 0) && (suspended >= 1);
+      return (stealers == 0) && exists_imbalance();
     }
   };
   
@@ -561,20 +564,20 @@ public:
     }
     return false;
   }
-  
+
+  static
+  auto try_resume_random(size_t my_id = perworker::my_id()) -> bool {
+    auto id = random_number(my_id) % perworker::nb_workers();
+    return try_resume(id);
+  }
+
   static
   auto incr_surplus(size_t my_id = perworker::my_id()) {
     auto next = update_counters([] (cdata_type d) {
       d.surplus++;
       return d;
     });
-    while (next.needs_sentinel()) {
-      auto id = random_number(my_id) % perworker::nb_workers();
-      if (try_resume(id)) {
-        break;
-      }
-      next = c.ounter.load();
-    }
+    ensure_sentinel(next, my_id);
     Stats::increment(Stats::configuration_type::nb_surplus_transitions);
   }
   
@@ -600,23 +603,36 @@ public:
       d.stealers--;
       return d;
     });
-    //scale_up(next, my_id);
+    ensure_sentinel(next, my_id);
+  }
+
+  static
+  auto ensure_sentinel(cdata_type next = c.ounter.load(),
+		       size_t my_id = perworker::my_id()) {
+    while (next.needs_sentinel()) {
+      try_resume_random(my_id);
+      next = c.ounter.load();
+    }
   }
   
   static
   auto scale_up(cdata_type next = c.ounter.load(),
-               size_t my_id = perworker::my_id()) -> void {
+		size_t my_id = perworker::my_id()) {
     auto n = alpha;
-    while ((n > 0) || (next.needs_sentinel())) {
-      if (next.suspended == 0) {
-        break;
+    while (n > 0) {
+      if (! next.exists_imbalance()) {
+	break;
       }
-      auto id = random_number(my_id) % perworker::nb_workers();
-      if (try_resume(id)) {
+      if (try_resume_random(my_id)) {
         n--;
       }
       next = c.ounter.load();
     }
+  }
+
+  static
+  auto exists_imbalance(cdata_type cd = c.ounter.load()) -> bool {
+    return cd.exists_imbalance();
   }
   
   static

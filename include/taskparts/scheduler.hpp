@@ -263,6 +263,11 @@ public:
   static
   auto scale_up() -> void { }
 
+  static
+  auto exists_imbalance() -> bool {
+    return false;
+  }
+  
 };
 
 using deque_surplus_result_type = enum deque_surplus_result_enum {
