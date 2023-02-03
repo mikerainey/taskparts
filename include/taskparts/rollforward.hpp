@@ -15,9 +15,7 @@ using register_type = ulong_t*;
 /*---------------------------------------------------------------------*/
 /* Rollforward table and lookup */
 
-extern "C" {
-#include <rollforward.c>
-}
+#include <rollforward.h>
 
 #if defined(TASKPARTS_POSIX)
 #include "posix/rollforward.hpp"

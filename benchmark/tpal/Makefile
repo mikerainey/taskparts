@@ -22,6 +22,9 @@ LINKER_PREFIX := $(TPAL_LINKER_PREFIX) $(LINKER_PREFIX)
 %.heartbeat.rf.o: %.heartbeat.rf.s $(INCLUDE_FILES) install_folder
 	$(CXX) -I$(ROLLFORWARD_PATH)/x64 bin/$< -c -o $(INSTALL_PATH)/$@
 
+$(INSTALL_PATH)/rollforward.o: $(ROLLFORWARD_PATH)/x64/rollforward.c
+	$(CXX) $(ROLLFORWARD_PATH)/x64/rollforward.c -c -o $(INSTALL_PATH)/rollforward.o
+
 %.o: %.cpp %.heartbeat.rf.o $(INCLUDE_FILES) install_folder
 	$(CXX) $(STA_PREFIX) bin/$(basename $<).heartbeat.rf.o $< $(TPAL_INCLUDE_PREFIX) -o $(INSTALL_PATH)/$@ $(LINKER_PREFIX)
 
@@ -30,8 +33,8 @@ LINKER_PREFIX := $(TPAL_LINKER_PREFIX) $(LINKER_PREFIX)
 
 %.opt: %.cpp $(INCLUDE_FILES) install_folder
 	$(TPALXX) $(CXX) $(OPT_PREFIX) $<  $(TPAL_INCLUDE_PREFIX) -o $(INSTALL_PATH)/$@ $(LINKER_PREFIX)
-%.sta: %.cpp %.heartbeat.rf.o $(INCLUDE_FILES) install_folder
-	$(CXX) $(STA_PREFIX) $(ROLLFORWARD_PATH)/x64/rollforward.c bin/$(basename $<).heartbeat.rf.o $< $(TPAL_INCLUDE_PREFIX) -o $(INSTALL_PATH)/$@ $(LINKER_PREFIX)
+%.sta: %.cpp %.heartbeat.rf.o $(INSTALL_PATH)/rollforward.o $(INCLUDE_FILES) install_folder
+	$(CXX) $(STA_PREFIX) $(INSTALL_PATH)/rollforward.o bin/$(basename $<).heartbeat.rf.o $< $(TPAL_INCLUDE_PREFIX) -o $(INSTALL_PATH)/$@ $(LINKER_PREFIX)
 %.log: %.cpp $(INCLUDE_FILES) install_folder
 	$(TPALXX) $(CXX) $(LOG_PREFIX) $< $(TPAL_INCLUDE_PREFIX) -o $(INSTALL_PATH)/$@ $(LINKER_PREFIX)
 %.dbg: %.cpp $(INCLUDE_FILES) install_folder
