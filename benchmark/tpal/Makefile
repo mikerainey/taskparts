@@ -14,7 +14,7 @@ TPAL_INCLUDE_PREFIX?=-I $(ROLLFORWARD_PATH)/x64 -DTASKPARTS_TPALRTS
 LINKER_PREFIX := $(TPAL_LINKER_PREFIX) $(LINKER_PREFIX)
 
 %.heartbeat.s: %.heartbeat.cpp $(INCLUDE_FILES) install_folder
-	$(CXX) $(OPT_PREFIX) -I$(ROLLFORWARD_PATH)/x64 $< -S -o $(INSTALL_PATH)/$@
+	$(CXX) $(OPT_PREFIX) -fno-rtti -fno-verbose-asm -I$(ROLLFORWARD_PATH)/x64 $< -S -o $(INSTALL_PATH)/$@
 
 %.heartbeat.rf.s: %.heartbeat.s $(INCLUDE_FILES) install_folder
 	./rollforward++ bin/$(basename $<).s bin/$(basename $<).rf.s
