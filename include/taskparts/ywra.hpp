@@ -60,12 +60,12 @@ struct ywra {
       auto orig = age.load();
       auto next = orig;
       while (true) {
-	next.top = 0;
-	next.bot = 0;
-	next.tag = orig.tag + 1;
-	if (age.compare_exchange_strong(orig, next)) {
-	  break;
-	}
+        next.top = 0;
+        next.bot = 0;
+        next.tag = orig.tag + 1;
+        if (age.compare_exchange_strong(orig, next)) {
+          break;
+        }
       }
       return orig;
     };
