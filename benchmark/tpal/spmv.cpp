@@ -6,35 +6,35 @@
 
 extern
 void spmv_interrupt(
-  float* val,
+  nonzero_type* val,
   uint64_t* row_ptr,
   uint64_t* col_ind,
-  float* x,
-  float* y,
+  nonzero_type* x,
+  nonzero_type* y,
   uint64_t row_lo,
   uint64_t row_hi);
 extern
 void spmv_interrupt_col_loop(
-  float* val,
+  nonzero_type* val,
   uint64_t* row_ptr,
   uint64_t* col_ind,
-  float* x,
-  float* y,
+  nonzero_type* x,
+  nonzero_type* y,
   uint64_t col_lo,
   uint64_t col_hi,
-  float r,
-  float* dst);
+  nonzero_type r,
+  nonzero_type* dst);
 
 // later: if we inline the function below to its callsite, the rollforwad compiler may erroneously
 // treat as handler calls the lambda functions in the fork/join instruction, which seems to be
 // because the compiler generates a name for the lambda functions that contains the magic prefix
 // __rf_handle...
 void row_loop_spawn(
-  float* val,
+  nonzero_type* val,
   uint64_t* row_ptr,
   uint64_t* col_ind,
-  float* x,
-  float* y,
+  nonzero_type* x,
+  nonzero_type* y,
   uint64_t row_lo,
   uint64_t row_hi) {
     auto mid = (row_lo + row_hi) / 2;
@@ -46,16 +46,16 @@ void row_loop_spawn(
 }
 
 void col_loop_spawn(
-  float* val,
+  nonzero_type* val,
   uint64_t* row_ptr,
   uint64_t* col_ind,
-  float* x,
-  float* y,
+  nonzero_type* x,
+  nonzero_type* y,
   uint64_t row_lo,
   uint64_t row_hi,
   uint64_t col_lo,
   uint64_t col_hi,
-  float t, uint64_t nb_rows) {
+  nonzero_type t, uint64_t nb_rows) {
     auto cf = [=] {
       spmv_interrupt_col_loop(val, row_ptr, col_ind, x, y, col_lo, col_hi, t, &y[row_lo]);
     };
@@ -79,17 +79,17 @@ void col_loop_spawn(
 }
 
 void col_loop_col_loop_spawn(
-  float* val,
+  nonzero_type* val,
   uint64_t* row_ptr,
   uint64_t* col_ind,
-  float* x,
-  float* y,
+  nonzero_type* x,
+  nonzero_type* y,
   uint64_t col_lo,
   uint64_t col_hi,
-  float t,
-  float* dst) {
+  nonzero_type t,
+  nonzero_type* dst) {
     auto col_mid = (col_lo + col_hi) / 2;
-    std::pair<float, float> fdst;
+    std::pair<nonzero_type, nonzero_type> fdst;
     auto dstp = &fdst;
     tpalrts_promote_via_nativefj([&] {
       spmv_interrupt_col_loop(val, row_ptr, col_ind, x, y, col_lo, col_mid, t, &(dstp->first));

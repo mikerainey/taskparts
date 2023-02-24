@@ -3,44 +3,50 @@
 #include <cstdint>
 #include "rollforward.h"
 
+#ifndef SPMV_USE_FLOAT
+using nonzero_type = double;
+#else
+using nonzero_type = float;
+#endif
+
 #define D 64
 
 void row_loop_spawn(
-  float* val,
+  nonzero_type* val,
   uint64_t* row_ptr,
   uint64_t* col_ind,
-  float* x,
-  float* y,
+  nonzero_type* x,
+  nonzero_type* y,
   uint64_t row_lo,
   uint64_t row_hi);
 void col_loop_spawn(
-  float* val,
+  nonzero_type* val,
   uint64_t* row_ptr,
   uint64_t* col_ind,
-  float* x,
-  float* y,
+  nonzero_type* x,
+  nonzero_type* y,
   uint64_t row_lo,
   uint64_t row_hi,
   uint64_t col_lo,
   uint64_t col_hi,
-  float t, uint64_t nb_rows);
+  nonzero_type t, uint64_t nb_rows);
 void col_loop_col_loop_spawn(
-  float* val,
+  nonzero_type* val,
   uint64_t* row_ptr,
   uint64_t* col_ind,
-  float* x,
-  float* y,
+  nonzero_type* x,
+  nonzero_type* y,
   uint64_t col_lo,
   uint64_t col_hi,
-  float t,
-  float* dst);
+  nonzero_type t,
+  nonzero_type* dst);
 
 void rollforward_handler_annotation __rf_handle_row_loop(
-  float* val,
+  nonzero_type* val,
   uint64_t* row_ptr,
   uint64_t* col_ind,
-  float* x,
-  float* y,
+  nonzero_type* x,
+  nonzero_type* y,
   uint64_t row_lo,
   uint64_t row_hi, bool& promoted) {
   
@@ -54,16 +60,16 @@ void rollforward_handler_annotation __rf_handle_row_loop(
 }
 
 void rollforward_handler_annotation __rf_handle_col_loop(
-  float* val,
+  nonzero_type* val,
   uint64_t* row_ptr,
   uint64_t* col_ind,
-  float* x,
-  float* y,
+  nonzero_type* x,
+  nonzero_type* y,
   uint64_t row_lo,
   uint64_t row_hi,
   uint64_t col_lo,
   uint64_t col_hi,
-  float t, bool& promoted) {
+  nonzero_type t, bool& promoted) {
   
   auto nb_rows = row_hi - row_lo;
   if (nb_rows == 0) {
@@ -77,15 +83,15 @@ void rollforward_handler_annotation __rf_handle_col_loop(
 }
 
 void rollforward_handler_annotation __rf_handle_col_loop_col_loop(
-  float* val,
+  nonzero_type* val,
   uint64_t* row_ptr,
   uint64_t* col_ind,
-  float* x,
-  float* y,
+  nonzero_type* x,
+  nonzero_type* y,
   uint64_t col_lo,
   uint64_t col_hi,
-  float t,
-  float* dst, bool& promoted) {
+  nonzero_type t,
+  nonzero_type* dst, bool& promoted) {
   
   if ((col_hi - col_lo) <= 1) {
     promoted = false;
@@ -96,21 +102,19 @@ void rollforward_handler_annotation __rf_handle_col_loop_col_loop(
   rollbackward
 }
 
-#define D 1024
-
 void spmv_interrupt(
-  float* val,
+  nonzero_type* val,
   uint64_t* row_ptr,
   uint64_t* col_ind,
-  float* x,
-  float* y,
+  nonzero_type* x,
+  nonzero_type* y,
   uint64_t row_lo,
   uint64_t row_hi) {
   if (! (row_lo < row_hi)) { // row loop
     return;
   }
   for (; ; ) { 
-    float r = 0.0;
+    nonzero_type r = 0.0;
     uint64_t col_lo = row_ptr[row_lo];
     uint64_t col_hi = row_ptr[row_lo + 1];
     if (! (col_lo < col_hi)) { // col loop (1)
@@ -147,15 +151,15 @@ void spmv_interrupt(
 }
 
 void spmv_interrupt_col_loop(
-  float* val,
+  nonzero_type* val,
   uint64_t* row_ptr,
   uint64_t* col_ind,
-  float* x,
-  float* y,
+  nonzero_type* x,
+  nonzero_type* y,
   uint64_t col_lo,
   uint64_t col_hi,
-  float r,
-  float* dst) {
+  nonzero_type r,
+  nonzero_type* dst) {
   if (! (col_lo < col_hi)) {
     goto exit;
   }

@@ -1,11 +1,17 @@
 #pragma once
 
+#ifndef SPMV_USE_FLOAT
+using nonzero_type = double;
+#else
+using nonzero_type = float;
+#endif
+
 #include <taskparts/benchmark.hpp>
 // -DNDEBUG -O3 -march=native -fno-verbose-asm -fno-stack-protector -fno-asynchronous-unwind-tables -fomit-frame-pointer -mavx2 -mfma -fno-verbose-asm
 
-auto rand_float(size_t i) -> float {
+auto rand_float(size_t i) -> nonzero_type {
   int m = 1000000;
-  float v = taskparts::hash(i) % m;
+  nonzero_type v = taskparts::hash(i) % m;
   return v / m;
 }
 
@@ -87,11 +93,11 @@ uint64_t degree = 4;
 uint64_t dim = 5;
 uint64_t nb_rows;
 uint64_t nb_vals;
-float* val;
+nonzero_type* val;
 uint64_t* row_ptr;
 uint64_t* col_ind;
-float* x;
-float* y;
+nonzero_type* x;
+nonzero_type* y;
 
 auto csr_of_edgelist(edgelist_type& edges) {
   std::sort(edges.begin(), edges.end(), std::less<edge_type>());
@@ -142,7 +148,7 @@ auto csr_of_edgelist(edgelist_type& edges) {
     row_ptr[nb_rows] = a;
   }
   { // initialize nonzero values array
-    val = (float*)malloc(sizeof(float) * nb_vals);
+    val = (nonzero_type*)malloc(sizeof(nonzero_type) * nb_vals);
     for (size_t i = 0; i < nb_vals; i++) {
       val[i] = rand_float(i);
     }
@@ -163,8 +169,8 @@ void zero_init(T* a, std::size_t n) {
 template <typename Gen_matrix>
 auto bench_pre_shared(const Gen_matrix& gen_matrix) {
   gen_matrix();
-  x = (float*)malloc(sizeof(float) * nb_rows);
-  y = (float*)malloc(sizeof(float) * nb_rows);
+  x = (nonzero_type*)malloc(sizeof(nonzero_type) * nb_rows);
+  y = (nonzero_type*)malloc(sizeof(nonzero_type) * nb_rows);
   if ((val == nullptr) || (row_ptr == nullptr) || (col_ind == nullptr) || (x == nullptr) || (y == nullptr)) {
     exit(1);
   }
@@ -204,23 +210,23 @@ auto bench_pre_arrowhead() {
 
 extern
 void spmv_serial(
-  float* val,
+  nonzero_type* val,
   uint64_t* row_ptr,
   uint64_t* col_ind,
-  float* x,
-  float* y,
+  nonzero_type* x,
+  nonzero_type* y,
   uint64_t n);
 
 /*
 void spmv_serial(
-  float* val,
+  nonzero_type* val,
   uint64_t* row_ptr,
   uint64_t* col_ind,
-  float* x,
-  float* y,
+  nonzero_type* x,
+  nonzero_type* y,
   uint64_t n) {
   for (uint64_t i = 0; i < n; i++) { // row loop
-    float r = 0.0;
+    nonzero_type r = 0.0;
 #pragma clang loop vectorize_width(4) interleave_count(4)
     for (uint64_t k = row_ptr[i]; k < row_ptr[i + 1]; k++) { // col loop
       r += val[k] * x[col_ind[k]];
