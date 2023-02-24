@@ -23,7 +23,7 @@
   pbbsbench ? import ../pbbsbench { parlaylib=parlaylib; },
   chunkedseq ? import ../chunkedseq/script { },
   rollforward ? import ../rollforward {},
-  #hbtimer-kmod ? import ../heartbeat-linux { pkgs=pkgs; stdenv=stdenv; },
+  hbtimer-kmod ? import ../heartbeat-linux { pkgs=pkgs; stdenv=stdenv; },
   opencilk ? null
 }:
 
@@ -48,15 +48,13 @@ stdenv.mkDerivation rec {
   HWLOC_INCLUDE_PREFIX="-DTASKPARTS_HAVE_HWLOC -I${hwloc.dev}/include/";
   HWLOC_LIBRARY_PREFIX="-L${hwloc.lib}/lib/ -lhwloc";
 
-  # heartbeat kernel module to support the tpal runtime
-  # HBTIMER_KMOD_INCLUDE_PREFIX=
-  #   if hbtimer-kmod == null then "" else
-  #     "-I ${hbtimer-kmod}/include -DTASKPARTS_TPALRTS_HBTIMER_KMOD";
-  # HBTIMER_KMOD_LINKER_FLAGS=
-  #   if hbtimer-kmod == null then "" else
-  #     "${hbtimer-kmod}/libhb.so";
-  # HBTIMER_KMOD_RF_COMPILER= if hbtimer-kmod == null then "" else
-  #   "${hbtimer-kmod}/rf_compiler";
+  # heartbeat kernel module extension for the tpal runtime
+  HBTIMER_KMOD_INCLUDE_PREFIX=
+    if hbtimer-kmod == null then "" else
+      "-I ${hbtimer-kmod}/user -DTASKPARTS_TPALRTS_HBTIMER_KMOD";
+  HBTIMER_KMOD_LINKER_FLAGS=
+    if hbtimer-kmod == null then "" else
+      "${hbtimer-kmod}/libhb.so";
 
   PARLAYLIB_PATH="${parlaylib}";
   PBBSBENCH_PATH="${pbbsbench}";

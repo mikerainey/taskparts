@@ -134,7 +134,14 @@ auto _spguard(estimator& estim,
 
 template <class Last>
 auto type_name() -> std::string {
+  assert(false);
+  return "";
+  /*
+  In file included from ../..//include/taskparts/benchmark.hpp:7:
+../..//include/taskparts/oracleguided.hpp:137:22: error: use of typeid requires -frtti
   return std::string(typeid(Last).name());
+  */
+  //  return std::string(typeid(Last).name());
 }
 
 template <class First, class Second, class ... Types>
