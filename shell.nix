@@ -24,7 +24,13 @@
   chunkedseq ? import ../chunkedseq/script { },
   rollforward ? import ../rollforward {},
   hbtimer-kmod ? import ../heartbeat-linux { pkgs=pkgs; stdenv=stdenv; },
-  opencilk ? null
+  opencilk ? null,
+  matrix-market ? pkgs.fetchFromGitHub {
+    owner  = "cwpearson";
+    repo   = "matrix-market";
+    rev    = "1eac2d88bc237d16788f4879de39775d9807e0c7";
+    sha256 = "18s448wss5b3j2nn2yzpnflrgq4lfa731b1qg19rj22wyjdchs48";
+  }
 }:
 
 let cilk-stats-rts-params =
@@ -60,6 +66,7 @@ stdenv.mkDerivation rec {
   PBBSBENCH_PATH="${pbbsbench}";
   CHUNKEDSEQ_PATH="${chunkedseq}";
   TASKPARTS_BENCHMARK_INFILE_PATH="../../../infiles";
+  MATRIX_MARKET_PATH="${matrix-market}";
 
   # TPAL/rollforward configuration
   ROLLFORWARD_PATH="${rollforward}";

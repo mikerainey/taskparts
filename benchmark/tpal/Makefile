@@ -14,9 +14,10 @@ TPAL_LINKER_PREFIX?=$(HBTIMER_KMOD_LINKER_FLAGS)
 # TPAL build flags
 # ----------------
 
-TPAL_INCLUDE_PREFIX?=-I $(ROLLFORWARD_PATH)/x64 -DTASKPARTS_TPALRTS $(HBTIMER_KMOD_INCLUDE_PREFIX)
+TPAL_INCLUDE_PREFIX?=-I $(ROLLFORWARD_PATH)/x64 -DTASKPARTS_TPALRTS $(HBTIMER_KMOD_INCLUDE_PREFIX) -I. -I$(MATRIX_MARKET_PATH)/include/mm
 LINKER_PREFIX := $(TPAL_LINKER_PREFIX) $(LINKER_PREFIX)
 TPALRTS_STA_PREFIX=$(STA_PREFIX) -fno-rtti -fno-pic -fno-pie
+TPALRTS_DBG_PREFIX=$(DBG_PREFIX) -fno-rtti -fno-pic -fno-pie
 
 %.heartbeat.s: %.heartbeat.cpp $(INCLUDE_FILES) install_folder
 	$(CXX) $(TPALRTS_STA_PREFIX) -fno-verbose-asm -I$(ROLLFORWARD_PATH)/x64 $< -S -o $(INSTALL_PATH)/$@
@@ -38,6 +39,12 @@ $(INSTALL_PATH)/rollforward.o: $(ROLLFORWARD_PATH)/x64/rollforward.c
 
 %.sta: %.cpp %.heartbeat.rf.o $(INSTALL_PATH)/rollforward.o $(INCLUDE_FILES) install_folder
 	$(CXX) $(TPALRTS_STA_PREFIX) $(INSTALL_PATH)/rollforward.o bin/$(basename $<).heartbeat.rf.o $< $(TPAL_INCLUDE_PREFIX) -o $(INSTALL_PATH)/$@ $(LINKER_PREFIX)
+
+#TODO: complete
+########################################################################################################################################################################################
+# %.dbg: %.cpp %.heartbeat.rf.dbg.o $(INSTALL_PATH)/rollforward.dbg.o $(INCLUDE_FILES) install_folder										       #
+# 	$(CXX) $(TPALRTS_DBG_PREFIX) $(INSTALL_PATH)/rollforward.dbg.o bin/$(basename $<).heartbeat.rf.dbg.o $< $(TPAL_INCLUDE_PREFIX) -o $(INSTALL_PATH)/$@ $(LINKER_PREFIX)	       #
+########################################################################################################################################################################################
 
 ###################################################################################################################
 # %.opt: %.cpp $(INCLUDE_FILES) install_folder									  #
