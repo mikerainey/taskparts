@@ -15,7 +15,6 @@ let
   };
 in
 
-#pkgs.mkShell {
 stdenv.mkDerivation rec {
   name = "elastic-benchmark";
   buildInputs = [ customPython pkgs.dsq pkgs.jq ];

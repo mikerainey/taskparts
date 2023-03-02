@@ -1,6 +1,7 @@
 import os, tempfile
 from copy import deepcopy
 from flexibench import benchmark as B
+import simplejson as json
 
 # later: using the code below, try to detect the cpu frequency
 # import cpuinfo
@@ -81,7 +82,7 @@ def run_taskparts_benchmark(br, num_repeat = None, warmup_secs = None,
     if warmup_secs != None:
         br_i['benchmark_run']['env_args'] += [{'var': taskparts_benchmark_warmup_secs_key, 'val': warmup_secs}]
     if verbose:
-        print(string_of_benchmark_run(br))
+        print(B.string_of_benchmark_run(br))
     # run the benchmark
     br_o = B.run_benchmark(br_i, cwd, timeout_sec)
     # collect the stats output of the benchmark run
