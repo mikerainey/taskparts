@@ -1,6 +1,8 @@
 #ifndef TASKPARTS_TPALRTS
 #error "need to compile with tpal flags, e.g., TASKPARTS_TPALRTS"
 #endif
+// TODO: move spmv.hpp to this folder and introduce loader for the matrix market file format:
+// https://github.com/cwpearson/matrix-market
 #include "../parlay/spmv.hpp"
 #include <cstdint>
 
