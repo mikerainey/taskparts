@@ -22,6 +22,7 @@
   parlaylib ? import ../parlaylib {},
   pbbsbench ? import ../pbbsbench { parlaylib=parlaylib; },
   chunkedseq ? import ../chunkedseq/script { },
+  rollforward ? import ../rollforward {},
   enableParlaylibPoolAlloc ? false
 }:
 
@@ -58,6 +59,9 @@ stdenv.mkDerivation rec {
   PARLAYLIB_EXTRAS=if enableParlaylibPoolAlloc then "" else "-DPARLAY_USE_STD_ALLOC";
   PBBSBENCH_PATH="${pbbsbench}";
   CHUNKEDSEQ_PATH="${chunkedseq}";
+  # TPAL/rollforward configuration
+  ROLLFORWARD_PATH="${rollforward}";
+
   TASKPARTS_BENCHMARK_INFILE_PATH="../../../infiles";
 
   TASKPARTS_BENCHMARK_WARMUP_SECS=0;
