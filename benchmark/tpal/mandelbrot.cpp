@@ -12,9 +12,9 @@ double _mb_x0 = -2.5;
 double _mb_y0 = -0.875;
 double _mb_x1 = 1;
 double _mb_y1 = 0.875;
-int height = 4192;
+int height = 8 * 524 * 2;
 // Width should be a multiple of 8
-int width = 4192;
+int width = height;
 int max_depth = 100;
 double _mb_g = 2.0;
 
