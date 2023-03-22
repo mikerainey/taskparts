@@ -60,7 +60,7 @@ stdenv.mkDerivation rec {
       "-I ${hbtimer-kmod}/user -DTASKPARTS_TPALRTS_HBTIMER_KMOD";
   HBTIMER_KMOD_LINKER_FLAGS=
     if hbtimer-kmod == null then "" else
-      "${hbtimer-kmod}/libhb.so";
+      "-L${hbtimer-kmod}/ -lhb";
 
   PARLAYLIB_PATH="${parlaylib}";
   PBBSBENCH_PATH="${pbbsbench}";

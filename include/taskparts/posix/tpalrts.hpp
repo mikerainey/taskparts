@@ -13,6 +13,41 @@
 #include "../rollforward.hpp"
 #include "../diagnostics.hpp"
 
+#ifdef TASKPARTS_TPALRTS_HBTIMER_KMOD
+
+  /*
+extern "C" {
+#include <heartbeat.h>
+} */
+
+extern "C" {
+typedef struct {
+  uint64_t rax;
+  uint64_t rdi;
+  uint64_t rsi;
+  uint64_t rdx;
+  uint64_t r10;
+  uint64_t r8;
+  uint64_t r9;
+  uint64_t rbx;
+  uint64_t rcx;
+  uint64_t rbp;
+  uint64_t r11;
+  uint64_t r12;
+  uint64_t r13;
+  uint64_t r14;
+  uint64_t r15;
+  uint64_t rflags;
+  uint64_t rip;
+} hb_regs_t;
+typedef void (*hb_callback_t)(hb_regs_t *);
+int hb_init(void);
+void hb_exit(void);
+void hb_set_rollforwards(struct rollforward_struct *rfs, unsigned count);
+int hb_repeat(uint64_t us, hb_callback_t callback);
+}
+#endif
+
 namespace taskparts {
 
 /*---------------------------------------------------------------------*/
@@ -459,40 +494,8 @@ perworker::array<int> papi_worker::event_set;
 /* Linux kernel module heartbeat interrupts */
 
 // kernel module available at git@github.com:nickwanninger/heartbeat-linux.git
-  
+
 #ifdef TASKPARTS_TPALRTS_HBTIMER_KMOD
-
-  /*
-extern "C" {
-#include <heartbeat.h>
-} */
-
-  //extern "C" {
-typedef struct {
-  uint64_t rax;
-  uint64_t rdi;
-  uint64_t rsi;
-  uint64_t rdx;
-  uint64_t r10;
-  uint64_t r8;
-  uint64_t r9;
-  uint64_t rbx;
-  uint64_t rcx;
-  uint64_t rbp;
-  uint64_t r11;
-  uint64_t r12;
-  uint64_t r13;
-  uint64_t r14;
-  uint64_t r15;
-  uint64_t rflags;
-  uint64_t rip;
-} hb_regs_t;
-typedef void (*hb_callback_t)(hb_regs_t *);
-int hb_init(void);
-void hb_exit(void);
-void hb_set_rollforwards(struct rollforward_struct *rfs, unsigned count);
-int hb_repeat(uint64_t us, hb_callback_t callback);
-  //}
 
 class hbtimer_kmod_worker {
 public:
