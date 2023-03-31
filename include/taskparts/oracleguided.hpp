@@ -134,7 +134,7 @@ auto _spguard(estimator& estim,
 
 template <class Last>
 auto type_name() -> std::string {
-  assert(false);
+  //  assert(false);
   return "";
   /*
   In file included from ../..//include/taskparts/benchmark.hpp:7:
