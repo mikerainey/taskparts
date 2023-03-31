@@ -2,14 +2,15 @@
 # ====================
 
 include ../Makefile_benchmark
-CXX?=g++
-CC?=gcc
+CXX=clang++
+CC=clang
 TASKPARTS_PATH=../../
 ROLLFORWARD_PATH?=../$(TASKPARTS_PATH)/rollforward/src/
 TPALXX?=ROLLFORWARD_PATH=$(ROLLFORWARD_PATH) CXX=$(CXX) ./tpal++
 HBTIMER_KMOD_INCLUDE_PREFIX?=
 HBTIMER_KMOD_LINKER_FLAGS?=
 TPAL_LINKER_PREFIX?=$(HBTIMER_KMOD_LINKER_FLAGS)
+MATRIX_MARKET_PATH?=../$(TASKPARTS_PATH)/matrix-market/
 
 # TPAL build flags
 # ----------------
@@ -25,7 +26,7 @@ TPALRTS_DBG_PREFIX=$(DBG_PREFIX) -fno-rtti -fno-pic -fno-pie
 	$(CXX) $(TPALRTS_STA_PREFIX) -fno-verbose-asm -I$(ROLLFORWARD_PATH)/x64 $< -S -o $(INSTALL_PATH)/$@
 
 %.heartbeat.rf.s: %.heartbeat.s $(INCLUDE_FILES) install_folder
-	./rollforward++ bin/$(basename $<).s bin/$(basename $<).rf.s
+	ROLLFORWARD_PATH=$(ROLLFORWARD_PATH) ./rollforward++ bin/$(basename $<).s bin/$(basename $<).rf.s
 
 %.heartbeat.rf.o: %.heartbeat.rf.s $(INCLUDE_FILES) install_folder
 	$(CC) -Wno-unused-command-line-argument -I$(ROLLFORWARD_PATH)/x64 bin/$< -c -o $(INSTALL_PATH)/$@
@@ -39,7 +40,7 @@ TPALRTS_DBG_PREFIX=$(DBG_PREFIX) -fno-rtti -fno-pic -fno-pie
 	$(CXX) $(TPALRTS_DBG_PREFIX) -fno-verbose-asm -I$(ROLLFORWARD_PATH)/x64 $< -S -o $(INSTALL_PATH)/$@
 
 %.dbg.heartbeat.rf.s: %.dbg.heartbeat.s $(INCLUDE_FILES) install_folder
-	./rollforward++ bin/$(basename $<).s bin/$(basename $<).rf.s
+	ROLLFORWARD_PATH=$(ROLLFORWARD_PATH) ./rollforward++ bin/$(basename $<).s bin/$(basename $<).rf.s
 
 %.dbg.heartbeat.rf.o: %.dbg.heartbeat.rf.s $(INCLUDE_FILES) install_folder
 	$(CC) -Wno-unused-command-line-argument -I$(ROLLFORWARD_PATH)/x64 bin/$< -c -o $(INSTALL_PATH)/$@
@@ -55,25 +56,10 @@ $(INSTALL_PATH)/rollforward.o: $(ROLLFORWARD_PATH)/x64/rollforward.c
 # ========
 
 %.sta: %.cpp %.heartbeat.rf.o $(INSTALL_PATH)/rollforward.o $(INCLUDE_FILES) install_folder
-	$(CXX) $(TPALRTS_STA_PREFIX) $(INSTALL_PATH)/rollforward.o bin/$(basename $<).heartbeat.rf.o $< $(TPAL_INCLUDE_PREFIX) -o $(INSTALL_PATH)/$@ $(LINKER_PREFIX)
+	$(CXX) $(TPALRTS_DBG_PREFIX) $(INSTALL_PATH)/rollforward.o bin/$(basename $<).heartbeat.rf.o $< $(TPAL_INCLUDE_PREFIX) -o $(INSTALL_PATH)/$@ $(LINKER_PREFIX)
 
 %.dbg: %.cpp %.dbg.heartbeat.rf.o $(INSTALL_PATH)/rollforward.o $(INCLUDE_FILES) install_folder
 	$(CXX) $(TPALRTS_DBG_PREFIX) $(INSTALL_PATH)/rollforward.o bin/$(basename $<).dbg.heartbeat.rf.o $< $(TPAL_INCLUDE_PREFIX) -o $(INSTALL_PATH)/$@ $(LINKER_PREFIX)
-
-#TODO: complete
-########################################################################################################################################################################################
-# %.dbg: %.cpp %.heartbeat.rf.dbg.o $(INSTALL_PATH)/rollforward.dbg.o $(INCLUDE_FILES) install_folder										       #
-# 	$(CXX) $(TPALRTS_DBG_PREFIX) $(INSTALL_PATH)/rollforward.dbg.o bin/$(basename $<).heartbeat.rf.dbg.o $< $(TPAL_INCLUDE_PREFIX) -o $(INSTALL_PATH)/$@ $(LINKER_PREFIX)	       #
-########################################################################################################################################################################################
-
-###################################################################################################################
-# %.opt: %.cpp $(INCLUDE_FILES) install_folder									  #
-# 	$(TPALXX) $(CXX) $(OPT_PREFIX) $<  $(TPAL_INCLUDE_PREFIX) -o $(INSTALL_PATH)/$@ $(LINKER_PREFIX)	  #
-# %.log: %.cpp $(INCLUDE_FILES) install_folder									  #
-# 	$(TPALXX) $(CXX) $(LOG_PREFIX) $< $(TPAL_INCLUDE_PREFIX) -o $(INSTALL_PATH)/$@ $(LINKER_PREFIX)		  #
-# %.dbg: %.cpp $(INCLUDE_FILES) install_folder									  #
-# 	$(TPALXX) $(CXX) $(DBG_PREFIX) $< $(TPAL_INCLUDE_PREFIX) -o $(INSTALL_PATH)/$@ $(LINKER_PREFIX)		  #
-###################################################################################################################
 
 clean:
 	rm -rf bin

@@ -2,6 +2,7 @@
 
 #include <taskparts/benchmark.hpp>
 // -DNDEBUG -O3 -march=native -fno-verbose-asm -fno-stack-protector -fno-asynchronous-unwind-tables -fomit-frame-pointer -mavx2 -mfma -fno-verbose-asm
+#include <mm>
 
 auto rand_float(size_t i) -> float {
   int m = 1000000;

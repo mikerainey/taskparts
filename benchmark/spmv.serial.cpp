@@ -17,9 +17,11 @@ void spmv_serial(
   }
 }
 
+#ifndef SPMV_INCLUDE
 int main() {
   taskparts::benchmark_nativeforkjoin([&] (auto sched) {
     spmv_serial(val, row_ptr, col_ind, x, y, nb_rows);
   }, [&] (auto sched) { bench_pre(); }, [&] (auto sched) { bench_post(); });
   return 0;
 }
+#endif

@@ -4,6 +4,8 @@
 // TODO: move spmv.hpp to this folder and introduce loader for the matrix market file format:
 // https://github.com/cwpearson/matrix-market
 #include "../parlay/spmv.hpp"
+#define SPMV_INCLUDE
+#include "../parlay/spmv.serial.hpp"
 #include <cstdint>
 
 extern
