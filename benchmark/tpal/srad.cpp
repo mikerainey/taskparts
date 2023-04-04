@@ -16,8 +16,8 @@
   2	//number of iterations
 */
 
-int rows=4000;
-int cols=4000, size_I, size_R;
+int rows=16000;
+int cols=rows, size_I, size_R;
 float *_srad_I, *_srad_J, q0sqr, sum, sum2, tmp, meanROI,varROI ;
 int *iN,*iS,*jE,*jW;
 float *dN,*dS,*dW,*dE;
@@ -144,24 +144,13 @@ void handle_srad_inner_2(int rows, int cols, int rows_lo, int rows_hi, int cols_
   }
 }
 
-int64_t hash64(uint64_t u) {
-  uint64_t v = u * 3935559000370003845ul + 2691343689449507681ul;
-  v ^= v >> 21;
-  v ^= v << 37;
-  v ^= v >>  4;
-  v *= 4768777513237032717ul;
-  v ^= v << 20;
-  v ^= v >> 41;
-  v ^= v <<  5;
-  return v;
-}
-
 void random_matrix(float *I, int rows, int cols){
-  for( int i = 0 ; i < rows ; i++){
-    for ( int j = 0 ; j < cols ; j++){
-      I[i * cols + j] = (float)hash64(i+j)/(float)RAND_MAX ;
-    }
-  }
+  srand(7);
+	for( int i = 0 ; i < rows ; i++){
+		for ( int j = 0 ; j < cols ; j++){
+		  I[i * cols + j] = rand()/(float)RAND_MAX ;
+		}
+	}
 }
 
 int main() {
