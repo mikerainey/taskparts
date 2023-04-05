@@ -501,21 +501,24 @@ class hbtimer_kmod_worker {
 public:
 
   static
-  auto initialize(size_t nb_workers) { }
+  auto initialize(size_t nb_workers) {
+    hb_init();
+    hb_set_rollforwards(&rollforward_table[0], rollforward_table_size);
+    hb_repeat(get_kappa_usec(), nullptr);
+  }
 
   static
-  auto destroy() { }
+  auto destroy() {
+    hb_exit();
+  }
   
   template <typename Body>
   static
   auto launch_worker_thread(size_t id, const Body& b) {
     launch_interrupt_worker_thread(id, b,
 				   [=] {
-				     hb_init();
-				     hb_set_rollforwards(&rollforward_table[0], rollforward_table_size);
-				     hb_repeat(get_kappa_usec(), nullptr);
 				   },
-				   [] { hb_exit(); });
+				   [] {  });
   }
 
   using worker_exit_barrier = minimal_worker_exit_barrier;
