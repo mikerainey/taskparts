@@ -170,6 +170,8 @@ void zero_init(T* a, std::size_t n) {
   }
 }
 
+uint64_t nb_cols;
+
 auto bench_pre_matrix_market() -> void {
   std::string fname = taskparts::cmdline::parse_or_default_string("fname", "1138_bus.mtx");
   typedef size_t Offset;
@@ -183,26 +185,15 @@ auto bench_pre_matrix_market() -> void {
   // read matrix as coo
   reader_t reader(fname);
   coo_t coo = reader.read_coo();
-
-  /*
-  // non-zeros, rows, cols
-  std::cout << coo.nnz() << std::endl;                               // size_t
-  std::cout << coo.num_rows() << "," << coo.num_cols() << std::endl; // int
-  
-  // first entry
-  entry_t e = coo.entries[0];
-  std::cout << e.i << "," << e.j << std::endl; // int, int
-  std::cout << e.e << std::endl;               // float */
-  
   csr_type csr(coo);
   nb_vals = csr.nnz();
   val = (nonzero_type*)malloc(sizeof(nonzero_type) * nb_vals);
   std::copy(csr.val().begin(), csr.val().end(), val);
   nb_rows = csr.num_rows();
+  nb_cols = csr.num_cols();
   row_ptr = (Ordinal*)malloc(sizeof(Ordinal) * (nb_rows + 1));
   std::copy(csr.row_ptr().begin(), csr.row_ptr().end(), row_ptr);
-  auto nb_cols = csr.num_cols();
-  col_ind = (Offset*)malloc(sizeof(Offset) * nb_cols);
+  col_ind = (Offset*)malloc(sizeof(Offset) * nb_vals);
   std::copy(&csr.col_ind()[0], (&csr.col_ind()[nb_cols-1]) + 1, col_ind);
 
   x = (nonzero_type*)malloc(sizeof(nonzero_type) * nb_rows);
