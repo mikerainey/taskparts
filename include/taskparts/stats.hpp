@@ -266,16 +266,16 @@ public:
       outfile = std::string(env_p);
     }
     FILE* f = (outfile == "") ? stdout : fopen(outfile.c_str(), "w");
-    fprintf(f, "[");
+    fprintf(f, "[\n");
     size_t i = 0;
     for (auto s : summaries) {
       output_summary(s, f);
       if (i + 1 != summaries.size()) {
-	fprintf(f, ",");
+	fprintf(f, ",\n");
       }
       i++;
     }
-    fprintf(f, "]\n");
+    fprintf(f, "\n]\n");
     if (f != stdout) {
       fclose(f);
     }
