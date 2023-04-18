@@ -1,8 +1,0 @@
-{"benchmark_run": {
-    "path_to_executable": "./test.opt",
-    "cl_args": ["-m", "4", "--vaa", "1"],
-    "env_args": [{"var": "TASKPARTS_NUM_WORKERS", "val": "16"},
-		 {"var": "TASKPARTS_KAPPA", "val": "200"},
-		 {"var": "TASKPARTS_STATS_OUTFILE", "val": "foo.txt"}
-		]
-}}
