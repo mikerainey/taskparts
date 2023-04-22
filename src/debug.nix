@@ -21,6 +21,7 @@ stdenv.mkDerivation rec {
 
   TASKPARTS_OPTIONAL_FLAGS="-DTASKPARTS_RUN_UNIT_TESTS=1 " + HWLOC_CFLAGS;
   TASKPARTS_LINKER_FLAGS=HWLOC_LIBFLAGS;
+  LD_LIBRARY_PATH="./bin";
   
   shellHook = if hwloc == null then "" else ''
     export NUM_SYSTEM_CORES=$( ${hwloc}/bin/hwloc-ls|grep Core|wc -l )
