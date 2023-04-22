@@ -1,10 +1,10 @@
+TASKPARTS_ROOT_PATH?=../
 # binaries go here
 TASKPARTS_INSTALL_PATH?=bin
-
 TASKPARTS_PLATFORM_FLAGS?=-DTASKPARTS_POSIX=1 -DTASKPARTS_X64=1
 #TASKPARTS_PLATFORM_FLAGS?=-DTASKPARTS_DARWIN=1 -DTASKPARTS_ARM64=1 
 TASKPARTS_OPTIONAL_FLAGS?=
-TASKPARTS_CPP_FLAGS?=-std=c++17 -fno-stack-protector -fno-asynchronous-unwind-tables
+TASKPARTS_CPP_FLAGS?=-std=c++17 -fno-stack-protector -fno-asynchronous-unwind-tables -I$(TASKPARTS_ROOT_PATH)/include/
 TASKPARTS_FLAGS=$(TASKPARTS_CPP_FLAGS) $(TASKPARTS_PLATFORM_FLAGS) $(TASKPARTS_OPTIONAL_FLAGS)
 TASKPARTS_OPT_FLAGS=-O3 -DNDEBUG -march=native
 TASKPARTS_STA=-DTASKPARTS_STATS=1
@@ -18,14 +18,23 @@ TASKPARTS_LINKER_FLAGS?=
 
 TASKPARTS_FILES=taskparts.cpp
 
-%.sta: %.cpp install_folder
-	$(CXX) $(TASKPARTS_FLAGS) $(TASKPARTS_STA_FLAGS) $< -o $(TASKPARTS_INSTALL_PATH)/$@ $(TASKPARTS_LINKER_FLAGS)
+%.sta.o: %.cpp libtaskparts.so install_folder
+	$(CXX) $(TASKPARTS_FLAGS) $(TASKPARTS_STA_FLAGS) $< -c -o $(TASKPARTS_INSTALL_PATH)/$@
+%.sta: %.cpp %.sta.o libtaskparts.so install_folder
+	$(CXX) $(TASKPARTS_FLAGS) $(TASKPARTS_STA_FLAGS) $(TASKPARTS_INSTALL_PATH)/$(basename $<).sta.o -o $(TASKPARTS_INSTALL_PATH)/$@ -ltaskparts -L$(TASKPARTS_INSTALL_PATH) $(TASKPARTS_LINKER_FLAGS)
+
 %.log: %.cpp install_folder
 	$(CXX) $(TASKPARTS_FLAGS) $(TASKPARTS_LOG_FLAGS) $< -o $(TASKPARTS_INSTALL_PATH)/$@ $(TASKPARTS_LINKER_FLAGS)
 %.dbg: %.cpp install_folder
 	$(CXX) $(TASKPARTS_FLAGS) $(TASKPARTS_DBG_FLAGS) $< -o $(TASKPARTS_INSTALL_PATH)/$@ $(TASKPARTS_LINKER_FLAGS)
 %.msdbg: %.cpp install_folder
 	$(CXX) $(TASKPARTS_FLAGS) $(TASKPARTS_MSDBG_FLAGS) $< -o $(TASKPARTS_INSTALL_PATH)/$@ $(TASKPARTS_LINKER_FLAGS)
+
+libtaskparts.o: taskparts.cpp install_folder
+	$(CXX) $(TASKPARTS_FLAGS) $(TASKPARTS_STA_FLAGS) taskparts.cpp -c -o $(TASKPARTS_INSTALL_PATH)/$@
+
+libtaskparts.so: libtaskparts.o
+	$(CC) -shared -o $(TASKPARTS_INSTALL_PATH)/libtaskparts.so $(TASKPARTS_INSTALL_PATH)/libtaskparts.o
 
 .PHONY: install_folder
 install_folder:
