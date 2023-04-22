@@ -16,25 +16,48 @@ TASKPARTS_MSDBG=-DTASKPARTS_META_SCHEDULER_SERIAL_RANDOM=1
 TASKPARTS_MSDBG_FLAGS=$(TASKPARTS_MSDBG) $(TASKPARTS_DBG_FLAGS)
 TASKPARTS_LINKER_FLAGS?=
 
-TASKPARTS_FILES=taskparts.cpp
+# Shared library
+# ==============
 
-%.sta.o: %.cpp libtaskparts.so install_folder
-	$(CXX) $(TASKPARTS_FLAGS) $(TASKPARTS_STA_FLAGS) $< -c -o $(TASKPARTS_INSTALL_PATH)/$@
-%.sta: %.cpp %.sta.o libtaskparts.so install_folder
-	$(CXX) $(TASKPARTS_FLAGS) $(TASKPARTS_STA_FLAGS) $(TASKPARTS_INSTALL_PATH)/$(basename $<).sta.o -o $(TASKPARTS_INSTALL_PATH)/$@ -ltaskparts -L$(TASKPARTS_INSTALL_PATH) $(TASKPARTS_LINKER_FLAGS)
-
-%.log: %.cpp install_folder
-	$(CXX) $(TASKPARTS_FLAGS) $(TASKPARTS_LOG_FLAGS) $< -o $(TASKPARTS_INSTALL_PATH)/$@ $(TASKPARTS_LINKER_FLAGS)
-%.dbg: %.cpp install_folder
-	$(CXX) $(TASKPARTS_FLAGS) $(TASKPARTS_DBG_FLAGS) $< -o $(TASKPARTS_INSTALL_PATH)/$@ $(TASKPARTS_LINKER_FLAGS)
-%.msdbg: %.cpp install_folder
-	$(CXX) $(TASKPARTS_FLAGS) $(TASKPARTS_MSDBG_FLAGS) $< -o $(TASKPARTS_INSTALL_PATH)/$@ $(TASKPARTS_LINKER_FLAGS)
-
-libtaskparts.o: taskparts.cpp install_folder
+libtaskparts.sta.o: taskparts.cpp install_folder
 	$(CXX) $(TASKPARTS_FLAGS) $(TASKPARTS_STA_FLAGS) taskparts.cpp -c -o $(TASKPARTS_INSTALL_PATH)/$@
+libtaskparts.log.o: taskparts.cpp install_folder
+	$(CXX) $(TASKPARTS_FLAGS) $(TASKPARTS_LOG_FLAGS) taskparts.cpp -c -o $(TASKPARTS_INSTALL_PATH)/$@
+libtaskparts.dbg.o: taskparts.cpp install_folder
+	$(CXX) $(TASKPARTS_FLAGS) $(TASKPARTS_DBG_FLAGS) taskparts.cpp -c -o $(TASKPARTS_INSTALL_PATH)/$@
+libtaskparts.msdbg.o: taskparts.cpp install_folder
+	$(CXX) $(TASKPARTS_FLAGS) $(TASKPARTS_MSDBG_FLAGS) taskparts.cpp -c -o $(TASKPARTS_INSTALL_PATH)/$@
 
-libtaskparts.so: libtaskparts.o
-	$(CC) -shared -o $(TASKPARTS_INSTALL_PATH)/libtaskparts.so $(TASKPARTS_INSTALL_PATH)/libtaskparts.o
+libtaskparts.sta.so: libtaskparts.sta.o
+	$(CC) -shared -o $(TASKPARTS_INSTALL_PATH)/libtaskparts.sta.so $(TASKPARTS_INSTALL_PATH)/libtaskparts.sta.o
+libtaskparts.log.so: libtaskparts.log.o
+	$(CC) -shared -o $(TASKPARTS_INSTALL_PATH)/libtaskparts.log.so $(TASKPARTS_INSTALL_PATH)/libtaskparts.log.o
+libtaskparts.dbg.so: libtaskparts.dbg.o
+	$(CC) -shared -o $(TASKPARTS_INSTALL_PATH)/libtaskparts.dbg.so $(TASKPARTS_INSTALL_PATH)/libtaskparts.dbg.o
+libtaskparts.msdbg.so: libtaskparts.msdbg.o
+	$(CC) -shared -o $(TASKPARTS_INSTALL_PATH)/libtaskparts.msdbg.so $(TASKPARTS_INSTALL_PATH)/libtaskparts.msdbg.o
+
+libraries: libtaskparts.sta.so libtaskparts.log.so libtaskparts.dbg.so libtaskparts.msdbg.so
+
+# Local standalone binaries
+# =========================
+
+%.sta.o: %.cpp libtaskparts.sta.so install_folder
+	$(CXX) $(TASKPARTS_FLAGS) $(TASKPARTS_STA_FLAGS) $< -c -o $(TASKPARTS_INSTALL_PATH)/$@
+%.sta: %.cpp %.sta.o libtaskparts.sta.so install_folder
+	$(CXX) $(TASKPARTS_FLAGS) $(TASKPARTS_STA_FLAGS) $(TASKPARTS_INSTALL_PATH)/$(basename $<).sta.o -o $(TASKPARTS_INSTALL_PATH)/$@ -ltaskparts -L$(TASKPARTS_INSTALL_PATH) $(TASKPARTS_LINKER_FLAGS)
+%.log.o: %.cpp libtaskparts.log.so install_folder
+	$(CXX) $(TASKPARTS_FLAGS) $(TASKPARTS_LOG_FLAGS) $< -c -o $(TASKPARTS_INSTALL_PATH)/$@
+%.log: %.cpp %.log.o libtaskparts.log.so install_folder
+	$(CXX) $(TASKPARTS_FLAGS) $(TASKPARTS_LOG_FLAGS) $(TASKPARTS_INSTALL_PATH)/$(basename $<).log.o -o $(TASKPARTS_INSTALL_PATH)/$@ -ltaskparts -L$(TASKPARTS_INSTALL_PATH) $(TASKPARTS_LINKER_FLAGS)
+%.dbg.o: %.cpp libtaskparts.dbg.so install_folder
+	$(CXX) $(TASKPARTS_FLAGS) $(TASKPARTS_DBG_FLAGS) $< -c -o $(TASKPARTS_INSTALL_PATH)/$@
+%.dbg: %.cpp %.dbg.o libtaskparts.dbg.so install_folder
+	$(CXX) $(TASKPARTS_FLAGS) $(TASKPARTS_DBG_FLAGS) $(TASKPARTS_INSTALL_PATH)/$(basename $<).dbg.o -o $(TASKPARTS_INSTALL_PATH)/$@ -ltaskparts -L$(TASKPARTS_INSTALL_PATH) $(TASKPARTS_LINKER_FLAGS)
+%.msdbg.o: %.cpp libtaskparts.msdbg.so install_folder
+	$(CXX) $(TASKPARTS_FLAGS) $(TASKPARTS_MSDBG_FLAGS) $< -c -o $(TASKPARTS_INSTALL_PATH)/$@
+%.msdbg: %.cpp %.msdbg.o libtaskparts.msdbg.so install_folder
+	$(CXX) $(TASKPARTS_FLAGS) $(TASKPARTS_MSDBG_FLAGS) $(TASKPARTS_INSTALL_PATH)/$(basename $<).msdbg.o -o $(TASKPARTS_INSTALL_PATH)/$@ -ltaskparts -L$(TASKPARTS_INSTALL_PATH) $(TASKPARTS_LINKER_FLAGS)
 
 .PHONY: install_folder
 install_folder:
