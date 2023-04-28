@@ -1,9 +1,9 @@
 cmake_minimum_required(VERSION 3.14)
-project (TaskPaRTS)
+project(taskparts)
 set(CMAKE_CXX_STANDARD 17)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
-add_library(TaskPaRTS SHARED src/taskparts.cpp)
+add_library(taskparts SHARED src/taskparts.cpp)
 
-install(TARGETS TaskPaRTS DESTINATION lib)
+install(TARGETS taskparts DESTINATION lib)
 install(FILES include/taskparts/taskparts.hpp include/taskparts/taskparts_internal.hpp DESTINATION include/taskparts)

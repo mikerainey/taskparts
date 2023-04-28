@@ -134,10 +134,6 @@ auto test_reset_scheduler() -> void {
   }
 }
 
-auto ping_all_workers() -> void {
-  reset_scheduler([&] {}, [&] { }, true);
-}
-
 /*---------------------------------------------------------------------*/
 /* Minimal continuation */
 

@@ -307,6 +307,10 @@ auto reset_scheduler(const Local_reset& local_reset,
   }
 }
 
+auto ping_all_workers() -> void {
+  reset_scheduler([&] {}, [&] { }, true);
+}
+  
 auto default_benchmark_thunk = [] { };
 
 auto get_benchmark_warmup_secs() -> double;
