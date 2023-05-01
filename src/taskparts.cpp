@@ -682,7 +682,7 @@ public:
     for (size_t id = 1; id < get_nb_workers(); id++) {
       threads.emplace_back([&, id, worker_loop] () {
         my_id = (int)id;
-	pin_calling_worker();
+        pin_calling_worker();
         worker_loop();
         std::unique_lock<std::mutex> lk(exit_mut);
         if (++nb_workers_exited == get_nb_workers()) {
@@ -2224,6 +2224,9 @@ auto instrumentation_reset() -> void {
 auto instrumentation_report() -> void {
   scheduler->instrumentation.report();    
 }
+
+auto ping_all_workers() -> void {
+ reset_scheduler([&] {}, [&] { }, true);
+}
   
 } // end namespace taskparts
-
