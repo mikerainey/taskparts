@@ -7,3 +7,5 @@ add_library(taskparts SHARED src/taskparts.cpp)
 
 install(TARGETS taskparts DESTINATION lib)
 install(FILES include/taskparts/taskparts.hpp include/taskparts/taskparts_internal.hpp DESTINATION include/taskparts)
+set_property(TARGET taskparts PROPERTY
+          COMPILE_OPTIONS "-DTASKPARTS_STATS -fno-stack-protector -fno-asynchronous-unwind-tables")
