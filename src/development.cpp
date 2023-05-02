@@ -5,6 +5,7 @@
 #include <cstdlib>
 #include <chrono>
 #include <taskparts/taskparts.hpp>
+#include "fib_serial.hpp"
 
 inline
 uint64_t hash(uint64_t u) {
@@ -37,14 +38,6 @@ auto test_bintree() -> void {
   assert(count.load() == n);
 }
 
-auto fib_serial(int64_t n) -> int64_t {
-  if (n <= 1) {
-    return n;
-  } else {
-    return fib_serial(n-1) + fib_serial(n-2);
-  }
-}
-  
 auto test_fib_native() -> void {
   std::function<uint64_t(uint64_t)> fib_rec;
   fib_rec = [&] (uint64_t n) -> uint64_t {
@@ -668,8 +661,6 @@ int main() { /*
   return 0; */
   test_variable_workload();
   //return 0;
-  help();
-  json();
   tests.add([] { test_fib_native(); });
   tests.add([] { test_bintree(); });
   tests.add([] { test_reset_scheduler(); });

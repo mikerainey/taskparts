@@ -4,6 +4,7 @@
 #include <atomic>
 #include <cassert>
 #include <chrono>
+#include <cstdio>
 #ifdef TASKPARTS_USE_VALGRIND
 // nix-build '<nixpkgs>' -A valgrind.dev
 #include <valgrind/valgrind.h>
@@ -337,15 +338,15 @@ auto benchmark(const Benchmark& benchmark,
     if (get_benchmark_warmup_secs() <= 0.0) {
       return;
     }
-    //    if (get_benchmark_verbose()) printf("======== WARMUP ========\n");
+    if (get_benchmark_verbose()) printf("======== WARMUP ========\n");
     auto warmup_start = now();
     while (since(warmup_start) < get_benchmark_warmup_secs()) {
       auto st = now();
       benchmark();
-      //      if (get_benchmark_verbose()) printf("warmup_run %.3f\n", since(st));
+      if (get_benchmark_verbose()) printf("warmup_run %.3f\n", since(st));
       reset();
     }
-    //    if (get_benchmark_verbose()) printf ("======== END WARMUP ========\n");
+    if (get_benchmark_verbose()) printf ("======== END WARMUP ========\n");
   };
   setup();
   warmup();
@@ -371,7 +372,7 @@ auto benchmark(const Benchmark& benchmark,
   teardown();
 }
 
-auto help() -> void;
-auto json() -> void;
+auto taskparts_print_help_message() -> void;
+auto report_taskparts_configuration() -> void;
 
 } // end namespace

@@ -10,6 +10,9 @@
 #if defined(TASKPARTS_DARWIN)
 #include <mach/mach_time.h>
 #endif
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 #include <deque>
 #include <vector>
@@ -35,7 +38,7 @@
  *   CPU pinning:
  *   - TASKPARTS_USE_HWLOC boolean (defaultly, false)
  *   Elastic scheduling
- *   - TASKPARTS_ELASTIC_S3 boolean (defaultly, false)
+ *   - TASKPARTS_DISABLE_ELASTIC boolean (defaultly, false)
  *   Instrumentation:
  *   - TASKPARTS_STATS boolean (defaultly, false)
  *   - TASKPARTS_LOGGING boolean (defaultly, false)
@@ -46,11 +49,12 @@
  */
 
 /* FIXMEs
+ * - The "variable workload" experiment randomly crashes in XCode on my Mac Air M2.
  */
 
 /* TODOs
  * - Get benchmark() function to work, along w/ logging output for perfetto.
- * - Clean up the ucontext/native_continuation code duplication.
+ * - Find a way to make CPU frequency detection either succeed always or be optional.
  */
 
 #if !defined(TASKPARTS_POSIX) && !defined(TASKPARTS_DARWIN)
@@ -149,7 +153,7 @@ public:
   }
 };
 
-auto help() -> void {
+auto taskparts_print_help_message() -> void {
   bool should_print = false;
   bool should_exit = false;
   if (const auto env_p = std::getenv("TASKPARTS_HELP")) {
@@ -159,16 +163,16 @@ auto help() -> void {
   if (! should_print) {
     return;
   }
-  std::cout << "Environment variables used by taskparts:" << std::endl;
+  printf("Environment variables used by taskparts:\n");
   for (auto& d : environment_variables) {
-    std::cout << "\t" << d.first << " = " << std::get<1>(d.second) << ":\t" << std::get<0>(d.second) << std::endl;
+    printf("\t%s = %s:\t%s\n",d.first.c_str(), std::get<1>(d.second).c_str(), std::get<0>(d.second).c_str());
   }
   if (should_exit) {
     exit(0);
   }
 }
 
-auto json() -> void {
+auto report_taskparts_configuration() -> void {
   std::string config_outfile = "";
   if (const auto env_p = std::getenv("TASKPARTS_CONFIG_OUTFILE")) {
     config_outfile = std::string(env_p);
@@ -647,6 +651,8 @@ public:
   pthread_worker_group()
   : launched(false), deallocate_scheduler([] { }), nb_workers_exited(0) { }
   ~pthread_worker_group() {
+    taskparts_print_help_message();
+    report_taskparts_configuration();
     status.store(teardown);
     ping_all_workers();
     status.store(finished);
@@ -1206,7 +1212,8 @@ public:
 
 environment_variable<std::string> stats_outfile("TASKPARTS_STATS_OUTFILE",
                                                 [] { return std::string(""); },
-                                                "file in which to output the taskparts stats, formatted in json "
+                                                "file in which to output the taskparts stats, formatted in json; "
+						"if given stdout, will print to stdout "
 						"(default: empty string)",
                                                 [] (const char* s) { return s; },
                                                 [] (std::string x) { return x; });
@@ -1353,7 +1360,10 @@ public:
   }
   auto report() -> void {
     auto outfile = stats_outfile.get();
-    FILE* f = (outfile == "") ? stdout : fopen(outfile.c_str(), "w");
+    if (outfile == "") {
+      return;
+    }
+    FILE* f = (outfile == "stdout") ? stdout : fopen(outfile.c_str(), "w");
     auto output_before = [&] {
       fprintf(f, "{");
     };
@@ -1422,7 +1432,7 @@ environment_variable<bool> logging_realtime("TASKPARTS_LOGGING_REALTIME",
                                             [] { return false; },
                                             "print logging events in real time");
 environment_variable<bool> logging_phases("TASKPARTS_LOGGING_PHASES",
-                                          [] { return false; },
+                                          [] { return true; },
                                           "log phases");
 environment_variable<bool> logging_vertices("TASKPARTS_LOGGING_VERTICES",
                                             [] { return false; },
@@ -1433,9 +1443,9 @@ environment_variable<bool> logging_migration("TASKPARTS_LOGGING_MIGRATION",
 environment_variable<bool> logging_program("TASKPARTS_LOGGING_PROGRAM",
                                            [] { return false; },
                                            "log program");
-environment_variable<std::string> logging_outfile("TASKPARTS_LOGGING_OUTFILE",
+environment_variable<std::string> logging_outpath("TASKPARTS_LOGGING_OUTPATH",
                                                   [] { return std::string(""); },
-                                                  "",
+                                                  "path to output logging files",
                                                   [] (const char* s) { return s; },
                                                   [] (std::string x) { return x; });
 
@@ -1614,6 +1624,10 @@ public:
     tracking_kind[vertices] = logging_vertices.get();
     tracking_kind[migration] = logging_migration.get();
     tracking_kind[program] = logging_program.get();
+    start();
+    worker_group_report([this] {
+      report();
+    });
   }
   auto push(event e) -> void {
     auto k = kind_of(e.tag);
@@ -1656,23 +1670,6 @@ public:
     base_time = cyclecounter();
     push(event(enter_launch));
   }
-  auto output_json(buffer& b) -> void {
-    auto fname = logging_outfile.get();
-    if (fname == "") {
-      return;
-    }
-    auto n = nb_output++;
-    auto json_fname = "log_" + fname + std::to_string(n) + "_.json";
-    FILE* f = fopen(fname.c_str(), "w");
-    fprintf(f, "{ \"traceEvents\": [\n");
-    size_t i = b.size();
-    for (auto e : b) {
-      e.print_json(f, (--i == 0));
-    }
-    fprintf(f, "],\n");
-    fprintf(f, "\"displayTimeUnit\": \"ns\"}\n");
-    fclose(f);
-  }
   auto report() -> void {
     push(event(exit_launch));
     buffer b;
@@ -1685,7 +1682,25 @@ public:
     std::stable_sort(b.begin(), b.end(), [] (const event& e1, const event& e2) {
       return e1.cycle_count < e2.cycle_count;
     });
-    output_json(b);
+    auto path = logging_outpath.get();
+    if (path == "") {
+      return;
+    }
+    struct stat st = {0};
+    if (stat(path.c_str(), &st) == -1) {
+      mkdir(path.c_str(), 0700);
+    }
+    auto n = nb_output++;
+    auto json_fname = path + "/" + "log" + std::to_string(n) + ".json";
+    FILE* f = fopen(json_fname.c_str(), "w");
+    fprintf(f, "{ \"traceEvents\": [\n");
+    size_t i = b.size();
+    for (auto e : b) {
+      e.print_json(f, (--i == 0));
+    }
+    fprintf(f, "],\n");
+    fprintf(f, "\"displayTimeUnit\": \"ns\"}\n");
+    fclose(f);
   }
 };
 
@@ -1721,15 +1736,15 @@ public:
   auto start() -> void { logger.start(); stats.start(); }
   auto reset() -> void { logger.reset(); stats.reset(); }
   auto capture() -> void { stats.capture(); }
-  auto report() -> void { stats.report(); }
+  auto report() -> void { stats.report(); logger.report(); }
 };
 
-#ifdef TASKPARTS_STATS
-using default_work_stealing_stats = work_stealing_stats;
-#elif TASKPARTS_LOGGING
-using default_work_stealing_stats = work_stealing_instrumentation<>;
+#if defined(TASKPARTS_LOGGING)
+using default_work_stealing_instrumentation = work_stealing_instrumentation<>;
+#elif defined(TASKPARTS_STATS)
+using default_work_stealing_instrumentation = work_stealing_stats;
 #else
-using default_work_stealing_stats = minimal_work_stealing_instrumentation;
+using default_work_stealing_instrumentation = minimal_work_stealing_instrumentation;
 #endif
 
 class minimal_elastic {
@@ -1911,7 +1926,7 @@ public:
   }
 };
 
-#ifdef TASKPARTS_ELASTIC_S3
+#if !defined(TASKPARTS_DISABLE_ELASTIC)
 template <typename Vertex_handle>
 using default_native_fork_join_deque = ywra<Vertex_handle>;
 using default_elastic = elastic_s3<>;
@@ -1981,7 +1996,7 @@ public:
 };
 
 template <
-typename Instrumentation = default_work_stealing_stats,
+typename Instrumentation = default_work_stealing_instrumentation,
 typename Meta_scheduler = default_meta_scheduler>
 class native_fork_join_scheduler_family {
 public:
@@ -2228,5 +2243,5 @@ auto instrumentation_report() -> void {
 auto ping_all_workers() -> void {
  reset_scheduler([&] {}, [&] { }, true);
 }
-  
+
 } // end namespace taskparts
