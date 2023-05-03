@@ -1037,7 +1037,7 @@ struct ywra {
     auto backup = [&] (age_t orig) -> age_t {
       qidx j = 0;
       for (qidx i = orig.top; i < orig.bot; i++) {
-        backup_deq[j++] = deq[i].f.load(std::memory_order_relaxed);
+        backup_deq[j++] = deq[i].f.load(std::memory_order_acquire);
       }
       assert(j == size(orig));
       return orig;
@@ -1045,7 +1045,7 @@ struct ywra {
     auto restore = [&] (age_t orig) -> age_t {
       auto n = size(orig);
       for (qidx i = 0; i < n; i++) {
-        deq[i].f.store(backup_deq[i], std::memory_order_relaxed);
+        deq[i].f.store(backup_deq[i], std::memory_order_seq_cst);
       }
       orig.top = 0;
       orig.bot = n;
@@ -1078,7 +1078,7 @@ struct ywra {
       orig = relocate();
     }
     next.tag = orig.tag + 1;
-    deq[orig.bot].f.store(f, std::memory_order_relaxed);
+    deq[orig.bot].f.store(f, std::memory_order_release);
     while (true) {
       if (age.compare_exchange_strong(orig, next)) {
         break;
@@ -1097,7 +1097,7 @@ struct ywra {
     auto next = orig;
     next.bot--;
     next.tag = orig.tag + 1;
-    auto f = deq[next.bot].f.load(std::memory_order_relaxed);
+    auto f = deq[next.bot].f.load(std::memory_order_acquire);
     assert(f != nullptr);
     while (true) {
       if (age.compare_exchange_strong(orig, next)) {
@@ -1119,7 +1119,7 @@ struct ywra {
       return std::make_pair(nullptr, deque_surplus_stable);
     }
     auto next = orig;
-    auto f = deq[next.top].f.load(std::memory_order_relaxed);
+    auto f = deq[next.top].f.load(std::memory_order_acquire);
     next.top++;
     next.tag = orig.tag + 1;
     if (! age.compare_exchange_strong(orig, next)) {
