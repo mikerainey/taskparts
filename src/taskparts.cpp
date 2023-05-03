@@ -53,7 +53,7 @@
  */
 
 /* TODOs
- * - Get benchmark() function to work, along w/ logging output for perfetto.
+ * - Get benchmarking to work with logging.
  * - Find a way to make CPU frequency detection either succeed always or be optional.
  */
 
@@ -153,7 +153,7 @@ public:
   }
 };
 
-auto taskparts_print_help_message() -> void {
+auto print_taskparts_help_message() -> void {
   bool should_print = false;
   bool should_exit = false;
   if (const auto env_p = std::getenv("TASKPARTS_HELP")) {
@@ -651,7 +651,7 @@ public:
   pthread_worker_group()
   : launched(false), deallocate_scheduler([] { }), nb_workers_exited(0) { }
   ~pthread_worker_group() {
-    taskparts_print_help_message();
+    print_taskparts_help_message();
     report_taskparts_configuration();
     status.store(teardown);
     ping_all_workers();
@@ -1436,13 +1436,13 @@ environment_variable<bool> logging_phases("TASKPARTS_LOGGING_PHASES",
                                           "log phases");
 environment_variable<bool> logging_vertices("TASKPARTS_LOGGING_VERTICES",
                                             [] { return false; },
-                                            "log vertices");
+                                            "log vertex events");
 environment_variable<bool> logging_migration("TASKPARTS_LOGGING_MIGRATION",
                                              [] { return false; },
-                                             "log migration");
+                                             "log migration events");
 environment_variable<bool> logging_program("TASKPARTS_LOGGING_PROGRAM",
-                                           [] { return false; },
-                                           "log program");
+                                           [] { return true; },
+                                           "log program events");
 environment_variable<std::string> logging_outpath("TASKPARTS_LOGGING_OUTPATH",
                                                   [] { return std::string(""); },
                                                   "path to output logging files",
@@ -1733,6 +1733,9 @@ public:
   }
   auto on_teardown_worker() -> void { logger.on_teardown_worker(); stats.on_exit_work(); }
   auto on_teardown_scheduler() -> void { logger.on_teardown_scheduler(); }
+  auto log_program_point(int line_nb, const char* source_fname, void* ptr) -> void {
+    logger.log_program_point(line_nb, source_fname, ptr);
+  }
   auto start() -> void { logger.start(); stats.start(); }
   auto reset() -> void { logger.reset(); stats.reset(); }
   auto capture() -> void { stats.capture(); }
@@ -2238,6 +2241,9 @@ auto instrumentation_reset() -> void {
 }
 auto instrumentation_report() -> void {
   scheduler->instrumentation.report();    
+}
+auto log_program_point(int line_nb, const char* source_fname, void* ptr) -> void {
+  scheduler->instrumentation.log_program_point(line_nb, source_fname, ptr);
 }
 
 auto ping_all_workers() -> void {

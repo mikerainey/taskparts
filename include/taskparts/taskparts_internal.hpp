@@ -372,7 +372,11 @@ auto benchmark(const Benchmark& benchmark,
   teardown();
 }
 
-auto taskparts_print_help_message() -> void;
+auto print_taskparts_help_message() -> void;
 auto report_taskparts_configuration() -> void;
+auto log_program_point(int line_nb, const char* source_fname, void* ptr) -> void;
 
-} // end namespace
+} // namespace taskparts
+
+#define TASKPARTS_LOG_PROGRAM_POINT(p) \
+  taskparts::log_program_point(__LINE__, __FILE__, p)
