@@ -132,24 +132,27 @@ std::unordered_map<std::string, std::tuple<std::string, std::string>> environmen
 template <typename T = int>
 class environment_variable {
 public:
-  T x;
+  T* x;
   environment_variable(std::string s,
                        std::function<T()> dflt,
                        std::string description = "",
                        std::function<T(const char*)> parse = [] (const char* s) { return std::stoi(s); },
                        std::function<std::string(T)> to_string = [] (T x) { return std::to_string(x); }) {
     if (const auto env_p = std::getenv(s.c_str())) {
-      x = parse(env_p);
+      x = new T(parse(env_p));
     } else {
-      x = dflt();
+      x = new T(dflt());
     }
+    after_worker_group_teardown([=] {
+      delete x;
+    });
     if (environment_variables.find(s) != environment_variables.end()) {
       die("duplicate environment variable %s", s.c_str());
     }
-    environment_variables.insert(std::make_pair(s, std::make_tuple(description, to_string(x))));
+    environment_variables.insert(std::make_pair(s, std::make_tuple(description, to_string(*x))));
   }
-  auto get() -> T {
-    return x;
+  auto get() -> T& {
+    return *x;
   }
 };
 
@@ -820,8 +823,7 @@ auto initialize_hwloc(bool numa_alloc_interleaved) {
   hwloc_topology_init(&topology);
   hwloc_topology_load(topology);
   if (numa_alloc_interleaved) {
-    hwloc_cpuset_t all_cpus =
-      hwloc_bitmap_dup(hwloc_topology_get_topology_cpuset(topology));
+    all_cpus = hwloc_bitmap_dup(hwloc_topology_get_topology_cpuset(topology));
     int err = hwloc_set_membind(topology, all_cpus, HWLOC_MEMBIND_INTERLEAVE, 0);
     if (err < 0) {
       die("Failed to set NUMA round-robin allocation policy\n");
@@ -862,10 +864,10 @@ auto initialize_machine() -> void {
 
 auto teardown_machine() -> void {
 #ifdef TASKPARTS_USE_HWLOC
-  hwloc_bitmap_free(all_cpus);
   for (size_t id = 0; id != get_nb_workers(); ++id) {
     hwloc_bitmap_free(hwloc_cpusets[id]);
   }
+  hwloc_bitmap_free(all_cpus);
   hwloc_topology_destroy(topology);
 #endif
 }
