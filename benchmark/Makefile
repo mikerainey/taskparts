@@ -1,5 +1,6 @@
 TASKPARTS_ROOT_PATH?=../
 TASKPARTS_INSTALL_PATH?=.
+TASKPARTS_SRC_PATH=$(TASKPARTS_ROOT_PATH)/src/
 # binaries go here
 TASKPARTS_BINARY_PATH?=bin
 TASKPARTS_PLATFORM_FLAGS?=-DTASKPARTS_POSIX=1 -DTASKPARTS_X64=1
@@ -20,14 +21,14 @@ TASKPARTS_LINKER_FLAGS?=
 # Shared library
 # ==============
 
-libtaskparts.sta.o: taskparts.cpp install_folder
-	$(CXX) $(TASKPARTS_FLAGS) $(TASKPARTS_STA_FLAGS) taskparts.cpp -c -o $(TASKPARTS_BINARY_PATH)/$@
-libtaskparts.log.o: taskparts.cpp install_folder
-	$(CXX) $(TASKPARTS_FLAGS) $(TASKPARTS_LOG_FLAGS) taskparts.cpp -c -o $(TASKPARTS_BINARY_PATH)/$@
-libtaskparts.dbg.o: taskparts.cpp install_folder
-	$(CXX) $(TASKPARTS_FLAGS) $(TASKPARTS_DBG_FLAGS) taskparts.cpp -c -o $(TASKPARTS_BINARY_PATH)/$@
-libtaskparts.msdbg.o: taskparts.cpp install_folder
-	$(CXX) $(TASKPARTS_FLAGS) $(TASKPARTS_MSDBG_FLAGS) taskparts.cpp -c -o $(TASKPARTS_BINARY_PATH)/$@
+libtaskparts.sta.o: $(TASKPARTS_SRC_PATH)/taskparts.cpp install_folder
+	$(CXX) $(TASKPARTS_FLAGS) $(TASKPARTS_STA_FLAGS) $(TASKPARTS_SRC_PATH)/taskparts.cpp -c -o $(TASKPARTS_BINARY_PATH)/$@
+libtaskparts.log.o: $(TASKPARTS_SRC_PATH)/taskparts.cpp install_folder
+	$(CXX) $(TASKPARTS_FLAGS) $(TASKPARTS_LOG_FLAGS) $(TASKPARTS_SRC_PATH)/taskparts.cpp -c -o $(TASKPARTS_BINARY_PATH)/$@
+libtaskparts.dbg.o: $(TASKPARTS_SRC_PATH)/taskparts.cpp install_folder
+	$(CXX) $(TASKPARTS_FLAGS) $(TASKPARTS_DBG_FLAGS) $(TASKPARTS_SRC_PATH)/taskparts.cpp -c -o $(TASKPARTS_BINARY_PATH)/$@
+libtaskparts.msdbg.o: $(TASKPARTS_SRC_PATH)/taskparts.cpp install_folder
+	$(CXX) $(TASKPARTS_FLAGS) $(TASKPARTS_MSDBG_FLAGS) $(TASKPARTS_SRC_PATH)/taskparts.cpp -c -o $(TASKPARTS_BINARY_PATH)/$@
 
 libtaskparts.sta.so: libtaskparts.sta.o
 	$(CC) -shared -o $(TASKPARTS_BINARY_PATH)/libtaskparts.sta.so $(TASKPARTS_BINARY_PATH)/libtaskparts.sta.o
