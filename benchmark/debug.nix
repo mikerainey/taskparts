@@ -20,7 +20,7 @@ stdenv.mkDerivation rec {
   HWLOC_CFLAGS=if hwloc == null then "" else "-DTASKPARTS_USE_HWLOC -I${hwloc.dev}/include/";
   HWLOC_LIBFLAGS=if hwloc == null then "" else "-L${hwloc.lib}/lib/ -lhwloc";
 
-  PARLAYLIB_FLAGS=if parlaylib == null then "" else "-I${parlaylib}/include -I${parlaylib}/share/examples";
+  PARLAYLIB_FLAGS=if parlaylib == null then "" else "-I${parlaylib}/include -I${parlaylib}/share/examples -DPARLAY_TASKPARTS";
   TASKPARTS_OPTIONAL_FLAGS="-DTASKPARTS_RUN_UNIT_TESTS=1 -DTASKPARTS_USE_VALGRIND=1 " + HWLOC_CFLAGS + " " + PARLAYLIB_FLAGS;
   TASKPARTS_LINKER_FLAGS=HWLOC_LIBFLAGS;
   LD_LIBRARY_PATH="./bin";
