@@ -567,6 +567,21 @@ auto get_action(native_continuation& c) -> continuation_action& {
 }
 
 /*---------------------------------------------------------------------*/
+/* Native fork join */
+
+auto fork_join_edges::new_incounter() -> void {
+  incounter.store(0);
+}
+  
+auto fork_join_edges::increment() -> void {
+  incounter++;
+}
+  
+auto fork_join_edges::new_outset() -> void {
+  outset = nullptr;
+}
+
+/*---------------------------------------------------------------------*/
 /* Worker threads */
 
 environment_variable<> nb_workers("TASKPARTS_NUM_WORKERS",

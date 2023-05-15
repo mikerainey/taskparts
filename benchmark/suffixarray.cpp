@@ -8,8 +8,6 @@
 #include <parlay/sequence.h>
 #include <parlay/internal/get_time.h>
 
-#include <taskparts/taskparts.hpp>
-
 #include "suffix_array.h"
 
 // **************************************************************

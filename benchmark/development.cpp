@@ -128,15 +128,8 @@ auto test_reset_scheduler() -> void {
 }
 
 /*---------------------------------------------------------------------*/
-/* Minimal continuation */
-
-class minimal_continuation {
-public:
-  continuation_action action;
-  thunk f;
-  minimal_continuation() : f([] {}), action(continuation_initialize) { }
-};
-
+/* Continuations */
+  
 auto throw_to(minimal_continuation& c) -> void {
   c.f();
 }
@@ -145,27 +138,9 @@ auto swap(minimal_continuation&, minimal_continuation& next) -> void {
   next.f();
 }
 
-template <typename F = thunk>
-auto new_continuation(minimal_continuation& c, const F& f) -> void* {
-  new (&c.f) thunk(f);
-  c.action = continuation_finish;
-  return nullptr;
-}
-
 auto get_action(minimal_continuation& c) -> continuation_action& {
   return c.action;
 }
-
-/*---------------------------------------------------------------------*/
-/* Continuation in trampoline style */
-
-using trampoline_block_label = int;
-
-class trampoline_continuation {
-public:
-  minimal_continuation mc;
-  trampoline_block_label next;
-};
 
 auto throw_to(trampoline_continuation& c) -> void {
   c.mc.f();
@@ -175,12 +150,6 @@ auto swap(trampoline_continuation&, trampoline_continuation& next) -> void {
   next.mc.f();
 }
 
-template <typename F = thunk>
-auto new_continuation(trampoline_continuation& c, const F& f) -> void* {
-  c.next = 0;
-  return new_continuation(c.mc, f);
-}
-
 auto get_action(trampoline_continuation& c) -> continuation_action& {
   return get_action(c.mc);
 }
@@ -188,30 +157,6 @@ auto get_action(trampoline_continuation& c) -> continuation_action& {
 auto get_trampoline(trampoline_continuation& c) -> trampoline_block_label& {
   return c.next;
 }
-
-/*---------------------------------------------------------------------*/
-/* Continuation */
-
-using continuation_types = enum continuation_types_enum {
-  continuation_minimal,
-  continuation_trampoline,
-  continuation_ucontext
-};
-
-using native_continuation = native_fork_join_continuation;
-
-class continuation {
-public:
-  continuation_types continuation_type;
-  continuation() : continuation_type(continuation_ucontext) {}
-  union U {
-    U() {}
-    ~U() {}
-    minimal_continuation m;
-    trampoline_continuation t;
-    native_continuation u;
-  } u;
-};
 
 auto throw_to(continuation& c) -> void {
   auto ct = c.continuation_type;
@@ -235,18 +180,6 @@ auto swap(continuation& current, continuation& next) -> void {
   } else {
     assert(ct == continuation_ucontext);
     swap(current.u.u, next.u.u);
-  }
-}
-
-template <typename F = thunk >
-auto new_continuation(continuation& c, F f) -> void* {
-  if (c.continuation_type == continuation_minimal) {
-    return new_continuation(c.u.m, f);
-  } else if (c.continuation_type == continuation_trampoline) {
-    return new_continuation(c.u.t, f);
-  } else {
-    assert(c.continuation_type == continuation_ucontext);
-    return new_continuation(c.u.u, f);
   }
 }
 

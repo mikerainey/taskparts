@@ -74,6 +74,80 @@ auto throw_to(native_continuation& c) -> void;
 auto swap(native_continuation& current, native_continuation& next) -> void;
 auto get_action(native_continuation& c) -> continuation_action&;
 
+class minimal_continuation {
+public:
+  continuation_action action;
+  thunk f;
+  minimal_continuation() : f([] {}), action(continuation_initialize) { }
+};
+
+auto throw_to(minimal_continuation& c) -> void;
+auto swap(minimal_continuation&, minimal_continuation& next) -> void;
+template <typename F = thunk>
+auto new_continuation(minimal_continuation& c, const F& f) -> void* {
+  new (&c.f) thunk(f);
+  c.action = continuation_finish;
+  return nullptr;
+}
+auto get_action(minimal_continuation& c) -> continuation_action&;
+
+using trampoline_block_label = int;
+
+class trampoline_continuation {
+public:
+  minimal_continuation mc;
+  trampoline_block_label next;
+};
+
+auto throw_to(trampoline_continuation& c) -> void;
+
+auto swap(trampoline_continuation&, trampoline_continuation& next) -> void;
+
+template <typename F = thunk>
+auto new_continuation(trampoline_continuation& c, const F& f) -> void* {
+  c.next = 0;
+  return new_continuation(c.mc, f);
+}
+
+auto get_action(trampoline_continuation& c) -> continuation_action&;
+
+auto get_trampoline(trampoline_continuation& c) -> trampoline_block_label&;
+
+using continuation_types = enum continuation_types_enum {
+  continuation_minimal,
+  continuation_trampoline,
+  continuation_ucontext
+};
+
+class continuation {
+public:
+  continuation_types continuation_type;
+  continuation() : continuation_type(continuation_ucontext) {}
+  union U {
+    U() {}
+    ~U() {}
+    minimal_continuation m;
+    trampoline_continuation t;
+    native_continuation u;
+  } u;
+};
+
+auto throw_to(continuation& c) -> void;
+auto swap(continuation& current, continuation& next) -> void;
+template <typename F = thunk >
+auto new_continuation(continuation& c, F f) -> void* {
+  if (c.continuation_type == continuation_minimal) {
+    return new_continuation(c.u.m, f);
+  } else if (c.continuation_type == continuation_trampoline) {
+    return new_continuation(c.u.t, f);
+  } else {
+    assert(c.continuation_type == continuation_ucontext);
+    return new_continuation(c.u.u, f);
+  }
+}
+auto get_action(continuation& c) -> continuation_action&;
+auto get_trampoline(continuation& c) -> trampoline_block_label&;
+  
 /*---------------------------------------------------------------------*/
 /* Native fork join */
 
@@ -89,12 +163,8 @@ public:
   alignas(cache_line_szb)
   void* outset;
   
-  auto new_incounter() -> void {
-    incounter.store(0);
-  }
-  auto increment() -> void {
-    incounter++;
-  }
+  auto new_incounter() -> void;
+  auto increment() -> void;
   template <typename Schedule, typename Vertex_handle>
   auto decrement(Vertex_handle v, const Schedule& schedule) -> void {
     assert(incounter.load() > 0);
@@ -102,9 +172,7 @@ public:
       schedule(v);
     }
   }
-  auto new_outset() -> void {
-    outset = nullptr;
-  }
+  auto new_outset() -> void;
   template <typename Vertex_handle>
   auto add(Vertex_handle* outset, Vertex_handle v) -> outset_add_result {
     assert(outset != nullptr);
@@ -142,7 +210,7 @@ public:
   auto deallocate() -> void = 0;
 };
 
-using native_fork_join_continuation = native_continuation_family<>;
+using native_fork_join_continuation = native_continuation;
 using native_fork_join_vertex = vertex_family<fork_join_edges, native_fork_join_continuation>;
 template <typename Thunk>
 class native_fork_join_thunk_vertex : public native_fork_join_vertex {
@@ -376,6 +444,8 @@ auto print_taskparts_help_message() -> void;
 auto report_taskparts_configuration() -> void;
 auto log_program_point(int line_nb, const char* source_fname, void* ptr) -> void;
 
+
+  
 } // namespace taskparts
 
 #define TASKPARTS_LOG_PROGRAM_POINT(p) \
