@@ -2335,4 +2335,36 @@ auto ping_all_workers() -> void {
  reset_scheduler([&] {}, [&] { }, true);
 }
 
+/*---------------------------------------------------------------------*/
+/* DAG-calculus scheduler */
+  
+class dag_calculus_scheduler_family {
+public:
+  auto launch(vertex* root) -> void {
+    aprintf("launch\n");
+    std::function<void(size_t, size_t)> launch_rec;
+    launch_rec = [&] (size_t lo, size_t hi) {
+      if (lo + 1 == hi) {
+	aprintf("worker\n");
+	return;
+      }
+      auto mid = (lo + hi) / 2;
+      launch_rec(lo, mid);
+      launch_rec(mid, hi);
+    };
+    launch_rec(0, get_nb_workers());
+  }
+};
+
+dag_calculus_scheduler_family* dag_calculus_scheduler;
+  
+auto launch_dag_calculus(vertex* root) -> void {
+  if (dag_calculus_scheduler == nullptr) {
+    dag_calculus_scheduler = new dag_calculus_scheduler_family;
+  }
+  dag_calculus_scheduler->launch(root);
+  delete dag_calculus_scheduler;
+  dag_calculus_scheduler = nullptr;
+}
+  
 } // end namespace taskparts

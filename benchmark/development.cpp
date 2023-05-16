@@ -521,6 +521,8 @@ unit_tests tests;
 int main() { /*
   fork2join([&] { }, [&] { aprintf("fib=%lu\n",fib_serial(35)); });
   return 0; */
+  launch_dag_calculus1([&] { printf("hi\n"); });
+  return 0;
   test_variable_workload();
   //return 0;
   tests.add([] { test_fib_native(); });

@@ -444,7 +444,25 @@ auto print_taskparts_help_message() -> void;
 auto report_taskparts_configuration() -> void;
 auto log_program_point(int line_nb, const char* source_fname, void* ptr) -> void;
 
+auto launch_dag_calculus(vertex*) -> void;
 
+template <typename F>
+class dag_calculus_vertex : public vertex {
+public:
+  F f;
+  dag_calculus_vertex(const F& f) : f(f) { }
+  ~dag_calculus_vertex() { }
+  auto run() -> void {
+    f();
+  }
+  auto deallocate() -> void {
+  }
+};
+
+template <typename F>
+auto launch_dag_calculus1(const F& f) -> void {
+  launch_dag_calculus(new dag_calculus_vertex<F>(f));
+}
   
 } // namespace taskparts
 
