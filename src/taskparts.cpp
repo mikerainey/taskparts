@@ -2338,33 +2338,127 @@ auto ping_all_workers() -> void {
 /*---------------------------------------------------------------------*/
 /* DAG-calculus scheduler */
   
-class dag_calculus_scheduler_family {
+class dag_calculus_scheduler {
 public:
-  auto launch(vertex* root) -> void {
-    aprintf("launch\n");
+  using deque = abp<vertex*>;
+  perworker_array<deque> deques;
+  perworker_array<vertex*> currents;
+  perworker_array<continuation> worker_continuations;
+  std::atomic<bool> should_exit;
+
+  dag_calculus_scheduler() : should_exit(false) { }
+
+  auto loop() -> void {
+    auto& current = currents.mine();
+    auto acquire = [this] {
+      while (! should_exit.load()) {
+	auto victim = random_other_worker();
+        auto v = deques[victim].steal().first;
+        if (v != nullptr) { { assert(get_action(v->continuation) == continuation_initialize); }
+          deques.mine().push(v);
+          return;
+        }
+      }
+    };
+    while (! should_exit.load()) {
+      if (deques.mine().empty() && (get_nb_workers() > 1)) {
+	acquire();
+      }
+      current = deques.mine().pop().first;
+      if (current == nullptr) {
+	continue;
+      }
+      increment(current);
+      if (get_action(current->continuation) == continuation_initialize) {
+        new_continuation(current->continuation, [this] { enter(); });
+      }
+      swap(worker_continuation(), current->continuation);
+      if (get_action(current->continuation) == continuation_finish) {
+        parallel_notify<dag_calculus_scheduler>(current);
+	current->deallocate();
+      } else {
+        { assert(get_action(current->continuation) == continuation_continue); }
+	decrement<dag_calculus_scheduler>(current);
+      }
+    }
+  }
+  auto schedule(vertex* v) -> void { { assert(v->edges.incounter.load() == 0); }
+    deques.mine().push(v);
+  }
+  auto enter() -> void {
+    currents.mine()->run();
+    throw_to(worker_continuation());
+  }
+  auto self() -> vertex* {
+    return currents.mine();
+  }
+  auto worker_continuation() -> continuation& {
+    return worker_continuations.mine();
+  }
+  auto release(vertex* v) -> void {
+    decrement<dag_calculus_scheduler>(v);
+  }
+  auto new_edge(vertex* v, vertex* u) -> void {
+    increment(u);
+    if (add(v, u) == outset_add_fail) {
+      decrement<dag_calculus_scheduler>(u);
+    }
+  }
+  auto yield() -> void {
+    get_action(currents.mine()->continuation) = continuation_continue;
+    swap(currents.mine()->continuation, worker_continuations.mine());
+  }
+  static
+  auto initialize_vertex(vertex* v) -> void {
+    new_incounter(v);
+    new_outset(v);
+    increment(v);
+  }
+  auto launch(vertex* source,
+              continuation_types continuation_type = continuation_ucontext) -> void {
+    for (size_t i = 0; i < get_nb_workers(); i++) {
+      worker_continuations[i].continuation_type = continuation_type;
+      new_continuation(worker_continuations[i], [] {});
+    }
+    auto f = [this] {
+      should_exit.store(true);
+      aprintf("exiting\n");
+    };
+    auto sink = new dag_calculus_vertex<decltype(f)>(f, continuation_minimal);
+    initialize_vertex(source);
+    initialize_vertex(sink);
+    new_edge(source, sink);
+    release(sink);
+    release(source);
     std::function<void(size_t, size_t)> launch_rec;
     launch_rec = [&] (size_t lo, size_t hi) {
       if (lo + 1 == hi) {
 	aprintf("worker\n");
+	loop();
 	return;
       }
       auto mid = (lo + hi) / 2;
-      launch_rec(lo, mid);
-      launch_rec(mid, hi);
+      fork2join([&] { launch_rec(lo, mid); }, [&] { launch_rec(mid, hi); });
     };
     launch_rec(0, get_nb_workers());
   }
+  static
+  auto Schedule(vertex* v) -> void;
 };
 
-dag_calculus_scheduler_family* dag_calculus_scheduler;
-  
-auto launch_dag_calculus(vertex* root) -> void {
-  if (dag_calculus_scheduler == nullptr) {
-    dag_calculus_scheduler = new dag_calculus_scheduler_family;
-  }
-  dag_calculus_scheduler->launch(root);
-  delete dag_calculus_scheduler;
-  dag_calculus_scheduler = nullptr;
+dag_calculus_scheduler* _dag_calculus_scheduler = nullptr;
+
+auto dag_calculus_scheduler::Schedule(vertex* v) -> void {
+  _dag_calculus_scheduler->schedule(v);
 }
   
+auto launch_dag_calculus(vertex* source) -> void {
+  if (_dag_calculus_scheduler == nullptr) {
+    _dag_calculus_scheduler = new dag_calculus_scheduler;
+  }
+  _dag_calculus_scheduler->launch(source, continuation_minimal);
+  delete _dag_calculus_scheduler;
+  _dag_calculus_scheduler = nullptr;
+}
+
 } // end namespace taskparts

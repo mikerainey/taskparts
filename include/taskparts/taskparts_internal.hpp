@@ -377,8 +377,6 @@ auto reset_scheduler(const Local_reset& local_reset,
 }
 
 auto ping_all_workers() -> void;
-  
-auto default_benchmark_thunk = [] { };
 
 auto get_benchmark_warmup_secs() -> double;
 auto get_benchmark_verbose() -> bool;
@@ -395,13 +393,13 @@ auto teardown() -> void;
 
 template <
 typename Benchmark,
-typename Setup = decltype(default_benchmark_thunk),
-typename Teardown = decltype(default_benchmark_thunk),
-typename Reset = decltype(default_benchmark_thunk)>
+typename Setup = std::function<void()>,
+typename Teardown = std::function<void()>,
+typename Reset = std::function<void()>>
 auto benchmark(const Benchmark& benchmark,
-               const Setup& setup = default_benchmark_thunk,
-               const Teardown& teardown = default_benchmark_thunk,
-               const Reset& reset = default_benchmark_thunk) -> void {
+               const Setup& setup = [] {},
+               const Teardown& teardown = [] {},
+               const Reset& reset = [] {}) -> void {
   auto warmup = [&] {
     if (get_benchmark_warmup_secs() <= 0.0) {
       return;
@@ -450,18 +448,23 @@ template <typename F>
 class dag_calculus_vertex : public vertex {
 public:
   F f;
-  dag_calculus_vertex(const F& f) : f(f) { }
+  dag_calculus_vertex(const F& f,
+		      continuation_types continuation_type = continuation_ucontext)
+    : f(f) {
+    vertex::continuation.continuation_type = continuation_type;
+  }
   ~dag_calculus_vertex() { }
   auto run() -> void {
     f();
   }
   auto deallocate() -> void {
+    delete this;
   }
 };
 
 template <typename F>
 auto launch_dag_calculus1(const F& f) -> void {
-  launch_dag_calculus(new dag_calculus_vertex<F>(f));
+  launch_dag_calculus(new dag_calculus_vertex<F>(f, continuation_minimal));
 }
   
 } // namespace taskparts
