@@ -1,5 +1,6 @@
 #include <taskparts/taskparts.hpp>
 
+#include <cstdint>
 #include <cstdlib>
 #include <memory>
 #include <new>
@@ -2395,9 +2396,11 @@ public:
   auto worker_continuation() -> continuation& {
     return worker_continuations.mine();
   }
+  static
   auto release(vertex* v) -> void {
     decrement<dag_calculus_scheduler>(v);
   }
+  static
   auto new_edge(vertex* v, vertex* u) -> void {
     increment(u);
     if (add(v, u) == outset_add_fail) {
@@ -2414,19 +2417,26 @@ public:
     new_outset(v);
     increment(v);
   }
+  template <typename F>
+  static
+  auto create_vertex(const F& f,
+		     continuation_types continuation_type = continuation_ucontext) -> vertex* {
+    assert(continuation_type == continuation_minimal);
+    auto v = new dag_calculus_vertex<F>(f);
+    v->continuation.continuation_type = continuation_type;
+    get_action(v->continuation) = continuation_initialize;
+    initialize_vertex(v);
+    return v;
+  }
   auto launch(vertex* source,
               continuation_types continuation_type = continuation_ucontext) -> void {
     for (size_t i = 0; i < get_nb_workers(); i++) {
       worker_continuations[i].continuation_type = continuation_type;
       new_continuation(worker_continuations[i], [] {});
     }
-    auto f = [this] {
+    auto sink = create_vertex([this] {
       should_exit.store(true);
-      aprintf("exiting\n");
-    };
-    auto sink = new dag_calculus_vertex<decltype(f)>(f, continuation_minimal);
-    initialize_vertex(source);
-    initialize_vertex(sink);
+    }, continuation_minimal);
     new_edge(source, sink);
     release(sink);
     release(source);
@@ -2457,8 +2467,50 @@ auto launch_dag_calculus(vertex* source) -> void {
     _dag_calculus_scheduler = new dag_calculus_scheduler;
   }
   _dag_calculus_scheduler->launch(source, continuation_minimal);
-  delete _dag_calculus_scheduler;
+  // FIXME: cannot deallocate the scheduler here because there are perworker
+  // arrays in the scheduler object that are later deallocated by the pthread group
+  //  delete _dag_calculus_scheduler;
   _dag_calculus_scheduler = nullptr;
+}
+
+auto fib_dag_calculus(uint64_t n, uint64_t* dst) -> void {
+  if (n < 2) {
+    *dst = n;
+    return;
+  }
+  auto dst2 = new uint64_t[2];
+  auto vj = dag_calculus_scheduler::create_vertex([=] {
+    *dst = dst2[0] + dst2[1];
+    delete [] dst2;
+  }, continuation_minimal);
+  { // capture the current "task-level continuation"
+    // and transfer it the new join continuation
+    auto& vk = _dag_calculus_scheduler->self()->edges.outset;
+    vj->edges.outset = vk;
+    vk = nullptr;
+  }
+  vertex* vs[2];
+  for (int i = 1; i >= 0; i--) {
+    vs[i] = dag_calculus_scheduler::create_vertex([=] {
+      fib_dag_calculus(n - (i + 1), &dst2[i]);
+    }, continuation_minimal);
+  }
+  for (auto v : vs) {
+    dag_calculus_scheduler::new_edge(v, vj);
+  }
+  for (auto v : vs) {
+    dag_calculus_scheduler::release(v);
+  }
+  dag_calculus_scheduler::release(vj);
+}
+
+auto test_fib_dag_calculus() -> void {
+  uint64_t dst = 123;
+  auto source = dag_calculus_scheduler::create_vertex([&] {
+    fib_dag_calculus(30, &dst);
+  }, continuation_minimal);
+  launch_dag_calculus(source);
+  printf("dst=%lu\n",dst);
 }
 
 } // end namespace taskparts

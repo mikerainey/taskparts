@@ -116,13 +116,14 @@ auto get_trampoline(trampoline_continuation& c) -> trampoline_block_label&;
 using continuation_types = enum continuation_types_enum {
   continuation_minimal,
   continuation_trampoline,
-  continuation_ucontext
+  continuation_ucontext,
+  continuation_uninitialized
 };
 
 class continuation {
 public:
   continuation_types continuation_type;
-  continuation() : continuation_type(continuation_ucontext) {}
+  continuation() : continuation_type(continuation_uninitialized) { }
   union U {
     U() {}
     ~U() {}
@@ -448,11 +449,7 @@ template <typename F>
 class dag_calculus_vertex : public vertex {
 public:
   F f;
-  dag_calculus_vertex(const F& f,
-		      continuation_types continuation_type = continuation_ucontext)
-    : f(f) {
-    vertex::continuation.continuation_type = continuation_type;
-  }
+  dag_calculus_vertex(const F& f) : f(f) { }
   ~dag_calculus_vertex() { }
   auto run() -> void {
     f();
@@ -462,10 +459,7 @@ public:
   }
 };
 
-template <typename F>
-auto launch_dag_calculus1(const F& f) -> void {
-  launch_dag_calculus(new dag_calculus_vertex<F>(f, continuation_minimal));
-}
+auto test_fib_dag_calculus() -> void;
   
 } // namespace taskparts
 

@@ -52,7 +52,7 @@ auto test_fib_native() -> void {
   uint64_t dst = fib_rec(n);
   assert(fib_serial(n) == dst);
 }
-
+  
 template <typename F, typename R, typename V>
 auto reduce(const F& f, const R& r, V z, size_t lo, size_t hi) -> V {
   if (lo == hi) {
@@ -521,7 +521,7 @@ unit_tests tests;
 int main() { /*
   fork2join([&] { }, [&] { aprintf("fib=%lu\n",fib_serial(35)); });
   return 0; */
-  launch_dag_calculus1([&] { printf("hi\n"); });
+  test_fib_dag_calculus();
   return 0;
   test_variable_workload();
   //return 0;
