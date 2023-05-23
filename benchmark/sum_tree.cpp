@@ -4,6 +4,7 @@
 #include <parlay/primitives.h>
 #include <parlay/sequence.h>
 #include <deque>
+#include <cmdline.hpp>
 
 class node {
 public:
@@ -381,28 +382,37 @@ auto gen_linear_path(size_t length, std::deque<node>& path, size_t branch = 0) -
   return n0;
 }
 
-int main(int argc, char* argv[]) {
-  auto usage = "Usage: sum_tree <height>";
-  if (argc < 2) { printf("%s\n", usage);
-  } else {
-    long height;
-    try { height = std::stol(argv[1]); }
-    catch (...) { printf("%s\n", usage); }
-    if (argc == 3) {
-      H = std::stol(argv[2]);
-    }
-    std::deque<std::deque<node>> updates;
-    auto nodes = gen_perfect_tree(height);
-    gen_random_updates(&nodes[0], 800, updates, [] (std::deque<node>& path) -> node* {
-      return gen_linear_path(300, path);
+int main() {
+  using namespace deepsea;
+  size_t height = cmdline::parse_or_default_int("height", 23);
+  H = cmdline::parse_or_default_int("heartbeat_rate", H);
+  auto nb_updates = std::max(1, cmdline::parse_or_default_int("nb_updates", 1));
+  auto update_path_length = std::max(1, cmdline::parse_or_default_int("update_path_length", 1));
+  std::deque<std::deque<node>> updates;
+  auto nodes = gen_perfect_tree(height);
+  gen_random_updates(&nodes[0], nb_updates, updates, [&] (std::deque<node>& path) -> node* {
+    return gen_linear_path(update_path_length, path);
+  });
+  auto& node0 = updates.back();
+  auto root = &node0[0];
+  int s = -1;
+  deepsea::cmdline::dispatcher d;
+  d.add("recursive", [&] {
+    taskparts::benchmark([&] {
+      s = sum_rec(root);
     });
-    auto& node0 = updates.back();
-    auto root = &node0[0];
-    int s = -1;
+  });
+  d.add("iterative", [&] {
     taskparts::benchmark([&] {
       s = sum_iterative(root);
     });
-    printf("s=%d\n",s);
-  }
+  });
+  d.add("heartbeat", [&] {
+    taskparts::benchmark([&] {
+      s = sum_heartbeat(root);
+    });
+  });
+  d.dispatch_or_default("algorithm", "iterative");
+  printf("sum\t%d\n", s);
   return 0;
 }
