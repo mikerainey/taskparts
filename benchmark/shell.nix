@@ -21,12 +21,12 @@ stdenv.mkDerivation rec {
   HWLOC_CFLAGS=if hwloc == null then "" else "-DTASKPARTS_USE_HWLOC -I${hwloc.dev}/include/";
   HWLOC_LIBFLAGS=if hwloc == null then "" else "-L${hwloc.lib}/lib/ -lhwloc";
 
-  PARLAYLIB_FLAGS=if parlaylib == null then "" else "-I${parlaylib}/include -I${parlaylib}/share/examples -DPARLAY_TASKPARTS";
+  PARLAYLIB_CFLAGS=if parlaylib == null then "" else "-I${parlaylib}/include -I${parlaylib}/share/examples -DPARLAY_TASKPARTS";
   
   CMDLINE_CFLAGS=if cmdline == null then "" else "-I${cmdline}/include/";
 
-  TASKPARTS_DEBUG_CFLAGS="-DTASKPARTS_RUN_UNIT_TESTS=1 -DTASKPARTS_USE_VALGRIND=1";
-  TASKPARTS_OPTIONAL_FLAGS=TASKPARTS_DEBUG_CFLAGS + " " + HWLOC_CFLAGS + " " + PARLAYLIB_FLAGS + " " + CMDLINE_CFLAGS;
+  TASKPARTS_DEBUG_CFLAGS=pkgs.lib.concatMapStringsSep " " (x: "-DTASKPARTS_" + x + "=1") ["RUN_UNIT_TESTS" "USE_VALGRIND"];
+  TASKPARTS_OPTIONAL_FLAGS=pkgs.lib.concatStringsSep " " [TASKPARTS_DEBUG_CFLAGS HWLOC_CFLAGS PARLAYLIB_CFLAGS CMDLINE_CFLAGS];
   TASKPARTS_LINKER_FLAGS=HWLOC_LIBFLAGS;
   TASKPARTS_BENCHMARK_WARMUP_SECS=0;
   
