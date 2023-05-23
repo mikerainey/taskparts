@@ -37,16 +37,18 @@
  *   - TASKPARTS_ARM64 boolean
  *   - TASKPARTS_X64 boolean
  *   CPU pinning:
- *   - TASKPARTS_USE_HWLOC boolean (defaultly, false)
+ *   - TASKPARTS_USE_HWLOC boolean
  *   Elastic scheduling
- *   - TASKPARTS_DISABLE_ELASTIC boolean (defaultly, false)
+ *   - TASKPARTS_DISABLE_ELASTIC boolean
  *   Instrumentation:
- *   - TASKPARTS_STATS boolean (defaultly, false)
- *   - TASKPARTS_LOGGING boolean (defaultly, false)
+ *   - TASKPARTS_STATS boolean
+ *   - TASKPARTS_LOGGING boolean
  *   Diagnostics:
- *   - TASKPARTS_META_SCHEDULER_SERIAL_RANDOM boolean (defaultly, false)
- *   - TASKPARTS_USE_VALGRIND boolean (defaultly, false)
- *   - TASKPARTS_RUN_UNIT_TESTS boolean (defaultly, false)
+ *   - TASKPARTS_META_SCHEDULER_SERIAL_RANDOM boolean
+ *   - TASKPARTS_USE_VALGRIND boolean
+ *   - TASKPARTS_RUN_UNIT_TESTS boolean
+ *   Work stealing:
+ *   - TASKPARTS_USE_CHASELEV_DEQUE boolean
  */
 
 /* TODOs
@@ -998,14 +1000,14 @@ struct abp {
     qidx top;
   };
   // align to avoid false sharing
-  struct alignas(64) padded_fiber {
+  struct alignas(64) padded_vertex_handle {
     std::atomic<Vertex_handle> f;
   };
   
   static constexpr int q_size = 10000;
   std::atomic<qidx> bot;
   std::atomic<age_t> age;
-  std::array<padded_fiber, q_size> deq;
+  std::array<padded_vertex_handle, q_size> deq;
   
   abp() : bot(0), age(age_t{0, 0}) {}
   auto size() -> unsigned int {
@@ -1080,7 +1082,7 @@ struct ywra {
     qidx top;
   };
   // align to avoid false sharing
-  struct alignas(64) padded_fiber {
+  struct alignas(64) padded_vertex_handle {
     std::atomic<Vertex_handle> f;
   };
   
@@ -1088,7 +1090,7 @@ struct ywra {
   int max_sz = (1 << 14); // can in principle be up to 2^16
   
   std::atomic<age_t> age;
-  std::array<padded_fiber, max_sz> deq;
+  std::array<padded_vertex_handle, max_sz> deq;
   std::array<Vertex_handle, max_sz> backup_deq;
   
   ywra() : age(age_t{0, 0, 0}) { }
@@ -1209,6 +1211,113 @@ struct ywra {
     }
     auto r = (size(orig) == 1) ? deque_surplus_down : deque_surplus_stable;
     return std::make_pair(f, r);
+  }
+};
+
+/* Chase-Lev Work-Stealing Deque data structure
+ * 
+ * This implementation is based on the code linked below.
+ *   https://gist.github.com/Amanieu/7347121
+ */
+  
+template <typename Vertex_handle>
+class chaselev {
+  using index_type = long;
+  class circular_array {
+  private:
+    // align to avoid false sharing
+    struct alignas(64) padded_vertex_handle {
+      std::atomic<Vertex_handle> f;
+    };
+    std::vector<padded_vertex_handle> items;
+    std::unique_ptr<circular_array> previous;
+  public:
+    circular_array(index_type n) : items(n) {}
+    index_type size() const {
+      return items.size();
+    }
+    auto get(index_type index) -> Vertex_handle {
+      return items[index % size()].f.load(std::memory_order_relaxed);
+    }
+    auto put(index_type index, Vertex_handle x) {
+      items[index % size()].f.store(x, std::memory_order_relaxed);
+    }
+    auto grow(index_type top, index_type bottom) -> circular_array* {
+      circular_array* new_array = new circular_array(size() * 2);
+      new_array->previous.reset(this);
+      for (index_type i = top; i != bottom; ++i) {
+        new_array->put(i, get(i));
+      }
+      return new_array;
+    }
+  };
+  
+  std::atomic<circular_array*> array;
+  std::atomic<index_type> top, bottom;
+  
+public:
+  chaselev()
+    : array(new circular_array(64)), top(0), bottom(0) { }
+  ~chaselev() {
+    circular_array* p = array.load(std::memory_order_relaxed);
+    if (p) {
+      delete p;
+    }
+  }
+  auto size() -> index_type {
+    auto b = bottom.load(std::memory_order_relaxed);
+    auto t = top.load(std::memory_order_relaxed);
+    return b - t;
+  }
+  auto empty() -> bool {
+    return size() == 0;
+  }
+  auto push(Vertex_handle x) -> deque_surplus_result_type {
+    auto b = bottom.load(std::memory_order_relaxed);
+    auto t = top.load(std::memory_order_acquire);
+    circular_array* a = array.load(std::memory_order_relaxed);
+    if (b - t > a->size() - 1) {
+      a = a->grow(t, b);
+      array.store(a, std::memory_order_relaxed);
+    }
+    a->put(b, x);
+    std::atomic_thread_fence(std::memory_order_release);
+    bottom.store(b + 1, std::memory_order_relaxed);
+    return deque_surplus_unknown;
+  }
+  auto pop() -> std::pair<Vertex_handle, deque_surplus_result_type> {
+    auto b = bottom.load(std::memory_order_relaxed) - 1;
+    circular_array* a = array.load(std::memory_order_relaxed);
+    bottom.store(b, std::memory_order_relaxed);
+    std::atomic_thread_fence(std::memory_order_seq_cst);
+    auto t = top.load(std::memory_order_relaxed);
+    if (t <= b) {
+      auto x = a->get(b);
+      if (t == b) {
+        if (!top.compare_exchange_strong(t, t + 1, std::memory_order_seq_cst, std::memory_order_relaxed)) {
+          x = nullptr;
+        }
+        bottom.store(b + 1, std::memory_order_relaxed);
+      }
+      return std::make_pair(x, deque_surplus_unknown);
+    } else {
+      bottom.store(b + 1, std::memory_order_relaxed);
+      return std::make_pair(nullptr, deque_surplus_unknown);
+    }
+  }
+  auto steal() -> std::pair<Vertex_handle, deque_surplus_result_type> {
+    auto t = top.load(std::memory_order_acquire);
+    std::atomic_thread_fence(std::memory_order_seq_cst);
+    auto b = bottom.load(std::memory_order_acquire);
+    Vertex_handle x = nullptr;
+    if (t < b) {
+      circular_array* a = array.load(std::memory_order_relaxed);
+      x = a->get(t);
+      if (!top.compare_exchange_strong(t, t + 1, std::memory_order_seq_cst, std::memory_order_relaxed)) {
+        return std::make_pair(nullptr, deque_surplus_unknown);
+      }
+    }
+    return std::make_pair(x, deque_surplus_unknown);
   }
 };
 
@@ -2014,6 +2123,10 @@ public:
 template <typename Vertex_handle>
 using default_native_fork_join_deque = ywra<Vertex_handle>;
 using default_elastic = elastic_s3<>;
+#elif defined(TASKPARTS_USE_CHASELEV_DEQUE)
+template <typename Vertex_handle>
+using default_native_fork_join_deque = chaselev<Vertex_handle>;
+using default_elastic = minimal_elastic;  
 #else
 template <typename Vertex_handle>
 using default_native_fork_join_deque = abp<Vertex_handle>;
@@ -2336,7 +2449,7 @@ auto ping_all_workers() -> void {
   
 class dag_calculus_scheduler {
 public:
-  using deque = abp<vertex*>;
+  using deque = chaselev<vertex*>;
   perworker_array<deque> deques;
   perworker_array<vertex*> currents;
   perworker_array<continuation> worker_continuations;

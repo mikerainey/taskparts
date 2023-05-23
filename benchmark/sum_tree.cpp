@@ -388,10 +388,11 @@ int main() {
   H = cmdline::parse_or_default_int("heartbeat_rate", H);
   auto nb_updates = std::max(1, cmdline::parse_or_default_int("nb_updates", 1));
   auto update_path_length = std::max(1, cmdline::parse_or_default_int("update_path_length", 1));
+  auto branch = cmdline::parse_or_default_int("branch", 0) % 2;
   std::deque<std::deque<node>> updates;
   auto nodes = gen_perfect_tree(height);
   gen_random_updates(&nodes[0], nb_updates, updates, [&] (std::deque<node>& path) -> node* {
-    return gen_linear_path(update_path_length, path);
+    return gen_linear_path(update_path_length, path, branch);
   });
   auto& node0 = updates.back();
   auto root = &node0[0];
