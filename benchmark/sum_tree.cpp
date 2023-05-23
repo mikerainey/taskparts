@@ -17,18 +17,76 @@ public:
     : value(value), left(left), right(right) { }
 };
 
-auto sum(node* n) -> int {
+auto sum_rec(node* n) -> int {
   if (n == nullptr) {
     return 0;
   } else {
     int s0, s1;
     parlay::par_do([&] {
-      s0 = sum(n->left);
+      s0 = sum_rec(n->left);
     }, [&] {
-      s1 = sum(n->right);
+      s1 = sum_rec(n->right);
     });
     return s0 + s1 + n->value;
   }
+}
+
+int answer = -1;
+
+using kont_tag = enum kont_enum { K1, K2, K3, K4, K5 };
+
+class vkont {
+public:
+  kont_tag tag;
+  union {
+    struct {
+      node* n;
+    } k1;
+    struct {
+      int s0;
+      node* n;
+    } k2;
+  } u;
+
+  vkont(kont_tag tag, node* n) // K1
+    : tag(tag) { u.k1.n = n; }
+  vkont(kont_tag tag, int s0, node* n) // K2
+    : tag(tag) { u.k2.s0 = s0; u.k2.n = n; }
+  vkont(kont_tag tag) // K3
+    : tag(tag) { }
+};
+
+template <typename Seq=std::deque<vkont>>
+auto sum_iterative(node* n, Seq& k) -> void {
+  while (true) {
+    if (n == nullptr) {
+      int s = 0;
+      while (true) {
+	auto& f = k.back();
+	if (f.tag == K1) {
+	  n = f.u.k1.n->right;
+	  f = vkont(K2, s, f.u.k1.n);
+	  break;
+	} else if (f.tag == K2) {
+	  s = f.u.k2.s0 + s + f.u.k2.n->value;
+	  k.pop_back();
+	} else if (f.tag == K3) {
+	  answer = s;
+	  return;
+	}
+      }
+    } else {
+      k.push_back(vkont(K1, n));
+      n = n->left;
+    }
+  }
+}
+
+template <typename Seq=std::deque<vkont>>
+auto sum_iterative(node* n) -> int {
+  Seq k({vkont(K3)});
+  sum_iterative<Seq>(n, k);
+  return answer;
 }
 
 using task = taskparts::vertex;
@@ -47,8 +105,6 @@ public:
   tpalrts_prml(tpalrts_prml_node* front, tpalrts_prml_node* back)
     : front(front), back(back) { }
 };
-
-using kont_tag = enum kont_enum { K1, K2, K3, K4, K5 };
 
 class vhbkont {
 public:
@@ -128,7 +184,7 @@ auto enclosing_frame_pointer_of(tpalrts_prml_node* n) -> vhbkont* {
   return (vhbkont*)h;
 }
 
-auto sum(node *n, std::deque<vhbkont> &k, tpalrts_prml prml) -> void;
+auto sum_heartbeat_loop(node *n, std::deque<vhbkont> &k, tpalrts_prml prml) -> void;
 
 template <typename F>
 auto create_task(const F& f) -> task* {
@@ -164,23 +220,20 @@ auto try_promote(tpalrts_prml prml) -> tpalrts_prml {
     *f_fr = vhbkont(K2, s[0] + s[1], n);
     delete kp;
     delete [] s;	    
-    sum(nullptr, kj, tpalrts_prml());
+    sum_heartbeat_loop(nullptr, kj, tpalrts_prml());
   });
   fork(create_task([=] {
     std::deque<vhbkont> k2({vhbkont(K5, s, tj)});
-    sum(n->right, k2, tpalrts_prml());
+    sum_heartbeat_loop(n->right, k2, tpalrts_prml());
   }), tj);
   prml = tpalrts_prmlist_pop_front(prml);
   *f_fr = vhbkont(K4, s, tj, kp);
   return prml;
 }
 
-constexpr
 int H = 3000; // heartbeat rate
 
-int answer = -1;
-
-auto sum(node* n, std::deque<vhbkont>& k, tpalrts_prml prml) -> void {
+auto sum_heartbeat_loop(node* n, std::deque<vhbkont>& k, tpalrts_prml prml) -> void {
   size_t counter = 0;
   auto heartbeat = [&] () -> bool {
     if (++counter >= H) {
@@ -230,45 +283,124 @@ auto sum(node* n, std::deque<vhbkont>& k, tpalrts_prml prml) -> void {
   }
 }
 
-auto sum1(node* n) -> int {
+auto sum_heartbeat(node* n) -> int {
   taskparts::launch_dag_calculus(create_task([=] {
     std::deque<vhbkont> k({vhbkont(K3)});
-    sum(n, k, tpalrts_prml());
+    sum_heartbeat_loop(n, k, tpalrts_prml());
   }));
   assert(answer != -1);
   return answer;
 }
 
+auto gen_perfect_tree(int height) -> parlay::sequence<node> {
+  auto n = 1 << height;
+  auto child = [&] (size_t nd, size_t i) -> size_t {
+    assert((i == 1) || (i == 2));
+    return 2 * nd + i;
+  };
+  auto has_children = [&] (int nd) -> bool {
+    return child(nd, 2) < n;
+  };
+  auto nodes = parlay::to_sequence(parlay::delayed_tabulate(n, [&] (size_t i) {
+    return node(1);
+  }));
+  parlay::parallel_for(0, n, [&] (size_t i) {
+    if (! has_children(i)) {
+      return;
+    }
+    auto n1 = &nodes[child(i, 1)];
+    auto n2 = &nodes[child(i, 2)];
+    assert(child(i, 1) < n);
+    assert(child(i, 2) < n);
+    new (&nodes[i]) node(1, n1, n2);
+  });
+  return nodes;
+}
+
+std::function<node*(std::deque<node>&)> default_update_leaf = [] (std::deque<node>& path) -> node* {
+  path.push_back(node(1));
+  return &path.back();
+ };
+
+auto gen_random_path_update(node* root, size_t& rng, std::deque<node>& path,
+			    std::function<node*(std::deque<node>&)> update_leaf = default_update_leaf) -> void {
+  auto hash = [] (uint64_t u) -> uint64_t {
+    uint64_t v = u * 3935559000370003845ul + 2691343689449507681ul;
+    v ^= v >> 21;
+    v ^= v << 37;
+    v ^= v >>  4;
+    v *= 4768777513237032717ul;
+    v ^= v << 20;
+    v ^= v >> 41;
+    v ^= v <<  5;
+    return v;
+  };
+  std::function<node*(node*)> ins_rec;
+  ins_rec = [&] (node* n) -> node* {
+    if (n == nullptr) {
+      return update_leaf(path);
+    }
+    rng = hash(rng);
+    auto branch = rng % 2;
+    auto child = (branch == 0) ? n->left : n->right;
+    path.push_back(node(1));
+    auto& n2 = path.back();
+    auto n3 = ins_rec(child);
+    ((branch == 0) ? n2.left : n2.right) = n3;
+    ((branch == 1) ? n2.left : n2.right) = child;
+    return &n2;
+  };
+  ins_rec(root);
+}
+
+auto gen_random_updates(node* root, size_t n, std::deque<std::deque<node>>& updates,
+			std::function<node*(std::deque<node>&)> update_leaf = default_update_leaf) -> void {
+  node* _root = root;
+  size_t rng = 1243;
+  for (size_t i = 0; i < n; i++) {
+    updates.push_back(std::deque<node>());
+    auto& u = updates.back();
+    gen_random_path_update(_root, rng, u, update_leaf);
+    _root = &u[0];
+  }
+}
+
+auto gen_linear_path(size_t length, std::deque<node>& path, size_t branch = 0) -> node* {
+  if (length == 0) {
+    return nullptr;
+  }
+  path.push_back(node(1));
+  auto n0 = &path.back();
+  auto n = n0;
+  for (size_t i = 1; i < length; i++) {
+    path.push_back(node(1));
+    auto n2 = &path.back();
+    ((branch == 0) ? n->left : n->right) = n2;
+    n = n2;
+  }
+  return n0;
+}
+
 int main(int argc, char* argv[]) {
-  auto usage = "Usage: sum_tree <n>";
-  if (argc != 2) { printf("%s\n", usage);
+  auto usage = "Usage: sum_tree <height>";
+  if (argc < 2) { printf("%s\n", usage);
   } else {
-    long n;
-    try { n = std::stol(argv[1]); }
+    long height;
+    try { height = std::stol(argv[1]); }
     catch (...) { printf("%s\n", usage); }
-    auto child = [&] (size_t nd, size_t i) -> size_t {
-      assert((i == 1) || (i == 2));
-      return 2 * nd + i;
-    };
-    auto has_children = [&] (int nd) -> bool {
-      return child(nd, 2) < n;
-    };
-    auto nodes = parlay::to_sequence(parlay::delayed_tabulate(n, [&] (size_t i) {
-      return node(1);
-    }));
-    parlay::parallel_for(0, n, [&] (size_t i) {
-      if (! has_children(i)) {
-	return;
-      }
-      auto n1 = &nodes[child(i, 1)];
-      auto n2 = &nodes[child(i, 2)];
-      assert(child(i, 1) < n);
-      assert(child(i, 2) < n);
-      new (&nodes[i]) node(1, n1, n2);
+    if (argc == 3) {
+      H = std::stol(argv[2]);
+    }
+    std::deque<std::deque<node>> updates;
+    auto nodes = gen_perfect_tree(height);
+    gen_random_updates(&nodes[0], 800, updates, [] (std::deque<node>& path) -> node* {
+      return gen_linear_path(300, path);
     });
+    auto& node0 = updates.back();
+    auto root = &node0[0];
     int s = -1;
     taskparts::benchmark([&] {
-      s = sum1(&nodes[0]);
+      s = sum_iterative(root);
     });
     printf("s=%d\n",s);
   }

@@ -49,12 +49,7 @@
  *   - TASKPARTS_RUN_UNIT_TESTS boolean (defaultly, false)
  */
 
-/* FIXMEs
- * - The "variable workload" experiment randomly crashes in XCode on my Mac Air M2.
- */
-
 /* TODOs
- * - Get benchmarking to work with logging.
  * - Find a way to make CPU frequency detection either succeed always or be optional.
  */
 
