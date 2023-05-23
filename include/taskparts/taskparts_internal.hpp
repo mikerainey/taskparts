@@ -459,6 +459,24 @@ public:
   }
 };
 
+auto _create_vertex(vertex* v,
+		   continuation_types continuation_type) -> vertex*;
+
+auto new_edge(vertex* src, vertex* dst) -> void;
+
+auto release(vertex* v) -> void;
+
+auto self() -> vertex*;
+
+auto capture_continuation(vertex* v) -> vertex*;
+
+template <typename F>
+auto create_vertex(const F& f,
+		   continuation_types continuation_type = continuation_ucontext) -> vertex* {
+  return _create_vertex(new dag_calculus_vertex(f), continuation_type);
+}
+
+
 auto test_fib_dag_calculus() -> void;
   
 } // namespace taskparts
