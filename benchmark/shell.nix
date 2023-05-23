@@ -9,7 +9,8 @@
   hwloc ? pkgs.hwloc, # can be null
   gdb ? pkgs.gdb, # can be null
   valgrind ? pkgs.valgrind, # can be null
-  parlaylib ? import ./../../parlaylib/default.nix {} # can be null
+  parlaylib ? import ./../../parlaylib/default.nix {}, # can be null
+  cmdline ? import ./../../nix-packages/pkgs/cmdline { }
 }:
 
 stdenv.mkDerivation rec {
@@ -20,8 +21,10 @@ stdenv.mkDerivation rec {
   HWLOC_CFLAGS=if hwloc == null then "" else "-DTASKPARTS_USE_HWLOC -I${hwloc.dev}/include/";
   HWLOC_LIBFLAGS=if hwloc == null then "" else "-L${hwloc.lib}/lib/ -lhwloc";
 
+  CMDLINE_CFLAGS=if cmdline == null then "" else "-I${cmdline}/include/";
+
   PARLAYLIB_FLAGS=if parlaylib == null then "" else "-I${parlaylib}/include -I${parlaylib}/share/examples -DPARLAY_TASKPARTS";
-  TASKPARTS_OPTIONAL_FLAGS="-DTASKPARTS_RUN_UNIT_TESTS=1 -DTASKPARTS_USE_VALGRIND=1 " + HWLOC_CFLAGS + " " + PARLAYLIB_FLAGS;
+  TASKPARTS_OPTIONAL_FLAGS="-DTASKPARTS_RUN_UNIT_TESTS=1 -DTASKPARTS_USE_VALGRIND=1 " + HWLOC_CFLAGS + " " + PARLAYLIB_FLAGS + " " + CMDLINE_CFLAGS;
   TASKPARTS_LINKER_FLAGS=HWLOC_LIBFLAGS;
   LD_LIBRARY_PATH="./bin";
   
