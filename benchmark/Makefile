@@ -73,13 +73,15 @@ libraries: libtaskparts.sta.so libtaskparts.log.so libtaskparts.dbg.so libtaskpa
 # Install
 # =======
 
-install:
+install: libtaskparts.sta.o libtaskparts.sta.a
 	mkdir -p $(TASKPARTS_INSTALL_PATH)/lib
 	cp bin/*.so $(TASKPARTS_INSTALL_PATH)/lib
 	ln -s $(TASKPARTS_INSTALL_PATH)/lib/libtaskparts.sta.so $(TASKPARTS_INSTALL_PATH)/lib/libtaskparts.so
 	cp bin/*.a $(TASKPARTS_INSTALL_PATH)/lib
 	ln -s $(TASKPARTS_INSTALL_PATH)/lib/libtaskparts.sta.a $(TASKPARTS_INSTALL_PATH)/lib/libtaskparts.a
 	cp -r ../include $(TASKPARTS_INSTALL_PATH)
+	mkdir -p $(TASKPARTS_INSTALL_PATH)/benchmarks
+	cp -r bin/*.sta $(TASKPARTS_INSTALL_PATH)/benchmarks
 
 .PHONY: install_folder
 install_folder:

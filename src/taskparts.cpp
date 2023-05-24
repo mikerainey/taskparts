@@ -29,32 +29,6 @@
 #include <hwloc.h>    
 #endif    
 
-/* Taskparts compiler flags:
- *   Platform (required):
- *   - TASKPARTS_POSIX boolean
- *   - TASKPARTS_DARWIN boolean
- *   Architecture (required):
- *   - TASKPARTS_ARM64 boolean
- *   - TASKPARTS_X64 boolean
- *   CPU pinning:
- *   - TASKPARTS_USE_HWLOC boolean
- *   Elastic scheduling
- *   - TASKPARTS_DISABLE_ELASTIC boolean
- *   Instrumentation:
- *   - TASKPARTS_STATS boolean
- *   - TASKPARTS_LOGGING boolean
- *   Diagnostics:
- *   - TASKPARTS_META_SCHEDULER_SERIAL_RANDOM boolean
- *   - TASKPARTS_USE_VALGRIND boolean
- *   - TASKPARTS_RUN_UNIT_TESTS boolean
- *   Work stealing:
- *   - TASKPARTS_USE_CHASELEV_DEQUE boolean
- */
-
-/* TODOs
- * - Find a way to make CPU frequency detection either succeed always or be optional.
- */
-
 #if !defined(TASKPARTS_POSIX) && !defined(TASKPARTS_DARWIN)
 #error "need to specify platform for taskparts"
 #endif
@@ -1548,8 +1522,8 @@ public:
     s.utilization = 1.0 - relative_idle;
     summaries.push_back(s);
   }
-  auto report() -> void {
-    auto outfile = stats_outfile.get();
+  auto report(std::string outfile = "") -> void {
+    outfile = (outfile == "") ? stats_outfile.get() : outfile;
     if (outfile == "") {
       return;
     }
@@ -1860,7 +1834,7 @@ public:
     base_time = cyclecounter();
     push(event(enter_launch));
   }
-  auto report() -> void {
+  auto report(std::string outfile = "") -> void {
     push(event(exit_launch));
     buffer b;
     for (auto id = 0; id != get_nb_workers(); id++) {
@@ -1929,7 +1903,7 @@ public:
   auto start() -> void { logger.start(); stats.start(); }
   auto reset() -> void { logger.reset(); stats.reset(); }
   auto capture() -> void { stats.capture(); }
-  auto report() -> void { stats.report(); logger.report(); }
+  auto report(std::string outfile = "") -> void { stats.report(outfile); logger.report(outfile); }
 };
 
 #if defined(TASKPARTS_LOGGING)
@@ -2131,6 +2105,10 @@ using default_elastic = minimal_elastic;
 template <typename Vertex_handle>
 using default_native_fork_join_deque = abp<Vertex_handle>;
 using default_elastic = minimal_elastic;
+#endif
+
+#if defined(TASKPARTS_USE_CHASELEV_DEQUE) && defined(TASKPARTS_ARM64)
+#error "chase lev deque is currently unsupported on ARM64"
 #endif
 
 default_elastic elastic;
@@ -2433,8 +2411,8 @@ auto instrumentation_capture() -> void {
 auto instrumentation_reset() -> void {
   scheduler->instrumentation.reset();
 }
-auto instrumentation_report() -> void {
-  scheduler->instrumentation.report();    
+auto instrumentation_report(std::string outfile) -> void {
+  scheduler->instrumentation.report(outfile);
 }
 auto log_program_point(int line_nb, const char* source_fname, void* ptr) -> void {
   scheduler->instrumentation.log_program_point(line_nb, source_fname, ptr);

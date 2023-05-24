@@ -5,6 +5,7 @@
 #include <cassert>
 #include <chrono>
 #include <cstdio>
+#include <string>
 #ifdef TASKPARTS_USE_VALGRIND
 // nix-build '<nixpkgs>' -A valgrind.dev
 #include <valgrind/valgrind.h>
@@ -388,7 +389,7 @@ auto instrumentation_on_exit_work() -> void;
 auto instrumentation_start() -> void;
 auto instrumentation_capture() -> void;
 auto instrumentation_reset() -> void;
-auto instrumentation_report() -> void;
+auto instrumentation_report(std::string outfile = "") -> void;
 
 auto teardown() -> void;
 
@@ -435,7 +436,11 @@ auto benchmark(const Benchmark& benchmark,
       instrumentation_start();
     }, true);
   }
-  instrumentation_report();
+  std::string outfile = "stdout";
+  if (const auto env_p = std::getenv("TASKPARTS_BENCHMARK_STATS_OUTFILE")) {
+    outfile = std::string(env_p);
+  }
+  instrumentation_report(outfile);
   teardown();
 }
 
