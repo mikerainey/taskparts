@@ -232,7 +232,7 @@ auto try_promote(tpalrts_prml prml) -> tpalrts_prml {
   return prml;
 }
 
-int H = 3000; // heartbeat rate
+int H = 8000; // heartbeat rate
 
 auto sum_heartbeat_loop(node* n, std::deque<vhbkont>& k, tpalrts_prml prml) -> void {
   size_t counter = 0;
@@ -382,6 +382,60 @@ auto gen_linear_path(size_t length, std::deque<node>& path, size_t branch = 0) -
   return n0;
 }
 
+namespace taskparts {
+template <
+typename Benchmark,
+typename Setup = std::function<void()>,
+typename Teardown = std::function<void()>,
+typename Reset = std::function<void()>>
+auto benchmark_opencilk(const Benchmark& benchmark,
+			const Setup& setup = [] {},
+			const Teardown& teardown = [] {},
+			const Reset& reset = [] {}) -> void {
+  auto warmup = [&] {
+    if (get_benchmark_warmup_secs() <= 0.0) {
+      return;
+    }
+    if (get_benchmark_verbose()) printf("======== WARMUP ========\n");
+    auto warmup_start = now();
+    while (since(warmup_start) < get_benchmark_warmup_secs()) {
+      auto st = now();
+      benchmark();
+      if (get_benchmark_verbose()) printf("warmup_run %.3f\n", since(st));
+      reset();
+    }
+    if (get_benchmark_verbose()) printf ("======== END WARMUP ========\n");
+  };
+  setup();
+  warmup();
+  for (size_t i = 0; i < get_benchmark_nb_repeat(); i++) {
+    //reset_scheduler([&] { // worker local
+
+      //}, [&] { // global
+      instrumentation_reset();
+      instrumentation_start();
+      instrumentation_on_enter_work();
+      //}, false);
+    benchmark();
+    //reset_scheduler([&] { // worker local
+      instrumentation_on_exit_work();
+      //}, [&] { // global
+      instrumentation_capture();
+      if ((i + 1) < get_benchmark_nb_repeat()) {
+        reset();
+      }
+      instrumentation_start();
+      //}, true);
+  }
+  std::string outfile = "stdout";
+  if (const auto env_p = std::getenv("TASKPARTS_BENCHMARK_STATS_OUTFILE")) {
+    outfile = std::string(env_p);
+  }
+  instrumentation_report(outfile);
+  teardown();
+}
+}
+
 int main() {
   using namespace deepsea;
   size_t height = cmdline::parse_or_default_int("height", 23);
@@ -411,6 +465,11 @@ int main() {
   d.add("heartbeat", [&] {
     taskparts::benchmark([&] {
       s = sum_heartbeat(root);
+    });
+  });
+  d.add("opencilk", [&] {
+    taskparts::benchmark_opencilk([&] {
+      s = sum_rec(root);
     });
   });
   d.dispatch_or_default("algorithm", "iterative");

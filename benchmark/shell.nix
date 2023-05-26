@@ -10,7 +10,8 @@
   gdb ? pkgs.gdb, # can be null
   valgrind ? pkgs.valgrind, # can be null
   parlaylib ? import ./../../parlaylib/default.nix {}, # can be null
-  cmdline ? import ./../../nix-packages/pkgs/cmdline { stdenv=pkgs.stdenv; fetchgit=pkgs.fetchgit; pandoc=null; texlive=null; } # can be null
+  cmdline ? import ./../../nix-packages/pkgs/cmdline { stdenv=pkgs.stdenv; fetchgit=pkgs.fetchgit; pandoc=null; texlive=null; }, # can be null
+  opencilk ? null
 }:
 
 stdenv.mkDerivation rec {
@@ -31,6 +32,8 @@ stdenv.mkDerivation rec {
   TASKPARTS_BENCHMARK_WARMUP_SECS=0;
   
   LD_LIBRARY_PATH="./bin";
+
+  OPENCILK_CXX=if opencilk == null then "" else "${opencilk}/bin/clang++";
   
   shellHook = if hwloc == null then "" else ''
     export NUM_SYSTEM_CORES=$( ${hwloc}/bin/hwloc-ls|grep Core|wc -l )
