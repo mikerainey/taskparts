@@ -1,6 +1,6 @@
 #pragma once
 
-#include <taskparts/taskparts.hpp>
+#include "benchmark.hpp"
 #include "fib_serial.hpp"
 
 int64_t fib_serial_threshold = 15;
@@ -10,7 +10,7 @@ auto fib_nativeforkjoin(int64_t n) -> int64_t {
     return fib_serial(n);
   } else {
     int64_t r1, r2;
-    taskparts::fork2join([&] {
+    parlay::par_do([&] {
       r1 = fib_nativeforkjoin(n-1);
     }, [&] {
       r2 = fib_nativeforkjoin(n-2);

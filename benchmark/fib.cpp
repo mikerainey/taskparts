@@ -9,7 +9,11 @@ int main(int argc, char* argv[]) {
     long n;
     try { n = std::stol(argv[1]); }
     catch (...) { printf("%s\n", usage); }
-    printf("fib(%ld) = %ld\n", n, fib_nativeforkjoin(n));
+    long r;
+    taskparts::benchmark([&] {
+      r = fib_nativeforkjoin(n);
+    });
+    printf("fib(%ld) = %ld\n", n, r);
   }
   return 0;
 }

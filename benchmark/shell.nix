@@ -22,7 +22,7 @@ stdenv.mkDerivation rec {
   HWLOC_CFLAGS=if hwloc == null then "" else "-DTASKPARTS_USE_HWLOC -I${hwloc.dev}/include/";
   HWLOC_LIBFLAGS=if hwloc == null then "" else "-L${hwloc.lib}/lib/ -lhwloc";
 
-  PARLAYLIB_CFLAGS=if parlaylib == null then "" else "-I${parlaylib}/include -I${parlaylib}/share/examples -DPARLAY_TASKPARTS";
+  PARLAYLIB_CFLAGS=if parlaylib == null then "" else "-I${parlaylib}/include -I${parlaylib}/share/examples";
   
   CMDLINE_CFLAGS=if cmdline == null then "" else "-I${cmdline}/include/";
 

@@ -9,6 +9,7 @@
 #include <parlay/internal/get_time.h>
 
 #include "suffix_array.h"
+#include "benchmark.hpp"
 
 // **************************************************************
 // Driver code

@@ -3,9 +3,9 @@
 #include <functional>
 #include <atomic>
 #include <cassert>
-#include <chrono>
 #include <cstdio>
 #include <string>
+#include <chrono>
 #ifdef TASKPARTS_USE_VALGRIND
 // nix-build '<nixpkgs>' -A valgrind.dev
 #include <valgrind/valgrind.h>
@@ -20,6 +20,26 @@
 
 namespace taskparts {
 
+/*---------------------------------------------------------------------*/
+/* System clock */
+
+static inline
+auto now() -> std::chrono::time_point<std::chrono::steady_clock> {
+  return std::chrono::steady_clock::now();
+}
+
+static inline
+auto diff(std::chrono::time_point<std::chrono::steady_clock> start,
+          std::chrono::time_point<std::chrono::steady_clock> finish) -> double {
+  std::chrono::duration<double> elapsed = finish - start;
+  return elapsed.count();
+}
+
+static inline
+auto since(std::chrono::time_point<std::chrono::steady_clock> start) -> double {
+  return diff(start, now());
+}
+  
 /*---------------------------------------------------------------------*/
 /* Platform configuation */
  
@@ -297,29 +317,6 @@ auto parallel_notify(Vertex_handle v) -> void {
   });
 }
 
-/*---------------------------------------------------------------------*/
-/* System clock */
-
-static inline
-auto now() -> std::chrono::time_point<std::chrono::steady_clock> {
-  return std::chrono::steady_clock::now();
-}
-
-static inline
-auto diff(std::chrono::time_point<std::chrono::steady_clock> start,
-          std::chrono::time_point<std::chrono::steady_clock> finish) -> double {
-  std::chrono::duration<double> elapsed = finish - start;
-  return elapsed.count();
-}
-
-static inline
-auto since(std::chrono::time_point<std::chrono::steady_clock> start) -> double {
-  return diff(start, now());
-}
-
-/*---------------------------------------------------------------------*/
-/* Benchmarking */
-
 auto tick() -> void;
 
 template <typename Local_reset, typename Global_reset>
@@ -392,57 +389,6 @@ auto instrumentation_reset() -> void;
 auto instrumentation_report(std::string outfile = "") -> void;
 
 auto teardown() -> void;
-
-template <
-typename Benchmark,
-typename Setup = std::function<void()>,
-typename Teardown = std::function<void()>,
-typename Reset = std::function<void()>>
-auto benchmark(const Benchmark& benchmark,
-               const Setup& setup = [] {},
-               const Teardown& teardown = [] {},
-               const Reset& reset = [] {}) -> void {
-  auto warmup = [&] {
-    if (get_benchmark_warmup_secs() <= 0.0) {
-      return;
-    }
-    if (get_benchmark_verbose()) printf("======== WARMUP ========\n");
-    auto warmup_start = now();
-    while (since(warmup_start) < get_benchmark_warmup_secs()) {
-      auto st = now();
-      benchmark();
-      if (get_benchmark_verbose()) printf("warmup_run %.3f\n", since(st));
-      reset();
-    }
-    if (get_benchmark_verbose()) printf ("======== END WARMUP ========\n");
-  };
-  setup();
-  warmup();
-  for (size_t i = 0; i < get_benchmark_nb_repeat(); i++) {
-    reset_scheduler([&] { // worker local
-      instrumentation_on_enter_work();
-    }, [&] { // global
-      instrumentation_reset();
-      instrumentation_start();
-    }, false);
-    benchmark();
-    reset_scheduler([&] { // worker local
-      instrumentation_on_exit_work();
-    }, [&] { // global
-      instrumentation_capture();
-      if ((i + 1) < get_benchmark_nb_repeat()) {
-        reset();
-      }
-      instrumentation_start();
-    }, true);
-  }
-  std::string outfile = "stdout";
-  if (const auto env_p = std::getenv("TASKPARTS_BENCHMARK_STATS_OUTFILE")) {
-    outfile = std::string(env_p);
-  }
-  instrumentation_report(outfile);
-  teardown();
-}
 
 auto print_taskparts_help_message() -> void;
 auto report_taskparts_configuration() -> void;
