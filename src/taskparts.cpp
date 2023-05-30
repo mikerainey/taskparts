@@ -488,6 +488,8 @@ auto new_continuation(native_continuation& c, thunk f) -> void* {
 
 #if defined(TASKPARTS_X64)
 
+size_t x64_stack_szb = 8388608l;
+
 auto new_continuation(native_continuation& c, thunk f) -> void* {
   c.f = f;
   native_continuation* cp;
@@ -498,8 +500,7 @@ auto new_continuation(native_continuation& c, thunk f) -> void* {
   c.action = continuation_finish;
   static constexpr
   size_t thread_stack_alignb = 16L;
-  static constexpr
-  size_t thread_stack_szb = thread_stack_alignb * (1<<12);
+  size_t thread_stack_szb = x64_stack_szb; //thread_stack_alignb * (1<<12);
   static constexpr
   int _X86_64_SP_OFFSET = 6;
   char* stack = (char*)std::malloc(thread_stack_szb);
