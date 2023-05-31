@@ -105,7 +105,7 @@ public:
     static constexpr
     size_t thread_stack_alignb = 16L;
     static constexpr
-    size_t thread_stack_szb = 8388608; // thread_stack_alignb * (1<<12);
+    size_t thread_stack_szb = thread_stack_alignb * (1<<13);
     static constexpr
     int _X86_64_SP_OFFSET = 6;
     char* stack = (char*)malloc(thread_stack_szb);
