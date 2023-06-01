@@ -7,6 +7,7 @@
 
 #include "graph_color.h"
 #include "helper/graph_utils.h"
+#include "benchmark.hpp"
 
 // **************************************************************
 // Driver code
