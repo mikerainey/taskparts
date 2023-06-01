@@ -1366,10 +1366,11 @@ public:
   auto on_exit_suspend() -> void { }
   auto on_teardown_worker() -> void { }
   auto on_teardown_scheduler() -> void { }
+  auto log_program_point(int, const char*, void*) -> void { }
   auto start() -> void { }
   auto reset() -> void { }
   auto capture() -> void { }
-  auto report() -> void { }
+  auto report(std::string) -> void { }
 };
 
 environment_variable<std::string> stats_outfile("TASKPARTS_STATS_OUTFILE",
