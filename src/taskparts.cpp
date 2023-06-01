@@ -1,3 +1,4 @@
+#include <cstdio>
 #include <taskparts/taskparts.hpp>
 
 #include <cstdint>
@@ -1354,8 +1355,58 @@ using default_meta_scheduler = serial_random_meta_scheduler;
 /*---------------------------------------------------------------------*/
 /* Native fork join */
 
+auto output_before(FILE* f) -> void {
+  fprintf(f, "{");
+}
+auto output_after(FILE* f, bool not_last) {
+  if (not_last) {
+    fprintf(f, ",\n");
+  } else {
+    fprintf(f, "}");
+  }
+}
+auto output_uint64_value(FILE* f, const char* n, uint64_t v, bool not_last = true) {
+  fprintf(f, "\"%s\": %lu", n, (unsigned long)v);
+  output_after(f, not_last);
+}
+auto output_double_value(FILE* f, const char* n, double v, bool not_last = true) {
+  fprintf(f, "\"%s\": %.3f", n, v);
+  output_after(f, not_last);
+}
+auto output_rusage_tv(FILE* f, const char* n, struct timeval before, struct timeval after,
+		      bool not_last = true) {
+  auto double_of_tv = [] (struct timeval tv) {
+    return ((double) tv.tv_sec) + ((double) tv.tv_usec)/1000000.;
+  };
+  output_double_value(f, n, double_of_tv(after) - double_of_tv(before), not_last);
+}
+
+class system_stats {
+public:
+  double exectime;
+  struct rusage rusage_before;
+  struct rusage rusage_after;
+  auto report(FILE* f, bool not_last = true) -> void {
+#ifndef NDEBUG
+    output_uint64_value(f, "cpufreq_khz", cpu_frequency_khz.get());
+#endif
+    output_double_value(f, "exectime", exectime);
+    output_rusage_tv(f, "usertime", rusage_before.ru_utime, rusage_after.ru_utime);
+    output_rusage_tv(f, "systime", rusage_before.ru_stime, rusage_after.ru_stime);
+    output_uint64_value(f, "nvcsw", rusage_after.ru_nvcsw - rusage_before.ru_nvcsw);
+    output_uint64_value(f, "nivcsw", rusage_after.ru_nivcsw - rusage_before.ru_nivcsw);
+    output_uint64_value(f, "maxrss", rusage_after.ru_maxrss);
+    output_uint64_value(f, "nsignals", rusage_after.ru_nsignals - rusage_before.ru_nsignals, not_last);
+  }
+};
+
 class minimal_work_stealing_instrumentation {
 public:
+  
+  std::vector<system_stats> captures;
+  std::chrono::time_point<std::chrono::steady_clock> start_time;
+  struct rusage start_rusage;
+  
   auto on_steal() -> void { }
   auto on_create_vertex() -> void { }
   auto on_enter_acquire() -> void { }
@@ -1368,10 +1419,36 @@ public:
   auto on_teardown_worker() -> void { }
   auto on_teardown_scheduler() -> void { }
   auto log_program_point(int, const char*, void*) -> void { }
-  auto start() -> void { }
-  auto reset() -> void { }
-  auto capture() -> void { }
-  auto report(std::string) -> void { }
+  auto start() -> void { start_time = now(); getrusage(RUSAGE_SELF, &start_rusage); }
+  auto reset() -> void { start(); }
+  auto capture() -> void {
+    system_stats s;
+    s.exectime = since(start_time);
+    getrusage(RUSAGE_SELF, &(s.rusage_after));
+    s.rusage_before = start_rusage;
+    captures.push_back(s);
+  }
+  auto report(std::string outfile) -> void {
+    if (outfile == "") {
+      return;
+    }
+    FILE* f = (outfile == "stdout") ? stdout : fopen(outfile.c_str(), "w");
+    fprintf(f, "[");
+    size_t i = 0;
+    for (auto s : captures) {
+      output_before(f);
+      s.report(f, false);
+      if ((i + 1) != captures.size()) {
+	fprintf(f, ",\n");
+      }
+      i++;
+    }
+    fprintf(f, "]\n");
+    if (f != stdout) {
+      fclose(f);
+    }
+    captures.clear();
+  }
 };
 
 environment_variable<std::string> stats_outfile("TASKPARTS_STATS_OUTFILE",
@@ -1392,9 +1469,7 @@ public:
     nb_counters
   };
   using summary = struct summary_struct {
-    double exectime;
-    struct rusage rusage_before;
-    struct rusage rusage_after;
+    system_stats sys;
     uint64_t total_work_time;
     uint64_t total_idle_time;
     uint64_t total_suspend_time;
@@ -1504,9 +1579,9 @@ public:
   }
   auto capture() -> void {
     summary s;
-    s.exectime = since(enter_launch_time);
-    getrusage(RUSAGE_SELF, &(s.rusage_after));
-    s.rusage_before = ru_launch_time;
+    s.sys.exectime = since(enter_launch_time);
+    getrusage(RUSAGE_SELF, &(s.sys.rusage_after));
+    s.sys.rusage_before = ru_launch_time;
     for (int c = 0; c < nb_counters; c++) {
       uint64_t counter_value = 0;
       for (size_t i = 0; i < get_nb_workers(); ++i) {
@@ -1514,7 +1589,7 @@ public:
       }
       s.counters[c] = counter_value;
     }
-    double total_time = s.exectime * get_nb_workers();
+    double total_time = s.sys.exectime * get_nb_workers();
     s.total_work_time = 0;
     s.total_idle_time = 0;
     s.total_suspend_time = 0;
@@ -1535,57 +1610,23 @@ public:
       return;
     }
     FILE* f = (outfile == "stdout") ? stdout : fopen(outfile.c_str(), "w");
-    auto output_before = [&] {
-      fprintf(f, "{");
-    };
-    auto output_after = [&] (bool not_last) {
-      if (not_last) {
-        fprintf(f, ",\n");
-      } else {
-        fprintf(f, "}");
-      }
-    };
-    auto output_uint64_value = [&] (const char* n, uint64_t v, bool not_last = true) {
-      fprintf(f, "\"%s\": %lu", n, (unsigned long)v);
-      output_after(not_last);
-    };
-    auto output_double_value = [&] (const char* n, double v, bool not_last = true) {
-      fprintf(f, "\"%s\": %.3f", n, v);
-      output_after(not_last);
-    };
-    auto output_rusage_tv = [&] (const char* n, struct timeval before, struct timeval after,
-                                 bool not_last = true) {
-      auto double_of_tv = [] (struct timeval tv) {
-        return ((double) tv.tv_sec) + ((double) tv.tv_usec)/1000000.;
-      };
-      output_double_value(n, double_of_tv(after) - double_of_tv(before), not_last);
-    };
     auto output_cycles_in_seconds = [&] (const char* n, uint64_t cs, bool not_last = true) {
       double s = seconds_of_cycles(cs);
-      output_double_value(n, s, not_last);
+      output_double_value(f, n, s, not_last);
     };
     fprintf(f, "[");
     size_t i = 0;
     for (auto s : summaries) {
-      output_before();
+      output_before(f);
+      s.sys.report(f);
       for (int c = 0; c < nb_counters; c++) {
-        output_uint64_value(name_of((counter_types)c), s.counters[c]);
+        output_uint64_value(f, name_of((counter_types)c), s.counters[c]);
       }
-#ifndef NDEBUG
-      output_uint64_value("cpufreq_khz", cpu_frequency_khz.get());
-#endif
-      output_double_value("exectime", s.exectime);
-      output_rusage_tv("usertime", s.rusage_before.ru_utime, s.rusage_after.ru_utime);
-      output_rusage_tv("systime", s.rusage_before.ru_stime, s.rusage_after.ru_stime);
-      output_uint64_value("nvcsw", s.rusage_after.ru_nvcsw - s.rusage_before.ru_nvcsw);
-      output_uint64_value("nivcsw", s.rusage_after.ru_nivcsw - s.rusage_before.ru_nivcsw);
-      output_uint64_value("maxrss", s.rusage_after.ru_maxrss);
-      output_uint64_value("nsignals", s.rusage_after.ru_nsignals - s.rusage_before.ru_nsignals);
       output_cycles_in_seconds("total_work_time", s.total_work_time);
       output_cycles_in_seconds("total_idle_time", s.total_idle_time);
       output_cycles_in_seconds("total_suspend_time", s.total_suspend_time);
-      output_double_value("total_time", s.total_time);
-      output_double_value("utilization", s.utilization, false);
+      output_double_value(f, "total_time", s.total_time);
+      output_double_value(f, "utilization", s.utilization, false);
       if (i + 1 != summaries.size()) {
         fprintf(f, ",");
       }
