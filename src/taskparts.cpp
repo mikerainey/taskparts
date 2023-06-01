@@ -1781,6 +1781,7 @@ public:
   
   size_t nb_output = 0;
   perworker_array<buffer> buffers;
+  std::deque<buffer> captures;
   bool tracking_kind[nb_kinds];
   
   work_stealing_logger() {
@@ -1834,37 +1835,46 @@ public:
     base_time = cyclecounter();
     push(event(enter_launch));
   }
-  auto report(std::string outfile = "") -> void {
-    push(event(exit_launch));
+  auto merge_buffers() -> buffer {
     buffer b;
     for (auto id = 0; id != get_nb_workers(); id++) {
-      buffer& b_id = buffers[id];
-      for (auto e : b_id) {
+      for (auto e : buffers[id]) {
         b.push_back(e);
       }
     }
-    std::stable_sort(b.begin(), b.end(), [] (const event& e1, const event& e2) {
-      return e1.cycle_count < e2.cycle_count;
-    });
-    auto path = logging_outpath.get();
-    if (path == "") {
-      return;
+    return b;
+  }
+  auto capture() -> void {
+    captures.push_back(merge_buffers());
+  }
+  auto report(std::string outfile = "") -> void {
+    push(event(exit_launch));
+    capture();
+    for (auto& b : captures) {
+      std::stable_sort(b.begin(), b.end(), [] (const event& e1, const event& e2) {
+	return e1.cycle_count < e2.cycle_count;
+      });
+      auto path = logging_outpath.get();
+      if (path == "") {
+	return;
+      }
+      struct stat st = {0};
+      if (stat(path.c_str(), &st) == -1) {
+	mkdir(path.c_str(), 0700);
+      }
+      auto n = nb_output++;
+      auto json_fname = path + "/" + "log" + std::to_string(n) + ".json";
+      FILE* f = fopen(json_fname.c_str(), "w");
+      fprintf(f, "{ \"traceEvents\": [\n");
+      size_t i = b.size();
+      for (auto e : b) {
+	e.print_json(f, (--i == 0));
+      }
+      fprintf(f, "],\n");
+      fprintf(f, "\"displayTimeUnit\": \"ns\"}\n");
+      fclose(f);
     }
-    struct stat st = {0};
-    if (stat(path.c_str(), &st) == -1) {
-      mkdir(path.c_str(), 0700);
-    }
-    auto n = nb_output++;
-    auto json_fname = path + "/" + "log" + std::to_string(n) + ".json";
-    FILE* f = fopen(json_fname.c_str(), "w");
-    fprintf(f, "{ \"traceEvents\": [\n");
-    size_t i = b.size();
-    for (auto e : b) {
-      e.print_json(f, (--i == 0));
-    }
-    fprintf(f, "],\n");
-    fprintf(f, "\"displayTimeUnit\": \"ns\"}\n");
-    fclose(f);
+    captures.clear();
   }
 };
 
