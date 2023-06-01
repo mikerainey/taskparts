@@ -7,6 +7,7 @@
 #include <parlay/internal/get_time.h>
 
 #include "quickhull.h"
+#include "benchmark.hpp"
 
 // **************************************************************
 // Driver code
