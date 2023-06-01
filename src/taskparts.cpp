@@ -1816,9 +1816,7 @@ public:
   auto on_teardown_worker() -> void { log_event(worker_exit); }
   auto on_teardown_scheduler() -> void { log_event(initiate_teardown); }
   auto on_enter_suspend() -> void { log_event(enter_suspend); }
-  auto on_exit_suspend() -> void {
-    log_event(exit_suspend);
-  }
+  auto on_exit_suspend() -> void { log_event(exit_suspend); }
   auto log_program_point(int line_nb, const char* source_fname, void* ptr) -> void {
     program_point_type ppt = { .line_nb = line_nb, .source_fname = source_fname, .ptr = ptr };
     event e(program_point);
@@ -1889,12 +1887,8 @@ public:
   Logger logger;
   auto on_steal() -> void { stats.on_steal(); }
   auto on_create_vertex() -> void { stats.on_create_vertex(); }
-  auto on_enter_acquire() -> void {
-    logger.on_enter_acquire(); stats.on_enter_acquire();
-  }
-  auto on_exit_acquire() -> void {
-    stats.on_exit_acquire(); logger.on_exit_acquire();
-  }
+  auto on_enter_acquire() -> void { logger.on_enter_acquire(); stats.on_enter_acquire(); }
+  auto on_exit_acquire() -> void { stats.on_exit_acquire(); logger.on_exit_acquire(); }
   auto on_enter_work() -> void { stats.on_enter_work(); }
   auto on_exit_work() -> void { stats.on_exit_work(); }
   auto on_enter_suspend() -> void {
@@ -1912,7 +1906,7 @@ public:
   }
   auto start() -> void { logger.start(); stats.start(); }
   auto reset() -> void { logger.reset(); stats.reset(); }
-  auto capture() -> void { stats.capture(); }
+  auto capture() -> void { stats.capture(); logger.capture(); }
   auto report(std::string outfile = "") -> void { stats.report(outfile); logger.report(outfile); }
 };
 
