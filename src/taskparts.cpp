@@ -1364,6 +1364,7 @@ public:
   auto on_exit_work() -> void { }
   auto on_enter_suspend() -> void { }
   auto on_exit_suspend() -> void { }
+  auto on_surplus_transition() -> void { }
   auto on_teardown_worker() -> void { }
   auto on_teardown_scheduler() -> void { }
   auto log_program_point(int, const char*, void*) -> void { }
@@ -1387,6 +1388,7 @@ public:
     nb_vertices,
     nb_steals,
     nb_suspends,
+    nb_surplus_transitions,
     nb_counters
   };
   using summary = struct summary_struct {
@@ -1412,10 +1414,11 @@ public:
   static
   auto name_of(counter_types c) -> const char* {
     switch (c) {
-      case nb_steals:          return "nb_steals";
-      case nb_vertices:        return "nb_vertices";
-      case nb_suspends:        return "nb_suspends";
-      default:                 return "unknown_counter";
+      case nb_steals:              return "nb_steals";
+      case nb_vertices:            return "nb_vertices";
+      case nb_suspends:            return "nb_suspends";
+      case nb_surplus_transitions: return "nb_surplus_transitions";
+      default:                     return "unknown_counter";
     }
   }
   
@@ -1473,6 +1476,10 @@ public:
   auto on_exit_suspend() -> void {
     auto& t = all_timers.mine();
     t.total_suspend_time += since(t.start_suspend);
+  }
+  inline
+  auto on_surplus_transition() -> void {
+    increment(nb_surplus_transitions);
   }
   auto on_teardown_worker() -> void { }
   auto on_teardown_scheduler() -> void { }
@@ -1899,6 +1906,7 @@ public:
     stats.on_exit_suspend(); stats.on_enter_acquire();
     logger.on_exit_suspend();
   }
+  auto on_surplus_transition() -> void { stats.on_surplus_transition(); }
   auto on_teardown_worker() -> void { logger.on_teardown_worker(); stats.on_exit_work(); }
   auto on_teardown_scheduler() -> void { logger.on_teardown_scheduler(); }
   auto log_program_point(int line_nb, const char* source_fname, void* ptr) -> void {
@@ -2131,7 +2139,8 @@ public:
   auto empty() -> bool {
     return size() == 0;
   }
-  auto push(Vertex_handle v) -> void { { assert(v != nullptr); }
+  template <typename Instrumentation>
+  auto push(Vertex_handle v, Instrumentation& instrumentation) -> void { { assert(v != nullptr); }
     if (bottom == nullptr) {
       bottom = v;
       return;
@@ -2139,7 +2148,7 @@ public:
     auto v2 = bottom;
     bottom = v;
     if (deque.push(v2) == deque_surplus_up) {
-      elastic.incr_surplus();
+      elastic.incr_surplus(); { instrumentation.on_surplus_transition(); }
     }
   }
   auto pop() -> Vertex_handle {
@@ -2214,7 +2223,7 @@ public:
         auto victim = random_other_worker();
         auto v = deques[victim].steal(deques, victim);
         if (v != nullptr) { { assert(get_action(v->continuation) == continuation_initialize); }
-          deques.mine().push(v); { instrumentation.on_steal(); }
+          deques.mine().push(v, instrumentation); { instrumentation.on_steal(); }
           return;
         }
         if (++nb_attempts == (8 * get_nb_workers())) {
@@ -2284,7 +2293,7 @@ public:
     // exit point of parent task if v2 was not stolen
   }
   auto schedule(vertex* v) -> void { { assert(v->edges.incounter.load() == 0); }
-    deques.mine().push(v);
+    deques.mine().push(v, instrumentation);
   }
   auto enter() -> void {
     currents.mine()->run();

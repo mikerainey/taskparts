@@ -3,20 +3,22 @@
 
 #include <parlay/primitives.h>
 #include <parlay/sequence.h>
+#include <parlay/internal/get_time.h>
 
-#include "triangle_count.h"
+#include "BFS.h"
 #include "helper/graph_utils.h"
 #include "benchmark.hpp"
 
 // **************************************************************
 // Driver
 // **************************************************************
-int main(int argc, char* argv[]) {
-  using vertex = int;
-  using graph = parlay::sequence<parlay::sequence<vertex>>;
-  using utils = graph_utils<vertex>;
+using vertex = int;
+using nested_seq = parlay::sequence<parlay::sequence<vertex>>;
+using graph = nested_seq;
+using utils = graph_utils<vertex>;
 
-  auto usage = "Usage: triangle_count <n> || triangle_count <filename>";
+int main(int argc, char* argv[]) {
+  auto usage = "Usage: BFS <n> || BFS <filename>";
   if (argc != 2) std::cout << usage << std::endl;
   else {
     long n = 0;
@@ -27,13 +29,15 @@ int main(int argc, char* argv[]) {
       G = utils::read_symmetric_graph_from_file(argv[1]);
       n = G.size();
     } else {
-      G = utils::rmat_symmetric_graph(n, 20*n);
+      G = utils::rmat_graph(n, 20*n);
     }
     utils::print_graph_stats(G);
-    long count;
+    nested_seq result;
     taskparts::benchmark([&] {
-      count = triangle_count(G);
+      result = BFS(1, G);
     });
-    std::cout << "number of triangles: " << count << std::endl;
+
+    long visited = parlay::reduce(parlay::map(result, parlay::size_of()));
+    std::cout << "num vertices visited: " << visited << std::endl;
   }
 }
