@@ -91,6 +91,16 @@ SERIAL_CFLAGS=-DPARLAY_SEQUENTIAL $(TASKPARTS_OPTIONAL_FLAGS)
 %.serial_dbg: %.cpp $(INCLUDE_FILES) install_folder
 	$(CXX) $(SERIAL_CFLAGS) $(TASKPARTS_DBG_FLAGS) -o $(TASKPARTS_BINARY_PATH)/$@ $< 
 
+# Homegrown (parlay)
+# ---------
+
+HOMEGROWN_CFLAGS=-DPARLAY_HOMEGROWN $(TASKPARTS_OPTIONAL_FLAGS)
+
+%.homegrown_opt: %.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(HOMEGROWN_CFLAGS) $(TASKPARTS_OPT_FLAGS) -o $(TASKPARTS_BINARY_PATH)/$@ $< 
+%.homegrown_dbg: %.cpp $(INCLUDE_FILES) install_folder
+	$(CXX) $(HOMEGROWN_CFLAGS) $(TASKPARTS_DBG_FLAGS) -o $(TASKPARTS_BINARY_PATH)/$@ $< 
+
 # OpenCilk
 # --------
 

@@ -1,6 +1,6 @@
 #pragma once
 
-#if defined(PARLAY_SEQUENTIAL)
+#if defined(PARLAY_SEQUENTIAL) || defined(PARLAY_HOMEGROWN)
 #include <functional>
 #include <cstdio>
 #include <chrono>
