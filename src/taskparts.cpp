@@ -2341,6 +2341,18 @@ public:
     throw_to(worker_continuation());
   }
   auto initialize_fork(vertex* parent, vertex* child1, vertex* child2) -> void {
+    vertex* vs[] = {child2, child1}; { assert(parent->edges.incounter.load() == 0); }
+    for (auto v : vs) {
+      v->edges.incounter.store(0);
+      v->edges.outset = parent;
+    }
+    parent->edges.incounter.store(2);
+    for (auto v : vs) {
+      schedule(v);
+    }
+  } // unoptimized code shown below
+  /*
+  auto initialize_fork(vertex* parent, vertex* child1, vertex* child2) -> void {
     vertex* vs[] = {child2, child1};
     for (auto v : vs) {
       initialize_vertex(v);
@@ -2350,8 +2362,8 @@ public:
       release(v);
     } { assert(child1->edges.incounter.load() == 0); }
   }
+  */
   auto initialize_vertex(vertex* v) -> void {
-    // TODO: introduce optimization that eliminates the need for the unnecessary atomic fetch and add in new_counter()
     new_incounter(v); { instrumentation.on_create_vertex(); }
     new_outset(v);
     increment(v);
@@ -2379,10 +2391,10 @@ public:
     };
     { assert_all_deques_empty(); assert(get_my_id() == 0); assert(sink_vertex.load() == nullptr); }
     auto f = [] { };
-    thunk_vertex<decltype(f)> sink(f);
+    thunk_vertex<decltype(f)> sink(std::forward<decltype(f)>(f));
     sink_vertex.store(&sink);
     auto p = [] { elastic.prepare_end_of_phase(); };
-    thunk_vertex<decltype(p)> unsuspend_worker0(p);
+    thunk_vertex<decltype(p)> unsuspend_worker0(std::forward<decltype(p)>(p));
     vertex* vertices[] = {&sink, &unsuspend_worker0, &source};
     for (auto v : vertices) {
       initialize_vertex(v);

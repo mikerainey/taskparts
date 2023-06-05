@@ -240,7 +240,8 @@ public:
   alignas(cache_line_szb)
   Thunk body;
 
-  native_fork_join_thunk_vertex(const Thunk& body) : native_fork_join_vertex(), body(body) { }
+  native_fork_join_thunk_vertex(Thunk&& body)
+    : native_fork_join_vertex(), body(std::forward<Thunk>(body)) { }
   auto run() -> void {
     body();
   }
@@ -255,22 +256,22 @@ extern
 auto __fork2join(native_fork_join_vertex& v1, native_fork_join_vertex& v2) -> void;
 
 template <typename F>
-auto launch(const F& f) -> void {
-  native_fork_join_thunk_vertex<F> v(f);
+auto launch(F&& f) -> void {
+  native_fork_join_thunk_vertex<F> v(std::forward<F>(f));
   __launch(v);
 }
 
 template <typename F1, typename F2>
-auto _fork2join(const F1& f1, const F2& f2) -> void {
-  native_fork_join_thunk_vertex<F1> v1(f1);
-  native_fork_join_thunk_vertex<F2> v2(f2);
+auto _fork2join(F1&& f1, F2&& f2) -> void {
+  native_fork_join_thunk_vertex<F1> v1(std::forward<F1>(f1));
+  native_fork_join_thunk_vertex<F2> v2(std::forward<F2>(f2));
   __fork2join(v1, v2);
 }
 
 template <typename F1, typename F2>
-auto fork2join(const F1& f1, const F2& f2) -> void {
+auto fork2join(F1&& f1, F2&& f2) -> void {
   if (in_scheduler) {
-    _fork2join(f1, f2);
+    _fork2join(std::forward<F1>(f1), std::forward<F2>(f2));
   } else { { assert(get_my_id() == 0); } // need to launch a new scheduler instance
     in_scheduler = true;   
     launch([&] { fork2join(f1, f2); });
