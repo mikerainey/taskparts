@@ -1,8 +1,8 @@
 # Creates a shell environment prepared for debugging taskparts.
 #
-# By default, the environment uses clang/llvm instead of GCC. To
-# use GCC instead, use the following:
-#   $ nix-shell --arg stdenv '(import <nixpkgs> {}).stdenv'
+# By default, the environment uses GCC instead of clang/llvm. To
+# use clang/llvm instead, use the following:
+#   $ nix-shell --arg stdenv '(import <nixpkgs> {}).clangStdenv'
 
 { pkgs   ? import <nixpkgs> {},
   stdenv ? pkgs.stdenv,
@@ -11,6 +11,7 @@
   valgrind ? pkgs.valgrind, # can be null
   parlaylib ? import ./../../parlaylib/default.nix {}, # can be null
   cmdline ? import ./../../nix-packages/pkgs/cmdline { stdenv=pkgs.stdenv; fetchgit=pkgs.fetchgit; pandoc=null; texlive=null; }, # can be null
+  jemalloc ? null, # pkgs.jemalloc
   opencilk ? null
 }:
 
@@ -27,9 +28,11 @@ stdenv.mkDerivation rec {
   CMDLINE_CFLAGS=if cmdline == null then "" else "-I${cmdline}/include/";
 
   TASKPARTS_DEBUG_CFLAGS=pkgs.lib.concatMapStringsSep " " (x: "-DTASKPARTS_" + x + "=1") ["RUN_UNIT_TESTS" "USE_VALGRIND"];
-  TASKPARTS_OPTIONAL_FLAGS=pkgs.lib.concatStringsSep " " [TASKPARTS_DEBUG_CFLAGS HWLOC_CFLAGS PARLAYLIB_CFLAGS CMDLINE_CFLAGS];
+  TASKPARTS_OPTIONAL_FLAGS=pkgs.lib.concatStringsSep " " [HWLOC_CFLAGS PARLAYLIB_CFLAGS CMDLINE_CFLAGS];
   TASKPARTS_OPTIONAL_LINKER_FLAGS=HWLOC_LIBFLAGS;
   TASKPARTS_BENCHMARK_WARMUP_SECS=0;
+
+  JEMALLOC_PATH=if jemalloc == null then "" else "${jemalloc}";
   
   LD_LIBRARY_PATH="./bin";
 
