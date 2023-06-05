@@ -2342,7 +2342,7 @@ public:
   }
   auto initialize_fork(vertex* parent, vertex* child1, vertex* child2) -> void {
     vertex* vs[] = {child2, child1}; { assert(parent->edges.incounter.load() == 0); }
-    for (auto v : vs) {
+    for (auto v : vs) { { instrumentation.on_create_vertex(); }
       v->edges.incounter.store(0);
       v->edges.outset = parent;
     }
