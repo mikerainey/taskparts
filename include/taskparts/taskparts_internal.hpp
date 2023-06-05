@@ -263,8 +263,10 @@ auto launch(F&& f) -> void {
 
 template <typename F1, typename F2>
 auto _fork2join(F1&& f1, F2&& f2) -> void {
-  native_fork_join_thunk_vertex<F1> v1(std::forward<F1>(f1));
-  native_fork_join_thunk_vertex<F2> v2(std::forward<F2>(f2));
+  auto execute_f1 = [&] { std::forward<F1>(f1)(); };
+  auto execute_f2 = [&] { std::forward<F2>(f2)(); };
+  native_fork_join_thunk_vertex<decltype(execute_f1)> v1(std::forward<decltype(execute_f1)>(execute_f1));
+  native_fork_join_thunk_vertex<decltype(execute_f2)> v2(std::forward<decltype(execute_f2)>(execute_f2));
   __fork2join(v1, v2);
 }
 
