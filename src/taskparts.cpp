@@ -1,4 +1,3 @@
-#include <cstdio>
 #include <taskparts/taskparts.hpp>
 
 #include <cstdint>
@@ -6,7 +5,6 @@
 #include <memory>
 #include <new>
 #include <iostream>
-#include <cstdarg>
 #include <string>
 #include <sys/resource.h>
 #if defined(TASKPARTS_DARWIN)
@@ -21,9 +19,7 @@
 #include <unordered_map>
 #include <array>
 
-#include <atomic>
 #include <thread>
-#include <mutex>
 #include <condition_variable>
 #include <semaphore.h> // to be replaced in C++20
 #ifdef TASKPARTS_USE_HWLOC
@@ -52,50 +48,6 @@ uint64_t hash(uint64_t u) {
   return v;
 }
 
-/*---------------------------------------------------------------------*/
-/* Diagnostics */
-
-std::mutex print_mutex;
-
-static
-void afprintf(FILE* stream, const char *fmt, ...) {
-  va_list ap;
-  va_start(ap, fmt);
-  { std::unique_lock<std::mutex> lk(print_mutex);
-    vfprintf(stream, fmt, ap);
-    fflush(stream);
-  }
-  va_end(ap);
-}
-
-auto get_my_id() -> size_t;
-
-static
-void aprintf(const char *fmt, ...) {
-  { std::unique_lock<std::mutex> lk(print_mutex);
-    fprintf(stdout, "[%lu] ", get_my_id());
-    va_list ap;
-    va_start(ap, fmt);
-    vfprintf(stdout, fmt, ap);
-    fflush(stdout);
-    va_end(ap);
-  }
-}
-
-static
-void die(const char *fmt, ...) {
-  va_list ap;
-  va_start(ap, fmt);
-  { std::unique_lock<std::mutex> lk(print_mutex);
-    fprintf(stderr, "Fatal error -- ");
-    vfprintf(stderr, fmt, ap);
-    fprintf(stderr, "\n");
-    fflush(stderr);
-  }
-  va_end(ap);
-  assert(false);
-  exit(-1);
-}
 
 /*---------------------------------------------------------------------*/
 /* Environment variables */
@@ -431,9 +383,9 @@ context_save:
         movq %rax, 56(%rdi)
         xorq %rax, %rax
         ret
-        .size context_save, .-context_save
         .cfi_endproc
 )");
+
 extern "C"
 void context_restore(char* ctx, void* t);
 asm(R"(
@@ -455,13 +407,13 @@ context_restore:
         movq 56(%rdi), %rdx
         movq 48(%rdi), %rsp
         jmpq *%rdx
-        .size context_restore, .-context_restore
         .cfi_endproc
 )");
 #endif
 
 #if defined(TASKPARTS_ARM64)
 
+__attribute__ ((returns_twice))
 auto new_continuation(native_continuation& c, thunk f) -> void* {
   static constexpr
   size_t arm64_stack_alignb = 16;
@@ -489,17 +441,18 @@ auto new_continuation(native_continuation& c, thunk f) -> void* {
 
 #if defined(TASKPARTS_X64)
 
-auto new_continuation(native_continuation& c, thunk f) -> void* {
+__attribute__ ((returns_twice))
+auto new_continuation(native_continuation& c, thunk f) -> void {
   c.f = f;
   native_continuation* cp;
   if ((cp = (native_continuation*)context_save(&c.gprs[0]))) {
     cp->f();  // only cp is for sure live at this point
-    return nullptr;
+    return; // nullptr;
   }
   c.action = continuation_finish;
   static constexpr
   size_t thread_stack_alignb = 16L;
-  size_t thread_stack_szb = thread_stack_alignb * (1<<15);
+  size_t thread_stack_szb = thread_stack_alignb * (1<<17);
   static constexpr
   int _X86_64_SP_OFFSET = 6;
   char* stack = (char*)std::malloc(thread_stack_szb);
@@ -512,7 +465,7 @@ auto new_continuation(native_continuation& c, thunk f) -> void* {
 #ifdef TASKPARTS_USE_VALGRIND
   c.valgrind_id = VALGRIND_STACK_REGISTER(stack, stack + thread_stack_szb);
 #endif
-  return nullptr;
+  return; // nullptr;
 }
 
 #endif
@@ -525,6 +478,7 @@ auto save(native_continuation& c) -> bool {
 
 auto throw_to(native_continuation& c) -> void {
   context_restore(&c.gprs[0], &c);
+  __builtin_unreachable();
 }
 
 auto swap(native_continuation& current, native_continuation& next) -> void {
@@ -532,6 +486,7 @@ auto swap(native_continuation& current, native_continuation& next) -> void {
     return;
   }
   context_restore(&next.gprs[0], &next);
+  __builtin_unreachable();
 }
 
 auto get_action(native_continuation& c) -> continuation_action& {
@@ -673,8 +628,7 @@ public:
       std::free(a);
     });
   }
-  // destructor is called by worker group
-  inline
+  // the destructor of perworker is called by worker group
   T& at(size_t i) {
     assert(items != nullptr);
     return *reinterpret_cast<T*>(items + i);
@@ -683,6 +637,7 @@ public:
     assert(i < get_nb_workers());
     return at(i);
   }
+  __attribute__((noinline))
   auto mine() -> T& {
     return at(get_my_id());
   }
@@ -933,14 +888,12 @@ auto teardown_machine() -> void {
 
 perworker_array<uint64_t> random_seed;
 
-inline
 auto random_number(size_t my_id = get_my_id()) -> uint64_t {
   auto& nb = random_seed[my_id];
   nb = hash(my_id) + hash(nb);
   return nb;
 }
 
-inline
 auto random_other_worker(size_t my_id = get_my_id()) -> size_t {
   auto nb_workers = get_nb_workers();
   assert(nb_workers > 1);
@@ -2189,7 +2142,10 @@ public:
     auto v2 = bottom;
     bottom = v;
     if (deque.push(v2) == deque_surplus_up) {
-      elastic.incr_surplus(); { instrumentation.on_surplus_transition(); }
+      elastic.incr_surplus();
+      #ifndef TASKPARTS_DISABLE_ELASTIC
+      { instrumentation.on_surplus_transition(); }
+      #endif
     }
   }
   auto pop() -> Vertex_handle {
@@ -2229,11 +2185,9 @@ typename Instrumentation = default_work_stealing_instrumentation,
 typename Meta_scheduler = default_meta_scheduler>
 class native_fork_join_scheduler_family {
 public:
-  using continuation = native_fork_join_continuation;
+  using continuation = native_continuation;
   using vertex = native_fork_join_vertex;
   using deque = native_fork_join_deque_family<vertex*>;
-  template <typename T>
-  using thunk_vertex = native_fork_join_thunk_vertex<T>;
   
   perworker_array<deque> deques;
   perworker_array<vertex*> currents;
@@ -2257,7 +2211,6 @@ public:
   }
   auto loop() -> void {
     typename Meta_scheduler::worker_instance _meta_scheduler_instance(meta_scheduler);
-    auto& current = currents.mine();
     auto acquire = [this] {
       size_t nb_attempts = 0;
       while (! is_finished()) { { meta_scheduler.tick([&] { return is_finished(); }); }
@@ -2282,27 +2235,30 @@ public:
       if (is_finished()) { { instrumentation.on_teardown_worker(); /* ==> on_exit_work */ }
         return;
       }
-      current = deques.mine().pop();
-      if (current == nullptr) {
+      currents.mine() = deques.mine().pop();
+      if (currents.mine() == nullptr) {
         continue;
-      } { assert(current->edges.incounter.load() == 0); }
-      if (get_action(current->continuation) == continuation_initialize) {
-        new_continuation(current->continuation, [this] { enter(); });
+      } { assert(currents.mine()->incounter.load() == 0); }
+      if (get_action(currents.mine()->continuation) == continuation_initialize) {
+        new_continuation(currents.mine()->continuation, [this] { enter(); });
       }
-      swap(worker_continuation(), current->continuation);
-      if (get_action(current->continuation) == continuation_finish) {
-        parallel_notify<native_fork_join_scheduler_family>(current);
-        if (current == sink_vertex.load()) { // all deques should be empty now
+      swap(worker_continuation(), currents.mine()->continuation);
+      if (get_action(currents.mine()->continuation) == continuation_finish) { 
+	currents.mine()->parallel_notify([&] (native_fork_join_vertex* v) {
+	  schedule(v);
+	});
+        if (currents.mine() == sink_vertex.load()) { // all deques should be empty now
           sink_vertex.store(nullptr);
         }
       } else {
-        { assert(get_action(current->continuation) == continuation_continue); }
+        { assert(get_action(currents.mine()->continuation) == continuation_continue); }
       } { meta_scheduler.tick([&] { return is_phase_finished() || is_finished(); }); }
     }
   }
-  auto fork2join(vertex& v1, vertex& v2) -> void {
+  __attribute__ ((returns_twice))
+  auto fork2join(vertex& v1, vertex& v2) -> void { 
     auto& v0 = *self(); // parent task
-    { assert(v0.edges.incounter.load() == 0); assert(get_action(v0.continuation) == continuation_finish); }
+    { assert(v0.incounter.load() == 0); assert(get_action(v0.continuation) == continuation_finish); }
     if (context_save(&(v0.continuation.gprs[0]))) {
       { assert(self() == &v0); assert(get_action(v0.continuation) == continuation_continue); }
       get_action(v0.continuation) = continuation_finish;
@@ -2320,60 +2276,63 @@ public:
       throw_to(worker_continuation());
     }
     // v2 was not stolen
-    { assert(vb == &v2); assert(v2.edges.incounter.load() == 0); assert(v0.edges.incounter.load() == 2); }
+    { assert(vb == &v2); assert(v2.incounter.load() == 0); assert(v0.incounter.load() == 2); }
     get_action(v2.continuation) = continuation_continue;
     schedule(&v2);
     swap(v2.continuation, worker_continuation());
     get_action(v2.continuation) = continuation_finish;
-    { assert(self() == &v2); assert(v0.edges.incounter.load() == 1); }
+    { assert(self() == &v2); assert(v0.incounter.load() == 1); }
     v2.run();
     { assert(self() == &v2); assert(get_action(v0.continuation) == continuation_continue); }
     swap(v0.continuation, worker_continuation());
-    { assert(self() == &v0); assert(v0.edges.incounter.load() == 0); }
+    { assert(self() == &v0); assert(v0.incounter.load() == 0); }
     get_action(v0.continuation) = continuation_finish;
     // exit point of parent task if v2 was not stolen
   }
-  auto schedule(vertex* v) -> void { { assert(v->edges.incounter.load() == 0); }
+  auto schedule(vertex* v) -> void { { assert(v->incounter.load() == 0); }
     deques.mine().push(v, instrumentation);
   }
   auto enter() -> void {
     currents.mine()->run();
     throw_to(worker_continuation());
-  }
+  } 
   auto initialize_fork(vertex* parent, vertex* child1, vertex* child2) -> void {
     vertex* vs[] = {child2, child1}; { assert(parent->edges.incounter.load() == 0); }
     for (auto v : vs) { { instrumentation.on_create_vertex(); }
-      v->edges.incounter.store(0);
-      v->edges.outset = parent;
+      v->incounter.store(0);
+      v->outset = parent;
     }
-    parent->edges.incounter.store(2);
+    parent->incounter.store(2);
     for (auto v : vs) {
       schedule(v);
     }
-  } // unoptimized code shown below
+  }
+  // unoptimized version of the function defined above
   /*
   auto initialize_fork(vertex* parent, vertex* child1, vertex* child2) -> void {
     vertex* vs[] = {child2, child1};
     for (auto v : vs) {
       initialize_vertex(v);
       new_edge(v, parent);
-    } { assert(parent->edges.incounter.load() == 2); }
+    } { assert(parent->incounter.load() == 2); }
     for (auto v : vs) {
       release(v);
-    } { assert(child1->edges.incounter.load() == 0); }
+    } { assert(child1->incounter.load() == 0); }
   }
   */
   auto initialize_vertex(vertex* v) -> void {
-    new_incounter(v); { instrumentation.on_create_vertex(); }
-    new_outset(v);
-    increment(v);
+    v->incounter++;
+    { instrumentation.on_create_vertex(); }
   }
   auto new_edge(vertex* v, vertex* u) -> void {
-    increment(u);
-    auto r = add(v, u); { assert(r == outset_add_success); }
+    u->incounter++;
+    auto r = v->add(u);
+    { assert(r == outset_add_success); }
   }
   auto release(vertex* v) -> void {
-    decrement<native_fork_join_scheduler_family>(v);
+    v->decrement([&] (vertex* u) {
+      schedule(u);
+    });
   }
   auto self() -> vertex* {
     return currents.mine();
@@ -2391,16 +2350,16 @@ public:
     };
     { assert_all_deques_empty(); assert(get_my_id() == 0); assert(sink_vertex.load() == nullptr); }
     auto f = [] { };
-    thunk_vertex<decltype(f)> sink(std::forward<decltype(f)>(f));
+    auto sink = make_thunk_vertex(f);
     sink_vertex.store(&sink);
     auto p = [] { elastic.prepare_end_of_phase(); };
-    thunk_vertex<decltype(p)> unsuspend_worker0(std::forward<decltype(p)>(p));
+    auto unsuspend_worker0 = make_thunk_vertex(p);
     vertex* vertices[] = {&sink, &unsuspend_worker0, &source};
     for (auto v : vertices) {
       initialize_vertex(v);
     }
     new_edge(&source, &unsuspend_worker0);
-    new_edge(&unsuspend_worker0, sink_vertex.load());
+    new_edge(&unsuspend_worker0, &sink);
     for (auto v : vertices) {
       release(v);
     }
@@ -2424,6 +2383,10 @@ template <typename Instrumentation, typename Meta_scheduler>
 auto native_fork_join_scheduler_family<Instrumentation, Meta_scheduler>::Schedule(vertex* v) -> void {
   scheduler->schedule(v);
 }
+
+  /*  auto schedule(native_fork_join_vertex* v) -> void {
+    scheduler->schedule(v);
+    }*/
 
 auto __fork2join(native_fork_join_vertex& v1, native_fork_join_vertex& v2) -> void {
   scheduler->fork2join(v1, v2);
@@ -2535,7 +2498,7 @@ public:
       }
     }
   }
-  auto schedule(vertex* v) -> void { { assert(v->edges.incounter.load() == 0); }
+  auto schedule(vertex* v) -> void { { assert(v->incounter.load() == 0); }
     deques.mine().push(v);
   }
   auto enter() -> void {

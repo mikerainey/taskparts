@@ -6,6 +6,8 @@
 #include <cstdio>
 #include <string>
 #include <chrono>
+#include <mutex>
+#include <cstdarg>
 #ifdef TASKPARTS_USE_VALGRIND
 // nix-build '<nixpkgs>' -A valgrind.dev
 #include <valgrind/valgrind.h>
@@ -17,6 +19,53 @@
 #if !defined(TASKPARTS_ARM64) && !defined(TASKPARTS_X64)
 #define TASKPARTS_X64
 #endif
+
+/*---------------------------------------------------------------------*/
+/* Diagnostics */
+
+namespace taskparts {
+std::mutex print_mutex;
+
+static
+void afprintf(FILE* stream, const char *fmt, ...) {
+  va_list ap;
+  va_start(ap, fmt);
+  { std::unique_lock<std::mutex> lk(print_mutex);
+    vfprintf(stream, fmt, ap);
+    fflush(stream);
+  }
+  va_end(ap);
+}
+
+auto get_my_id() -> size_t;
+
+static
+void aprintf(const char *fmt, ...) {
+  { std::unique_lock<std::mutex> lk(print_mutex);
+    fprintf(stdout, "[%lu] ", get_my_id());
+    va_list ap;
+    va_start(ap, fmt);
+    vfprintf(stdout, fmt, ap);
+    fflush(stdout);
+    va_end(ap);
+  }
+}
+
+static
+void die(const char *fmt, ...) {
+  va_list ap;
+  va_start(ap, fmt);
+  { std::unique_lock<std::mutex> lk(print_mutex);
+    fprintf(stderr, "Fatal error -- ");
+    vfprintf(stderr, fmt, ap);
+    fprintf(stderr, "\n");
+    fflush(stderr);
+  }
+  va_end(ap);
+  assert(false);
+  exit(-1);
+}
+}
 
 namespace taskparts {
 
@@ -85,12 +134,13 @@ public:
     VALGRIND_STACK_DEREGISTER(valgrind_id);
 #endif
     std::free(stack);
+    stack = nullptr;
   }
 };
 
 using native_continuation = native_continuation_family<>;
 
-auto new_continuation(native_continuation& c, thunk f) -> void*;
+auto new_continuation(native_continuation& c, thunk f) -> void;
 auto throw_to(native_continuation& c) -> void;
 auto swap(native_continuation& current, native_continuation& next) -> void;
 auto get_action(native_continuation& c) -> continuation_action&;
@@ -164,7 +214,8 @@ auto new_continuation(continuation& c, F f) -> void* {
     return new_continuation(c.u.t, f);
   } else {
     assert(c.continuation_type == continuation_ucontext);
-    return new_continuation(c.u.u, f);
+    new_continuation(c.u.u, f);
+    return nullptr;
   }
 }
 auto get_action(continuation& c) -> continuation_action&;
@@ -199,6 +250,7 @@ public:
   auto add(Vertex_handle* outset, Vertex_handle v) -> outset_add_result {
     assert(outset != nullptr);
     assert(*outset == nullptr);
+    assert(v != nullptr);
     *outset = v;
     return outset_add_success;
   }
@@ -232,21 +284,66 @@ public:
   auto deallocate() -> void = 0;
 };
 
-using native_fork_join_continuation = native_continuation;
-using native_fork_join_vertex = vertex_family<fork_join_edges, native_fork_join_continuation>;
+  //  class native_fork_join_vertex;
+  //  auto schedule(native_fork_join_vertex* v) -> void;
+
+class native_fork_join_vertex {
+public:
+  //    char xxx1[2048];
+  alignas(cache_line_szb)
+  std::atomic<uint64_t> incounter;
+  //      char xxx2[2048];
+  alignas(cache_line_szb)
+  native_fork_join_vertex* outset;
+  //  std::atomic<native_fork_join_vertex*> outset;
+  //    char xxx3[2048];
+  alignas(cache_line_szb)
+  native_continuation continuation;
+  //      char xxx4[2048];
+
+  native_fork_join_vertex() {
+    incounter.store(0);
+    outset = nullptr;
+  }
+  virtual
+  auto run() -> void = 0;
+  template <typename Schedule>
+  auto decrement(const Schedule& schedule) -> void {
+    assert(incounter.load() > 0);
+    if (--incounter == 0) {
+      schedule(this);
+    }
+  }
+  auto add(native_fork_join_vertex* v) -> outset_add_result {
+    assert(outset == nullptr);
+    outset = v;
+    return outset_add_success;
+  }
+  template <typename Schedule>
+  auto parallel_notify(const Schedule& schedule) -> void {
+    if (outset == nullptr) { // e.g., the final vertex
+      return;
+    }
+    outset->decrement(schedule);
+    outset = nullptr;
+  }
+};
+
 template <typename Thunk>
 class native_fork_join_thunk_vertex : public native_fork_join_vertex {
 public:
-  alignas(cache_line_szb)
-  Thunk body;
-
-  native_fork_join_thunk_vertex(Thunk&& body)
-    : native_fork_join_vertex(), body(std::forward<Thunk>(body)) { }
-  auto run() -> void {
+  Thunk& body;
+  static_assert(std::is_invocable_v<Thunk&>);
+  native_fork_join_thunk_vertex(Thunk& _body)
+    : native_fork_join_vertex(), body(_body) { }
+  auto run() -> void override {
     body();
   }
-  auto deallocate() -> void { } // does nothing b/c we assume stack allocation
 };
+template <typename Thunk>
+auto make_thunk_vertex(Thunk& f) -> native_fork_join_thunk_vertex<Thunk> {
+  return native_fork_join_thunk_vertex(f);
+}
 
 extern
 bool in_scheduler;
@@ -257,16 +354,14 @@ auto __fork2join(native_fork_join_vertex& v1, native_fork_join_vertex& v2) -> vo
 
 template <typename F>
 auto launch(F&& f) -> void {
-  native_fork_join_thunk_vertex<F> v(std::forward<F>(f));
+  auto v = make_thunk_vertex(f);
   __launch(v);
 }
 
 template <typename F1, typename F2>
 auto _fork2join(F1&& f1, F2&& f2) -> void {
-  auto execute_f1 = [&] { std::forward<F1>(f1)(); };
-  auto execute_f2 = [&] { std::forward<F2>(f2)(); };
-  native_fork_join_thunk_vertex<decltype(execute_f1)> v1(std::forward<decltype(execute_f1)>(execute_f1));
-  native_fork_join_thunk_vertex<decltype(execute_f2)> v2(std::forward<decltype(execute_f2)>(execute_f2));
+  auto v1 = make_thunk_vertex(f1);
+  auto v2 = make_thunk_vertex(f2);
   __fork2join(v1, v2);
 }
 
@@ -275,7 +370,7 @@ auto fork2join(F1&& f1, F2&& f2) -> void {
   if (in_scheduler) {
     _fork2join(std::forward<F1>(f1), std::forward<F2>(f2));
   } else { { assert(get_my_id() == 0); } // need to launch a new scheduler instance
-    in_scheduler = true;   
+    in_scheduler = true;
     launch([&] { fork2join(f1, f2); });
     in_scheduler = false;
   }

@@ -1,7 +1,9 @@
 # Creates a shell environment prepared for debugging taskparts.
 #
 # By default, the environment uses GCC instead of clang/llvm. To
-# use clang/llvm instead, use the following:
+# use clang/llvm (version 13) instead, use the following:
+#   $ nix-shell --arg stdenv '(import <nixpkgs> {}).llvmPackages_13.stdenv'
+# or for the default version
 #   $ nix-shell --arg stdenv '(import <nixpkgs> {}).clangStdenv'
 
 { pkgs   ? import <nixpkgs> {},
