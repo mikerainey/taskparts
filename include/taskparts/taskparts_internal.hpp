@@ -106,7 +106,7 @@ int cpu_context_szb = 21 * 8;
 using thunk = std::function<void()>;
 
 /*---------------------------------------------------------------------*/
-/* Continuations */
+/* Native fork join */
 
 using continuation_action = enum continuation_action_enum {
   continuation_initialize,
@@ -120,7 +120,7 @@ public:
   continuation_action action;
   char gprs[cpu_context_szb];
   char* stack = nullptr;
-  thunk f = [] { };
+  //  thunk f = [] { };
 #ifdef TASKPARTS_USE_VALGRIND
   int valgrind_id;
 #endif
@@ -140,89 +140,8 @@ public:
 
 using native_continuation = native_continuation_family<>;
 
-auto new_continuation(native_continuation& c, thunk f) -> void;
 auto throw_to(native_continuation& c) -> void;
 auto swap(native_continuation& current, native_continuation& next) -> void;
-auto get_action(native_continuation& c) -> continuation_action&;
-
-class minimal_continuation {
-public:
-  continuation_action action;
-  thunk f;
-  minimal_continuation() : f([] {}), action(continuation_initialize) { }
-};
-
-auto throw_to(minimal_continuation& c) -> void;
-auto swap(minimal_continuation&, minimal_continuation& next) -> void;
-template <typename F = thunk>
-auto new_continuation(minimal_continuation& c, const F& f) -> void* {
-  new (&c.f) thunk(f);
-  c.action = continuation_finish;
-  return nullptr;
-}
-auto get_action(minimal_continuation& c) -> continuation_action&;
-
-using trampoline_block_label = int;
-
-class trampoline_continuation {
-public:
-  minimal_continuation mc;
-  trampoline_block_label next;
-};
-
-auto throw_to(trampoline_continuation& c) -> void;
-
-auto swap(trampoline_continuation&, trampoline_continuation& next) -> void;
-
-template <typename F = thunk>
-auto new_continuation(trampoline_continuation& c, const F& f) -> void* {
-  c.next = 0;
-  return new_continuation(c.mc, f);
-}
-
-auto get_action(trampoline_continuation& c) -> continuation_action&;
-
-auto get_trampoline(trampoline_continuation& c) -> trampoline_block_label&;
-
-using continuation_types = enum continuation_types_enum {
-  continuation_minimal,
-  continuation_trampoline,
-  continuation_ucontext,
-  continuation_uninitialized
-};
-
-class continuation {
-public:
-  continuation_types continuation_type;
-  continuation() : continuation_type(continuation_uninitialized) { }
-  union U {
-    U() {}
-    ~U() {}
-    minimal_continuation m;
-    trampoline_continuation t;
-    native_continuation u;
-  } u;
-};
-
-auto throw_to(continuation& c) -> void;
-auto swap(continuation& current, continuation& next) -> void;
-template <typename F = thunk >
-auto new_continuation(continuation& c, F f) -> void* {
-  if (c.continuation_type == continuation_minimal) {
-    return new_continuation(c.u.m, f);
-  } else if (c.continuation_type == continuation_trampoline) {
-    return new_continuation(c.u.t, f);
-  } else {
-    assert(c.continuation_type == continuation_ucontext);
-    new_continuation(c.u.u, f);
-    return nullptr;
-  }
-}
-auto get_action(continuation& c) -> continuation_action&;
-auto get_trampoline(continuation& c) -> trampoline_block_label&;
-  
-/*---------------------------------------------------------------------*/
-/* Native fork join */
 
 using outset_add_result = enum outset_add_enum {
   outset_add_success,
@@ -263,29 +182,6 @@ public:
     outset = nullptr;
   }
 };
-
-class continuation;
-
-template <
-typename Edge_endpoints = fork_join_edges,
-typename Continuation = continuation>
-class vertex_family {
-public:
-  alignas(cache_line_szb)
-  Edge_endpoints edges;
-  alignas(cache_line_szb)
-  Continuation continuation;
-  
-  virtual
-  ~vertex_family() { }
-  virtual
-  auto run() -> void = 0;
-  virtual
-  auto deallocate() -> void = 0;
-};
-
-  //  class native_fork_join_vertex;
-  //  auto schedule(native_fork_join_vertex* v) -> void;
 
 class native_fork_join_vertex {
 public:
@@ -349,8 +245,6 @@ extern
 bool in_scheduler;
 extern
 auto __launch(native_fork_join_vertex& source) -> void;
-extern
-auto __fork2join(native_fork_join_vertex& v1, native_fork_join_vertex& v2) -> void;
 
 template <typename F>
 auto launch(F&& f) -> void {
@@ -358,17 +252,67 @@ auto launch(F&& f) -> void {
   __launch(v);
 }
 
-template <typename F1, typename F2>
-auto _fork2join(F1&& f1, F2&& f2) -> void {
-  auto v1 = make_thunk_vertex(f1);
-  auto v2 = make_thunk_vertex(f2);
-  __fork2join(v1, v2);
-}
+class native_fork_join_scheduler_interface {
+  public:
+    using continuation = native_continuation;
+  using vertex = native_fork_join_vertex;
+  virtual
+  auto self() -> vertex* = 0;
+  virtual
+  auto initialize_fork(vertex* parent, vertex* child1, vertex* child2) -> void  = 0;
+  virtual
+  auto worker_continuation() -> continuation& = 0;
+  virtual
+  auto pop() -> vertex* = 0;
+  virtual
+  auto schedule(vertex* v) -> void = 0;
+};
 
+extern
+auto my_scheduler() -> native_fork_join_scheduler_interface*;    
+
+extern "C"
+void* context_save(char*);
+  
 template <typename F1, typename F2>
+__attribute__ ((returns_twice))
 auto fork2join(F1&& f1, F2&& f2) -> void {
   if (in_scheduler) {
-    _fork2join(std::forward<F1>(f1), std::forward<F2>(f2));
+    auto f11 = [] {};
+    auto v1 = make_thunk_vertex(f11);
+    auto v2 = make_thunk_vertex(f2);
+    auto execute_f2 = [&]() { std::forward<F2>(f2)(); };
+    native_fork_join_scheduler_interface& s = *my_scheduler();
+    auto& v0 = *s.self(); // parent task
+    if (context_save(&(v0.continuation.gprs[0]))) {
+      { assert(s.self() == &v0); assert(v0.continuation.action == continuation_continue); }
+      v0.continuation.action = continuation_finish;
+      return; // exit point of parent task if v2 was stolen
+    }
+    v0.continuation.action = continuation_continue;
+    s.initialize_fork(&v0, &v1, &v2);
+    v1.continuation.action = continuation_continue;
+    swap(v1.continuation, s.worker_continuation()); { assert(self() == &v1); }
+    v1.continuation.action = continuation_finish;
+    std::forward<F1>(f1)(); { assert(self() == &v1); }
+    auto vb = s.pop();
+    if (vb == nullptr) { // v2 was stolen
+      { assert(v1.continuation.action == continuation_finish); }
+      throw_to(s.worker_continuation());
+    }
+    // v2 was not stolen
+    { assert(vb == &v2); assert(v2.incounter.load() == 0); assert(v0.incounter.load() == 2); }
+    v2.continuation.action = continuation_continue;
+    s.schedule(&v2);
+    swap(v2.continuation, s.worker_continuation());
+    v2.continuation.action = continuation_finish;
+    { assert(s.self() == &v2); assert(v0.incounter.load() == 1); }
+    execute_f2();
+    { assert(self() == &v2); assert(v0.continuation.action == continuation_continue); }
+    swap(v0.continuation, s.worker_continuation());
+    { assert(s.self() == &v0); assert(v0.incounter.load() == 0); }
+    v0.continuation.action = continuation_finish;
+    // exit point of parent task if v2 was not stolen
   } else { { assert(get_my_id() == 0); } // need to launch a new scheduler instance
     in_scheduler = true;
     launch([&] { fork2join(f1, f2); });
@@ -377,7 +321,104 @@ auto fork2join(F1&& f1, F2&& f2) -> void {
 }
 
 /*---------------------------------------------------------------------*/
+/* Continuations */
+
+class minimal_continuation {
+public:
+  continuation_action action;
+  thunk f;
+  minimal_continuation() : f([] {}), action(continuation_initialize) { }
+};
+
+auto throw_to(minimal_continuation& c) -> void;
+auto swap(minimal_continuation&, minimal_continuation& next) -> void;
+template <typename F = thunk>
+auto new_continuation(minimal_continuation& c, const F& f) -> void* {
+  new (&c.f) thunk(f);
+  c.action = continuation_finish;
+  return nullptr;
+}
+auto get_action(minimal_continuation& c) -> continuation_action&;
+
+using trampoline_block_label = int;
+
+class trampoline_continuation {
+public:
+  minimal_continuation mc;
+  trampoline_block_label next;
+};
+
+auto throw_to(trampoline_continuation& c) -> void;
+
+auto swap(trampoline_continuation&, trampoline_continuation& next) -> void;
+
+template <typename F = thunk>
+auto new_continuation(trampoline_continuation& c, const F& f) -> void* {
+  c.next = 0;
+  return new_continuation(c.mc, f);
+}
+
+auto get_action(trampoline_continuation& c) -> continuation_action&;
+
+auto get_trampoline(trampoline_continuation& c) -> trampoline_block_label&;
+
+using continuation_types = enum continuation_types_enum {
+  continuation_minimal,
+  continuation_trampoline,
+  continuation_ucontext,
+  continuation_uninitialized
+};
+
+class continuation {
+public:
+  continuation_types continuation_type;
+  continuation() : continuation_type(continuation_uninitialized) { }
+  union U {
+    U() {}
+    ~U() {}
+    minimal_continuation m;
+    trampoline_continuation t;
+    //    native_continuation u;
+  } u;
+};
+
+auto throw_to(continuation& c) -> void;
+auto swap(continuation& current, continuation& next) -> void;
+template <typename F = thunk >
+auto new_continuation(continuation& c, F f) -> void* {
+  if (c.continuation_type == continuation_minimal) {
+    return new_continuation(c.u.m, f);
+  } else if (c.continuation_type == continuation_trampoline) {
+    return new_continuation(c.u.t, f);
+  } else {
+    assert(c.continuation_type == continuation_ucontext);
+    //    new_continuation(c.u.u, f);
+    return nullptr;
+  }
+}
+auto get_action(continuation& c) -> continuation_action&;
+auto get_trampoline(continuation& c) -> trampoline_block_label&;
+  
+/*---------------------------------------------------------------------*/
 /* Task DAG */
+
+template <
+typename Edge_endpoints = fork_join_edges,
+typename Continuation = continuation>
+class vertex_family {
+public:
+  alignas(cache_line_szb)
+  Edge_endpoints edges;
+  alignas(cache_line_szb)
+  Continuation continuation;
+  
+  virtual
+  ~vertex_family() { }
+  virtual
+  auto run() -> void = 0;
+  virtual
+  auto deallocate() -> void = 0;
+};
 
 using vertex = vertex_family<fork_join_edges, continuation>;
 

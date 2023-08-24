@@ -48,7 +48,6 @@ uint64_t hash(uint64_t u) {
   return v;
 }
 
-
 /*---------------------------------------------------------------------*/
 /* Environment variables */
 
@@ -122,10 +121,6 @@ auto report_taskparts_configuration() -> void {
   if (f != stdout) {
     fclose(f);
   }
-}
-
-auto in_quotes(std::string s) -> std::string {
-  return "\"" + s + "\"";
 }
 
 /*---------------------------------------------------------------------*/
@@ -441,18 +436,11 @@ auto new_continuation(native_continuation& c, thunk f) -> void* {
 
 #if defined(TASKPARTS_X64)
 
-__attribute__ ((returns_twice))
-auto new_continuation(native_continuation& c, thunk f) -> void {
-  c.f = f;
-  native_continuation* cp;
-  if ((cp = (native_continuation*)context_save(&c.gprs[0]))) {
-    cp->f();  // only cp is for sure live at this point
-    return; // nullptr;
-  }
+auto initialize_new_continuation(native_continuation& c) -> void {
   c.action = continuation_finish;
   static constexpr
   size_t thread_stack_alignb = 16L;
-  size_t thread_stack_szb = thread_stack_alignb * (1<<17);
+  size_t thread_stack_szb = thread_stack_alignb * (1<<15);
   static constexpr
   int _X86_64_SP_OFFSET = 6;
   char* stack = (char*)std::malloc(thread_stack_szb);
@@ -465,9 +453,19 @@ auto new_continuation(native_continuation& c, thunk f) -> void {
 #ifdef TASKPARTS_USE_VALGRIND
   c.valgrind_id = VALGRIND_STACK_REGISTER(stack, stack + thread_stack_szb);
 #endif
-  return; // nullptr;
 }
-
+  /*
+__attribute__ ((returns_twice))
+auto new_continuation(native_continuation& c, thunk f) -> void {
+  c.f = f;
+  native_continuation* cp;
+  if ((cp = (native_continuation*)context_save(&c.gprs[0]))) {
+    cp->f();  // only cp is for sure live at this point
+    return;
+  }
+  initialize_new_continuation(c);
+}
+  */
 #endif
 
 // LATER: see about using this function
@@ -493,75 +491,6 @@ auto get_action(native_continuation& c) -> continuation_action& {
   return c.action;
 }
   
-auto throw_to(minimal_continuation& c) -> void {
-  c.f();
-}
-
-auto swap(minimal_continuation&, minimal_continuation& next) -> void {
-  next.f();
-}
-
-auto get_action(minimal_continuation& c) -> continuation_action& {
-  return c.action;
-}
-
-auto throw_to(trampoline_continuation& c) -> void {
-  c.mc.f();
-}
-
-auto swap(trampoline_continuation&, trampoline_continuation& next) -> void {
-  next.mc.f();
-}
-
-auto get_action(trampoline_continuation& c) -> continuation_action& {
-  return get_action(c.mc);
-}
-
-auto get_trampoline(trampoline_continuation& c) -> trampoline_block_label& {
-  return c.next;
-}
-
-auto throw_to(continuation& c) -> void {
-  auto ct = c.continuation_type;
-  if (ct == continuation_minimal) {
-    throw_to(c.u.m);
-  } else if (ct == continuation_trampoline) {
-    throw_to(c.u.t);
-  } else {
-    assert(ct == continuation_ucontext);
-    throw_to(c.u.u);
-  }
-}
-
-auto swap(continuation& current, continuation& next) -> void {
-  auto ct = current.continuation_type;
-  assert(ct == next.continuation_type);
-  if (ct == continuation_minimal) {
-    swap(current.u.m, next.u.m);
-  } else if (ct == continuation_trampoline) {
-    swap(current.u.t, next.u.t);
-  } else {
-    assert(ct == continuation_ucontext);
-    swap(current.u.u, next.u.u);
-  }
-}
-
-auto get_action(continuation& c) -> continuation_action& {
-  if (c.continuation_type == continuation_minimal) {
-    return c.u.m.action;
-  } else if (c.continuation_type == continuation_trampoline) {
-    return c.u.t.mc.action;
-  } else {
-    assert(c.continuation_type == continuation_ucontext);
-    return c.u.u.action;
-  }
-}
-
-auto get_trampoline(continuation& c) -> trampoline_block_label& {
-  assert(c.continuation_type == continuation_trampoline);
-  return get_trampoline(c.u.t);
-}
-
 /*---------------------------------------------------------------------*/
 /* Native fork join */
 
@@ -746,6 +675,10 @@ using resource_binding_type = enum resource_binding_enum {
   resource_binding_by_core,
   resource_binding_by_numa_node
 };
+
+auto in_quotes(std::string s) -> std::string {
+  return "\"" + s + "\"";
+}
 
 environment_variable<bool> numa_alloc_interleaved("TASKPARTS_NUMA_ALLOC_INTERLEAVED",
 						  [] { return true; },
@@ -2183,7 +2116,7 @@ public:
 template <
 typename Instrumentation = default_work_stealing_instrumentation,
 typename Meta_scheduler = default_meta_scheduler>
-class native_fork_join_scheduler_family {
+class native_fork_join_scheduler_family : public native_fork_join_scheduler_interface {
 public:
   using continuation = native_continuation;
   using vertex = native_fork_join_vertex;
@@ -2195,9 +2128,17 @@ public:
   std::atomic<vertex*> sink_vertex;
   Instrumentation instrumentation;
   Meta_scheduler meta_scheduler;
-  
+
+  static
+  native_fork_join_scheduler_family* _scheduler;
+  static
+  auto Scheduler() -> native_fork_join_scheduler_family* {
+    return _scheduler;
+  }
   native_fork_join_scheduler_family()
   : sink_vertex(nullptr) {
+    assert(_scheduler == nullptr);
+    _scheduler = this;
     worker_group.launch([this] { loop(); }, [this] { delete this; });
   }
   auto is_phase_finished() -> bool {
@@ -2209,6 +2150,18 @@ public:
     }
     return worker_group.status.load() == pthread_worker_group::finished;
   }
+  auto pop() -> vertex* {
+    return deques.mine().pop();
+  }
+  __attribute__ ((returns_twice))
+  auto new_continuation(native_continuation& c) -> void {
+    native_continuation* cp;
+    if ((cp = (native_continuation*)context_save(&c.gprs[0]))) {
+      Scheduler()->enter();
+      return;
+    }
+    initialize_new_continuation(c);
+  }
   auto loop() -> void {
     typename Meta_scheduler::worker_instance _meta_scheduler_instance(meta_scheduler);
     auto acquire = [this] {
@@ -2216,7 +2169,7 @@ public:
       while (! is_finished()) { { meta_scheduler.tick([&] { return is_finished(); }); }
         auto victim = random_other_worker();
         auto v = deques[victim].steal(deques, victim);
-        if (v != nullptr) { { assert(get_action(v->continuation) == continuation_initialize); }
+        if (v != nullptr) { { assert(v->continuation.action == continuation_initialize); }
           deques.mine().push(v, instrumentation); { instrumentation.on_steal(); }
           return;
         }
@@ -2239,11 +2192,11 @@ public:
       if (currents.mine() == nullptr) {
         continue;
       } { assert(currents.mine()->incounter.load() == 0); }
-      if (get_action(currents.mine()->continuation) == continuation_initialize) {
-        new_continuation(currents.mine()->continuation, [this] { enter(); });
+      if (currents.mine()->continuation.action == continuation_initialize) {
+        new_continuation(currents.mine()->continuation);
       }
       swap(worker_continuation(), currents.mine()->continuation);
-      if (get_action(currents.mine()->continuation) == continuation_finish) { 
+      if (currents.mine()->continuation.action == continuation_finish) { 
 	currents.mine()->parallel_notify([&] (native_fork_join_vertex* v) {
 	  schedule(v);
 	});
@@ -2251,43 +2204,9 @@ public:
           sink_vertex.store(nullptr);
         }
       } else {
-        { assert(get_action(currents.mine()->continuation) == continuation_continue); }
+        { assert(currents.mine()->continuation.action == continuation_continue); }
       } { meta_scheduler.tick([&] { return is_phase_finished() || is_finished(); }); }
     }
-  }
-  __attribute__ ((returns_twice))
-  auto fork2join(vertex& v1, vertex& v2) -> void { 
-    auto& v0 = *self(); // parent task
-    { assert(v0.incounter.load() == 0); assert(get_action(v0.continuation) == continuation_finish); }
-    if (context_save(&(v0.continuation.gprs[0]))) {
-      { assert(self() == &v0); assert(get_action(v0.continuation) == continuation_continue); }
-      get_action(v0.continuation) = continuation_finish;
-      return; // exit point of parent task if v2 was stolen
-    }
-    get_action(v0.continuation) = continuation_continue;
-    initialize_fork(&v0, &v1, &v2);
-    get_action(v1.continuation) = continuation_continue;
-    swap(v1.continuation, worker_continuation()); { assert(self() == &v1); }
-    get_action(v1.continuation) = continuation_finish;
-    v1.run(); { assert(self() == &v1); }
-    auto vb = deques.mine().pop();
-    if (vb == nullptr) { // v2 was stolen
-      { assert(get_action(v1.continuation) == continuation_finish); }
-      throw_to(worker_continuation());
-    }
-    // v2 was not stolen
-    { assert(vb == &v2); assert(v2.incounter.load() == 0); assert(v0.incounter.load() == 2); }
-    get_action(v2.continuation) = continuation_continue;
-    schedule(&v2);
-    swap(v2.continuation, worker_continuation());
-    get_action(v2.continuation) = continuation_finish;
-    { assert(self() == &v2); assert(v0.incounter.load() == 1); }
-    v2.run();
-    { assert(self() == &v2); assert(get_action(v0.continuation) == continuation_continue); }
-    swap(v0.continuation, worker_continuation());
-    { assert(self() == &v0); assert(v0.incounter.load() == 0); }
-    get_action(v0.continuation) = continuation_finish;
-    // exit point of parent task if v2 was not stolen
   }
   auto schedule(vertex* v) -> void { { assert(v->incounter.load() == 0); }
     deques.mine().push(v, instrumentation);
@@ -2367,31 +2286,21 @@ public:
     { assert(get_my_id() == 0); assert(sink_vertex.load() == nullptr); assert_all_deques_empty(); }
     elastic.end_phase();
   }
-  static
-  auto Schedule(vertex* v) -> void;
 };
 
 using native_fork_join_scheduler = native_fork_join_scheduler_family<>;
 
 native_fork_join_scheduler* scheduler = new native_fork_join_scheduler;
 
-auto deque_size(size_t i) -> size_t { // FOR DEBUGGING
-  return scheduler->deques[i].size();
+template <
+  typename Instrumentation,
+  typename Meta_scheduler>
+native_fork_join_scheduler_family<Instrumentation, Meta_scheduler>* native_fork_join_scheduler_family<Instrumentation, Meta_scheduler>::_scheduler = nullptr;
+
+auto my_scheduler() -> native_fork_join_scheduler_interface* {
+  return scheduler;
 }
-
-template <typename Instrumentation, typename Meta_scheduler>
-auto native_fork_join_scheduler_family<Instrumentation, Meta_scheduler>::Schedule(vertex* v) -> void {
-  scheduler->schedule(v);
-}
-
-  /*  auto schedule(native_fork_join_vertex* v) -> void {
-    scheduler->schedule(v);
-    }*/
-
-auto __fork2join(native_fork_join_vertex& v1, native_fork_join_vertex& v2) -> void {
-  scheduler->fork2join(v1, v2);
-}
-
+  
 extern
 auto __launch(native_fork_join_vertex& source) -> void {
   scheduler->launch(source);
@@ -2453,6 +2362,76 @@ auto ping_all_workers() -> void {
 
 /*---------------------------------------------------------------------*/
 /* DAG-calculus scheduler */
+
+auto throw_to(minimal_continuation& c) -> void {
+  c.f();
+}
+
+auto swap(minimal_continuation&, minimal_continuation& next) -> void {
+  next.f();
+}
+
+auto get_action(minimal_continuation& c) -> continuation_action& {
+  return c.action;
+}
+
+auto throw_to(trampoline_continuation& c) -> void {
+  c.mc.f();
+}
+
+auto swap(trampoline_continuation&, trampoline_continuation& next) -> void {
+  next.mc.f();
+}
+
+auto get_action(trampoline_continuation& c) -> continuation_action& {
+  return get_action(c.mc);
+}
+
+auto get_trampoline(trampoline_continuation& c) -> trampoline_block_label& {
+  return c.next;
+}
+
+auto throw_to(continuation& c) -> void {
+  auto ct = c.continuation_type;
+  if (ct == continuation_minimal) {
+    throw_to(c.u.m);
+  } else if (ct == continuation_trampoline) {
+    throw_to(c.u.t);
+  } else {
+    assert(ct == continuation_ucontext);
+    //    throw_to(c.u.u);
+  }
+}
+
+auto swap(continuation& current, continuation& next) -> void {
+  auto ct = current.continuation_type;
+  assert(ct == next.continuation_type);
+  if (ct == continuation_minimal) {
+    swap(current.u.m, next.u.m);
+  } else if (ct == continuation_trampoline) {
+    swap(current.u.t, next.u.t);
+  } else {
+    assert(ct == continuation_ucontext);
+    //    swap(current.u.u, next.u.u);
+  }
+}
+
+auto get_action(continuation& c) -> continuation_action& {
+  if (c.continuation_type == continuation_minimal) {
+    return c.u.m.action;
+  } else if (c.continuation_type == continuation_trampoline) {
+    return c.u.t.mc.action;
+  } else {
+    assert(c.continuation_type == continuation_ucontext);
+    abort();
+    //    return c.u.u.action;
+  }
+}
+
+auto get_trampoline(continuation& c) -> trampoline_block_label& {
+  assert(c.continuation_type == continuation_trampoline);
+  return get_trampoline(c.u.t);
+}
   
 class dag_calculus_scheduler {
 public:
