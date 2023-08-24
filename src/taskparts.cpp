@@ -2216,7 +2216,7 @@ public:
     throw_to(worker_continuation());
   } 
   auto initialize_fork(vertex* parent, vertex* child1, vertex* child2) -> void {
-    vertex* vs[] = {child2, child1}; { assert(parent->edges.incounter.load() == 0); }
+    vertex* vs[] = {child2, child1}; { assert(parent->incounter.load() == 0); }
     for (auto v : vs) { { instrumentation.on_create_vertex(); }
       v->incounter.store(0);
       v->outset = parent;
@@ -2477,7 +2477,7 @@ public:
       }
     }
   }
-  auto schedule(vertex* v) -> void { { assert(v->incounter.load() == 0); }
+  auto schedule(vertex* v) -> void { { assert(v->edges.incounter.load() == 0); }
     deques.mine().push(v);
   }
   auto enter() -> void {

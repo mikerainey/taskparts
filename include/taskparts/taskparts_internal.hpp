@@ -292,9 +292,9 @@ auto fork2join(F1&& f1, F2&& f2) -> void {
     v0.continuation.action = continuation_continue;
     s.initialize_fork(&v0, &v1, &v2);
     v1.continuation.action = continuation_continue;
-    swap(v1.continuation, s.worker_continuation()); { assert(self() == &v1); }
+    swap(v1.continuation, s.worker_continuation()); { assert(s.self() == &v1); }
     v1.continuation.action = continuation_finish;
-    std::forward<F1>(f1)(); { assert(self() == &v1); }
+    std::forward<F1>(f1)(); { assert(s.self() == &v1); }
     auto vb = s.pop();
     if (vb == nullptr) { // v2 was stolen
       { assert(v1.continuation.action == continuation_finish); }
@@ -308,7 +308,7 @@ auto fork2join(F1&& f1, F2&& f2) -> void {
     v2.continuation.action = continuation_finish;
     { assert(s.self() == &v2); assert(v0.incounter.load() == 1); }
     execute_f2();
-    { assert(self() == &v2); assert(v0.continuation.action == continuation_continue); }
+    { assert(s.self() == &v2); assert(v0.continuation.action == continuation_continue); }
     swap(v0.continuation, s.worker_continuation());
     { assert(s.self() == &v0); assert(v0.incounter.load() == 0); }
     v0.continuation.action = continuation_finish;
