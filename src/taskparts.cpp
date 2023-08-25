@@ -2218,10 +2218,10 @@ public:
   auto initialize_fork(vertex* parent, vertex* child1, vertex* child2) -> void {
     vertex* vs[] = {child2, child1}; { assert(parent->incounter.load() == 0); }
     for (auto v : vs) { { instrumentation.on_create_vertex(); }
-      v->incounter.store(0);
+      v->incounter.store(0, std::memory_order_relaxed);
       v->outset = parent;
     }
-    parent->incounter.store(2);
+    parent->incounter.store(2, std::memory_order_relaxed);
     for (auto v : vs) {
       schedule(v);
     }

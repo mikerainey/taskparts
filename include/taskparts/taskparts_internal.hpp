@@ -183,22 +183,21 @@ public:
   }
 };
 
+using clone_alternative = enum cone_alternative_enum { clone_fast, clone_slow };
+
 class native_fork_join_vertex {
 public:
-  //    char xxx1[2048];
   alignas(cache_line_szb)
-  std::atomic<uint64_t> incounter;
-  //      char xxx2[2048];
+  std::atomic<int> incounter;
+  clone_alternative alternative;
   alignas(cache_line_szb)
   native_fork_join_vertex* outset;
-  //  std::atomic<native_fork_join_vertex*> outset;
-  //    char xxx3[2048];
   alignas(cache_line_szb)
   native_continuation continuation;
-  //      char xxx4[2048];
 
   native_fork_join_vertex() {
-    incounter.store(0);
+    incounter.store(0, std::memory_order_relaxed);
+    alternative = clone_slow;
     outset = nullptr;
   }
   virtual
@@ -206,6 +205,13 @@ public:
   template <typename Schedule>
   auto decrement(const Schedule& schedule) -> void {
     assert(incounter.load() > 0);
+    if (alternative == clone_fast) {
+      incounter.store(incounter.load(std::memory_order_relaxed) - 1, std::memory_order_relaxed);
+      if (incounter.load(std::memory_order_relaxed) == 0) {
+	schedule(this);
+      }
+      return;
+    }
     if (--incounter == 0) {
       schedule(this);
     }
@@ -254,7 +260,7 @@ auto launch(F&& f) -> void {
 
 class native_fork_join_scheduler_interface {
   public:
-    using continuation = native_continuation;
+  using continuation = native_continuation;
   using vertex = native_fork_join_vertex;
   virtual
   auto self() -> vertex* = 0;
@@ -284,6 +290,7 @@ auto fork2join(F1&& f1, F2&& f2) -> void {
     auto execute_f2 = [&]() { std::forward<F2>(f2)(); };
     native_fork_join_scheduler_interface& s = *my_scheduler();
     auto& v0 = *s.self(); // parent task
+    v0.alternative = clone_slow;
     if (context_save(&(v0.continuation.gprs[0]))) {
       { assert(s.self() == &v0); assert(v0.continuation.action == continuation_continue); }
       v0.continuation.action = continuation_finish;
@@ -300,6 +307,7 @@ auto fork2join(F1&& f1, F2&& f2) -> void {
       { assert(v1.continuation.action == continuation_finish); }
       throw_to(s.worker_continuation());
     }
+    v0.alternative = clone_fast;
     // v2 was not stolen
     { assert(vb == &v2); assert(v2.incounter.load() == 0); assert(v0.incounter.load() == 2); }
     v2.continuation.action = continuation_continue;
