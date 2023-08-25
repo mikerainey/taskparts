@@ -36,6 +36,15 @@
 namespace taskparts {
 
 inline
+size_t hash(uint64_t x) {
+  x = (x ^ (x >> 30)) * 0xbf58476d1ce4e5b9ULL;
+  x = (x ^ (x >> 27)) * 0x94d049bb133111ebULL;
+  x = x ^ (x >> 31);
+  return static_cast<size_t>(x);
+}
+  
+  /*
+inline
 uint64_t hash(uint64_t u) {
   uint64_t v = u * 3935559000370003845ul + 2691343689449507681ul;
   v ^= v >> 21;
@@ -46,8 +55,8 @@ uint64_t hash(uint64_t u) {
   v ^= v >> 41;
   v ^= v <<  5;
   return v;
-}
-
+}  */
+  
 /*---------------------------------------------------------------------*/
 /* Environment variables */
 
@@ -454,25 +463,7 @@ auto initialize_new_continuation(native_continuation& c) -> void {
   c.valgrind_id = VALGRIND_STACK_REGISTER(stack, stack + thread_stack_szb);
 #endif
 }
-  /*
-__attribute__ ((returns_twice))
-auto new_continuation(native_continuation& c, thunk f) -> void {
-  c.f = f;
-  native_continuation* cp;
-  if ((cp = (native_continuation*)context_save(&c.gprs[0]))) {
-    cp->f();  // only cp is for sure live at this point
-    return;
-  }
-  initialize_new_continuation(c);
-}
-  */
 #endif
-
-// LATER: see about using this function
-/*
-auto save(native_continuation& c) -> bool {
-  return context_save(&c.gprs[0]) != nullptr;
-} */
 
 auto throw_to(native_continuation& c) -> void {
   context_restore(&c.gprs[0], &c);
@@ -487,10 +478,6 @@ auto swap(native_continuation& current, native_continuation& next) -> void {
   __builtin_unreachable();
 }
 
-auto get_action(native_continuation& c) -> continuation_action& {
-  return c.action;
-}
-  
 /*---------------------------------------------------------------------*/
 /* Native fork join */
 
@@ -2288,14 +2275,14 @@ public:
   }
 };
 
-using native_fork_join_scheduler = native_fork_join_scheduler_family<>;
-
-native_fork_join_scheduler* scheduler = new native_fork_join_scheduler;
-
 template <
   typename Instrumentation,
   typename Meta_scheduler>
 native_fork_join_scheduler_family<Instrumentation, Meta_scheduler>* native_fork_join_scheduler_family<Instrumentation, Meta_scheduler>::_scheduler = nullptr;
+
+using native_fork_join_scheduler = native_fork_join_scheduler_family<>;
+
+native_fork_join_scheduler* scheduler = new native_fork_join_scheduler;
 
 auto my_scheduler() -> native_fork_join_scheduler_interface* {
   return scheduler;

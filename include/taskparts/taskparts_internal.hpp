@@ -148,41 +148,6 @@ using outset_add_result = enum outset_add_enum {
   outset_add_fail
 };
 
-class fork_join_edges {
-public:
-  alignas(cache_line_szb)
-  std::atomic<uint64_t> incounter;
-  alignas(cache_line_szb)
-  void* outset;
-  
-  auto new_incounter() -> void;
-  auto increment() -> void;
-  template <typename Schedule, typename Vertex_handle>
-  auto decrement(Vertex_handle v, const Schedule& schedule) -> void {
-    assert(incounter.load() > 0);
-    if (--incounter == 0) {
-      schedule(v);
-    }
-  }
-  auto new_outset() -> void;
-  template <typename Vertex_handle>
-  auto add(Vertex_handle* outset, Vertex_handle v) -> outset_add_result {
-    assert(outset != nullptr);
-    assert(*outset == nullptr);
-    assert(v != nullptr);
-    *outset = v;
-    return outset_add_success;
-  }
-  template <typename Decrement>
-  auto parallel_notify(const Decrement& decrement) -> void {
-    if (outset == nullptr) { // e.g., the final vertex
-      return;
-    }
-    decrement(outset);
-    outset = nullptr;
-  }
-};
-
 using clone_alternative = enum cone_alternative_enum { clone_fast, clone_slow };
 
 class native_fork_join_vertex {
@@ -409,6 +374,41 @@ auto get_trampoline(continuation& c) -> trampoline_block_label&;
   
 /*---------------------------------------------------------------------*/
 /* Task DAG */
+
+class fork_join_edges {
+public:
+  alignas(cache_line_szb)
+  std::atomic<uint64_t> incounter;
+  alignas(cache_line_szb)
+  void* outset;
+  
+  auto new_incounter() -> void;
+  auto increment() -> void;
+  template <typename Schedule, typename Vertex_handle>
+  auto decrement(Vertex_handle v, const Schedule& schedule) -> void {
+    assert(incounter.load() > 0);
+    if (--incounter == 0) {
+      schedule(v);
+    }
+  }
+  auto new_outset() -> void;
+  template <typename Vertex_handle>
+  auto add(Vertex_handle* outset, Vertex_handle v) -> outset_add_result {
+    assert(outset != nullptr);
+    assert(*outset == nullptr);
+    assert(v != nullptr);
+    *outset = v;
+    return outset_add_success;
+  }
+  template <typename Decrement>
+  auto parallel_notify(const Decrement& decrement) -> void {
+    if (outset == nullptr) { // e.g., the final vertex
+      return;
+    }
+    decrement(outset);
+    outset = nullptr;
+  }
+};
 
 template <
 typename Edge_endpoints = fork_join_edges,
