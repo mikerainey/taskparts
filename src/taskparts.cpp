@@ -36,15 +36,6 @@
 namespace taskparts {
 
 inline
-size_t hash(uint64_t x) {
-  x = (x ^ (x >> 30)) * 0xbf58476d1ce4e5b9ULL;
-  x = (x ^ (x >> 27)) * 0x94d049bb133111ebULL;
-  x = x ^ (x >> 31);
-  return static_cast<size_t>(x);
-}
-  
-  /*
-inline
 uint64_t hash(uint64_t u) {
   uint64_t v = u * 3935559000370003845ul + 2691343689449507681ul;
   v ^= v >> 21;
@@ -55,7 +46,7 @@ uint64_t hash(uint64_t u) {
   v ^= v >> 41;
   v ^= v <<  5;
   return v;
-}  */
+}
   
 /*---------------------------------------------------------------------*/
 /* Environment variables */
