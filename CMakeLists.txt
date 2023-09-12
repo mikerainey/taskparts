@@ -7,34 +7,37 @@ add_compile_options(
 )
 
 option(NONELASTIC "Disable elastic scheduling." OFF)
-
 option(HWLOC "Use hwloc." OFF)
-
 option(STATS "Enable collecting and reporting of stats on scheduling behavior." OFF)
 option(LOGGING "Enable collecting and reporting of logging on scheduling behavior." OFF)
-
+option(CHASELEV_DEQUE "Use the concurrent deque of Chase and Lev." OFF)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake")
 
-find_package(HWLOC REQUIRED)
-
-
-
 if (NONELASTIC)
-    message(WARNING "Disabling elastic scheduling")
+    message(STATUS "Disabling elastic scheduling")
     add_compile_options(-DTASKPARTS_DISABLE_ELASTIC)
 endif()
 if (STATS)
-    message(WARNING "Enabling stats.")
+    message(STATUS "Enabling stats.")
     add_compile_options(-DTASKPARTS_STATS)
 endif()
 if (LOGGING)
-    message(WARNING "Enabling logging.")
+    message(STATUS "Enabling logging.")
     add_compile_options(-DTASKPARTS_LOGGING)
 endif()
+if (CHASELEV_DEQUE)
+    if (NOT NONELASTIC)
+       message(FATAL_ERROR "Cannot use Chase and Lev deque in combination with elastic scheduling.")
+    endif()
+    message(STATUS "Using Chase and Lev deque.")
+    add_compile_options(-DTASKPARTS_USE_CHASELEV_DEQUE)
+endif()
+
+
+find_package(HWLOC REQUIRED)
 if (HWLOC)
-    message(WARNING "Finding hwloc header files.")
-    message(WARNING "hi: ${HWLOC_INCLUDE_DIRS}")
+    message(STATUS "Finding hwloc header files.")
     include_directories(${HWLOC_INCLUDE_DIRS}/include)
     add_compile_options(-DTASKPARTS_USE_HWLOC)
 endif()
@@ -42,12 +45,10 @@ endif()
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 add_library(taskparts SHARED src/taskparts.cpp)
 
-
 if (HWLOC)
-    message(WARNING "Linking with hwloc.")
+    message(STATUS "Linking with hwloc.")
     target_link_libraries(${CMAKE_PROJECT_NAME} hwloc)
 endif()
-
 
 install(TARGETS taskparts DESTINATION lib)
 install(FILES include/taskparts/taskparts.hpp include/taskparts/taskparts_internal.hpp DESTINATION include/taskparts)
