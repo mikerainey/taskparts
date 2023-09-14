@@ -662,8 +662,13 @@ environment_variable<bool> numa_alloc_interleaved("TASKPARTS_NUMA_ALLOC_INTERLEA
 						  [] { return true; },
 						  "use the round-robin policy for allocating pages to numa nodes");
 environment_variable<pinning_policy_type> pinning_policy("TASKPARTS_PIN_WORKER_THREADS",
+#ifndef TASKPARTS_DISABLE_ELASTIC
+							 [] { return pinning_policy_enabled; },
+#else
 							 [] { return pinning_policy_disabled; },
-							 "pin worker threads to according to a specified policy (either 'enabled' or 'disabled'; default: disabled)",
+#endif
+							 
+							 "pin worker threads to according to a specified policy (either 'enabled' or 'disabled'; default: enabled if used with elastic scheduling, disabled otherwise)",
 							 [] (const char* s) { return (std::string(s) == "disabled") ? pinning_policy_disabled : pinning_policy_enabled; },
 							 [] (pinning_policy_type r) {
 							   return in_quotes((r == pinning_policy_disabled) ? "disabled" : "enabled"); });
