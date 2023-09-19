@@ -802,12 +802,13 @@ auto teardown_machine() -> void {
 /*---------------------------------------------------------------------*/
 /* Random-number generation */
 
-perworker_array<uint64_t> random_seed;
+perworker_array<uint64_t> rng_counter;
 
 auto random_number(size_t my_id = get_my_id()) -> uint64_t {
-  auto& nb = random_seed[my_id];
-  nb = hash(my_id) + hash(nb);
-  return nb;
+  auto& nb = rng_counter[my_id];
+  auto r = hash(my_id) + hash(nb);
+  nb++;
+  return r;
 }
 
 auto random_other_worker(size_t my_id = get_my_id()) -> size_t {
