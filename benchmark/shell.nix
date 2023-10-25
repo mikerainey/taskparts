@@ -13,7 +13,7 @@
   valgrind ? pkgs.valgrind, # can be null
   parlaylib ? import ./../../parlaylib/default.nix {}, # can be null
   cmdline ? import ./../../nix-packages/pkgs/cmdline { stdenv=pkgs.stdenv; fetchgit=pkgs.fetchgit; pandoc=null; texlive=null; }, # can be null
-  jemalloc ? null, # pkgs.jemalloc
+  jemalloc ? pkgs.jemalloc,
   opencilk ? null
 }:
 

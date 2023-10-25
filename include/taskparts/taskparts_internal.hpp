@@ -154,11 +154,11 @@ class native_fork_join_vertex {
 public:
   alignas(cache_line_szb)
   std::atomic<int> incounter;
-  clone_alternative alternative;
   alignas(cache_line_szb)
   native_fork_join_vertex* outset;
   alignas(cache_line_szb)
   native_continuation continuation;
+  clone_alternative alternative;
 
   native_fork_join_vertex() {
     incounter.store(0, std::memory_order_relaxed);

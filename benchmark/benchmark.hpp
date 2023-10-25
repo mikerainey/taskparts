@@ -98,7 +98,7 @@ auto benchmark(const Benchmark& benchmark,
                const Setup& setup = [] {},
                const Teardown& teardown = [] {},
                const Reset& reset = [] {}) -> void {
-  auto warmup = [&] {
+  auto warmup = [&] { 
     if (get_benchmark_warmup_secs() <= 0.0) {
       return;
     }
