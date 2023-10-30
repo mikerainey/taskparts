@@ -57,6 +57,18 @@ libtaskparts.msdbg.a: libtaskparts.msdbg.o
 
 libraries: libtaskparts.sta.so libtaskparts.log.so libtaskparts.dbg.so libtaskparts.msdbg.so libtaskparts.sta.a libtaskparts.log.a libtaskparts.dbg.a libtaskparts.msdbg.a
 
+# Header-only binaries
+# ====================
+
+%.header_opt: %.cpp install_folder 
+	$(CXX) $(TASKPARTS_FLAGS) $(TASKPARTS_OPT_FLAGS) -DTASKPARTS_HEADER_ONLY_LIBRARY $< -o $(TASKPARTS_BINARY_PATH)/$@  $(TASKPARTS_LINKER_FLAGS)
+%.header_sta: %.cpp install_folder 
+	$(CXX) $(TASKPARTS_FLAGS) $(TASKPARTS_STA_FLAGS) -DTASKPARTS_HEADER_ONLY_LIBRARY $< -o $(TASKPARTS_BINARY_PATH)/$@  $(TASKPARTS_LINKER_FLAGS)
+%.header_log: %.cpp install_folder 
+	$(CXX) $(TASKPARTS_FLAGS) $(TASKPARTS_LOG_FLAGS) -DTASKPARTS_HEADER_ONLY_LIBRARY $< -o $(TASKPARTS_BINARY_PATH)/$@  $(TASKPARTS_LINKER_FLAGS)
+%.header_dbg: %.cpp install_folder 
+	$(CXX) $(TASKPARTS_FLAGS) $(TASKPARTS_DBG_FLAGS) -DTASKPARTS_HEADER_ONLY_LIBRARY $< -o $(TASKPARTS_BINARY_PATH)/$@  $(TASKPARTS_LINKER_FLAGS)
+
 # Local standalone binaries
 # =========================
 

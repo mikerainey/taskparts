@@ -576,8 +576,12 @@ auto create_vertex(const F& f,
 
 
 auto test_fib_dag_calculus() -> void;
-  
+
 } // namespace taskparts
+
+#ifdef TASKPARTS_HEADER_ONLY_LIBRARY
+#include "../../src/taskparts.cpp"
+#endif
 
 #define TASKPARTS_LOG_PROGRAM_POINT(p) \
   taskparts::log_program_point(__LINE__, __FILE__, p)
