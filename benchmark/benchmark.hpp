@@ -6,6 +6,21 @@
 #include <chrono>
 #include <string>
 #include <vector>
+#include <sys/resource.h>
+
+static struct rusage last_rusage;
+std::chrono::time_point<std::chrono::steady_clock> last_exectime;
+
+using rusage_metrics = struct rusage_metrics_struct {
+  double exectime;
+  double utime;
+  double stime;
+  uint64_t nvcsw;
+  uint64_t nivcsw;
+  uint64_t maxrss;
+  uint64_t nsignals;
+};
+std::vector<rusage_metrics> rusages;
 
 static inline
 auto now() -> std::chrono::time_point<std::chrono::steady_clock> {
@@ -40,18 +55,33 @@ auto get_benchmark_nb_repeat() -> size_t {
   return nb;
 }
 
-std::chrono::time_point<std::chrono::steady_clock> start_time;
-std::vector<double> wall_clock_times;
-
 auto instrumentation_start() -> void {
 
 }
 auto instrumentation_on_enter_work() -> void {
-  start_time = now();  
+  getrusage(RUSAGE_SELF, &last_rusage);
+  last_exectime = now();
 }
 auto instrumentation_on_exit_work() -> void {
-  wall_clock_times.push_back(since(start_time));
-  start_time = now();  
+  {
+    auto double_of_tv = [] (struct timeval tv) {
+      return ((double) tv.tv_sec) + ((double) tv.tv_usec)/1000000.;
+    };
+    auto exectime = since(last_exectime);
+    last_exectime = now();
+    auto previous_rusage = last_rusage;
+    getrusage(RUSAGE_SELF, &last_rusage);
+    rusage_metrics m = {
+      .exectime = exectime,
+      .utime = double_of_tv(last_rusage.ru_utime) - double_of_tv(previous_rusage.ru_utime),
+      .stime = double_of_tv(last_rusage.ru_stime) - double_of_tv(previous_rusage.ru_stime),
+      .nvcsw = (uint64_t)(last_rusage.ru_nvcsw - previous_rusage.ru_nvcsw),
+      .nivcsw = (uint64_t)(last_rusage.ru_nivcsw - previous_rusage.ru_nivcsw),
+      .maxrss = (uint64_t)(last_rusage.ru_maxrss),
+      .nsignals = (uint64_t)(last_rusage.ru_nsignals - previous_rusage.ru_nsignals)
+    };
+    rusages.push_back(m);
+  }
 }
 auto instrumentation_reset() -> void {
 }
@@ -60,11 +90,23 @@ auto instrumentation_report(std::string outfile) -> void {
   size_t i = 0;
   FILE* f = (outfile == "stdout") ? stdout : fopen(outfile.c_str(), "w");
   fprintf(f, "[\n");
-  for (auto& t : wall_clock_times) {
-    fprintf(f, "{\"exectime\": %f}%s\n", t, ((i + 1) == wall_clock_times.size()) ? "" : ",");
-    i++;
+  size_t n = rusages.size();
+  for (size_t i = 0; i < n; i++) {
+    fprintf(f, "{\"exectime\": %f,\n", rusages[i].exectime);
+    fprintf(f, "\"usertime\": %f,\n", rusages[i].utime);
+    fprintf(f, "\"systime\": %f,\n", rusages[i].stime);
+    fprintf(f, "\"nvcsw\": %lu,\n", rusages[i].nvcsw);
+    fprintf(f, "\"nivcsw\": %lu,\n", rusages[i].nivcsw);
+    fprintf(f, "\"maxrss\": %lu,\n", rusages[i].maxrss);
+    fprintf(f, "\"nsignals\": %lu}", rusages[i].nsignals);
+    if (i + 1 != n) {
+      fprintf(f, ",\n");
+    }
   }
-  fprintf(f, "]\n");
+  fprintf(f, "\n]\n");
+  if (f != stdout) {
+    fclose(f);
+  }
 }
 template <typename Local_reset, typename Global_reset>
 auto reset_scheduler(const Local_reset& local_reset,
