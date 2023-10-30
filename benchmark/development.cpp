@@ -497,6 +497,45 @@ auto test_nested_scheduler() -> void {
   assert(i == 3);
 }
 
+auto fib_dag_calculus(uint64_t n, uint64_t* dst) -> void {
+  if (n < 2) {
+    *dst = n;
+    return;
+  }
+  auto dst2 = new uint64_t[2];
+  auto vj = dag_calculus_scheduler::create_vertex(new dag_calculus_vertex([=] {
+    *dst = dst2[0] + dst2[1];
+    delete [] dst2;
+  }), continuation_minimal);
+  { // capture the current "task-level continuation"
+    // and transfer it the new join continuation
+    auto& vk = _dag_calculus_scheduler->self()->edges.outset;
+    vj->edges.outset = vk;
+    vk = nullptr;
+  }
+  vertex* vs[2];
+  for (int i = 1; i >= 0; i--) {
+    vs[i] = dag_calculus_scheduler::create_vertex(new dag_calculus_vertex([=] {
+      fib_dag_calculus(n - (i + 1), &dst2[i]);
+    }), continuation_minimal);
+  }
+  for (auto v : vs) {
+    dag_calculus_scheduler::new_edge(v, vj);
+  }
+  for (auto v : vs) {
+    dag_calculus_scheduler::release(v);
+  }
+  dag_calculus_scheduler::release(vj);
+}
+
+auto test_fib_dag_calculus() -> void {
+  uint64_t dst = 123;
+  launch_dag_calculus(dag_calculus_scheduler::create_vertex(new dag_calculus_vertex([&] {
+    fib_dag_calculus(10, &dst);
+  }), continuation_minimal));
+  printf("dst=%lu\n",dst);
+}
+
 /*---------------------------------------------------------------------*/
 /* Driver */
 

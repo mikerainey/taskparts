@@ -5,6 +5,7 @@
 #include <parlay/sequence.h>
 #include <deque>
 #include <cmdline.hpp>
+#include "benchmark.hpp"
 
 class node {
 public:
@@ -438,7 +439,7 @@ auto benchmark_opencilk(const Benchmark& benchmark,
 
 int main() {
   using namespace deepsea;
-  size_t height = cmdline::parse_or_default_int("height", 23);
+  size_t height = cmdline::parse_or_default_int("height", 28);
   H = cmdline::parse_or_default_int("heartbeat_rate", H);
   auto nb_updates = std::max(1, cmdline::parse_or_default_int("nb_updates", 1));
   auto update_path_length = std::max(1, cmdline::parse_or_default_int("update_path_length", 1));
