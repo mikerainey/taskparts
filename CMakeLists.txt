@@ -10,13 +10,13 @@ if(TASKPARTS_HEADER_ONLY)
   install(DIRECTORY include/taskparts DESTINATION include)
   install(DIRECTORY src DESTINATION src)
 else()
-  # Compile-time flags
+  # Required compile-time flags
   add_compile_options(
 	  -fno-stack-protector
 	  -fno-asynchronous-unwind-tables
   )
 
-  # Build options
+  # TaskPaRTS build options
   option(NONELASTIC "Disable elastic scheduling." OFF)
   option(STATS "Enable collecting and reporting of stats on scheduling behavior." OFF)
   option(LOGGING "Enable collecting and reporting of logging on scheduling behavior." OFF)
