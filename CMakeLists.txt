@@ -2,13 +2,16 @@ cmake_minimum_required(VERSION 3.14)
 project(taskparts)
 set(CMAKE_CXX_STANDARD 17)
 
+option(TASKPARTS_HEADER_ONLY "Build as a header-file-only library." OFF)
+
 if(TASKPARTS_HEADER_ONLY)
-  add_definitions(-DTASKPARTS_HEADER_ONLY)
+  message("Building as header-only library.")
+  add_definitions(-DTASKPARTS_HEADER_ONLY -DTASKPARTS_HEADER_ONLY_LIBRARY)
   add_library(taskparts INTERFACE)
   include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
   target_include_directories(taskparts INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/include)
   install(DIRECTORY include/taskparts DESTINATION include)
-  install(DIRECTORY src DESTINATION src)
+  install(FILES src/taskparts.cpp DESTINATION src)
 else()
   # Required compile-time flags
   add_compile_options(
