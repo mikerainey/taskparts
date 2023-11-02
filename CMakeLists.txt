@@ -6,7 +6,7 @@ option(TASKPARTS_HEADER_ONLY "Build as a header-file-only library." OFF)
 
 if(TASKPARTS_HEADER_ONLY)
   message("Building as header-only library.")
-  add_definitions(-DTASKPARTS_HEADER_ONLY -DTASKPARTS_HEADER_ONLY_LIBRARY)
+  add_definitions(-DTASKPARTS_HEADER_ONLY)
   add_library(taskparts INTERFACE)
   include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
   target_include_directories(taskparts INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/include)
