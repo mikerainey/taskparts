@@ -6,8 +6,11 @@
 # or for the default version
 #   $ nix-shell --arg stdenv '(import <nixpkgs> {}).clangStdenv'
 
+# To use Cilk:
+# nix-shell --arg opencilk 'import ./../../nix-packages/pkgs/opencilk/default.nix {}'
+
 { pkgs   ? import <nixpkgs> {},
-  stdenv ? pkgs.stdenv,
+  stdenv ? pkgs.llvmPackages_14.stdenv,
   hwloc ? pkgs.hwloc, # can be null
   gdb ? pkgs.gdb, # can be null
   valgrind ? pkgs.valgrind, # can be null
@@ -44,5 +47,7 @@ stdenv.mkDerivation rec {
     export NUM_SYSTEM_CORES=$( ${hwloc}/bin/hwloc-ls|grep Core|wc -l )
     export MAKEFLAGS="-j $NUM_SYSTEM_CORES"
     export TASKPARTS_NUM_WORKERS=$NUM_SYSTEM_CORES;
+    export PARLAY_NUM_THREADS=$NUM_SYSTEM_CORES;
+    export LD_PRELOAD=$JEMALLOC_PATH/lib/libjemalloc.so
   '';
 }

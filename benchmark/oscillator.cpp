@@ -65,7 +65,7 @@ public:
     int64_t den; // Denominator
 };
 
-#if defined(PARLAY_SEQUENTIAL) || defined(PARLAY_HOMEGROWN)
+#if defined(PARLAY_SEQUENTIAL) || defined(PARLAY_HOMEGROWN) || defined(PARLAY_OPENCILK)
 template <typename F1, typename F2>
 auto fork2join(const F1& f1, const F2& f2) -> void {
   parlay::par_do(f1, f2);
@@ -92,16 +92,30 @@ auto reduce(const F& f, const R& r, V z, size_t lo, size_t hi, size_t grain = 2)
   return r(rs[0], rs[1]);
 }
 
+inline
+uint64_t _hash(uint64_t u) {
+  uint64_t v = u * 3935559000370003845ul + 2691343689449507681ul;
+  v ^= v >> 21;
+  v ^= v << 37;
+  v ^= v >>  4;
+  v *= 4768777513237032717ul;
+  v ^= v << 20;
+  v ^= v >> 41;
+  v ^= v <<  5;
+  return v;
+}
+
 auto oscillate(rational max_n, rational step, size_t grain) -> void {
   auto secs = 4.0;
   auto s = now();
   uint64_t nb_apps = 0;
   uint64_t r = 1234;
   rational n = rational(1, 1);
+  uint64_t rounds = 0;
   std::cout << "max=" << max_n << " step=" << step << std::endl;
   while (since(s) < secs) {
-    r = reduce([&] (uint64_t i) { return hash(i); },
-	       [&] (uint64_t r1, uint64_t r2) { return hash(r1 | r2); },
+    r = reduce([&] (uint64_t i) { return _hash(i); },
+	       [&] (uint64_t r1, uint64_t r2) { return _hash(r1 | r2); },
 	       r, 0, n.ceiling(), grain);
     //    std::cout << "n=" << n << " step=" << step << std::endl;
     nb_apps += n.ceiling();
@@ -113,9 +127,9 @@ auto oscillate(rational max_n, rational step, size_t grain) -> void {
       step.num *= -1l;
       n = max_n;
     }
-    
+    rounds++;
   }
-  std::cout << "nb_apps=" << nb_apps << " r=" << r << std::endl;
+  std::cout << "nb_apps=" << nb_apps << " rounds=" << rounds << " r=" << r << std::endl;
 }
 
 } // namespace taskparts
