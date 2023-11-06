@@ -8,6 +8,7 @@
 #include <chrono>
 #include <mutex>
 #include <cstdarg>
+
 #ifdef TASKPARTS_USE_VALGRIND
 // nix-build '<nixpkgs>' -A valgrind.dev
 #include <valgrind/valgrind.h>
@@ -114,9 +115,12 @@ using continuation_action = enum continuation_action_enum {
   continuation_finish
 };
 
+auto deallocate_stack(char* stack, size_t stack_szb) -> void;
+
 template <size_t cpu_context_szb = cpu_context_szb>
 class native_continuation_family {
 public:
+  size_t stack_szb;
   continuation_action action;
   char gprs[cpu_context_szb];
   char* stack = nullptr;
@@ -133,7 +137,7 @@ public:
 #ifdef TASKPARTS_USE_VALGRIND
     VALGRIND_STACK_DEREGISTER(valgrind_id);
 #endif
-    std::free(stack);
+    deallocate_stack(stack, stack_szb);
     stack = nullptr;
   }
 };

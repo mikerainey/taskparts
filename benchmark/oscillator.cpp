@@ -65,21 +65,14 @@ public:
     int64_t den; // Denominator
 };
 
-#if defined(PARLAY_SEQUENTIAL) || defined(PARLAY_HOMEGROWN) || defined(PARLAY_OPENCILK)
-template <typename F1, typename F2>
-auto fork2join(const F1& f1, const F2& f2) -> void {
-  parlay::par_do(f1, f2);
-}
-#endif
-
-namespace taskparts {
+//namespace taskparts {
   
 template <typename F, typename R, typename V>
 auto reduce(const F& f, const R& r, V z, size_t lo, size_t hi, size_t grain = 2) -> V {
   if (lo == hi) {
     return z;
   }
-  if (((lo + 1) == hi) || ((hi - lo) <= grain)) {
+  if ((hi - lo) <= grain) {
     for (auto i = lo; i < hi; i++) {
       z = r(f(lo), z);
     }
@@ -87,9 +80,9 @@ auto reduce(const F& f, const R& r, V z, size_t lo, size_t hi, size_t grain = 2)
   }
   V rs[2];
   auto mid = (lo + hi) / 2;
-  fork2join([&] { rs[0] = reduce(f, r, z, lo, mid); },
-	    [&] { rs[1] = reduce(f, r, z, mid, hi); });
-  return r(rs[0], rs[1]);
+  parlay::par_do([&] { rs[0] = reduce(f, r, z, lo, mid); },
+		 [&] { rs[1] = reduce(f, r, z, mid, hi); }); 
+  return r(rs[0], rs[1]); 
 }
 
 inline
@@ -132,7 +125,7 @@ auto oscillate(rational max_n, rational step, size_t grain) -> void {
   std::cout << "nb_apps=" << nb_apps << " rounds=" << rounds << " r=" << r << std::endl;
 }
 
-} // namespace taskparts
+//} // namespace taskparts
 
 int main(int argc, char* argv[]) {
   auto usage = "Usage: oscillator <max_n> <step> <grain>";
@@ -147,9 +140,11 @@ int main(int argc, char* argv[]) {
     catch (...) { printf("%s\n", usage); }
     try { grain = std::stol(argv[3]); }
     catch (...) { printf("%s\n", usage); }
-    taskparts::benchmark([&] {
-      taskparts::oscillate(max_n, step, grain);
-    });
+    parlay::par_do([&] { // to ensure that the taskparts scheduler is running
+      taskparts::benchmark([&] {
+	oscillate(max_n, step, grain);
+      });
+    }, [&] {});
 
   }
   return 0;
