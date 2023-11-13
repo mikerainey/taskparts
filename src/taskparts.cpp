@@ -25,6 +25,9 @@
 #ifdef TASKPARTS_USE_HWLOC
 #include <hwloc.h>    
 #endif    
+#ifdef TASKPARTS_MMAP_STACK
+#include <sys/mman.h>
+#endif
 
 #if !defined(TASKPARTS_POSIX) && !defined(TASKPARTS_DARWIN)
 #error "need to specify platform for taskparts"
@@ -435,23 +438,54 @@ auto new_continuation(native_continuation& c, thunk f) -> void* {
 #endif
 
 #if defined(TASKPARTS_X64)
+  
+auto allocate_stack(native_continuation& c) -> void {
+#ifndef TASKPARTS_MMAP_STACK
+  c.stack = (char*)std::malloc(c.stack_szb);
+#else
+  const auto PageSize { static_cast<size_t>(sysconf(_SC_PAGESIZE)) };
+  const std::size_t pages { (c.stack_szb + PageSize - 1) / PageSize }; // calculate pages required
+  c.stack_szb = (pages + 1) * PageSize; // add a page at bottom for guard-page
+  
+  if (void *vp { ::mmap(0, c.stack_szb, PROT_READ | PROT_WRITE, MAP_PRIVATE |
+#if defined(MAP_STACK)
+			MAP_ANON | MAP_STACK,
+#elif defined(MAP_ANON)
+			MAP_ANON,
+#else
+			MAP_ANONYMOUS,
+#endif
+			-1, 0) }; vp == MAP_FAILED)
+    exit(1);
+  else
+    c.stack = static_cast<char *>(vp);
+#endif
+}
+
+auto deallocate_stack(char* stack, size_t stack_szb) -> void {
+#ifndef TASKPARTS_MMAP_STACK
+    std::free(stack);
+#else
+    ::munmap(stack, stack_szb);
+#endif
+}
 
 auto initialize_new_continuation(native_continuation& c) -> void {
   c.action = continuation_finish;
   static constexpr
   size_t thread_stack_alignb = 16L;
-  size_t thread_stack_szb = thread_stack_alignb * (1<<15);
-  static constexpr
-  int _X86_64_SP_OFFSET = 6;
-  char* stack = (char*)std::malloc(thread_stack_szb);
-  char* sp = &stack[thread_stack_szb];
+  c.stack_szb = thread_stack_alignb * (1<<15);
+  c.stack_szb = c.stack_szb & ~0xff;
+  allocate_stack(c);
+  char* sp = &c.stack[c.stack_szb];
   sp = (char*)((uintptr_t)sp & (-thread_stack_alignb));  // align stack pointer on 16-byte boundary
   sp -= 128; // for red zone
   void** _ctx = (void**)&c.gprs[0];
+  static constexpr
+  int _X86_64_SP_OFFSET = 6;
   _ctx[_X86_64_SP_OFFSET] = sp;
-  c.stack = stack;
 #ifdef TASKPARTS_USE_VALGRIND
-  c.valgrind_id = VALGRIND_STACK_REGISTER(stack, stack + thread_stack_szb);
+  c.valgrind_id = VALGRIND_STACK_REGISTER(c.stack, c.stack + c.stack_szb);
 #endif
 }
 #endif

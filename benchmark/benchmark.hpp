@@ -1,9 +1,29 @@
 #pragma once
 
-#if defined(PARLAY_SEQUENTIAL) || defined(PARLAY_HOMEGROWN)
+#include <parlay/primitives.h>
+
+#include <chrono>
+
+static inline
+auto now() -> std::chrono::time_point<std::chrono::steady_clock> {
+  return std::chrono::steady_clock::now();
+}
+
+static inline
+auto diff(std::chrono::time_point<std::chrono::steady_clock> start,
+          std::chrono::time_point<std::chrono::steady_clock> finish) -> double {
+  std::chrono::duration<double> elapsed = finish - start;
+  return elapsed.count();
+}
+
+static inline
+auto since(std::chrono::time_point<std::chrono::steady_clock> start) -> double {
+  return diff(start, now());
+}
+
+#if defined(PARLAY_SEQUENTIAL) || defined(PARLAY_HOMEGROWN) || defined(PARLAY_OPENCILK)
 #include <functional>
 #include <cstdio>
-#include <chrono>
 #include <string>
 #include <vector>
 #include <sys/resource.h>
@@ -22,22 +42,6 @@ using rusage_metrics = struct rusage_metrics_struct {
 };
 std::vector<rusage_metrics> rusages;
 
-static inline
-auto now() -> std::chrono::time_point<std::chrono::steady_clock> {
-  return std::chrono::steady_clock::now();
-}
-
-static inline
-auto diff(std::chrono::time_point<std::chrono::steady_clock> start,
-          std::chrono::time_point<std::chrono::steady_clock> finish) -> double {
-  std::chrono::duration<double> elapsed = finish - start;
-  return elapsed.count();
-}
-
-static inline
-auto since(std::chrono::time_point<std::chrono::steady_clock> start) -> double {
-  return diff(start, now());
-}
 
 auto get_benchmark_warmup_secs() -> double {
   return 0.0;
@@ -126,8 +130,6 @@ auto reset_scheduler(const Local_reset& local_reset,
 #else
 #error "need to provide parlay scheduler option"
 #endif
-
-#include <parlay/primitives.h>
 
 namespace taskparts {
 
