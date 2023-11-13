@@ -2024,6 +2024,10 @@ using default_elastic = elastic_s3<>;
 template <typename Vertex_handle>
 using default_native_fork_join_deque = chaselev<Vertex_handle>;
 using default_elastic = minimal_elastic;  
+#elif defined(TASKPARTS_USE_YWRA_DEQUE)
+template <typename Vertex_handle>
+using default_native_fork_join_deque = ywra<Vertex_handle>;
+using default_elastic = minimal_elastic;  
 #else
 template <typename Vertex_handle>
 using default_native_fork_join_deque = abp<Vertex_handle>;
