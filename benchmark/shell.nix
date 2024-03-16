@@ -1,3 +1,6 @@
+#nix-shell -p llvmPackages_14.stdenv -p llvmPackages_14.bintools -p llvmPackages_14.clang-unwrapped -p llvmPackages_14.compiler-rt-libc -p llvmPackages_14.libcxxStdenv -p llvmPackages_14.libllvm
+
+
 # Creates a shell environment prepared for debugging taskparts.
 #
 # By default, the environment uses GCC instead of clang/llvm. To
