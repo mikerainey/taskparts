@@ -583,7 +583,7 @@ auto test_fib_dag_calculus() -> void;
 
 } // namespace taskparts
 
-#ifdef TASKPARTS_HEADER_ONLY_LIBRARY
+#ifdef TASKPARTS_HEADER_ONLY
 #include "../../src/taskparts.cpp"
 #endif
 

@@ -1,5 +1,25 @@
 # TaskPaRTS - A Task-Parallel Run-Time System for C++
 
+## Building
+
+CMake options:
+- `-DNONELASTIC=ON` Disable elastic scheduling.
+- `-DSTATS=ON` Enable collecting and reporting of stats on scheduling behavior.
+- `-DLOGGING=ON` Enable collecting and reporting of logging on scheduling behavior.
+- `-DHWLOC=ON` Build with hwloc, which enables CPU pinning.
+
+## Header-file library (recommended for best performance)
+
+~~~~
+$ cmake -S . -B build -DTASKPARTS_HEADER_ONLY=ON
+~~~~
+
+### Linked library
+
+~~~~
+$ cmake -S . -B build
+~~~~
+
 ## Taskparts compiler flags:
 
 Platform (required):
