@@ -3,7 +3,7 @@ project(taskparts)
 set(CMAKE_CXX_STANDARD 17)
 
 # Build options
-option(TASKPARTS_HEADER_ONLY "Build as a header-file-only library." OFF)
+option(SHARED_LINKED_LIBRARY "Build as a shared linked library." OFF)
 option(NONELASTIC "Disable elastic scheduling." OFF)
 option(STATS "Enable collecting and reporting of stats on scheduling behavior." OFF)
 option(LOGGING "Enable collecting and reporting of logging on scheduling behavior." OFF)
@@ -14,7 +14,7 @@ option(HWLOC "Build with hwloc, which enables CPU pinning." OFF)
 # Header-only build
 ###################
 
-if(TASKPARTS_HEADER_ONLY)
+if(NOT SHARED_LINKED_LIBRARY)
   message("Building as header-only library.")
   add_library(taskparts INTERFACE)
   include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include ${CMAKE_CURRENT_SOURCE_DIR}/src)
