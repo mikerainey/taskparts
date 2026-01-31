@@ -14,6 +14,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include <algorithm>
 #include <deque>
 #include <vector>
 #include <unordered_map>

@@ -29,3 +29,8 @@
 
 # Emacs temp files
 *~
+
+# Nix flake artifacts
+/result
+/result-*
+.direnv/
