@@ -440,8 +440,8 @@ auto increment(Vertex_handle v) -> void {
 
 template <typename Scheduler, typename Vertex_handle = vertex *>
 auto decrement(Vertex_handle v) -> void {
-  v->edges.template decrement(
-      v, [](Vertex_handle __v) { Scheduler::Schedule(__v); });
+  auto schedule = [](Vertex_handle __v) { Scheduler::Schedule(__v); };
+  v->edges.decrement(v, schedule);
 }
 
 template <typename Vertex_handle = vertex *>

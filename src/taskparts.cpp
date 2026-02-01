@@ -9,9 +9,11 @@
 #include <sys/resource.h>
 #if defined(TASKPARTS_DARWIN)
 #include <mach/mach_time.h>
+#include <sys/sysctl.h>
 #endif
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <time.h>
 #include <unistd.h>
 
 #include <algorithm>
@@ -132,8 +134,19 @@ auto report_taskparts_configuration() -> void {
 auto detect_cpu_frequency_khz() -> uint64_t {
   unsigned long cpu_frequency_khz = 0;
 #if defined(TASKPARTS_DARWIN)
-  die("detection of cpu frequency not yet supported on darwin");
-#endif
+  // On Darwin, use sysctl to get CPU frequency
+  uint64_t freq = 0;
+  size_t size = sizeof(freq);
+  // Try to get the CPU frequency from sysctl
+  if (sysctlbyname("hw.cpufrequency", &freq, &size, nullptr, 0) == 0) {
+    cpu_frequency_khz = freq / 1000; // Convert Hz to kHz
+  } else {
+    // Fallback: Apple Silicon doesn't expose frequency via sysctl
+    // Use a reasonable default (3.2 GHz is typical for M1/M2/M3)
+    cpu_frequency_khz = 3200000; // 3.2 GHz in kHz
+  }
+#else
+  // Linux: read from sysfs
   FILE *f;
   f = fopen("/sys/devices/system/cpu/cpu0/cpufreq/base_frequency", "r");
   if (f == nullptr) {
@@ -146,6 +159,7 @@ auto detect_cpu_frequency_khz() -> uint64_t {
     }
     fclose(f);
   }
+#endif
   return (uint64_t)cpu_frequency_khz;
 }
 
@@ -157,12 +171,22 @@ environment_variable<uint64_t> cpu_frequency_khz(
 /* Cycle counter */
 
 static inline auto cyclecounter() -> uint64_t {
-#if defined(TASKPARTS_X64) && defined(TASKPARTS_POSIX)
+#if defined(TASKPARTS_DARWIN)
+  // macOS: use mach_absolute_time() for both x64 and ARM64
+  return mach_absolute_time() * 100;
+#elif defined(TASKPARTS_X64) && defined(TASKPARTS_POSIX)
+  // Linux x64: use RDTSC
   unsigned int hi, lo;
   __asm__ __volatile__("rdtsc" : "=a"(lo), "=d"(hi));
   return ((uint64_t)lo) | (((uint64_t)hi) << 32);
-#elif defined(TASKPARTS_DARWIN)
-  return mach_absolute_time() * 100;
+#elif defined(TASKPARTS_ARM64) && defined(TASKPARTS_POSIX)
+  // Linux ARM64: use clock_gettime for monotonic counter
+  struct timespec ts;
+  clock_gettime(CLOCK_MONOTONIC, &ts);
+  // Convert to a "cycle-like" value scaled similarly to other platforms
+  return (uint64_t)ts.tv_sec * 1000000000ULL + (uint64_t)ts.tv_nsec;
+#else
+#error "Unsupported platform/architecture combination for cyclecounter"
 #endif
 }
 
@@ -191,7 +215,7 @@ static inline auto busywait_pause() {
   //_mm_pause();
   __builtin_ia32_pause();
 #elif defined(TASKPARTS_ARM64)
-  //__builtin_arm_yield();
+  __builtin_arm_yield();
 #else
 #error need to declare platform (e.g., TASKPARTS_X64)
 #endif
@@ -388,30 +412,31 @@ context_restore:
 
 #if defined(TASKPARTS_ARM64)
 
-__attribute__((returns_twice)) auto new_continuation(native_continuation &c,
-                                                     thunk f) -> void * {
-  static constexpr size_t arm64_stack_alignb = 16;
-  static constexpr size_t arm64_stackszb = arm64_stack_alignb * (1 << 12);
-  static constexpr int arm64_sp_offsetb = 12;
-  c.f = f;
-  native_continuation *cp;
-  if ((cp = (native_continuation *)context_save(&c.gprs[0]))) {
-    cp->f(); // only cp is for sure live at this point
-    return nullptr;
-  }
-  c.action = continuation_finish;
-  char *stack = (char *)std::malloc(arm64_stackszb);
-  char *stack_end = &stack[arm64_stackszb];
-  stack_end -= (size_t)stack_end % arm64_stack_alignb;
-  void **_ctx = (void **)&c.gprs[0];
-  _ctx[arm64_sp_offsetb] = stack_end;
-  c.stack = stack;
-  return nullptr;
+auto allocate_stack(native_continuation &c) -> void {
+  c.stack = (char *)std::malloc(c.stack_szb);
 }
 
-#endif
+auto deallocate_stack(char *stack, size_t stack_szb) -> void {
+  std::free(stack);
+}
 
-#if defined(TASKPARTS_X64)
+auto initialize_new_continuation(native_continuation &c) -> void {
+  c.action = continuation_finish;
+  static constexpr size_t arm64_stack_alignb = 16L;
+  static constexpr int arm64_sp_offset = 12; // SP is at index 12 in ARM64 context (offset 96 bytes)
+  c.stack_szb = arm64_stack_alignb * (1 << 15); // 512KB to match X64
+  c.stack_szb = c.stack_szb & ~0xff;
+  allocate_stack(c);
+  char *sp = &c.stack[c.stack_szb];
+  sp = (char *)((uintptr_t)sp & (-arm64_stack_alignb)); // align stack pointer on 16-byte boundary
+  void **_ctx = (void **)&c.gprs[0];
+  _ctx[arm64_sp_offset] = sp;
+#ifdef TASKPARTS_USE_VALGRIND
+  c.valgrind_id = VALGRIND_STACK_REGISTER(c.stack, c.stack + c.stack_szb);
+#endif
+}
+
+#elif defined(TASKPARTS_X64)
 
 auto allocate_stack(native_continuation &c) -> void {
 #ifndef TASKPARTS_MMAP_STACK
@@ -773,7 +798,12 @@ auto initialize_hwloc(bool numa_alloc_interleaved) {
     int err =
         hwloc_set_membind(topology, all_cpus, HWLOC_MEMBIND_INTERLEAVE, 0);
     if (err < 0) {
+#if defined(TASKPARTS_DARWIN)
+      // NUMA memory binding is not supported on macOS - silently ignore
+      (void)err;
+#else
       die("Failed to set NUMA round-robin allocation policy\n");
+#endif
     }
   }
 }
@@ -788,10 +818,15 @@ auto pin_calling_worker() -> void {
   auto &cpuset = hwloc_cpusets.mine();
   int flags = HWLOC_CPUBIND_STRICT | HWLOC_CPUBIND_THREAD;
   if (hwloc_set_cpubind(topology, cpuset, flags)) {
+#if defined(TASKPARTS_DARWIN)
+    // CPU pinning is not fully supported on macOS - silently ignore
+    (void)flags;
+#else
     char *str;
     int error = errno;
     hwloc_bitmap_asprintf(&str, cpuset);
     die("Couldn't bind to cpuset %s: %s\n", str, strerror(error));
+#endif
   }
 #endif
 }

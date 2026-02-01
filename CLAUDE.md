@@ -117,7 +117,8 @@ namespace taskparts {
 - Reproducible development environment
 - Integrated ParlayLib from https://github.com/mikerainey/parlaylib
 - Automatic environment variable configuration
-- All dependencies included (LLVM 18, hwloc, jemalloc, gdb, valgrind)
+- Cross-platform support (Linux x64, macOS x64/ARM64)
+- All dependencies included (LLVM 18, hwloc, jemalloc; gdb/valgrind on Linux only)
 
 **Usage**:
 ```bash
@@ -136,8 +137,8 @@ nix develop
 - `HWLOC_CFLAGS`: hwloc compiler flags
 - `HWLOC_LIBFLAGS`: hwloc linker flags
 - `PARLAYLIB_CFLAGS`: ParlayLib include paths
-- `TASKPARTS_PLATFORM_FLAGS`: Platform/architecture flags
-- `LD_PRELOAD`: jemalloc preload for benchmarks
+- `TASKPARTS_PLATFORM_FLAGS`: Platform/architecture flags (auto-detected)
+- `LD_PRELOAD` (Linux) / `DYLD_INSERT_LIBRARIES` (macOS): jemalloc preload for benchmarks
 
 ### 2. CMake
 
@@ -218,7 +219,7 @@ make fib.header_opt
 - C++17 compiler (GCC or Clang)
 - CMake 3.14+ (for CMake builds)
 - Make (for benchmark builds)
-- libatomic (linking: `-latomic`)
+- libatomic (linking: `-latomic`) - **Linux only**, not needed on macOS
 - pthread (implicit via std::thread)
 
 ### Optional
@@ -313,6 +314,55 @@ make fib.header_opt
 **Fix**: Created modern flake.nix with `llvmPackages_18`
 **Status**: ✅ Fixed - Migrated to flake
 
+### Issue 5: ARM64/Darwin Support - CPU Frequency Detection
+**File**: `src/taskparts.cpp`
+**Lines**: 132-160
+**Error**: Called `die()` on Darwin, crashing on startup
+**Fix**: Added `sysctl` API for Darwin with 3.2 GHz fallback for Apple Silicon
+**Status**: ✅ Fixed
+
+### Issue 6: ARM64/Darwin Support - Cycle Counter
+**File**: `src/taskparts.cpp`
+**Lines**: 172-191
+**Error**: No cycle counter implementation for ARM64
+**Fix**: Use `mach_absolute_time()` on Darwin, `clock_gettime(CLOCK_MONOTONIC)` on ARM64 POSIX
+**Status**: ✅ Fixed
+
+### Issue 7: ARM64/Darwin Support - Busy-Wait Pause
+**File**: `src/taskparts.cpp`
+**Line**: 218
+**Error**: ARM64 YIELD instruction was commented out
+**Fix**: Enabled `__builtin_arm_yield()` for ARM64
+**Status**: ✅ Fixed
+
+### Issue 8: ARM64/Darwin Support - Stack Allocation
+**File**: `src/taskparts.cpp`
+**Lines**: 413-436
+**Error**: ARM64 had broken `new_continuation` with non-existent `c.f` member
+**Fix**: Replaced with proper `allocate_stack`, `deallocate_stack`, `initialize_new_continuation` for ARM64 (512KB stacks)
+**Status**: ✅ Fixed
+
+### Issue 9: ARM64/Darwin Support - NUMA/CPU Binding
+**File**: `src/taskparts.cpp`
+**Lines**: 793-821
+**Error**: NUMA memory binding and CPU pinning not supported on macOS, causing crashes
+**Fix**: Silently ignore failures on Darwin (these features are Linux-specific)
+**Status**: ✅ Fixed
+
+### Issue 10: Template Keyword Usage
+**File**: `include/taskparts/taskparts_internal.hpp`
+**Lines**: 441-445
+**Error**: Newer Clang rejected `template` keyword without explicit arguments
+**Fix**: Restructured to avoid dependent template member call syntax issue
+**Status**: ✅ Fixed
+
+### Issue 11: Makefile -latomic on Darwin
+**File**: `benchmark/Makefile`
+**Lines**: 19-24
+**Error**: `-latomic` not available on macOS (not needed)
+**Fix**: Made `-latomic` conditional based on platform (`uname -s`)
+**Status**: ✅ Fixed
+
 ## Development Workflow
 
 ### Setting Up Development Environment
@@ -395,7 +445,7 @@ int main() {
 }
 ```
 
-**Compile**:
+**Compile (Linux x64)**:
 ```bash
 clang++ -std=c++17 -I../include/ -I../src/ \
   -DTASKPARTS_POSIX=1 -DTASKPARTS_X64=1 \
@@ -403,6 +453,16 @@ clang++ -std=c++17 -I../include/ -I../src/ \
   -O3 -DNDEBUG \
   test.cpp -o test \
   -latomic -lpthread
+```
+
+**Compile (macOS ARM64)**:
+```bash
+clang++ -std=c++17 -I../include/ -I../src/ \
+  -DTASKPARTS_DARWIN=1 -DTASKPARTS_ARM64=1 \
+  -DTASKPARTS_HEADER_ONLY \
+  -O3 -DNDEBUG \
+  test.cpp -o test \
+  -lpthread
 ```
 
 ## Testing
@@ -523,9 +583,10 @@ make myprogram.homegrown_opt
 
 **Current Branch**: `successor`
 **Main Branch**: `main`
-**Recent Work**: Nix flake modernization, header-only build fixes, parlaylib integration
+**Recent Work**: ARM64/Darwin support, Nix flake modernization, header-only build fixes, parlaylib integration
 
 **Branch History** (recent commits on successor):
+- ARM64 macOS (Apple Silicon) support
 - Nix flake with integrated parlaylib support
 - Header-only build improvements
 - Compile-time parameter for deque selection
@@ -540,6 +601,31 @@ make myprogram.homegrown_opt
 - **ParlayLib**: https://cmuparlay.github.io/parlaylib/
 - **Nix Flakes**: https://nixos.wiki/wiki/Flakes
 
+## Platform Support Matrix
+
+| Platform | Architecture | Status | Notes |
+|----------|--------------|--------|-------|
+| Linux | x86-64 | ✅ Production Ready | Full feature support |
+| Linux | ARM64 | ✅ Supported | Uses clock_gettime for cycle counter |
+| macOS | x86-64 | ✅ Supported | Intel Macs |
+| macOS | ARM64 | ✅ Supported | Apple Silicon (M1/M2/M3/M4) |
+
+### Platform-Specific Notes
+
+**macOS (Darwin)**:
+- NUMA memory binding silently ignored (not supported by macOS)
+- CPU pinning silently ignored (not fully supported by macOS)
+- Uses `mach_absolute_time()` for cycle counter
+- CPU frequency defaults to 3.2 GHz on Apple Silicon (not exposed via sysctl)
+- No `-latomic` needed (built into standard library)
+- jemalloc uses `DYLD_INSERT_LIBRARIES` instead of `LD_PRELOAD`
+- gdb and valgrind not available in Nix flake (broken on macOS)
+
+**Linux**:
+- Full NUMA and CPU pinning support via hwloc
+- Uses RDTSC (x64) or clock_gettime (ARM64) for cycle counter
+- Requires `-latomic` for linking
+
 ## Tips for AI Assistants
 
 1. **Always read before editing**: Use the Read tool to understand file contents before making changes
@@ -550,14 +636,16 @@ make myprogram.homegrown_opt
 6. **Benchmark dependencies**: Most benchmarks require ParlayLib - ensure it's available
 7. **Test after changes**: Always verify builds work after modifying Makefiles or headers
 8. **Git tracking**: Nix flakes require files to be git-tracked to work (`git add` before testing)
+9. **macOS ARM64**: Don't use `-latomic`, NUMA/CPU pinning features won't work but won't crash
 
 ## Version Information
 
-**Last Updated**: 2026-01-30
+**Last Updated**: 2026-02-01
 **TaskPaRTS Version**: 0.1.0 (from flake.nix)
 **LLVM Version**: 18.1.8 (from Nix flake)
 **CMake Version**: 4.1.2 (from Nix flake)
 **ParlayLib Commit**: 9bb91b2613f2644a879242215b0d525813c5131b
+**Supported Platforms**: Linux (x64/ARM64), macOS (x64/ARM64)
 
 ---
 

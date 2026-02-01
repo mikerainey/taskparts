@@ -82,13 +82,14 @@
             hwloc
             jemalloc
 
-            # Development and debugging tools
-            gdb
-            valgrind
+            # Development and debugging tools (Linux only - broken/unavailable on macOS)
             llvmPackages_18.clang-tools  # For clang-format
 
             # Parlaylib for benchmarks
             parlaylib
+          ] ++ pkgs.lib.optionals (!pkgs.stdenv.isDarwin) [
+            gdb
+            valgrind
           ];
 
           shellHook = ''
@@ -121,7 +122,12 @@
 
             # Jemalloc configuration
             export JEMALLOC_PATH=${pkgs.jemalloc}
+            ${if pkgs.stdenv.isDarwin then ''
+            # macOS uses DYLD_INSERT_LIBRARIES instead of LD_PRELOAD
+            export DYLD_INSERT_LIBRARIES=${pkgs.jemalloc}/lib/libjemalloc.dylib
+            '' else ''
             export LD_PRELOAD=${pkgs.jemalloc}/lib/libjemalloc.so
+            ''}
 
             # Set CMDLINE_CFLAGS as empty (optional dependency not included)
             export CMDLINE_CFLAGS=""
