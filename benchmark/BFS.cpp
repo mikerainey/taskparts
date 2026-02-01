@@ -1,13 +1,13 @@
 #include <iostream>
 #include <string>
 
+#include <parlay/internal/get_time.h>
 #include <parlay/primitives.h>
 #include <parlay/sequence.h>
-#include <parlay/internal/get_time.h>
 
 #include "BFS.h"
-#include "helper/graph_utils.h"
 #include "benchmark.hpp"
+#include "helper/graph_utils.h"
 
 // **************************************************************
 // Driver
@@ -17,25 +17,26 @@ using nested_seq = parlay::sequence<parlay::sequence<vertex>>;
 using graph = nested_seq;
 using utils = graph_utils<vertex>;
 
-int main(int argc, char* argv[]) {
+int main(int argc, char *argv[]) {
   auto usage = "Usage: BFS <n> || BFS <filename>";
-  if (argc != 2) std::cout << usage << std::endl;
+  if (argc != 2)
+    std::cout << usage << std::endl;
   else {
     long n = 0;
     graph G;
-    try { n = std::stol(argv[1]); }
-    catch (...) {}
+    try {
+      n = std::stol(argv[1]);
+    } catch (...) {
+    }
     if (n == 0) {
       G = utils::read_symmetric_graph_from_file(argv[1]);
       n = G.size();
     } else {
-      G = utils::rmat_graph(n, 20*n);
+      G = utils::rmat_graph(n, 20 * n);
     }
     utils::print_graph_stats(G);
     nested_seq result;
-    taskparts::benchmark([&] {
-      result = BFS(1, G);
-    });
+    taskparts::benchmark([&] { result = BFS(1, G); });
 
     long visited = parlay::reduce(parlay::map(result, parlay::size_of()));
     std::cout << "num vertices visited: " << visited << std::endl;

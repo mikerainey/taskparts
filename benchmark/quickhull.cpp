@@ -1,38 +1,43 @@
 #include <iostream>
-#include <string>
 #include <random>
+#include <string>
 
+#include <parlay/internal/get_time.h>
 #include <parlay/primitives.h>
 #include <parlay/random.h>
-#include <parlay/internal/get_time.h>
 
-#include "quickhull.h"
 #include "benchmark.hpp"
+#include "quickhull.h"
 
 // **************************************************************
 // Driver code
 // **************************************************************
-int main(int argc, char* argv[]) {
+int main(int argc, char *argv[]) {
   auto usage = "Usage: quickhull <n>";
-  if (argc != 2) std::cout << usage << std::endl;
+  if (argc != 2)
+    std::cout << usage << std::endl;
   else {
     long n;
-    try { n = std::stol(argv[1]); }
-    catch (...) { std::cout << usage << std::endl; return 1; }
+    try {
+      n = std::stol(argv[1]);
+    } catch (...) {
+      std::cout << usage << std::endl;
+      return 1;
+    }
     parlay::random_generator gen(0);
-    std::uniform_real_distribution<> dis(0.0,1.0);
+    std::uniform_real_distribution<> dis(0.0, 1.0);
 
     // generate n random points in a unit square
-    auto points = parlay::tabulate(n, [&] (long i) -> point {
+    auto points = parlay::tabulate(n, [&](long i) -> point {
       auto r = gen[i];
-      return point{dis(r), dis(r)};});
+      return point{dis(r), dis(r)};
+    });
 
     intseq results;
-    
-    taskparts::benchmark([&] {
-      results = upper_hull(points);
-    });
-    
-    std::cout << "number of points in upper hull = " << results.size() << std::endl;
+
+    taskparts::benchmark([&] { results = upper_hull(points); });
+
+    std::cout << "number of points in upper hull = " << results.size()
+              << std::endl;
   }
 }

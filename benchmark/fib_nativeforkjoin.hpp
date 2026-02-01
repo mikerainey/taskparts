@@ -10,11 +10,8 @@ auto fib_nativeforkjoin(int64_t n) -> int64_t {
     return fib_serial(n);
   } else {
     int64_t r1, r2;
-    parlay::par_do([&] {
-      r1 = fib_nativeforkjoin(n-1);
-    }, [&] {
-      r2 = fib_nativeforkjoin(n-2);
-    });
+    parlay::par_do([&] { r1 = fib_nativeforkjoin(n - 1); },
+                   [&] { r2 = fib_nativeforkjoin(n - 2); });
     return r1 + r2;
   }
 }

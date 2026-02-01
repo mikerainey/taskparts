@@ -2,30 +2,30 @@
 
 #include <cstdint>
 #include <cstdlib>
+#include <iostream>
 #include <memory>
 #include <new>
-#include <iostream>
 #include <string>
 #include <sys/resource.h>
 #if defined(TASKPARTS_DARWIN)
 #include <mach/mach_time.h>
 #endif
-#include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 #include <unistd.h>
 
 #include <algorithm>
-#include <deque>
-#include <vector>
-#include <unordered_map>
 #include <array>
+#include <deque>
+#include <unordered_map>
+#include <vector>
 
-#include <thread>
 #include <condition_variable>
 #include <semaphore.h> // to be replaced in C++20
+#include <thread>
 #ifdef TASKPARTS_USE_HWLOC
-#include <hwloc.h>    
-#endif    
+#include <hwloc.h>
+#endif
 #ifdef TASKPARTS_MMAP_STACK
 #include <sys/mman.h>
 #endif
@@ -39,49 +39,46 @@
 
 namespace taskparts {
 
-inline
-uint64_t hash(uint64_t u) {
+inline uint64_t hash(uint64_t u) {
   uint64_t v = u * 3935559000370003845ul + 2691343689449507681ul;
   v ^= v >> 21;
   v ^= v << 37;
-  v ^= v >>  4;
+  v ^= v >> 4;
   v *= 4768777513237032717ul;
   v ^= v << 20;
   v ^= v >> 41;
-  v ^= v <<  5;
+  v ^= v << 5;
   return v;
 }
-  
+
 /*---------------------------------------------------------------------*/
 /* Environment variables */
 
-std::unordered_map<std::string, std::tuple<std::string, std::string>> environment_variables;
+std::unordered_map<std::string, std::tuple<std::string, std::string>>
+    environment_variables;
 
-template <typename T = int>
-class environment_variable {
+template <typename T = int> class environment_variable {
 public:
-  T* x;
-  environment_variable(std::string s,
-                       std::function<T()> dflt,
-                       std::string description = "",
-                       std::function<T(const char*)> parse = [] (const char* s) { return std::stoi(s); },
-                       std::function<std::string(T)> to_string = [] (T x) { return std::to_string(x); }) {
+  T *x;
+  environment_variable(
+      std::string s, std::function<T()> dflt, std::string description = "",
+      std::function<T(const char *)> parse =
+          [](const char *s) { return std::stoi(s); },
+      std::function<std::string(T)> to_string =
+          [](T x) { return std::to_string(x); }) {
     if (const auto env_p = std::getenv(s.c_str())) {
       x = new T(parse(env_p));
     } else {
       x = new T(dflt());
     }
-    after_worker_group_teardown([=] {
-      delete x;
-    });
+    after_worker_group_teardown([=] { delete x; });
     if (environment_variables.find(s) != environment_variables.end()) {
       die("duplicate environment variable %s", s.c_str());
     }
-    environment_variables.insert(std::make_pair(s, std::make_tuple(description, to_string(*x))));
+    environment_variables.insert(
+        std::make_pair(s, std::make_tuple(description, to_string(*x))));
   }
-  auto get() -> T& {
-    return *x;
-  }
+  auto get() -> T & { return *x; }
 };
 
 auto print_taskparts_help_message() -> void {
@@ -91,12 +88,13 @@ auto print_taskparts_help_message() -> void {
     should_print = true;
     should_exit = std::stoi(env_p);
   }
-  if (! should_print) {
+  if (!should_print) {
     return;
   }
   printf("Environment variables used by taskparts:\n");
-  for (auto& d : environment_variables) {
-    printf("\t%s = %s:\t%s\n",d.first.c_str(), std::get<1>(d.second).c_str(), std::get<0>(d.second).c_str());
+  for (auto &d : environment_variables) {
+    printf("\t%s = %s:\t%s\n", d.first.c_str(), std::get<1>(d.second).c_str(),
+           std::get<0>(d.second).c_str());
   }
   if (should_exit) {
     exit(0);
@@ -111,10 +109,11 @@ auto report_taskparts_configuration() -> void {
   if (config_outfile == "") {
     return;
   }
-  FILE* f = (config_outfile == "stdout") ? stdout : fopen(config_outfile.c_str(), "w");
+  FILE *f = (config_outfile == "stdout") ? stdout
+                                         : fopen(config_outfile.c_str(), "w");
   fprintf(f, "{\n");
   auto n = environment_variables.size();
-  for (auto& d : environment_variables) {
+  for (auto &d : environment_variables) {
     fprintf(f, "\"%s\": %s", d.first.c_str(), std::get<1>(d.second).c_str());
     if (--n > 0) {
       fprintf(f, ",");
@@ -150,52 +149,45 @@ auto detect_cpu_frequency_khz() -> uint64_t {
   return (uint64_t)cpu_frequency_khz;
 }
 
-environment_variable<uint64_t> cpu_frequency_khz("TASKPARTS_CPU_BASE_FREQUENCY_KHZ",
-                                                 [] { return detect_cpu_frequency_khz(); },
-                                                 "cpu frequency in kiloherz ");
+environment_variable<uint64_t> cpu_frequency_khz(
+    "TASKPARTS_CPU_BASE_FREQUENCY_KHZ",
+    [] { return detect_cpu_frequency_khz(); }, "cpu frequency in kiloherz ");
 
 /*---------------------------------------------------------------------*/
 /* Cycle counter */
 
-static inline
-auto cyclecounter() -> uint64_t {
+static inline auto cyclecounter() -> uint64_t {
 #if defined(TASKPARTS_X64) && defined(TASKPARTS_POSIX)
   unsigned int hi, lo;
   __asm__ __volatile__("rdtsc" : "=a"(lo), "=d"(hi));
-  return  ((uint64_t) lo) | (((uint64_t) hi) << 32);
+  return ((uint64_t)lo) | (((uint64_t)hi) << 32);
 #elif defined(TASKPARTS_DARWIN)
   return mach_absolute_time() * 100;
 #endif
 }
 
-static inline
-auto nanoseconds_of(uint64_t cycles) -> uint64_t {
+static inline auto nanoseconds_of(uint64_t cycles) -> uint64_t {
   return (1000000l * cycles) / cpu_frequency_khz.get();
 }
 
-static inline
-auto diff(uint64_t start, uint64_t finish) -> uint64_t {
+static inline auto diff(uint64_t start, uint64_t finish) -> uint64_t {
   return finish - start;
 }
 
-static inline
-auto since(uint64_t start) -> uint64_t {
+static inline auto since(uint64_t start) -> uint64_t {
   return diff(start, cyclecounter());
 }
 
-static inline
-auto seconds_of_nanoseconds(uint64_t ns) -> double {
+static inline auto seconds_of_nanoseconds(uint64_t ns) -> double {
   return (double)ns / 1.0e9;
 }
 
-static inline
-auto seconds_of_cycles(uint64_t cycles) -> double {
+static inline auto seconds_of_cycles(uint64_t cycles) -> double {
   return seconds_of_nanoseconds(nanoseconds_of(cycles));
 }
 
-static inline
-auto busywait_pause() {
-#if defined(TASKPARTS_X64) && ! defined(TASKPARTS_OVERRIDE_PAUSE_INSTR)
+static inline auto busywait_pause() {
+#if defined(TASKPARTS_X64) && !defined(TASKPARTS_OVERRIDE_PAUSE_INSTR)
   //_mm_pause();
   __builtin_ia32_pause();
 #elif defined(TASKPARTS_ARM64)
@@ -205,38 +197,33 @@ auto busywait_pause() {
 #endif
 }
 
-static inline
-auto wait(uint64_t n) {
+static inline auto wait(uint64_t n) {
   const uint64_t start = cyclecounter();
   while (cyclecounter() < (start + n)) {
     busywait_pause();
   }
 }
 
-static inline
-auto spin_for(uint64_t nb_cycles) {
-  wait(nb_cycles);
-}
+static inline auto spin_for(uint64_t nb_cycles) { wait(nb_cycles); }
 
 /*---------------------------------------------------------------------*/
 /* Semaphore */
 
 class semaphore {
   sem_t sem;
+
 public:
-  semaphore()  { sem_init(&sem, 0, 0); }
-  ~semaphore() { sem_destroy(&sem);}
-  void post()  { sem_post(&sem); }
-  void wait()  { sem_wait(&sem); }
+  semaphore() { sem_init(&sem, 0, 0); }
+  ~semaphore() { sem_destroy(&sem); }
+  void post() { sem_post(&sem); }
+  void wait() { sem_wait(&sem); }
 };
 
 class spinning_semaphore { // for performance-debugging purposes
 public:
   std::atomic<int32_t> count;
-  spinning_semaphore() : count(0) { }
-  auto post() {
-    count++;
-  }
+  spinning_semaphore() : count(0) {}
+  auto post() { count++; }
   auto wait() {
     assert(count.load() >= 0);
     auto c = --count;
@@ -261,9 +248,8 @@ using default_semaphore = spinning_semaphore;
 /* Compare-and-exchange instruction */
 
 template <typename T, typename Update>
-static
-auto update_atomic(std::atomic<T>& c, const Update& u,
-                   size_t my_id) -> T {
+static auto update_atomic(std::atomic<T> &c, const Update &u,
+                          size_t my_id) -> T {
 #ifndef TASKPARTS_ELASTIC_OVERRIDE_ADAPTIVE_BACKOFF
   while (true) {
     auto v = c.load();
@@ -294,76 +280,67 @@ auto update_atomic(std::atomic<T>& c, const Update& u,
 /* ARM64 CPU context */
 
 #if defined(TASKPARTS_ARM64)
-extern "C"
-void* context_save(char*);
-__asm__
-(
- "_context_save:\n"
- "    str x19, [x0, 0]\n"
- "    str x20, [x0, 8]\n"
- "    str x21, [x0, 16]\n"
- "    str x22, [x0, 24]\n"
- "    str x23, [x0, 32]\n"
- "    str x24, [x0, 40]\n"
- "    str x25, [x0, 48]\n"
- "    str x26, [x0, 56]\n"
- "    str x27, [x0, 64]\n"
- "    str x28, [x0, 72]\n"
- "    str fp, [x0, 80]\n"
- "    str lr, [x0, 88]\n"
- "    mov x1, sp\n"
- "    str x1, [x0, 96]\n"
- "    str d8, [x0, 104]\n"
- "    str d9, [x0, 112]\n"
- "    str d10, [x0, 120]\n"
- "    str d11, [x0, 128]\n"
- "    str d12, [x0, 136]\n"
- "    str d13, [x0, 144]\n"
- "    str d14, [x0, 152]\n"
- "    str d15, [x0, 160]\n"
- "    mov x0, #0\n"
- "    ret\n"
- );
-extern "C"
-void context_restore(char* ctx, void* t);
-__asm__
-(
- "_context_restore:\n"
- "    ldr d15, [x0, 160]\n"
- "    ldr d14, [x0, 152]\n"
- "    ldr d13, [x0, 144]\n"
- "    ldr d12, [x0, 136]\n"
- "    ldr d11, [x0, 128]\n"
- "    ldr d10, [x0, 120]\n"
- "    ldr d9, [x0, 112]\n"
- "    ldr d8, [x0, 104]\n"
- "    ldr x2, [x0, 96]\n"
- "    mov sp, x2\n"
- "    ldr lr, [x0, 88]\n"
- "    ldr fp, [x0, 80]\n"
- "    ldr x28, [x0, 72]\n"
- "    ldr x27, [x0, 64]\n"
- "    ldr x26, [x0, 56]\n"
- "    ldr x25, [x0, 48]\n"
- "    ldr x24, [x0, 40]\n"
- "    ldr x23, [x0, 32]\n"
- "    ldr x22, [x0, 24]\n"
- "    ldr x21, [x0, 16]\n"
- "    ldr x20, [x0, 8]\n"
- "    ldr x19, [x0, 0]\n"
- "    mov x2, #1\n"
- "    cmp x1, #0\n"
- "    csel x0, x2, x1, eq\n"
- "    ret\n"
- );
+extern "C" void *context_save(char *);
+__asm__("_context_save:\n"
+        "    str x19, [x0, 0]\n"
+        "    str x20, [x0, 8]\n"
+        "    str x21, [x0, 16]\n"
+        "    str x22, [x0, 24]\n"
+        "    str x23, [x0, 32]\n"
+        "    str x24, [x0, 40]\n"
+        "    str x25, [x0, 48]\n"
+        "    str x26, [x0, 56]\n"
+        "    str x27, [x0, 64]\n"
+        "    str x28, [x0, 72]\n"
+        "    str fp, [x0, 80]\n"
+        "    str lr, [x0, 88]\n"
+        "    mov x1, sp\n"
+        "    str x1, [x0, 96]\n"
+        "    str d8, [x0, 104]\n"
+        "    str d9, [x0, 112]\n"
+        "    str d10, [x0, 120]\n"
+        "    str d11, [x0, 128]\n"
+        "    str d12, [x0, 136]\n"
+        "    str d13, [x0, 144]\n"
+        "    str d14, [x0, 152]\n"
+        "    str d15, [x0, 160]\n"
+        "    mov x0, #0\n"
+        "    ret\n");
+extern "C" void context_restore(char *ctx, void *t);
+__asm__("_context_restore:\n"
+        "    ldr d15, [x0, 160]\n"
+        "    ldr d14, [x0, 152]\n"
+        "    ldr d13, [x0, 144]\n"
+        "    ldr d12, [x0, 136]\n"
+        "    ldr d11, [x0, 128]\n"
+        "    ldr d10, [x0, 120]\n"
+        "    ldr d9, [x0, 112]\n"
+        "    ldr d8, [x0, 104]\n"
+        "    ldr x2, [x0, 96]\n"
+        "    mov sp, x2\n"
+        "    ldr lr, [x0, 88]\n"
+        "    ldr fp, [x0, 80]\n"
+        "    ldr x28, [x0, 72]\n"
+        "    ldr x27, [x0, 64]\n"
+        "    ldr x26, [x0, 56]\n"
+        "    ldr x25, [x0, 48]\n"
+        "    ldr x24, [x0, 40]\n"
+        "    ldr x23, [x0, 32]\n"
+        "    ldr x22, [x0, 24]\n"
+        "    ldr x21, [x0, 16]\n"
+        "    ldr x20, [x0, 8]\n"
+        "    ldr x19, [x0, 0]\n"
+        "    mov x2, #1\n"
+        "    cmp x1, #0\n"
+        "    csel x0, x2, x1, eq\n"
+        "    ret\n");
 #endif
 
 /*---------------------------------------------------------------------*/
 /* X64 CPU context */
 
 #if defined(TASKPARTS_X64)
-extern "C"
-void* context_save(char*);
+extern "C" void *context_save(char *);
 asm(R"(
 .globl context_save
         .type context_save, @function
@@ -385,8 +362,7 @@ context_save:
         .cfi_endproc
 )");
 
-extern "C"
-void context_restore(char* ctx, void* t);
+extern "C" void context_restore(char *ctx, void *t);
 asm(R"(
 .globl context_restore
         .type context_restore, @function
@@ -412,25 +388,22 @@ context_restore:
 
 #if defined(TASKPARTS_ARM64)
 
-__attribute__ ((returns_twice))
-auto new_continuation(native_continuation& c, thunk f) -> void* {
-  static constexpr
-  size_t arm64_stack_alignb = 16;
-  static constexpr
-  size_t arm64_stackszb = arm64_stack_alignb * (1<<12);
-  static constexpr
-  int arm64_sp_offsetb = 12;
+__attribute__((returns_twice)) auto new_continuation(native_continuation &c,
+                                                     thunk f) -> void * {
+  static constexpr size_t arm64_stack_alignb = 16;
+  static constexpr size_t arm64_stackszb = arm64_stack_alignb * (1 << 12);
+  static constexpr int arm64_sp_offsetb = 12;
   c.f = f;
-  native_continuation* cp;
-  if ((cp = (native_continuation*)context_save(&c.gprs[0]))) {
+  native_continuation *cp;
+  if ((cp = (native_continuation *)context_save(&c.gprs[0]))) {
     cp->f(); // only cp is for sure live at this point
     return nullptr;
   }
   c.action = continuation_finish;
-  char* stack = (char*)std::malloc(arm64_stackszb);
-  char* stack_end = &stack[arm64_stackszb];
+  char *stack = (char *)std::malloc(arm64_stackszb);
+  char *stack_end = &stack[arm64_stackszb];
   stack_end -= (size_t)stack_end % arm64_stack_alignb;
-  void** _ctx = (void**)&c.gprs[0];
+  void **_ctx = (void **)&c.gprs[0];
   _ctx[arm64_sp_offsetb] = stack_end;
   c.stack = stack;
   return nullptr;
@@ -439,51 +412,53 @@ auto new_continuation(native_continuation& c, thunk f) -> void* {
 #endif
 
 #if defined(TASKPARTS_X64)
-  
-auto allocate_stack(native_continuation& c) -> void {
+
+auto allocate_stack(native_continuation &c) -> void {
 #ifndef TASKPARTS_MMAP_STACK
-  c.stack = (char*)std::malloc(c.stack_szb);
+  c.stack = (char *)std::malloc(c.stack_szb);
 #else
-  const auto PageSize { static_cast<size_t>(sysconf(_SC_PAGESIZE)) };
-  const std::size_t pages { (c.stack_szb + PageSize - 1) / PageSize }; // calculate pages required
+  const auto PageSize{static_cast<size_t>(sysconf(_SC_PAGESIZE))};
+  const std::size_t pages{(c.stack_szb + PageSize - 1) /
+                          PageSize};    // calculate pages required
   c.stack_szb = (pages + 1) * PageSize; // add a page at bottom for guard-page
-  
-  if (void *vp { ::mmap(0, c.stack_szb, PROT_READ | PROT_WRITE, MAP_PRIVATE |
+
+  if (void *vp{::mmap(0, c.stack_szb, PROT_READ | PROT_WRITE,
+                      MAP_PRIVATE |
 #if defined(MAP_STACK)
-			MAP_ANON | MAP_STACK,
+                          MAP_ANON | MAP_STACK,
 #elif defined(MAP_ANON)
-			MAP_ANON,
+                          MAP_ANON,
 #else
-			MAP_ANONYMOUS,
+                          MAP_ANONYMOUS,
 #endif
-			-1, 0) }; vp == MAP_FAILED)
+                      -1, 0)};
+      vp == MAP_FAILED)
     exit(1);
   else
     c.stack = static_cast<char *>(vp);
 #endif
 }
 
-auto deallocate_stack(char* stack, size_t stack_szb) -> void {
+auto deallocate_stack(char *stack, size_t stack_szb) -> void {
 #ifndef TASKPARTS_MMAP_STACK
-    std::free(stack);
+  std::free(stack);
 #else
-    ::munmap(stack, stack_szb);
+  ::munmap(stack, stack_szb);
 #endif
 }
 
-auto initialize_new_continuation(native_continuation& c) -> void {
+auto initialize_new_continuation(native_continuation &c) -> void {
   c.action = continuation_finish;
-  static constexpr
-  size_t thread_stack_alignb = 16L;
-  c.stack_szb = thread_stack_alignb * (1<<15);
+  static constexpr size_t thread_stack_alignb = 16L;
+  c.stack_szb = thread_stack_alignb * (1 << 15);
   c.stack_szb = c.stack_szb & ~0xff;
   allocate_stack(c);
-  char* sp = &c.stack[c.stack_szb];
-  sp = (char*)((uintptr_t)sp & (-thread_stack_alignb));  // align stack pointer on 16-byte boundary
-  sp -= 128; // for red zone
-  void** _ctx = (void**)&c.gprs[0];
-  static constexpr
-  int _X86_64_SP_OFFSET = 6;
+  char *sp = &c.stack[c.stack_szb];
+  sp = (char *)((uintptr_t)sp & (-thread_stack_alignb)); // align stack pointer
+                                                         // on 16-byte boundary
+  sp -= 128;                                             // for red zone
+  void **_ctx = (void **)&c.gprs[0];
+  static constexpr int _X86_64_SP_OFFSET = 6;
   _ctx[_X86_64_SP_OFFSET] = sp;
 #ifdef TASKPARTS_USE_VALGRIND
   c.valgrind_id = VALGRIND_STACK_REGISTER(c.stack, c.stack + c.stack_szb);
@@ -491,12 +466,12 @@ auto initialize_new_continuation(native_continuation& c) -> void {
 }
 #endif
 
-auto throw_to(native_continuation& c) -> void {
+auto throw_to(native_continuation &c) -> void {
   context_restore(&c.gprs[0], &c);
   __builtin_unreachable();
 }
 
-auto swap(native_continuation& current, native_continuation& next) -> void {
+auto swap(native_continuation &current, native_continuation &next) -> void {
   if (context_save(&current.gprs[0])) {
     return;
   }
@@ -507,40 +482,27 @@ auto swap(native_continuation& current, native_continuation& next) -> void {
 /*---------------------------------------------------------------------*/
 /* Native fork join */
 
-auto fork_join_edges::new_incounter() -> void {
-  incounter.store(0);
-}
-  
-auto fork_join_edges::increment() -> void {
-  incounter++;
-}
-  
-auto fork_join_edges::new_outset() -> void {
-  outset = nullptr;
-}
+auto fork_join_edges::new_incounter() -> void { incounter.store(0); }
+
+auto fork_join_edges::increment() -> void { incounter++; }
+
+auto fork_join_edges::new_outset() -> void { outset = nullptr; }
 
 /*---------------------------------------------------------------------*/
 /* Worker threads */
 
-environment_variable<> nb_workers("TASKPARTS_NUM_WORKERS",
-                                  [] { return std::thread::hardware_concurrency(); },
-                                  "controls the number of worker threads used by taskparts "
-                                  "(defaultly, number of cores)");
+environment_variable<> nb_workers(
+    "TASKPARTS_NUM_WORKERS", [] { return std::thread::hardware_concurrency(); },
+    "controls the number of worker threads used by taskparts "
+    "(defaultly, number of cores)");
 
-auto get_nb_workers() -> size_t {
-  return (size_t)nb_workers.get();
-}
+auto get_nb_workers() -> size_t { return (size_t)nb_workers.get(); }
 
-static constexpr
-int not_a_worker_id = -1;
+static constexpr int not_a_worker_id = -1;
 
-thread_local
-int my_id = not_a_worker_id;
+thread_local int my_id = not_a_worker_id;
 
-__attribute__((constructor))
-auto _init_worker0() -> void {
-  my_id = 0;
-}
+__attribute__((constructor)) auto _init_worker0() -> void { my_id = 0; }
 
 auto get_my_id() -> size_t {
   assert(my_id != not_a_worker_id);
@@ -552,14 +514,16 @@ auto after_worker_group_teardown(thunk f) -> void;
 template <typename T, size_t cache_align_szb = cache_line_szb>
 class perworker_array {
 public:
-  using aligned_item = typename std::aligned_storage<sizeof(T), cache_align_szb>::type;
-  aligned_item* items = nullptr;
+  using aligned_item =
+      typename std::aligned_storage<sizeof(T), cache_align_szb>::type;
+  aligned_item *items = nullptr;
   perworker_array() {
-    auto a = aligned_alloc(cache_align_szb, get_nb_workers() * sizeof(aligned_item));
+    auto a =
+        aligned_alloc(cache_align_szb, get_nb_workers() * sizeof(aligned_item));
     if (a == nullptr) {
       die("failed allocation");
     }
-    items = reinterpret_cast<aligned_item*>(a);
+    items = reinterpret_cast<aligned_item *>(a);
     for (size_t i = 0; i < get_nb_workers(); ++i) {
       ::new (&at(i)) T();
     }
@@ -571,18 +535,15 @@ public:
     });
   }
   // the destructor of perworker is called by worker group
-  T& at(size_t i) {
+  T &at(size_t i) {
     assert(items != nullptr);
-    return *reinterpret_cast<T*>(items + i);
+    return *reinterpret_cast<T *>(items + i);
   }
-  T& operator[](size_t i) {
+  T &operator[](size_t i) {
     assert(i < get_nb_workers());
     return at(i);
   }
-  __attribute__((noinline))
-  auto mine() -> T& {
-    return at(get_my_id());
-  }
+  __attribute__((noinline)) auto mine() -> T & { return at(get_my_id()); }
 };
 
 auto ping_all_workers() -> void;
@@ -603,31 +564,29 @@ public:
   std::vector<thunk> reports;
   std::vector<thunk> teardowns;
   std::atomic<status_type> status = active;
-  
+
   pthread_worker_group()
-  : launched(false), deallocate_scheduler([] { }), nb_workers_exited(0) { }
+      : launched(false), deallocate_scheduler([] {}), nb_workers_exited(0) {}
   ~pthread_worker_group() {
     print_taskparts_help_message();
     report_taskparts_configuration();
     status.store(teardown);
     ping_all_workers();
     status.store(finished);
-    for (auto& f : after_finish) {
+    for (auto &f : after_finish) {
       f();
     }
     { // join with worker threads;
       // we cannot simply use t.join() b/c worker threads are detatched
       std::unique_lock<std::mutex> lk(exit_mut);
       ++nb_workers_exited;
-      exit_cv.wait(lk, [&] {
-        return nb_workers_exited == get_nb_workers();
-      });
+      exit_cv.wait(lk, [&] { return nb_workers_exited == get_nb_workers(); });
     }
     teardown_machine();
-    for (auto& f : reports) {
+    for (auto &f : reports) {
       f();
     }
-    for (auto& f : teardowns) {
+    for (auto &f : teardowns) {
       f();
     }
     deallocate_scheduler();
@@ -642,7 +601,7 @@ public:
     pin_calling_worker();
     threads.resize(get_nb_workers() - 1);
     for (size_t id = 1; id < get_nb_workers(); id++) {
-      threads.emplace_back([&, id, worker_loop] () {
+      threads.emplace_back([&, id, worker_loop]() {
         my_id = (int)id;
         pin_calling_worker();
         worker_loop();
@@ -661,9 +620,7 @@ pthread_worker_group worker_group;
 auto after_worker_group_finish(thunk f) -> void {
   worker_group.after_finish.push_back(f);
 }
-auto worker_group_report(thunk f) -> void {
-  worker_group.reports.push_back(f);
-}
+auto worker_group_report(thunk f) -> void { worker_group.reports.push_back(f); }
 auto after_worker_group_teardown(thunk f) -> void {
   worker_group.teardowns.push_back(f);
 }
@@ -672,12 +629,12 @@ auto after_worker_group_teardown(thunk f) -> void {
 /* CPU pinning */
 
 #ifdef TASKPARTS_USE_HWLOC
-  
+
 using pinning_policy_type = enum pinning_policy_enum {
   pinning_policy_enabled,
   pinning_policy_disabled
 };
-  
+
 using resource_packing_type = enum resource_packing_enum {
   resource_packing_sparse,
   resource_packing_dense
@@ -689,56 +646,77 @@ using resource_binding_type = enum resource_binding_enum {
   resource_binding_by_numa_node
 };
 
-auto in_quotes(std::string s) -> std::string {
-  return "\"" + s + "\"";
-}
+auto in_quotes(std::string s) -> std::string { return "\"" + s + "\""; }
 
-environment_variable<bool> numa_alloc_interleaved("TASKPARTS_NUMA_ALLOC_INTERLEAVED",
-						  [] { return true; },
-						  "use the round-robin policy for allocating pages to numa nodes");
-environment_variable<pinning_policy_type> pinning_policy("TASKPARTS_PIN_WORKER_THREADS",
+environment_variable<bool> numa_alloc_interleaved(
+    "TASKPARTS_NUMA_ALLOC_INTERLEAVED", [] { return true; },
+    "use the round-robin policy for allocating pages to numa nodes");
+environment_variable<pinning_policy_type> pinning_policy(
+    "TASKPARTS_PIN_WORKER_THREADS",
 #ifndef TASKPARTS_DISABLE_ELASTIC
-							 [] { return pinning_policy_enabled; },
+    [] { return pinning_policy_enabled; },
 #else
-							 [] { return pinning_policy_disabled; },
+    [] { return pinning_policy_disabled; },
 #endif
-							 
-							 "pin worker threads to according to a specified policy (either 'enabled' or 'disabled'; default: enabled if used with elastic scheduling, disabled otherwise)",
-							 [] (const char* s) { return (std::string(s) == "disabled") ? pinning_policy_disabled : pinning_policy_enabled; },
-							 [] (pinning_policy_type r) {
-							   return in_quotes((r == pinning_policy_disabled) ? "disabled" : "enabled"); });
-environment_variable<resource_packing_type> resource_packing("TASKPARTS_RESOURCE_PACKING",
-							     [] { return resource_packing_sparse; },
-							     "how to pin worker threads to system resources (either 'sparse' or 'dense'; default: sparse)",
-							     [] (const char* s) { return (std::string(s) == "dense") ? resource_packing_dense : resource_packing_sparse; },
-							     [] (resource_packing_type r) {
-							       return in_quotes((r == resource_packing_dense) ? "dense" : "sparse");
-							     });
-environment_variable<resource_binding_type> resource_binding("TASKPARTS_RESOURCE_BINDING",
-							     [] { return resource_binding_all; },
-							     "how to pin worker threads to system resources (either 'all', 'by_core', or 'by_numa_node'; default: all)",
-							     [] (const char* s) {
-							       auto r = resource_binding_all;
-							       if (std::string(s) == "all") { ; }
-							       else if (std::string(s) == "by_core") { r = resource_binding_by_core; }
-							       else if (std::string(s) == "by_numa_node") { r = resource_binding_by_numa_node; }
-							       else { die("bogus argument for resource_binding"); }
-							       return r; },
-							     [] (resource_binding_type r) {
-							       std::string s = "";
-							       if (r == resource_binding_all) { s = "all"; }
-							       else if (r == resource_binding_by_core) { s = "by_core"; }
-							       else if (r == resource_binding_by_numa_node) { s = "by_numa_node"; }
-							       else { die("bogus argument for resource binding"); }
-							       return in_quotes(s);
-							     });
-  
+
+    "pin worker threads to according to a specified policy (either 'enabled' "
+    "or 'disabled'; default: enabled if used with elastic scheduling, disabled "
+    "otherwise)",
+    [](const char *s) {
+      return (std::string(s) == "disabled") ? pinning_policy_disabled
+                                            : pinning_policy_enabled;
+    },
+    [](pinning_policy_type r) {
+      return in_quotes((r == pinning_policy_disabled) ? "disabled" : "enabled");
+    });
+environment_variable<resource_packing_type> resource_packing(
+    "TASKPARTS_RESOURCE_PACKING", [] { return resource_packing_sparse; },
+    "how to pin worker threads to system resources (either 'sparse' or "
+    "'dense'; default: sparse)",
+    [](const char *s) {
+      return (std::string(s) == "dense") ? resource_packing_dense
+                                         : resource_packing_sparse;
+    },
+    [](resource_packing_type r) {
+      return in_quotes((r == resource_packing_dense) ? "dense" : "sparse");
+    });
+environment_variable<resource_binding_type> resource_binding(
+    "TASKPARTS_RESOURCE_BINDING", [] { return resource_binding_all; },
+    "how to pin worker threads to system resources (either 'all', 'by_core', "
+    "or 'by_numa_node'; default: all)",
+    [](const char *s) {
+      auto r = resource_binding_all;
+      if (std::string(s) == "all") {
+        ;
+      } else if (std::string(s) == "by_core") {
+        r = resource_binding_by_core;
+      } else if (std::string(s) == "by_numa_node") {
+        r = resource_binding_by_numa_node;
+      } else {
+        die("bogus argument for resource_binding");
+      }
+      return r;
+    },
+    [](resource_binding_type r) {
+      std::string s = "";
+      if (r == resource_binding_all) {
+        s = "all";
+      } else if (r == resource_binding_by_core) {
+        s = "by_core";
+      } else if (r == resource_binding_by_numa_node) {
+        s = "by_numa_node";
+      } else {
+        die("bogus argument for resource binding");
+      }
+      return in_quotes(s);
+    });
+
 using hwloc_obj_type = hwloc_obj_type_t;
 
 perworker_array<hwloc_cpuset_t> hwloc_cpusets;
-  
+
 hwloc_topology_t topology;
-  
+
 hwloc_cpuset_t all_cpus;
 
 auto hwloc_assign_cpusets(hwloc_obj_type resource_binding) -> void {
@@ -752,21 +730,27 @@ auto hwloc_assign_cpusets(hwloc_obj_type resource_binding) -> void {
   }
   auto nb_objects = hwloc_get_nbobjs_by_depth(topology, depth);
   if (nb_objects == 0) {
-    die("request to bind taskpartsworker threads to a nonexistent hardware resource\n");
+    die("request to bind taskpartsworker threads to a nonexistent hardware "
+        "resource\n");
   }
   if (resource_packing.get() == resource_packing_sparse) {
-    for (size_t worker_id = 0, object_id = 0; worker_id < get_nb_workers(); worker_id++, object_id++) {
+    for (size_t worker_id = 0, object_id = 0; worker_id < get_nb_workers();
+         worker_id++, object_id++) {
       object_id = (object_id >= nb_objects) ? 0 : object_id;
-      //printf("nbo = %d depth = %d oid=%d wid=%d\n",nb_objects,depth,object_id, worker_id);
+      // printf("nbo = %d depth = %d oid=%d
+      // wid=%d\n",nb_objects,depth,object_id, worker_id);
       auto cpuset = hwloc_get_obj_by_depth(topology, depth, object_id)->cpuset;
       hwloc_cpusets[worker_id] = hwloc_bitmap_dup(cpuset);
     }
   } else if (resource_packing.get() == resource_packing_dense) {
-    for (size_t worker_id = 0, object_id = 0, i = 0; worker_id < get_nb_workers(); worker_id++) {
+    for (size_t worker_id = 0, object_id = 0, i = 0;
+         worker_id < get_nb_workers(); worker_id++) {
       object_id = (object_id >= nb_objects) ? 0 : object_id;
       auto cpuset = hwloc_get_obj_by_depth(topology, depth, object_id)->cpuset;
-      auto nb_in_obj = hwloc_get_nbobjs_inside_cpuset_by_depth(topology, cpuset, depth + 1);
-      //printf("i=%d nbo2 = %d depth = %d oid=%d wid=%d nbio=%d\n",i,nb_objects,depth,object_id, worker_id,nb_in_obj);
+      auto nb_in_obj =
+          hwloc_get_nbobjs_inside_cpuset_by_depth(topology, cpuset, depth + 1);
+      // printf("i=%d nbo2 = %d depth = %d oid=%d wid=%d
+      // nbio=%d\n",i,nb_objects,depth,object_id, worker_id,nb_in_obj);
       if (nb_in_obj == 0) {
         die("bogus request");
       }
@@ -786,13 +770,14 @@ auto initialize_hwloc(bool numa_alloc_interleaved) {
   hwloc_topology_load(topology);
   if (numa_alloc_interleaved) {
     all_cpus = hwloc_bitmap_dup(hwloc_topology_get_topology_cpuset(topology));
-    int err = hwloc_set_membind(topology, all_cpus, HWLOC_MEMBIND_INTERLEAVE, 0);
+    int err =
+        hwloc_set_membind(topology, all_cpus, HWLOC_MEMBIND_INTERLEAVE, 0);
     if (err < 0) {
       die("Failed to set NUMA round-robin allocation policy\n");
     }
   }
 }
-  
+
 #endif
 
 auto pin_calling_worker() -> void {
@@ -800,7 +785,7 @@ auto pin_calling_worker() -> void {
   if (pinning_policy.get() == pinning_policy_disabled) {
     return;
   }
-  auto& cpuset = hwloc_cpusets.mine();
+  auto &cpuset = hwloc_cpusets.mine();
   int flags = HWLOC_CPUBIND_STRICT | HWLOC_CPUBIND_THREAD;
   if (hwloc_set_cpubind(topology, cpuset, flags)) {
     char *str;
@@ -810,7 +795,7 @@ auto pin_calling_worker() -> void {
   }
 #endif
 }
-  
+
 auto initialize_machine() -> void {
 #if defined(TASKPARTS_USE_HWLOC)
   initialize_hwloc(numa_alloc_interleaved.get());
@@ -840,7 +825,7 @@ auto teardown_machine() -> void {
 perworker_array<uint64_t> rng_counter;
 
 auto random_number(size_t my_id = get_my_id()) -> uint64_t {
-  auto& nb = rng_counter[my_id];
+  auto &nb = rng_counter[my_id];
   auto r = hash(my_id) + hash(nb);
   nb++;
   return r;
@@ -862,13 +847,14 @@ auto random_other_worker(size_t my_id = get_my_id()) -> size_t {
 /* Work-stealing deques */
 
 using deque_surplus_result_type = enum deque_surplus_result_enum {
-  deque_surplus_stable, deque_surplus_up, deque_surplus_down,
+  deque_surplus_stable,
+  deque_surplus_up,
+  deque_surplus_down,
   deque_surplus_unknown
 };
 
 // Deque from Arora, Blumofe, and Plaxton (SPAA, 1998).
-template <typename Vertex_handle>
-struct abp {
+template <typename Vertex_handle> struct abp {
   using qidx = unsigned int;
   using tag_t = unsigned int;
   // use std::atomic<age_t> for atomic access.
@@ -882,48 +868,44 @@ struct abp {
   struct alignas(64) padded_vertex_handle {
     std::atomic<Vertex_handle> f;
   };
-  
+
   static constexpr int q_size = 10000;
   std::atomic<qidx> bot;
   std::atomic<age_t> age;
   std::array<padded_vertex_handle, q_size> deq;
-  
+
   abp() : bot(0), age(age_t{0, 0}) {}
-  auto size() -> unsigned int {
-    return bot.load() - age.load().top;
-  }
-  auto empty() -> bool {
-    return size() == 0;
-  }
+  auto size() -> unsigned int { return bot.load() - age.load().top; }
+  auto empty() -> bool { return size() == 0; }
   auto push(Vertex_handle f) -> deque_surplus_result_type {
-    auto local_bot = bot.load(std::memory_order_acquire);      // atomic load
-    deq[local_bot].f.store(f, std::memory_order_release);  // shared store
+    auto local_bot = bot.load(std::memory_order_acquire); // atomic load
+    deq[local_bot].f.store(f, std::memory_order_release); // shared store
     local_bot += 1;
     if (local_bot == q_size) {
       die("internal error: scheduler queue overflow\n");
     }
-    bot.store(local_bot, std::memory_order_seq_cst);  // shared store
+    bot.store(local_bot, std::memory_order_seq_cst); // shared store
     return deque_surplus_unknown;
   }
   auto pop() -> std::pair<Vertex_handle, deque_surplus_result_type> {
     Vertex_handle result = nullptr;
-    auto local_bot = bot.load(std::memory_order_acquire);  // atomic load
+    auto local_bot = bot.load(std::memory_order_acquire); // atomic load
     if (local_bot != 0) {
       local_bot--;
-      bot.store(local_bot, std::memory_order_release);  // shared store
+      bot.store(local_bot, std::memory_order_release); // shared store
       std::atomic_thread_fence(std::memory_order_seq_cst);
-      auto f = deq[local_bot].f.load(std::memory_order_acquire);  // atomic load
-      auto old_age = age.load(std::memory_order_acquire);      // atomic load
+      auto f = deq[local_bot].f.load(std::memory_order_acquire); // atomic load
+      auto old_age = age.load(std::memory_order_acquire);        // atomic load
       if (local_bot > old_age.top) {
         result = f;
       } else {
-        bot.store(0, std::memory_order_release);  // shared store
+        bot.store(0, std::memory_order_release); // shared store
         auto new_age = age_t{old_age.tag + 1, 0};
         if ((local_bot == old_age.top) &&
             age.compare_exchange_strong(old_age, new_age)) {
           result = f;
         } else {
-          age.store(new_age, std::memory_order_seq_cst);  // shared store
+          age.store(new_age, std::memory_order_seq_cst); // shared store
           result = nullptr;
         }
       }
@@ -932,10 +914,11 @@ struct abp {
   }
   auto steal() -> std::pair<Vertex_handle, deque_surplus_result_type> {
     Vertex_handle result = nullptr;
-    auto old_age = age.load(std::memory_order_acquire);    // atomic load
-    auto local_bot = bot.load(std::memory_order_acquire);  // atomic load
+    auto old_age = age.load(std::memory_order_acquire);   // atomic load
+    auto local_bot = bot.load(std::memory_order_acquire); // atomic load
     if (local_bot > old_age.top) {
-      auto f = deq[old_age.top].f.load(std::memory_order_acquire);  // atomic load
+      auto f =
+          deq[old_age.top].f.load(std::memory_order_acquire); // atomic load
       auto new_age = old_age;
       new_age.top = new_age.top + 1;
       if (age.compare_exchange_strong(old_age, new_age)) {
@@ -949,8 +932,7 @@ struct abp {
 };
 
 // Deque from Yue Yao, Sam Westrick, Mike Rainey, and Umut Acar (2022)
-template <typename Vertex_handle>
-struct ywra {
+template <typename Vertex_handle> struct ywra {
   using qidx = uint16_t;
   // use std::atomic<age_t> for atomic access.
   // Note: Explicit alignment specifier required
@@ -964,27 +946,22 @@ struct ywra {
   struct alignas(64) padded_vertex_handle {
     std::atomic<Vertex_handle> f;
   };
-  
-  static constexpr
-  int max_sz = (1 << 14); // can in principle be up to 2^16
-  
+
+  static constexpr int max_sz = (1 << 14); // can in principle be up to 2^16
+
   std::atomic<age_t> age;
   std::array<padded_vertex_handle, max_sz> deq;
   std::array<Vertex_handle, max_sz> backup_deq;
-  
-  ywra() : age(age_t{0, 0, 0}) { }
+
+  ywra() : age(age_t{0, 0, 0}) {}
   auto size(age_t a) -> unsigned int {
     assert(a.bot >= a.top);
     return a.bot - a.top;
   }
-  auto size() -> unsigned int {
-    return size(age.load());
-  }
-  auto empty() -> bool {
-    return size() == 0;
-  }
+  auto size() -> unsigned int { return size(age.load()); }
+  auto empty() -> bool { return size() == 0; }
   auto relocate() -> age_t {
-    auto freeze = [&] () -> age_t {
+    auto freeze = [&]() -> age_t {
       auto orig = age.load();
       auto next = orig;
       while (true) {
@@ -997,7 +974,7 @@ struct ywra {
       }
       return orig;
     };
-    auto backup = [&] (age_t orig) -> age_t {
+    auto backup = [&](age_t orig) -> age_t {
       qidx j = 0;
       for (qidx i = orig.top; i < orig.bot; i++) {
         backup_deq[j++] = deq[i].f.load(std::memory_order_acquire);
@@ -1005,7 +982,7 @@ struct ywra {
       assert(j == size(orig));
       return orig;
     };
-    auto restore = [&] (age_t orig) -> age_t {
+    auto restore = [&](age_t orig) -> age_t {
       auto n = size(orig);
       for (qidx i = 0; i < n; i++) {
         deq[i].f.store(backup_deq[i], std::memory_order_seq_cst);
@@ -1025,7 +1002,7 @@ struct ywra {
     next.top = 0;
     next.bot = 0;
     next.tag = orig.tag + 1;
-    if (! age.compare_exchange_strong(orig, next)) {
+    if (!age.compare_exchange_strong(orig, next)) {
       die("bogus");
     }
     return next;
@@ -1085,7 +1062,7 @@ struct ywra {
     auto f = deq[next.top].f.load(std::memory_order_acquire);
     next.top++;
     next.tag = orig.tag + 1;
-    if (! age.compare_exchange_strong(orig, next)) {
+    if (!age.compare_exchange_strong(orig, next)) {
       return std::make_pair(nullptr, deque_surplus_stable);
     }
     auto r = (size(orig) == 1) ? deque_surplus_down : deque_surplus_stable;
@@ -1094,13 +1071,12 @@ struct ywra {
 };
 
 /* Chase-Lev Work-Stealing Deque data structure
- * 
+ *
  * This implementation is based on the code linked below.
  *   https://gist.github.com/Amanieu/7347121
  */
-  
-template <typename Vertex_handle>
-class chaselev {
+
+template <typename Vertex_handle> class chaselev {
   using index_type = long;
   class circular_array {
   private:
@@ -1110,19 +1086,18 @@ class chaselev {
     };
     std::vector<padded_vertex_handle> items;
     std::unique_ptr<circular_array> previous;
+
   public:
     circular_array(index_type n) : items(n) {}
-    index_type size() const {
-      return items.size();
-    }
+    index_type size() const { return items.size(); }
     auto get(index_type index) -> Vertex_handle {
       return items[index % size()].f.load(std::memory_order_relaxed);
     }
     auto put(index_type index, Vertex_handle x) {
       items[index % size()].f.store(x, std::memory_order_relaxed);
     }
-    auto grow(index_type top, index_type bottom) -> circular_array* {
-      circular_array* new_array = new circular_array(size() * 2);
+    auto grow(index_type top, index_type bottom) -> circular_array * {
+      circular_array *new_array = new circular_array(size() * 2);
       new_array->previous.reset(this);
       for (index_type i = top; i != bottom; ++i) {
         new_array->put(i, get(i));
@@ -1130,15 +1105,14 @@ class chaselev {
       return new_array;
     }
   };
-  
-  std::atomic<circular_array*> array;
+
+  std::atomic<circular_array *> array;
   std::atomic<index_type> top, bottom;
-  
+
 public:
-  chaselev()
-    : array(new circular_array(64)), top(0), bottom(0) { }
+  chaselev() : array(new circular_array(64)), top(0), bottom(0) {}
   ~chaselev() {
-    circular_array* p = array.load(std::memory_order_relaxed);
+    circular_array *p = array.load(std::memory_order_relaxed);
     if (p) {
       delete p;
     }
@@ -1148,13 +1122,11 @@ public:
     auto t = top.load(std::memory_order_relaxed);
     return b - t;
   }
-  auto empty() -> bool {
-    return size() == 0;
-  }
+  auto empty() -> bool { return size() == 0; }
   auto push(Vertex_handle x) -> deque_surplus_result_type {
     auto b = bottom.load(std::memory_order_relaxed);
     auto t = top.load(std::memory_order_acquire);
-    circular_array* a = array.load(std::memory_order_relaxed);
+    circular_array *a = array.load(std::memory_order_relaxed);
     if (b - t > a->size() - 1) {
       a = a->grow(t, b);
       array.store(a, std::memory_order_relaxed);
@@ -1166,14 +1138,15 @@ public:
   }
   auto pop() -> std::pair<Vertex_handle, deque_surplus_result_type> {
     auto b = bottom.load(std::memory_order_relaxed) - 1;
-    circular_array* a = array.load(std::memory_order_relaxed);
+    circular_array *a = array.load(std::memory_order_relaxed);
     bottom.store(b, std::memory_order_relaxed);
     std::atomic_thread_fence(std::memory_order_seq_cst);
     auto t = top.load(std::memory_order_relaxed);
     if (t <= b) {
       auto x = a->get(b);
       if (t == b) {
-        if (!top.compare_exchange_strong(t, t + 1, std::memory_order_seq_cst, std::memory_order_relaxed)) {
+        if (!top.compare_exchange_strong(t, t + 1, std::memory_order_seq_cst,
+                                         std::memory_order_relaxed)) {
           x = nullptr;
         }
         bottom.store(b + 1, std::memory_order_relaxed);
@@ -1190,9 +1163,10 @@ public:
     auto b = bottom.load(std::memory_order_acquire);
     Vertex_handle x = nullptr;
     if (t < b) {
-      circular_array* a = array.load(std::memory_order_relaxed);
+      circular_array *a = array.load(std::memory_order_relaxed);
       x = a->get(t);
-      if (!top.compare_exchange_strong(t, t + 1, std::memory_order_seq_cst, std::memory_order_relaxed)) {
+      if (!top.compare_exchange_strong(t, t + 1, std::memory_order_seq_cst,
+                                       std::memory_order_relaxed)) {
         return std::make_pair(nullptr, deque_surplus_unknown);
       }
     }
@@ -1205,50 +1179,40 @@ public:
 
 class minimal_meta_scheduler {
 public:
-  template <typename F>
-  auto tick(const F& is_finished) -> void { }
+  template <typename F> auto tick(const F &is_finished) -> void {}
   class worker_instance {
   public:
-    worker_instance(minimal_meta_scheduler&) { }
+    worker_instance(minimal_meta_scheduler &) {}
   };
-  static
-  auto yield() {
-    std::this_thread::yield();
-  }
+  static auto yield() { std::this_thread::yield(); }
 };
 
 class serial_random_meta_scheduler {
 public:
   std::mutex scheduler_mut;
   std::condition_variable scheduler_cond;
-  perworker_array<std::unique_lock<std::mutex>*> locks;
+  perworker_array<std::unique_lock<std::mutex> *> locks;
   size_t next_worker = 0;
-  
+
   serial_random_meta_scheduler() {
-    after_worker_group_finish([this] {
-      scheduler_cond.notify_all();
-    });
+    after_worker_group_finish([this] { scheduler_cond.notify_all(); });
   }
-  template <typename F>
-  auto tick(const F& is_finished) -> void {
+  template <typename F> auto tick(const F &is_finished) -> void {
     next_worker = random_number() % get_nb_workers();
     scheduler_cond.notify_all();
     scheduler_cond.wait(*locks.mine(), [&] {
       return (next_worker == get_my_id()) || is_finished();
     });
   };
-  
+
   class worker_instance {
   public:
     std::unique_lock<std::mutex> lock;
-    worker_instance(serial_random_meta_scheduler& p) : lock(p.scheduler_mut) {
+    worker_instance(serial_random_meta_scheduler &p) : lock(p.scheduler_mut) {
       p.locks.mine() = &lock;
     }
   };
-  static
-  auto yield() {
-    minimal_meta_scheduler::yield();
-  }
+  static auto yield() { minimal_meta_scheduler::yield(); }
 };
 
 #ifndef TASKPARTS_META_SCHEDULER_SERIAL_RANDOM
@@ -1260,30 +1224,31 @@ using default_meta_scheduler = serial_random_meta_scheduler;
 /*---------------------------------------------------------------------*/
 /* Native fork join */
 
-auto output_before(FILE* f) -> void {
-  fprintf(f, "{");
-}
-auto output_after(FILE* f, bool not_last) {
+auto output_before(FILE *f) -> void { fprintf(f, "{"); }
+auto output_after(FILE *f, bool not_last) {
   if (not_last) {
     fprintf(f, ",\n");
   } else {
     fprintf(f, "}");
   }
 }
-auto output_uint64_value(FILE* f, const char* n, uint64_t v, bool not_last = true) {
+auto output_uint64_value(FILE *f, const char *n, uint64_t v,
+                         bool not_last = true) {
   fprintf(f, "\"%s\": %lu", n, (unsigned long)v);
   output_after(f, not_last);
 }
-auto output_double_value(FILE* f, const char* n, double v, bool not_last = true) {
+auto output_double_value(FILE *f, const char *n, double v,
+                         bool not_last = true) {
   fprintf(f, "\"%s\": %.3f", n, v);
   output_after(f, not_last);
 }
-auto output_rusage_tv(FILE* f, const char* n, struct timeval before, struct timeval after,
-		      bool not_last = true) {
-  auto double_of_tv = [] (struct timeval tv) {
-    return ((double) tv.tv_sec) + ((double) tv.tv_usec)/1000000.;
+auto output_rusage_tv(FILE *f, const char *n, struct timeval before,
+                      struct timeval after, bool not_last = true) {
+  auto double_of_tv = [](struct timeval tv) {
+    return ((double)tv.tv_sec) + ((double)tv.tv_usec) / 1000000.;
   };
-  output_double_value(f, n, double_of_tv(after) - double_of_tv(before), not_last);
+  output_double_value(f, n, double_of_tv(after) - double_of_tv(before),
+                      not_last);
 }
 
 class system_stats {
@@ -1291,40 +1256,48 @@ public:
   double exectime;
   struct rusage rusage_before;
   struct rusage rusage_after;
-  auto report(FILE* f, bool not_last = true) -> void {
+  auto report(FILE *f, bool not_last = true) -> void {
 #ifndef NDEBUG
     output_uint64_value(f, "cpufreq_khz", cpu_frequency_khz.get());
 #endif
     output_double_value(f, "exectime", exectime);
-    output_rusage_tv(f, "usertime", rusage_before.ru_utime, rusage_after.ru_utime);
-    output_rusage_tv(f, "systime", rusage_before.ru_stime, rusage_after.ru_stime);
-    output_uint64_value(f, "nvcsw", rusage_after.ru_nvcsw - rusage_before.ru_nvcsw);
-    output_uint64_value(f, "nivcsw", rusage_after.ru_nivcsw - rusage_before.ru_nivcsw);
+    output_rusage_tv(f, "usertime", rusage_before.ru_utime,
+                     rusage_after.ru_utime);
+    output_rusage_tv(f, "systime", rusage_before.ru_stime,
+                     rusage_after.ru_stime);
+    output_uint64_value(f, "nvcsw",
+                        rusage_after.ru_nvcsw - rusage_before.ru_nvcsw);
+    output_uint64_value(f, "nivcsw",
+                        rusage_after.ru_nivcsw - rusage_before.ru_nivcsw);
     output_uint64_value(f, "maxrss", rusage_after.ru_maxrss);
-    output_uint64_value(f, "nsignals", rusage_after.ru_nsignals - rusage_before.ru_nsignals, not_last);
+    output_uint64_value(f, "nsignals",
+                        rusage_after.ru_nsignals - rusage_before.ru_nsignals,
+                        not_last);
   }
 };
 
 class minimal_work_stealing_instrumentation {
 public:
-  
   std::vector<system_stats> captures;
   std::chrono::time_point<std::chrono::steady_clock> start_time;
   struct rusage start_rusage;
-  
-  auto on_steal() -> void { }
-  auto on_create_vertex() -> void { }
-  auto on_enter_acquire() -> void { }
-  auto on_exit_acquire() -> void { }
-  auto on_enter_work() -> void { }
-  auto on_exit_work() -> void { }
-  auto on_enter_suspend() -> void { }
-  auto on_exit_suspend() -> void { }
-  auto on_surplus_transition() -> void { }
-  auto on_teardown_worker() -> void { }
-  auto on_teardown_scheduler() -> void { }
-  auto log_program_point(int, const char*, void*) -> void { }
-  auto start() -> void { start_time = now(); getrusage(RUSAGE_SELF, &start_rusage); }
+
+  auto on_steal() -> void {}
+  auto on_create_vertex() -> void {}
+  auto on_enter_acquire() -> void {}
+  auto on_exit_acquire() -> void {}
+  auto on_enter_work() -> void {}
+  auto on_exit_work() -> void {}
+  auto on_enter_suspend() -> void {}
+  auto on_exit_suspend() -> void {}
+  auto on_surplus_transition() -> void {}
+  auto on_teardown_worker() -> void {}
+  auto on_teardown_scheduler() -> void {}
+  auto log_program_point(int, const char *, void *) -> void {}
+  auto start() -> void {
+    start_time = now();
+    getrusage(RUSAGE_SELF, &start_rusage);
+  }
   auto reset() -> void { start(); }
   auto capture() -> void {
     system_stats s;
@@ -1337,14 +1310,14 @@ public:
     if (outfile == "") {
       return;
     }
-    FILE* f = (outfile == "stdout") ? stdout : fopen(outfile.c_str(), "w");
+    FILE *f = (outfile == "stdout") ? stdout : fopen(outfile.c_str(), "w");
     fprintf(f, "[");
     size_t i = 0;
     for (auto s : captures) {
       output_before(f);
       s.report(f, false);
       if ((i + 1) != captures.size()) {
-	fprintf(f, ",\n");
+        fprintf(f, ",\n");
       }
       i++;
     }
@@ -1356,13 +1329,12 @@ public:
   }
 };
 
-environment_variable<std::string> stats_outfile("TASKPARTS_STATS_OUTFILE",
-                                                [] { return std::string(""); },
-                                                "file in which to output the taskparts stats, formatted in json; "
-						"if given stdout, will print to stdout "
-						"(default: empty string)",
-                                                [] (const char* s) { return s; },
-                                                [] (std::string x) { return x; });
+environment_variable<std::string> stats_outfile(
+    "TASKPARTS_STATS_OUTFILE", [] { return std::string(""); },
+    "file in which to output the taskparts stats, formatted in json; "
+    "if given stdout, will print to stdout "
+    "(default: empty string)",
+    [](const char *s) { return s; }, [](std::string x) { return x; });
 
 class work_stealing_stats {
 public:
@@ -1386,28 +1358,35 @@ public:
     uint64_t counters[nb_counters];
   };
   using private_timers = struct private_timers_struct {
-    uint64_t start_work; uint64_t total_work_time;
-    uint64_t start_idle; uint64_t total_idle_time;
-    uint64_t start_suspend; uint64_t total_suspend_time;
+    uint64_t start_work;
+    uint64_t total_work_time;
+    uint64_t start_idle;
+    uint64_t total_idle_time;
+    uint64_t start_suspend;
+    uint64_t total_suspend_time;
   };
-  
-  static
-  auto name_of(counter_types c) -> const char* {
+
+  static auto name_of(counter_types c) -> const char * {
     switch (c) {
-      case nb_steals:              return "nb_steals";
-      case nb_vertices:            return "nb_vertices";
-      case nb_suspends:            return "nb_suspends";
-      case nb_surplus_transitions: return "nb_surplus_transitions";
-      default:                     return "unknown_counter";
+    case nb_steals:
+      return "nb_steals";
+    case nb_vertices:
+      return "nb_vertices";
+    case nb_suspends:
+      return "nb_suspends";
+    case nb_surplus_transitions:
+      return "nb_surplus_transitions";
+    default:
+      return "unknown_counter";
     }
   }
-  
+
   perworker_array<private_counters> all_counters;
   perworker_array<private_timers> all_timers;
   std::vector<summary> summaries;
   struct rusage ru_launch_time;
   std::chrono::time_point<std::chrono::steady_clock> enter_launch_time;
-  
+
   work_stealing_stats() {
     start();
     worker_group_report([this] {
@@ -1415,55 +1394,42 @@ public:
       report();
     });
   }
-  inline
-  auto increment(counter_types c) -> void {
+  inline auto increment(counter_types c) -> void {
     all_counters.mine().counters[c]++;
   }
-  inline
-  auto on_steal() -> void {
-    increment(nb_steals);
-  }
-  inline
-  auto on_create_vertex() -> void {
-    increment(nb_vertices);
-  }
-  inline
-  auto on_enter_acquire() -> void {
+  inline auto on_steal() -> void { increment(nb_steals); }
+  inline auto on_create_vertex() -> void { increment(nb_vertices); }
+  inline auto on_enter_acquire() -> void {
     on_exit_work();
     all_timers.mine().start_idle = cyclecounter();
   }
-  inline
-  auto on_exit_acquire() -> void {
-    auto& t = all_timers.mine();
+  inline auto on_exit_acquire() -> void {
+    auto &t = all_timers.mine();
     t.total_idle_time += since(t.start_idle);
     on_enter_work();
   }
-  inline
-  auto on_enter_work() -> void {
+  inline auto on_enter_work() -> void {
     all_timers.mine().start_work = cyclecounter();
   }
-  inline
-  auto on_exit_work() -> void {
-    auto& t = all_timers.mine();
+  inline auto on_exit_work() -> void {
+    auto &t = all_timers.mine();
     t.total_work_time += since(t.start_work);
   }
-  inline
-  auto on_enter_suspend() -> void {
+  inline auto on_enter_suspend() -> void {
     increment(nb_suspends);
     all_timers.mine().start_suspend = cyclecounter();
   }
-  inline
-  auto on_exit_suspend() -> void {
-    auto& t = all_timers.mine();
+  inline auto on_exit_suspend() -> void {
+    auto &t = all_timers.mine();
     t.total_suspend_time += since(t.start_suspend);
   }
-  inline
-  auto on_surplus_transition() -> void {
+  inline auto on_surplus_transition() -> void {
     increment(nb_surplus_transitions);
   }
-  auto on_teardown_worker() -> void { }
-  auto on_teardown_scheduler() -> void { }
-  auto log_program_point(int line_nb, const char* source_fname, void* ptr) -> void { }
+  auto on_teardown_worker() -> void {}
+  auto on_teardown_scheduler() -> void {}
+  auto log_program_point(int line_nb, const char *source_fname,
+                         void *ptr) -> void {}
   auto start() -> void {
     for (int c = 0; c < nb_counters; c++) {
       for (size_t i = 0; i < get_nb_workers(); ++i) {
@@ -1471,17 +1437,18 @@ public:
       }
     }
     for (size_t i = 0; i < get_nb_workers(); ++i) {
-      auto& t = all_timers[i];
-      t.start_work = cyclecounter(); t.total_work_time = 0;
-      t.start_idle = cyclecounter(); t.total_idle_time = 0;
-      t.start_suspend = cyclecounter(); t.total_suspend_time = 0;
+      auto &t = all_timers[i];
+      t.start_work = cyclecounter();
+      t.total_work_time = 0;
+      t.start_idle = cyclecounter();
+      t.total_idle_time = 0;
+      t.start_suspend = cyclecounter();
+      t.total_suspend_time = 0;
     }
     getrusage(RUSAGE_SELF, &ru_launch_time);
     enter_launch_time = now();
   }
-  auto reset() -> void {
-    start();
-  }
+  auto reset() -> void { start(); }
   auto capture() -> void {
     summary s;
     s.sys.exectime = since(enter_launch_time);
@@ -1499,7 +1466,7 @@ public:
     s.total_idle_time = 0;
     s.total_suspend_time = 0;
     for (size_t i = 0; i < get_nb_workers(); ++i) {
-      auto& t = all_timers[i];
+      auto &t = all_timers[i];
       s.total_work_time += t.total_work_time;
       s.total_idle_time += t.total_idle_time;
       s.total_suspend_time += t.total_suspend_time;
@@ -1514,8 +1481,9 @@ public:
     if (outfile == "") {
       return;
     }
-    FILE* f = (outfile == "stdout") ? stdout : fopen(outfile.c_str(), "w");
-    auto output_cycles_in_seconds = [&] (const char* n, uint64_t cs, bool not_last = true) {
+    FILE *f = (outfile == "stdout") ? stdout : fopen(outfile.c_str(), "w");
+    auto output_cycles_in_seconds = [&](const char *n, uint64_t cs,
+                                        bool not_last = true) {
       double s = seconds_of_cycles(cs);
       output_double_value(f, n, s, not_last);
     };
@@ -1545,85 +1513,105 @@ public:
   }
 };
 
-environment_variable<bool> logging_realtime("TASKPARTS_LOGGING_REALTIME",
-                                            [] { return false; },
-                                            "print logging events in real time");
-environment_variable<bool> logging_phases("TASKPARTS_LOGGING_PHASES",
-                                          [] { return true; },
-                                          "log phases");
-environment_variable<bool> logging_vertices("TASKPARTS_LOGGING_VERTICES",
-                                            [] { return false; },
-                                            "log vertex events");
-environment_variable<bool> logging_migration("TASKPARTS_LOGGING_MIGRATION",
-                                             [] { return false; },
-                                             "log migration events");
-environment_variable<bool> logging_program("TASKPARTS_LOGGING_PROGRAM",
-                                           [] { return true; },
-                                           "log program events");
-environment_variable<std::string> logging_outpath("TASKPARTS_LOGGING_OUTPATH",
-                                                  [] { return std::string(""); },
-                                                  "path to output logging files",
-                                                  [] (const char* s) { return s; },
-                                                  [] (std::string x) { return x; });
+environment_variable<bool> logging_realtime(
+    "TASKPARTS_LOGGING_REALTIME", [] { return false; },
+    "print logging events in real time");
+environment_variable<bool> logging_phases(
+    "TASKPARTS_LOGGING_PHASES", [] { return true; }, "log phases");
+environment_variable<bool> logging_vertices(
+    "TASKPARTS_LOGGING_VERTICES", [] { return false; }, "log vertex events");
+environment_variable<bool> logging_migration(
+    "TASKPARTS_LOGGING_MIGRATION", [] { return false; },
+    "log migration events");
+environment_variable<bool> logging_program(
+    "TASKPARTS_LOGGING_PROGRAM", [] { return true; }, "log program events");
+environment_variable<std::string> logging_outpath(
+    "TASKPARTS_LOGGING_OUTPATH", [] { return std::string(""); },
+    "path to output logging files", [](const char *s) { return s; },
+    [](std::string x) { return x; });
 
 class work_stealing_logger {
 public:
   using event_kind = enum event_kind_enum {
-    phases = 0, vertices, migration, program, nb_kinds
+    phases = 0,
+    vertices,
+    migration,
+    program,
+    nb_kinds
   };
   using event_tag = enum event_tag_type_enum {
-    enter_launch = 0,   exit_launch,
-    enter_algo,         exit_algo,
-    enter_wait,         exit_wait,
-    worker_communicate, interrupt,
+    enter_launch = 0,
+    exit_launch,
+    enter_algo,
+    exit_algo,
+    enter_wait,
+    exit_wait,
+    worker_communicate,
+    interrupt,
     algo_phase,
-    enter_suspend,      exit_suspend,
-    worker_exit,        initiate_teardown,
+    enter_suspend,
+    exit_suspend,
+    worker_exit,
+    initiate_teardown,
     program_point,
     nb_events
   };
-  static
-  auto name_of(event_tag e) -> std::string {
+  static auto name_of(event_tag e) -> std::string {
     switch (e) {
-      case enter_launch:      return "enter_launch ";
-      case exit_launch:       return "exit_launch ";
-      case enter_algo:        return "enter_algo ";
-      case exit_algo:         return "exit_algo ";
-      case enter_wait:        return "enter_wait ";
-      case exit_wait:         return "exit_wait ";
-      case enter_suspend:     return "enter_suspend ";
-      case exit_suspend:      return "exit_suspend ";
-      case worker_exit:       return "worker_exit ";
-      case initiate_teardown: return "initiate_teardown";
-      case algo_phase:        return "algo_phase ";
-      case program_point:     return "program_point ";
-      default:                return "unknown_event ";
+    case enter_launch:
+      return "enter_launch ";
+    case exit_launch:
+      return "exit_launch ";
+    case enter_algo:
+      return "enter_algo ";
+    case exit_algo:
+      return "exit_algo ";
+    case enter_wait:
+      return "enter_wait ";
+    case exit_wait:
+      return "exit_wait ";
+    case enter_suspend:
+      return "enter_suspend ";
+    case exit_suspend:
+      return "exit_suspend ";
+    case worker_exit:
+      return "worker_exit ";
+    case initiate_teardown:
+      return "initiate_teardown";
+    case algo_phase:
+      return "algo_phase ";
+    case program_point:
+      return "program_point ";
+    default:
+      return "unknown_event ";
     }
   }
-  static inline
-  auto kind_of(event_tag e) -> event_kind {
+  static inline auto kind_of(event_tag e) -> event_kind {
     switch (e) {
-      case enter_launch:
-      case exit_launch:
-      case enter_algo:
-      case exit_algo:
-      case enter_wait:
-      case exit_wait:
-      case enter_suspend:
-      case exit_suspend:
-      case algo_phase:                return phases;
-      case worker_exit:
-      case initiate_teardown:
-      case program_point:             return program;
-      default:                        return nb_kinds;
+    case enter_launch:
+    case exit_launch:
+    case enter_algo:
+    case exit_algo:
+    case enter_wait:
+    case exit_wait:
+    case enter_suspend:
+    case exit_suspend:
+    case algo_phase:
+      return phases;
+    case worker_exit:
+    case initiate_teardown:
+    case program_point:
+      return program;
+    default:
+      return nb_kinds;
     }
   }
   using program_point_type = struct program_point_struct {
     int line_nb;
-    const char* source_fname;
-    void* ptr;
+    const char *source_fname;
+    void *ptr;
   };
-  
+
   class event {
   public:
     uint64_t cycle_count;
@@ -1639,40 +1627,38 @@ public:
         size_t prio_parent;
       } failed_to_sleep;
     } extra;
-    
-    event() { }
-    event(event_tag tag) : tag(tag) { }
-    auto print_text(FILE* f) -> void {
+
+    event() {}
+    event(event_tag tag) : tag(tag) {}
+    auto print_text(FILE *f) -> void {
       auto ns = nanoseconds_of(diff(base_time, cycle_count)) / 1000;
-      fprintf(f, "%.9f\t%ld\t%s\t", ((double)ns) / 1.0e6, worker_id, name_of(tag).c_str());
+      fprintf(f, "%.9f\t%ld\t%s\t", ((double)ns) / 1.0e6, worker_id,
+              name_of(tag).c_str());
       switch (tag) {
-        case program_point: {
-          fprintf(f, "%s \t %d \t %p",
-                  extra.ppt.source_fname,
-                  extra.ppt.line_nb,
-                  extra.ppt.ptr);
-          break;
-        }
-        default: {
-          // nothing to do
-        }
+      case program_point: {
+        fprintf(f, "%s \t %d \t %p", extra.ppt.source_fname, extra.ppt.line_nb,
+                extra.ppt.ptr);
+        break;
       }
-      fprintf (f, "\n");
+      default: {
+        // nothing to do
+      }
+      }
+      fprintf(f, "\n");
     }
-    auto print_json(FILE* f, bool last) -> void {
-      auto print_json_string = [&] (const char* l, const char* s, bool last_row=false) {
+    auto print_json(FILE *f, bool last) -> void {
+      auto print_json_string = [&](const char *l, const char *s,
+                                   bool last_row = false) {
         fprintf(f, "\"%s\": \"%s\"%s", l, s, (last_row ? "" : ","));
       };
-      auto print_json_number = [&] (const char* l, size_t n, bool last_row=false) {
+      auto print_json_number = [&](const char *l, size_t n,
+                                   bool last_row = false) {
         fprintf(f, "\"%s\": %lu%s", l, n, (last_row ? "" : ","));
       };
-      auto print_hdr = [&] {
-        fprintf(f, "{");
-      };
-      auto print_ftr = [&] {
-        fprintf(f, "}%s", (last ? "\n" : ",\n"));
-      };
-      // we report in microseconds because it's the unit assumed by Chrome's tracer utility
+      auto print_hdr = [&] { fprintf(f, "{"); };
+      auto print_ftr = [&] { fprintf(f, "}%s", (last ? "\n" : ",\n")); };
+      // we report in microseconds because it's the unit assumed by Chrome's
+      // tracer utility
       auto ns = nanoseconds_of(diff(base_time, cycle_count)) / 1000;
       auto print_end = [&] {
         print_json_number("pid", 0);
@@ -1681,76 +1667,75 @@ public:
         print_ftr();
       };
       switch (tag) {
-        case enter_wait:
-        case exit_wait: {
-          print_hdr();
-          print_json_string("name", "idle");
-          print_json_string("cat", "SCHED");
-          print_json_string("ph", (tag == enter_wait) ? "B" : "E");
-          print_end();
-          break;
-        }
-        case enter_launch:
-        case exit_launch: {
-          print_hdr();
-          print_json_string("name", (tag == enter_launch) ? "launch_begin" : "launch_end");
-          print_json_string("cat", "SCHED");
-          print_json_string("ph", "i");
-          print_json_string("s", "g");
-          print_end();
-          break;
-        }
-        case enter_suspend:
-        case exit_suspend: {
-          print_hdr();
-          print_json_string("name", "sleep");
-          print_json_string("cat", "SCHED");
-          print_json_string("ph", (tag == enter_suspend) ? "B" : "E");
-          print_end();
-          break;
-        }
-        case program_point: {
-          print_hdr();
-          std::string const cstr = extra.ppt.source_fname;
-          auto n = cstr + ":" + std::to_string(extra.ppt.line_nb) + " " + std::to_string((size_t)extra.ppt.ptr);
-          print_json_string("cat", "PPT");
-          print_json_string("name", n.c_str());
-          print_json_string("ph", "i");
-          print_json_string("s", "t");
-          print_end();
-          break;
-        }
-        default: {
-          break;
-        }
+      case enter_wait:
+      case exit_wait: {
+        print_hdr();
+        print_json_string("name", "idle");
+        print_json_string("cat", "SCHED");
+        print_json_string("ph", (tag == enter_wait) ? "B" : "E");
+        print_end();
+        break;
+      }
+      case enter_launch:
+      case exit_launch: {
+        print_hdr();
+        print_json_string("name", (tag == enter_launch) ? "launch_begin"
+                                                        : "launch_end");
+        print_json_string("cat", "SCHED");
+        print_json_string("ph", "i");
+        print_json_string("s", "g");
+        print_end();
+        break;
+      }
+      case enter_suspend:
+      case exit_suspend: {
+        print_hdr();
+        print_json_string("name", "sleep");
+        print_json_string("cat", "SCHED");
+        print_json_string("ph", (tag == enter_suspend) ? "B" : "E");
+        print_end();
+        break;
+      }
+      case program_point: {
+        print_hdr();
+        std::string const cstr = extra.ppt.source_fname;
+        auto n = cstr + ":" + std::to_string(extra.ppt.line_nb) + " " +
+                 std::to_string((size_t)extra.ppt.ptr);
+        print_json_string("cat", "PPT");
+        print_json_string("name", n.c_str());
+        print_json_string("ph", "i");
+        print_json_string("s", "t");
+        print_end();
+        break;
+      }
+      default: {
+        break;
+      }
       }
     }
   };
-  
-  static
-  uint64_t base_time;
-  
+
+  static uint64_t base_time;
+
   using buffer = std::deque<event>;
-  
+
   size_t nb_output = 0;
   perworker_array<buffer> buffers;
   std::deque<buffer> captures;
   bool tracking_kind[nb_kinds];
-  
+
   work_stealing_logger() {
     tracking_kind[phases] = logging_phases.get();
     tracking_kind[vertices] = logging_vertices.get();
     tracking_kind[migration] = logging_migration.get();
     tracking_kind[program] = logging_program.get();
     start();
-    worker_group_report([this] {
-      report();
-    });
+    worker_group_report([this] { report(); });
   }
   auto push(event e) -> void {
     auto k = kind_of(e.tag);
     assert(k != nb_kinds);
-    if (! tracking_kind[k]) {
+    if (!tracking_kind[k]) {
       return;
     }
     e.cycle_count = cyclecounter();
@@ -1761,24 +1746,22 @@ public:
     }
     buffers.mine().push_back(e);
   }
-  auto log_event(event_tag tag) -> void {
-    push(event(tag));
-  }
+  auto log_event(event_tag tag) -> void { push(event(tag)); }
   auto on_enter_acquire() -> void { log_event(enter_wait); }
   auto on_exit_acquire() -> void { log_event(exit_wait); }
   auto on_teardown_worker() -> void { log_event(worker_exit); }
   auto on_teardown_scheduler() -> void { log_event(initiate_teardown); }
   auto on_enter_suspend() -> void { log_event(enter_suspend); }
   auto on_exit_suspend() -> void { log_event(exit_suspend); }
-  auto log_program_point(int line_nb, const char* source_fname, void* ptr) -> void {
-    program_point_type ppt = { .line_nb = line_nb, .source_fname = source_fname, .ptr = ptr };
+  auto log_program_point(int line_nb, const char *source_fname,
+                         void *ptr) -> void {
+    program_point_type ppt = {
+        .line_nb = line_nb, .source_fname = source_fname, .ptr = ptr};
     event e(program_point);
     e.extra.ppt = ppt;
     push(e);
   }
-  auto start() -> void {
-    reset();
-  }
+  auto start() -> void { reset(); }
   auto reset() -> void {
     for (auto id = 0; id != get_nb_workers(); id++) {
       buffers[id].clear();
@@ -1795,31 +1778,30 @@ public:
     }
     return b;
   }
-  auto capture() -> void {
-    captures.push_back(merge_buffers());
-  }
+  auto capture() -> void { captures.push_back(merge_buffers()); }
   auto report(std::string outfile = "") -> void {
     push(event(exit_launch));
     capture();
-    for (auto& b : captures) {
-      std::stable_sort(b.begin(), b.end(), [] (const event& e1, const event& e2) {
-	return e1.cycle_count < e2.cycle_count;
-      });
+    for (auto &b : captures) {
+      std::stable_sort(b.begin(), b.end(),
+                       [](const event &e1, const event &e2) {
+                         return e1.cycle_count < e2.cycle_count;
+                       });
       auto path = logging_outpath.get();
       if (path == "") {
-	return;
+        return;
       }
       struct stat st = {0};
       if (stat(path.c_str(), &st) == -1) {
-	mkdir(path.c_str(), 0700);
+        mkdir(path.c_str(), 0700);
       }
       auto n = nb_output++;
       auto json_fname = path + "/" + "log" + std::to_string(n) + ".json";
-      FILE* f = fopen(json_fname.c_str(), "w");
+      FILE *f = fopen(json_fname.c_str(), "w");
       fprintf(f, "{ \"traceEvents\": [\n");
       size_t i = b.size();
       for (auto e : b) {
-	e.print_json(f, (--i == 0));
+        e.print_json(f, (--i == 0));
       }
       fprintf(f, "],\n");
       fprintf(f, "\"displayTimeUnit\": \"ns\"}\n");
@@ -1831,37 +1813,60 @@ public:
 
 uint64_t work_stealing_logger::base_time;
 
-template <
-typename Stats = work_stealing_stats,
-typename Logger = work_stealing_logger>
+template <typename Stats = work_stealing_stats,
+          typename Logger = work_stealing_logger>
 class work_stealing_instrumentation {
 public:
   Stats stats;
   Logger logger;
   auto on_steal() -> void { stats.on_steal(); }
   auto on_create_vertex() -> void { stats.on_create_vertex(); }
-  auto on_enter_acquire() -> void { logger.on_enter_acquire(); stats.on_enter_acquire(); }
-  auto on_exit_acquire() -> void { stats.on_exit_acquire(); logger.on_exit_acquire(); }
+  auto on_enter_acquire() -> void {
+    logger.on_enter_acquire();
+    stats.on_enter_acquire();
+  }
+  auto on_exit_acquire() -> void {
+    stats.on_exit_acquire();
+    logger.on_exit_acquire();
+  }
   auto on_enter_work() -> void { stats.on_enter_work(); }
   auto on_exit_work() -> void { stats.on_exit_work(); }
   auto on_enter_suspend() -> void {
     logger.on_enter_suspend();
-    stats.on_exit_acquire(); stats.on_enter_suspend();
+    stats.on_exit_acquire();
+    stats.on_enter_suspend();
   }
   auto on_exit_suspend() -> void {
-    stats.on_exit_suspend(); stats.on_enter_acquire();
+    stats.on_exit_suspend();
+    stats.on_enter_acquire();
     logger.on_exit_suspend();
   }
   auto on_surplus_transition() -> void { stats.on_surplus_transition(); }
-  auto on_teardown_worker() -> void { logger.on_teardown_worker(); stats.on_exit_work(); }
+  auto on_teardown_worker() -> void {
+    logger.on_teardown_worker();
+    stats.on_exit_work();
+  }
   auto on_teardown_scheduler() -> void { logger.on_teardown_scheduler(); }
-  auto log_program_point(int line_nb, const char* source_fname, void* ptr) -> void {
+  auto log_program_point(int line_nb, const char *source_fname,
+                         void *ptr) -> void {
     logger.log_program_point(line_nb, source_fname, ptr);
   }
-  auto start() -> void { logger.start(); stats.start(); }
-  auto reset() -> void { logger.reset(); stats.reset(); }
-  auto capture() -> void { stats.capture(); logger.capture(); }
-  auto report(std::string outfile = "") -> void { stats.report(outfile); logger.report(outfile); }
+  auto start() -> void {
+    logger.start();
+    stats.start();
+  }
+  auto reset() -> void {
+    logger.reset();
+    stats.reset();
+  }
+  auto capture() -> void {
+    stats.capture();
+    logger.capture();
+  }
+  auto report(std::string outfile = "") -> void {
+    stats.report(outfile);
+    logger.report(outfile);
+  }
 };
 
 #if defined(TASKPARTS_LOGGING)
@@ -1869,41 +1874,42 @@ using default_work_stealing_instrumentation = work_stealing_instrumentation<>;
 #elif defined(TASKPARTS_STATS)
 using default_work_stealing_instrumentation = work_stealing_stats;
 #else
-using default_work_stealing_instrumentation = minimal_work_stealing_instrumentation;
+using default_work_stealing_instrumentation =
+    minimal_work_stealing_instrumentation;
 #endif
 
 class minimal_elastic {
 public:
-  static constexpr
-  bool override_rand_worker = false;
+  static constexpr bool override_rand_worker = false;
 
-  auto try_to_sleep() {
-    minimal_meta_scheduler::yield();
-  }
-  auto incr_stealing() { }
-  auto decr_stealing() { }
-  auto incr_surplus() { }
-  auto decr_surplus(size_t id) { }
+  auto try_to_sleep() { minimal_meta_scheduler::yield(); }
+  auto incr_stealing() {}
+  auto decr_stealing() {}
+  auto incr_surplus() {}
+  auto decr_surplus(size_t id) {}
   template <typename Instrumentation, typename Meta_scheduler>
-  auto try_suspend(Instrumentation& instrumentation,
-                   Meta_scheduler& meta_scheduler) { }
+  auto try_suspend(Instrumentation &instrumentation,
+                   Meta_scheduler &meta_scheduler) {}
   template <typename Is_deque_empty>
-  auto random_worker_with_surplus(const Is_deque_empty& is_deque_empty) -> int { return -1; }
-  auto scale_up() -> void { }
+  auto random_worker_with_surplus(const Is_deque_empty &is_deque_empty) -> int {
+    return -1;
+  }
+  auto scale_up() -> void {}
   auto exists_imbalance() -> bool { return false; }
-  auto prepare_end_of_phase() -> void { }
-  auto end_phase() -> void { }
+  auto prepare_end_of_phase() -> void {}
+  auto end_phase() -> void {}
 };
 
-environment_variable<uint64_t> elastic_alpha("TASKPARTS_ELASTIC_ALPHA",
-                                             [] { return 2; },
-                                             "scale up factor for elastic scheduler");
-environment_variable<uint64_t> elastic_beta("TASKPARTS_ELASTIC_BETA", // LATER: express properly as a faction, i.e., beta = 1/128
-                                            [] { return 128; },
-                                            "scale down rate for elastic scheduler");
+environment_variable<uint64_t> elastic_alpha(
+    "TASKPARTS_ELASTIC_ALPHA", [] { return 2; },
+    "scale up factor for elastic scheduler");
+environment_variable<uint64_t> elastic_beta(
+    "TASKPARTS_ELASTIC_BETA", // LATER: express properly as a faction, i.e.,
+                              // beta = 1/128
+    [] { return 128; }, "scale down rate for elastic scheduler");
 
 class scale_up_vertex
-: public vertex_family<fork_join_edges, native_continuation> {
+    : public vertex_family<fork_join_edges, native_continuation> {
 public:
   auto run() -> void { assert(false); }
   auto deallocate() -> void { assert(false); }
@@ -1911,8 +1917,7 @@ public:
 
 scale_up_vertex scale_up_token;
 
-template <typename Semaphore = default_semaphore>
-class elastic_s3 {
+template <typename Semaphore = default_semaphore> class elastic_s3 {
 public:
   using cdata = struct cdata_struct {
     int32_t surplus = 0;
@@ -1928,23 +1933,20 @@ public:
   using counter = struct alignas(int64_t) counter_struct {
     std::atomic<cdata> ounter;
   };
-  
+
   counter c;
   perworker_array<std::atomic_bool> flags;
   perworker_array<Semaphore> semaphores;
-  static constexpr
-  bool override_rand_worker = false;
-  static
-  scale_up_vertex scale_up_token;
+  static constexpr bool override_rand_worker = false;
+  static scale_up_vertex scale_up_token;
   std::atomic<bool> no_suspend;
-  
+
   elastic_s3() : no_suspend(false) {
     for (size_t i = 0; i < get_nb_workers(); i++) {
       flags[i].store(false);
     }
   }
-  template <typename Update>
-  auto update_counters(const Update& u) -> cdata {
+  template <typename Update> auto update_counters(const Update &u) -> cdata {
     return update_atomic(c.ounter, u, get_my_id());
   }
   auto try_resume(size_t id) -> bool {
@@ -1959,26 +1961,26 @@ public:
     return try_resume(random_number(get_my_id()) % get_nb_workers());
   }
   auto incr_surplus() {
-    auto next = update_counters([] (cdata d) {
+    auto next = update_counters([](cdata d) {
       d.surplus++;
       return d;
     });
     ensure_sentinel(next);
   }
   auto decr_surplus(size_t id) {
-    update_counters([] (cdata d) {
+    update_counters([](cdata d) {
       d.surplus--;
       return d;
     });
   }
   auto incr_stealing() {
-    update_counters([] (cdata d) {
+    update_counters([](cdata d) {
       d.stealers++;
       return d;
     });
   }
   auto decr_stealing() {
-    auto next = update_counters([] (cdata d) {
+    auto next = update_counters([](cdata d) {
       d.stealers--;
       return d;
     });
@@ -1993,7 +1995,7 @@ public:
   auto scale_up(cdata next) -> void {
     auto n = elastic_alpha.get();
     while (n > 0) {
-      if (! next.exists_imbalance()) {
+      if (!next.exists_imbalance()) {
         break;
       }
       if (try_resume_random()) {
@@ -2002,40 +2004,37 @@ public:
       next = c.ounter.load();
     }
   }
-  auto scale_up() {
-    scale_up(c.ounter.load());
-  }
-  auto exists_imbalance(cdata cd) -> bool {
-    return cd.exists_imbalance();
-  }
-  auto exists_imbalance() -> bool {
-    return exists_imbalance(c.ounter.load());
-  }
+  auto scale_up() { scale_up(c.ounter.load()); }
+  auto exists_imbalance(cdata cd) -> bool { return cd.exists_imbalance(); }
+  auto exists_imbalance() -> bool { return exists_imbalance(c.ounter.load()); }
   template <typename Instrumentation, typename Meta_scheduler>
-  auto try_suspend(Instrumentation& instrumentation,
-                   Meta_scheduler& meta_scheduler) {
-    if (no_suspend.load() || (worker_group.status != pthread_worker_group::active)) {
+  auto try_suspend(Instrumentation &instrumentation,
+                   Meta_scheduler &meta_scheduler) {
+    if (no_suspend.load() ||
+        (worker_group.status != pthread_worker_group::active)) {
       return;
     }
-    auto flip = [&] () -> bool {
+    auto flip = [&]() -> bool {
       auto n = random_number(get_my_id());
       return (n % elastic_beta.get()) == 0;
     };
-    if (! flip()) {
+    if (!flip()) {
       Meta_scheduler::yield();
       return;
     }
     flags.mine().store(true);
-    auto next = update_counters([] (cdata d) {
+    auto next = update_counters([](cdata d) {
       d.stealers--;
       d.suspended++;
       return d;
     });
     if (next.needs_sentinel()) {
       try_resume(get_my_id());
-    } { instrumentation.on_enter_suspend(); }
-    semaphores.mine().wait(); { instrumentation.on_exit_suspend(); }
-    update_counters([=] (cdata d) {
+    }
+    { instrumentation.on_enter_suspend(); }
+    semaphores.mine().wait();
+    { instrumentation.on_exit_suspend(); }
+    update_counters([=](cdata d) {
       d.stealers++;
       d.suspended--;
       return d;
@@ -2046,9 +2045,7 @@ public:
     no_suspend.store(true);
     semaphores[0].post();
   }
-  auto end_phase() -> void {
-    no_suspend.store(false);
-  }
+  auto end_phase() -> void { no_suspend.store(false); }
 };
 
 #if !defined(TASKPARTS_DISABLE_ELASTIC)
@@ -2058,11 +2055,11 @@ using default_elastic = elastic_s3<>;
 #elif defined(TASKPARTS_USE_CHASELEV_DEQUE)
 template <typename Vertex_handle>
 using default_native_fork_join_deque = chaselev<Vertex_handle>;
-using default_elastic = minimal_elastic;  
+using default_elastic = minimal_elastic;
 #elif defined(TASKPARTS_USE_YWRA_DEQUE)
 template <typename Vertex_handle>
 using default_native_fork_join_deque = ywra<Vertex_handle>;
-using default_elastic = minimal_elastic;  
+using default_elastic = minimal_elastic;
 #else
 template <typename Vertex_handle>
 using default_native_fork_join_deque = abp<Vertex_handle>;
@@ -2075,22 +2072,18 @@ using default_elastic = minimal_elastic;
 
 default_elastic elastic;
 
-template <
-typename Vertex_handle,
-template <typename> typename Deque = default_native_fork_join_deque>
+template <typename Vertex_handle,
+          template <typename> typename Deque = default_native_fork_join_deque>
 class native_fork_join_deque_family {
 public:
   Deque<Vertex_handle> deque;
   Vertex_handle bottom = nullptr;
-  
-  auto size() -> size_t {
-    return deque.size() + ((bottom == nullptr) ? 0 : 1);
-  }
-  auto empty() -> bool {
-    return size() == 0;
-  }
+
+  auto size() -> size_t { return deque.size() + ((bottom == nullptr) ? 0 : 1); }
+  auto empty() -> bool { return size() == 0; }
   template <typename Instrumentation>
-  auto push(Vertex_handle v, Instrumentation& instrumentation) -> void { { assert(v != nullptr); }
+  auto push(Vertex_handle v, Instrumentation &instrumentation) -> void {
+    { assert(v != nullptr); }
     if (bottom == nullptr) {
       bottom = v;
       return;
@@ -2099,9 +2092,9 @@ public:
     bottom = v;
     if (deque.push(v2) == deque_surplus_up) {
       elastic.incr_surplus();
-      #ifndef TASKPARTS_DISABLE_ELASTIC
+#ifndef TASKPARTS_DISABLE_ELASTIC
       { instrumentation.on_surplus_transition(); }
-      #endif
+#endif
     }
   }
   auto pop() -> Vertex_handle {
@@ -2117,7 +2110,8 @@ public:
     return (v != (Vertex_handle)&scale_up_token) ? v : nullptr;
   }
   template <typename Deques>
-  auto steal(Deques& deques, size_t worker_id) -> Vertex_handle { { assert(get_my_id() != worker_id);}
+  auto steal(Deques &deques, size_t worker_id) -> Vertex_handle {
+    { assert(get_my_id() != worker_id); }
     auto [v, status] = deque.steal();
     if (status == deque_surplus_down) {
       elastic.decr_surplus(worker_id);
@@ -2128,7 +2122,8 @@ public:
     }
     if ((v != nullptr) && elastic.exists_imbalance()) {
       assert(deques.mine().empty());
-      if (deques.mine().deque.push((Vertex_handle)&scale_up_token) == deque_surplus_up) {
+      if (deques.mine().deque.push((Vertex_handle)&scale_up_token) ==
+          deque_surplus_up) {
         elastic.incr_surplus();
       }
     }
@@ -2136,64 +2131,65 @@ public:
   }
 };
 
-template <
-typename Instrumentation = default_work_stealing_instrumentation,
-typename Meta_scheduler = default_meta_scheduler>
-class native_fork_join_scheduler_family : public native_fork_join_scheduler_interface {
+template <typename Instrumentation = default_work_stealing_instrumentation,
+          typename Meta_scheduler = default_meta_scheduler>
+class native_fork_join_scheduler_family
+    : public native_fork_join_scheduler_interface {
 public:
   using continuation = native_continuation;
   using vertex = native_fork_join_vertex;
-  using deque = native_fork_join_deque_family<vertex*>;
-  
+  using deque = native_fork_join_deque_family<vertex *>;
+
   perworker_array<deque> deques;
-  perworker_array<vertex*> currents;
+  perworker_array<vertex *> currents;
   perworker_array<continuation> worker_continuations;
-  std::atomic<vertex*> sink_vertex;
+  std::atomic<vertex *> sink_vertex;
   Instrumentation instrumentation;
   Meta_scheduler meta_scheduler;
 
-  static
-  native_fork_join_scheduler_family* _scheduler;
-  static
-  auto Scheduler() -> native_fork_join_scheduler_family* {
+  static native_fork_join_scheduler_family *_scheduler;
+  static auto Scheduler() -> native_fork_join_scheduler_family * {
     return _scheduler;
   }
-  native_fork_join_scheduler_family()
-  : sink_vertex(nullptr) {
+  native_fork_join_scheduler_family() : sink_vertex(nullptr) {
     assert(_scheduler == nullptr);
     _scheduler = this;
     worker_group.launch([this] { loop(); }, [this] { delete this; });
   }
-  auto is_phase_finished() -> bool {
-    return sink_vertex.load() == nullptr;
-  }
+  auto is_phase_finished() -> bool { return sink_vertex.load() == nullptr; }
   auto is_finished() -> bool {
     if (get_my_id() == 0) {
       return is_phase_finished();
     }
     return worker_group.status.load() == pthread_worker_group::finished;
   }
-  auto pop() -> vertex* {
-    return deques.mine().pop();
-  }
-  __attribute__ ((returns_twice))
-  auto new_continuation(native_continuation& c) -> void {
-    native_continuation* cp;
-    if ((cp = (native_continuation*)context_save(&c.gprs[0]))) {
+  auto pop() -> vertex * { return deques.mine().pop(); }
+  __attribute__((returns_twice)) auto
+  new_continuation(native_continuation &c) -> void {
+    native_continuation *cp;
+    if ((cp = (native_continuation *)context_save(&c.gprs[0]))) {
       Scheduler()->enter();
       return;
     }
     initialize_new_continuation(c);
   }
   auto loop() -> void {
-    typename Meta_scheduler::worker_instance _meta_scheduler_instance(meta_scheduler);
+    typename Meta_scheduler::worker_instance _meta_scheduler_instance(
+        meta_scheduler);
     auto acquire = [this] {
       size_t nb_attempts = 0;
-      while (! is_finished()) { { meta_scheduler.tick([&] { return is_finished(); }); }
+      while (!is_finished()) {
+        {
+          meta_scheduler.tick([&] { return is_finished(); });
+        }
         auto victim = random_other_worker();
         auto v = deques[victim].steal(deques, victim);
-        if (v != nullptr) { { assert(v->continuation.action == continuation_initialize); }
-          deques.mine().push(v, instrumentation); { instrumentation.on_steal(); }
+        if (v != nullptr) {
+          {
+            assert(v->continuation.action == continuation_initialize);
+          }
+          deques.mine().push(v, instrumentation);
+          { instrumentation.on_steal(); }
           return;
         }
         if (++nb_attempts == (8 * get_nb_workers())) {
@@ -2201,46 +2197,64 @@ public:
           nb_attempts = 0;
         }
       }
-    }; { instrumentation.on_enter_work(); }
+    };
+    { instrumentation.on_enter_work(); }
     while (true) {
       if (deques.mine().empty() && (get_nb_workers() > 1)) {
-        elastic.incr_stealing(); { instrumentation.on_enter_acquire(); }
-        acquire(); { instrumentation.on_exit_acquire(); }
+        elastic.incr_stealing();
+        { instrumentation.on_enter_acquire(); }
+        acquire();
+        { instrumentation.on_exit_acquire(); }
         elastic.decr_stealing();
       }
-      if (is_finished()) { { instrumentation.on_teardown_worker(); /* ==> on_exit_work */ }
+      if (is_finished()) {
+        {
+          instrumentation.on_teardown_worker(); /* ==> on_exit_work */
+        }
         return;
       }
       currents.mine() = deques.mine().pop();
       if (currents.mine() == nullptr) {
         continue;
-      } { assert(currents.mine()->incounter.load() == 0); }
+      }
+      { assert(currents.mine()->incounter.load() == 0); }
       if (currents.mine()->continuation.action == continuation_initialize) {
         new_continuation(currents.mine()->continuation);
       }
       swap(worker_continuation(), currents.mine()->continuation);
-      if (currents.mine()->continuation.action == continuation_finish) { 
-	currents.mine()->parallel_notify([&] (native_fork_join_vertex* v) {
-	  schedule(v);
-	});
-        if (currents.mine() == sink_vertex.load()) { // all deques should be empty now
+      if (currents.mine()->continuation.action == continuation_finish) {
+        currents.mine()->parallel_notify(
+            [&](native_fork_join_vertex *v) { schedule(v); });
+        if (currents.mine() ==
+            sink_vertex.load()) { // all deques should be empty now
           sink_vertex.store(nullptr);
         }
       } else {
-        { assert(currents.mine()->continuation.action == continuation_continue); }
-      } { meta_scheduler.tick([&] { return is_phase_finished() || is_finished(); }); }
+        {
+          assert(currents.mine()->continuation.action == continuation_continue);
+        }
+      }
+      {
+        meta_scheduler.tick(
+            [&] { return is_phase_finished() || is_finished(); });
+      }
     }
   }
-  auto schedule(vertex* v) -> void { { assert(v->incounter.load() == 0); }
+  auto schedule(vertex *v) -> void {
+    { assert(v->incounter.load() == 0); }
     deques.mine().push(v, instrumentation);
   }
   auto enter() -> void {
     currents.mine()->run();
     throw_to(worker_continuation());
-  } 
-  auto initialize_fork(vertex* parent, vertex* child1, vertex* child2) -> void {
-    vertex* vs[] = {child2, child1}; { assert(parent->incounter.load() == 0); }
-    for (auto v : vs) { { instrumentation.on_create_vertex(); }
+  }
+  auto initialize_fork(vertex *parent, vertex *child1, vertex *child2) -> void {
+    vertex *vs[] = {child2, child1};
+    { assert(parent->incounter.load() == 0); }
+    for (auto v : vs) {
+      {
+        instrumentation.on_create_vertex();
+      }
       v->incounter.store(0, std::memory_order_relaxed);
       v->outset = parent;
     }
@@ -2262,27 +2276,23 @@ public:
     } { assert(child1->incounter.load() == 0); }
   }
   */
-  auto initialize_vertex(vertex* v) -> void {
+  auto initialize_vertex(vertex *v) -> void {
     v->incounter++;
     { instrumentation.on_create_vertex(); }
   }
-  auto new_edge(vertex* v, vertex* u) -> void {
+  auto new_edge(vertex *v, vertex *u) -> void {
     u->incounter++;
     auto r = v->add(u);
     { assert(r == outset_add_success); }
   }
-  auto release(vertex* v) -> void {
-    v->decrement([&] (vertex* u) {
-      schedule(u);
-    });
+  auto release(vertex *v) -> void {
+    v->decrement([&](vertex *u) { schedule(u); });
   }
-  auto self() -> vertex* {
-    return currents.mine();
-  }
-  auto worker_continuation() -> continuation& {
+  auto self() -> vertex * { return currents.mine(); }
+  auto worker_continuation() -> continuation & {
     return worker_continuations.mine();
   }
-  auto launch(vertex& source) -> void {
+  auto launch(vertex &source) -> void {
     auto assert_all_deques_empty = [&] {
 #ifndef NDEBUG
       for (size_t i = 0; i < get_nb_workers(); i++) {
@@ -2290,13 +2300,17 @@ public:
       }
 #endif
     };
-    { assert_all_deques_empty(); assert(get_my_id() == 0); assert(sink_vertex.load() == nullptr); }
-    auto f = [] { };
+    {
+      assert_all_deques_empty();
+      assert(get_my_id() == 0);
+      assert(sink_vertex.load() == nullptr);
+    }
+    auto f = [] {};
     auto sink = make_thunk_vertex(f);
     sink_vertex.store(&sink);
     auto p = [] { elastic.prepare_end_of_phase(); };
     auto unsuspend_worker0 = make_thunk_vertex(p);
-    vertex* vertices[] = {&sink, &unsuspend_worker0, &source};
+    vertex *vertices[] = {&sink, &unsuspend_worker0, &source};
     for (auto v : vertices) {
       initialize_vertex(v);
     }
@@ -2305,27 +2319,31 @@ public:
     for (auto v : vertices) {
       release(v);
     }
-    loop(); { instrumentation.on_teardown_scheduler(); }
-    { assert(get_my_id() == 0); assert(sink_vertex.load() == nullptr); assert_all_deques_empty(); }
+    loop();
+    { instrumentation.on_teardown_scheduler(); }
+    {
+      assert(get_my_id() == 0);
+      assert(sink_vertex.load() == nullptr);
+      assert_all_deques_empty();
+    }
     elastic.end_phase();
   }
 };
 
-template <
-  typename Instrumentation,
-  typename Meta_scheduler>
-native_fork_join_scheduler_family<Instrumentation, Meta_scheduler>* native_fork_join_scheduler_family<Instrumentation, Meta_scheduler>::_scheduler = nullptr;
+template <typename Instrumentation, typename Meta_scheduler>
+native_fork_join_scheduler_family<Instrumentation, Meta_scheduler>
+    *native_fork_join_scheduler_family<Instrumentation,
+                                       Meta_scheduler>::_scheduler = nullptr;
 
 using native_fork_join_scheduler = native_fork_join_scheduler_family<>;
 
-native_fork_join_scheduler* scheduler = new native_fork_join_scheduler;
+native_fork_join_scheduler *scheduler = new native_fork_join_scheduler;
 
-auto my_scheduler() -> native_fork_join_scheduler_interface* {
+auto my_scheduler() -> native_fork_join_scheduler_interface * {
   return scheduler;
 }
-  
-extern
-auto __launch(native_fork_join_vertex& source) -> void {
+
+extern auto __launch(native_fork_join_vertex &source) -> void {
   scheduler->launch(source);
 }
 
@@ -2335,86 +2353,73 @@ auto tick() -> void {
   scheduler->meta_scheduler.tick([&] { return scheduler->is_finished(); });
 }
 
-environment_variable<uint64_t> benchmark_nb_repeat("TASKPARTS_BENCHMARK_NUM_REPEAT",
-                                                   [] { return 1; },
-                                                   "number of times to run the benchmark");
-environment_variable<uint64_t> benchmark_warmup_secs("TASKPARTS_BENCHMARK_WARMUP_SECS",
-                                                     [] { return 3; },
-                                                     "time in seconds to warm up the scheduler"
-                                                     "before running the benchmark");
-environment_variable<bool> benchmark_verbose("TASKPARTS_BENCHMARK_VERBOSE",
-                                             [] { return false; },
-                                             "print the progress of benchmarking runs "
-                                             "in real time");
+environment_variable<uint64_t> benchmark_nb_repeat(
+    "TASKPARTS_BENCHMARK_NUM_REPEAT", [] { return 1; },
+    "number of times to run the benchmark");
+environment_variable<uint64_t> benchmark_warmup_secs(
+    "TASKPARTS_BENCHMARK_WARMUP_SECS", [] { return 3; },
+    "time in seconds to warm up the scheduler"
+    "before running the benchmark");
+environment_variable<bool> benchmark_verbose(
+    "TASKPARTS_BENCHMARK_VERBOSE", [] { return false; },
+    "print the progress of benchmarking runs "
+    "in real time");
 
 auto get_benchmark_warmup_secs() -> double {
   return benchmark_warmup_secs.get();
 }
-auto get_benchmark_verbose() -> bool {
-  return benchmark_verbose.get();
-}
-auto get_benchmark_nb_repeat() -> size_t {
-  return benchmark_nb_repeat.get();
-}
+auto get_benchmark_verbose() -> bool { return benchmark_verbose.get(); }
+auto get_benchmark_nb_repeat() -> size_t { return benchmark_nb_repeat.get(); }
 
 auto instrumentation_on_enter_work() -> void {
   scheduler->instrumentation.on_enter_work();
 }
 auto instrumentation_on_exit_work() -> void {
   scheduler->instrumentation.on_exit_work();
-}  
-auto instrumentation_start() -> void {
-  scheduler->instrumentation.start();
 }
-auto instrumentation_capture() -> void {
-  scheduler->instrumentation.capture();    
-}
-auto instrumentation_reset() -> void {
-  scheduler->instrumentation.reset();
-}
+auto instrumentation_start() -> void { scheduler->instrumentation.start(); }
+auto instrumentation_capture() -> void { scheduler->instrumentation.capture(); }
+auto instrumentation_reset() -> void { scheduler->instrumentation.reset(); }
 auto instrumentation_report(std::string outfile) -> void {
   scheduler->instrumentation.report(outfile);
 }
-auto log_program_point(int line_nb, const char* source_fname, void* ptr) -> void {
+auto log_program_point(int line_nb, const char *source_fname,
+                       void *ptr) -> void {
   scheduler->instrumentation.log_program_point(line_nb, source_fname, ptr);
 }
 
 auto ping_all_workers() -> void {
- reset_scheduler([&] {}, [&] { }, true);
+  reset_scheduler([&] {}, [&] {}, true);
 }
 
 /*---------------------------------------------------------------------*/
 /* DAG-calculus scheduler */
 
-auto throw_to(minimal_continuation& c) -> void {
-  c.f();
-}
+auto throw_to(minimal_continuation &c) -> void { c.f(); }
 
-auto swap(minimal_continuation&, minimal_continuation& next) -> void {
+auto swap(minimal_continuation &, minimal_continuation &next) -> void {
   next.f();
 }
 
-auto get_action(minimal_continuation& c) -> continuation_action& {
+auto get_action(minimal_continuation &c) -> continuation_action & {
   return c.action;
 }
 
-auto throw_to(trampoline_continuation& c) -> void {
-  c.mc.f();
-}
+auto throw_to(trampoline_continuation &c) -> void { c.mc.f(); }
 
-auto swap(trampoline_continuation&, trampoline_continuation& next) -> void {
+auto swap(trampoline_continuation &, trampoline_continuation &next) -> void {
   next.mc.f();
 }
 
-auto get_action(trampoline_continuation& c) -> continuation_action& {
+auto get_action(trampoline_continuation &c) -> continuation_action & {
   return get_action(c.mc);
 }
 
-auto get_trampoline(trampoline_continuation& c) -> trampoline_block_label& {
+auto get_trampoline(trampoline_continuation &c) -> trampoline_block_label & {
   return c.next;
 }
 
-auto throw_to(continuation& c) -> void {
+auto throw_to(continuation &c) -> void {
   auto ct = c.continuation_type;
   if (ct == continuation_minimal) {
     throw_to(c.u.m);
@@ -2426,7 +2431,7 @@ auto throw_to(continuation& c) -> void {
   }
 }
 
-auto swap(continuation& current, continuation& next) -> void {
+auto swap(continuation &current, continuation &next) -> void {
   auto ct = current.continuation_type;
   assert(ct == next.continuation_type);
   if (ct == continuation_minimal) {
@@ -2439,7 +2444,7 @@ auto swap(continuation& current, continuation& next) -> void {
   }
 }
 
-auto get_action(continuation& c) -> continuation_action& {
+auto get_action(continuation &c) -> continuation_action & {
   if (c.continuation_type == continuation_minimal) {
     return c.u.m.action;
   } else if (c.continuation_type == continuation_trampoline) {
@@ -2451,40 +2456,43 @@ auto get_action(continuation& c) -> continuation_action& {
   }
 }
 
-auto get_trampoline(continuation& c) -> trampoline_block_label& {
+auto get_trampoline(continuation &c) -> trampoline_block_label & {
   assert(c.continuation_type == continuation_trampoline);
   return get_trampoline(c.u.t);
 }
-  
+
 class dag_calculus_scheduler {
 public:
-  using deque = chaselev<vertex*>;
+  using deque = chaselev<vertex *>;
   perworker_array<deque> deques;
-  perworker_array<vertex*> currents;
+  perworker_array<vertex *> currents;
   perworker_array<continuation> worker_continuations;
   std::atomic<bool> should_exit;
 
-  dag_calculus_scheduler() : should_exit(false) { }
+  dag_calculus_scheduler() : should_exit(false) {}
 
   auto loop() -> void {
-    auto& current = currents.mine();
+    auto &current = currents.mine();
     auto acquire = [this] {
-      while (! should_exit.load()) {
-	auto victim = random_other_worker();
+      while (!should_exit.load()) {
+        auto victim = random_other_worker();
         auto v = deques[victim].steal().first;
-        if (v != nullptr) { { assert(get_action(v->continuation) == continuation_initialize); }
+        if (v != nullptr) {
+          {
+            assert(get_action(v->continuation) == continuation_initialize);
+          }
           deques.mine().push(v);
           return;
         }
       }
     };
-    while (! should_exit.load()) {
+    while (!should_exit.load()) {
       if (deques.mine().empty() && (get_nb_workers() > 1)) {
-	acquire();
+        acquire();
       }
       current = deques.mine().pop().first;
       if (current == nullptr) {
-	continue;
+        continue;
       }
       increment(current);
       if (get_action(current->continuation) == continuation_initialize) {
@@ -2493,32 +2501,29 @@ public:
       swap(worker_continuation(), current->continuation);
       if (get_action(current->continuation) == continuation_finish) {
         parallel_notify<dag_calculus_scheduler>(current);
-	current->deallocate();
+        current->deallocate();
       } else {
         { assert(get_action(current->continuation) == continuation_continue); }
-	decrement<dag_calculus_scheduler>(current);
+        decrement<dag_calculus_scheduler>(current);
       }
     }
   }
-  auto schedule(vertex* v) -> void { { assert(v->edges.incounter.load() == 0); }
+  auto schedule(vertex *v) -> void {
+    { assert(v->edges.incounter.load() == 0); }
     deques.mine().push(v);
   }
   auto enter() -> void {
     currents.mine()->run();
     throw_to(worker_continuation());
   }
-  auto self() -> vertex* {
-    return currents.mine();
-  }
-  auto worker_continuation() -> continuation& {
+  auto self() -> vertex * { return currents.mine(); }
+  auto worker_continuation() -> continuation & {
     return worker_continuations.mine();
   }
-  static
-  auto release(vertex* v) -> void {
+  static auto release(vertex *v) -> void {
     decrement<dag_calculus_scheduler>(v);
   }
-  static
-  auto new_edge(vertex* v, vertex* u) -> void {
+  static auto new_edge(vertex *v, vertex *u) -> void {
     increment(u);
     if (add(v, u) == outset_add_fail) {
       decrement<dag_calculus_scheduler>(u);
@@ -2528,88 +2533,79 @@ public:
     get_action(currents.mine()->continuation) = continuation_continue;
     swap(currents.mine()->continuation, worker_continuations.mine());
   }
-  static
-  auto initialize_vertex(vertex* v) -> void {
+  static auto initialize_vertex(vertex *v) -> void {
     new_incounter(v);
     new_outset(v);
     increment(v);
   }
-  static
-  auto create_vertex(vertex* v,
-		     continuation_types continuation_type = continuation_ucontext) -> vertex* {
+  static auto create_vertex(vertex *v, continuation_types continuation_type =
+                                           continuation_ucontext) -> vertex * {
     assert(continuation_type == continuation_minimal);
     v->continuation.continuation_type = continuation_type;
     get_action(v->continuation) = continuation_initialize;
     initialize_vertex(v);
     return v;
   }
-  auto launch(vertex* source,
-              continuation_types continuation_type = continuation_ucontext) -> void {
+  auto
+  launch(vertex *source,
+         continuation_types continuation_type = continuation_ucontext) -> void {
     for (size_t i = 0; i < get_nb_workers(); i++) {
       worker_continuations[i].continuation_type = continuation_type;
       new_continuation(worker_continuations[i], [] {});
     }
-    auto sink = create_vertex(new dag_calculus_vertex([this] {
-      should_exit.store(true);
-    }), continuation_minimal);
+    auto sink = create_vertex(
+        new dag_calculus_vertex([this] { should_exit.store(true); }),
+        continuation_minimal);
     new_edge(source, sink);
     release(sink);
     release(source);
     std::function<void(size_t, size_t)> launch_rec;
-    launch_rec = [&] (size_t lo, size_t hi) {
+    launch_rec = [&](size_t lo, size_t hi) {
       if (lo + 1 == hi) {
-	loop();
-	return;
+        loop();
+        return;
       }
       auto mid = (lo + hi) / 2;
       fork2join([&] { launch_rec(lo, mid); }, [&] { launch_rec(mid, hi); });
     };
     launch_rec(0, get_nb_workers());
   }
-  static
-  auto Schedule(vertex* v) -> void;
+  static auto Schedule(vertex *v) -> void;
 };
 
-dag_calculus_scheduler* _dag_calculus_scheduler = nullptr;
+dag_calculus_scheduler *_dag_calculus_scheduler = nullptr;
 
-auto dag_calculus_scheduler::Schedule(vertex* v) -> void {
+auto dag_calculus_scheduler::Schedule(vertex *v) -> void {
   _dag_calculus_scheduler->schedule(v);
 }
-  
-auto launch_dag_calculus(vertex* source) -> void {
+
+auto launch_dag_calculus(vertex *source) -> void {
   if (_dag_calculus_scheduler == nullptr) {
     _dag_calculus_scheduler = new dag_calculus_scheduler;
   }
   _dag_calculus_scheduler->launch(source, continuation_minimal);
-  after_worker_group_finish([=] {
-    delete _dag_calculus_scheduler;
-  });
+  after_worker_group_finish([=] { delete _dag_calculus_scheduler; });
   _dag_calculus_scheduler = nullptr;
 }
 
-auto _create_vertex(vertex* v,
-		   continuation_types continuation_type) -> vertex* {
+auto _create_vertex(vertex *v,
+                    continuation_types continuation_type) -> vertex * {
   return dag_calculus_scheduler::create_vertex(v, continuation_type);
 }
 
-auto new_edge(vertex* src, vertex* dst) -> void {
+auto new_edge(vertex *src, vertex *dst) -> void {
   dag_calculus_scheduler::new_edge(src, dst);
 }
 
-auto release(vertex* v) -> void {
-  dag_calculus_scheduler::release(v);
-}
+auto release(vertex *v) -> void { dag_calculus_scheduler::release(v); }
 
-auto self() -> vertex* {
-  return _dag_calculus_scheduler->self();
-}
+auto self() -> vertex * { return _dag_calculus_scheduler->self(); }
 
-auto capture_continuation(vertex* v) -> vertex* {
-  auto& vk = v->edges.outset;
+auto capture_continuation(vertex *v) -> vertex * {
+  auto &vk = v->edges.outset;
   auto vr = vk;
   vk = nullptr;
-  return (vertex*)vr;
+  return (vertex *)vr;
 }
 
 } // end namespace taskparts
-

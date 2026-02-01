@@ -85,6 +85,7 @@
             # Development and debugging tools
             gdb
             valgrind
+            llvmPackages_18.clang-tools  # For clang-format
 
             # Parlaylib for benchmarks
             parlaylib
@@ -128,6 +129,33 @@
             # OpenCilk placeholder (not included by default)
             export OPENCILK_CXX=""
 
+            # Formatting functions
+            fmt() {
+              # prefer git list; fall back to find
+              files="$(git ls-files '*.c' '*.h' '*.cc' '*.hh' '*.cpp' '*.hpp' '*.cxx' '*.hxx' 2>/dev/null || true)"
+              if [ -z "$files" ]; then
+                files="$(find . -type f \( -name '*.c' -o -name '*.h' -o -name '*.cc' -o -name '*.hh' -o -name '*.cpp' -o -name '*.hpp' -o -name '*.cxx' -o -name '*.hxx' \))"
+              fi
+              [ -z "$files" ] && { echo "No C/C++ files to format."; return 0; }
+              echo "$files" | xargs -r ${pkgs.llvmPackages_18.clang-tools}/bin/clang-format -i
+            }
+
+            fmt-check() {
+              set -e
+              tmpdir="$(mktemp -d)"; trap 'rm -rf "$tmpdir"' EXIT
+              changed=0
+              for f in $(git ls-files '*.c' '*.h' '*.cc' '*.hh' '*.cpp' '*.hpp' '*.cxx' '*.hxx' 2>/dev/null || true); do
+                cp "$f" "$tmpdir/file"
+                ${pkgs.llvmPackages_18.clang-tools}/bin/clang-format -i "$tmpdir/file"
+                if ! diff -u "$f" "$tmpdir/file" >/dev/null; then
+                  echo "Needs format: $f"
+                  changed=1
+                fi
+              done
+              [ "$changed" -eq 0 ] && echo "clang-format: OK"
+              exit "$changed"
+            }
+
             echo "════════════════════════════════════════════════════════"
             echo "TaskPaRTS development environment loaded"
             echo "════════════════════════════════════════════════════════"
@@ -139,6 +167,8 @@
             echo "  cd benchmark && make <program>.header_opt    # Build optimized benchmark"
             echo "  cmake -S . -B build -DHWLOC=ON               # Configure CMake build"
             echo "  cmake --build build                          # Build with CMake"
+            echo "  fmt                                          # Format all C/C++ files with clang-format"
+            echo "  fmt-check                                    # Check if files need formatting (CI mode)"
             echo ""
             echo "Parlaylib included at: ${parlaylib}"
             echo "════════════════════════════════════════════════════════"

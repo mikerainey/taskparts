@@ -4,29 +4,29 @@
 
 #include <chrono>
 
-static inline
-auto now() -> std::chrono::time_point<std::chrono::steady_clock> {
+static inline auto now() -> std::chrono::time_point<std::chrono::steady_clock> {
   return std::chrono::steady_clock::now();
 }
 
-static inline
-auto diff(std::chrono::time_point<std::chrono::steady_clock> start,
-          std::chrono::time_point<std::chrono::steady_clock> finish) -> double {
+static inline auto
+diff(std::chrono::time_point<std::chrono::steady_clock> start,
+     std::chrono::time_point<std::chrono::steady_clock> finish) -> double {
   std::chrono::duration<double> elapsed = finish - start;
   return elapsed.count();
 }
 
-static inline
-auto since(std::chrono::time_point<std::chrono::steady_clock> start) -> double {
+static inline auto
+since(std::chrono::time_point<std::chrono::steady_clock> start) -> double {
   return diff(start, now());
 }
 
-#if defined(PARLAY_SEQUENTIAL) || defined(PARLAY_HOMEGROWN) || defined(PARLAY_OPENCILK)
-#include <functional>
+#if defined(PARLAY_SEQUENTIAL) || defined(PARLAY_HOMEGROWN) ||                 \
+    defined(PARLAY_OPENCILK)
 #include <cstdio>
+#include <functional>
 #include <string>
-#include <vector>
 #include <sys/resource.h>
+#include <vector>
 
 static struct rusage last_rusage;
 std::chrono::time_point<std::chrono::steady_clock> last_exectime;
@@ -42,14 +42,9 @@ using rusage_metrics = struct rusage_metrics_struct {
 };
 std::vector<rusage_metrics> rusages;
 
+auto get_benchmark_warmup_secs() -> double { return 0.0; }
 
-auto get_benchmark_warmup_secs() -> double {
-  return 0.0;
-}
-
-auto get_benchmark_verbose() -> bool {
-  return false;
-}
+auto get_benchmark_verbose() -> bool { return false; }
 
 auto get_benchmark_nb_repeat() -> size_t {
   size_t nb = 1;
@@ -59,40 +54,39 @@ auto get_benchmark_nb_repeat() -> size_t {
   return nb;
 }
 
-auto instrumentation_start() -> void {
-
-}
+auto instrumentation_start() -> void {}
 auto instrumentation_on_enter_work() -> void {
   getrusage(RUSAGE_SELF, &last_rusage);
   last_exectime = now();
 }
 auto instrumentation_on_exit_work() -> void {
   {
-    auto double_of_tv = [] (struct timeval tv) {
-      return ((double) tv.tv_sec) + ((double) tv.tv_usec)/1000000.;
+    auto double_of_tv = [](struct timeval tv) {
+      return ((double)tv.tv_sec) + ((double)tv.tv_usec) / 1000000.;
     };
     auto exectime = since(last_exectime);
     last_exectime = now();
     auto previous_rusage = last_rusage;
     getrusage(RUSAGE_SELF, &last_rusage);
     rusage_metrics m = {
-      .exectime = exectime,
-      .utime = double_of_tv(last_rusage.ru_utime) - double_of_tv(previous_rusage.ru_utime),
-      .stime = double_of_tv(last_rusage.ru_stime) - double_of_tv(previous_rusage.ru_stime),
-      .nvcsw = (uint64_t)(last_rusage.ru_nvcsw - previous_rusage.ru_nvcsw),
-      .nivcsw = (uint64_t)(last_rusage.ru_nivcsw - previous_rusage.ru_nivcsw),
-      .maxrss = (uint64_t)(last_rusage.ru_maxrss),
-      .nsignals = (uint64_t)(last_rusage.ru_nsignals - previous_rusage.ru_nsignals)
-    };
+        .exectime = exectime,
+        .utime = double_of_tv(last_rusage.ru_utime) -
+                 double_of_tv(previous_rusage.ru_utime),
+        .stime = double_of_tv(last_rusage.ru_stime) -
+                 double_of_tv(previous_rusage.ru_stime),
+        .nvcsw = (uint64_t)(last_rusage.ru_nvcsw - previous_rusage.ru_nvcsw),
+        .nivcsw = (uint64_t)(last_rusage.ru_nivcsw - previous_rusage.ru_nivcsw),
+        .maxrss = (uint64_t)(last_rusage.ru_maxrss),
+        .nsignals =
+            (uint64_t)(last_rusage.ru_nsignals - previous_rusage.ru_nsignals)};
     rusages.push_back(m);
   }
 }
-auto instrumentation_reset() -> void {
-}
+auto instrumentation_reset() -> void {}
 auto instrumentation_capture() -> void {}
 auto instrumentation_report(std::string outfile) -> void {
   size_t i = 0;
-  FILE* f = (outfile == "stdout") ? stdout : fopen(outfile.c_str(), "w");
+  FILE *f = (outfile == "stdout") ? stdout : fopen(outfile.c_str(), "w");
   fprintf(f, "[\n");
   size_t n = rusages.size();
   for (size_t i = 0; i < n; i++) {
@@ -113,8 +107,8 @@ auto instrumentation_report(std::string outfile) -> void {
   }
 }
 template <typename Local_reset, typename Global_reset>
-auto reset_scheduler(const Local_reset& local_reset,
-                     const Global_reset& global_reset,
+auto reset_scheduler(const Local_reset &local_reset,
+                     const Global_reset &global_reset,
                      bool global_first) -> void {
   if (global_first) {
     global_reset();
@@ -133,48 +127,54 @@ auto reset_scheduler(const Local_reset& local_reset,
 
 namespace taskparts {
 
-template <
-typename Benchmark,
-typename Setup = std::function<void()>,
-typename Teardown = std::function<void()>,
-typename Reset = std::function<void()>>
-auto benchmark(const Benchmark& benchmark,
-               const Setup& setup = [] {},
-               const Teardown& teardown = [] {},
-               const Reset& reset = [] {}) -> void {
-  auto warmup = [&] { 
+template <typename Benchmark, typename Setup = std::function<void()>,
+          typename Teardown = std::function<void()>,
+          typename Reset = std::function<void()>>
+auto benchmark(
+    const Benchmark &benchmark, const Setup &setup = [] {},
+    const Teardown &teardown = [] {}, const Reset &reset = [] {}) -> void {
+  auto warmup = [&] {
     if (get_benchmark_warmup_secs() <= 0.0) {
       return;
     }
-    if (get_benchmark_verbose()) printf("======== WARMUP ========\n");
+    if (get_benchmark_verbose())
+      printf("======== WARMUP ========\n");
     auto warmup_start = now();
     while (since(warmup_start) < get_benchmark_warmup_secs()) {
       auto st = now();
       benchmark();
-      if (get_benchmark_verbose()) printf("warmup_run %.3f\n", since(st));
+      if (get_benchmark_verbose())
+        printf("warmup_run %.3f\n", since(st));
       reset();
     }
-    if (get_benchmark_verbose()) printf ("======== END WARMUP ========\n");
+    if (get_benchmark_verbose())
+      printf("======== END WARMUP ========\n");
   };
   setup();
   warmup();
   for (size_t i = 0; i < get_benchmark_nb_repeat(); i++) {
-    reset_scheduler([&] { // worker local
-      instrumentation_on_enter_work();
-    }, [&] { // global
-      instrumentation_reset();
-      instrumentation_start();
-    }, false);
+    reset_scheduler(
+        [&] { // worker local
+          instrumentation_on_enter_work();
+        },
+        [&] { // global
+          instrumentation_reset();
+          instrumentation_start();
+        },
+        false);
     benchmark();
-    reset_scheduler([&] { // worker local
-      instrumentation_on_exit_work();
-    }, [&] { // global
-      instrumentation_capture();
-      if ((i + 1) < get_benchmark_nb_repeat()) {
-        reset();
-      }
-      instrumentation_start();
-    }, true);
+    reset_scheduler(
+        [&] { // worker local
+          instrumentation_on_exit_work();
+        },
+        [&] { // global
+          instrumentation_capture();
+          if ((i + 1) < get_benchmark_nb_repeat()) {
+            reset();
+          }
+          instrumentation_start();
+        },
+        true);
   }
   std::string outfile = "stdout";
   if (const auto env_p = std::getenv("TASKPARTS_BENCHMARK_STATS_OUTFILE")) {
@@ -184,4 +184,4 @@ auto benchmark(const Benchmark& benchmark,
   teardown();
 }
 
-}
+} // namespace taskparts

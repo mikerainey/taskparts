@@ -1,15 +1,15 @@
-#include <ctype.h>
 #include <algorithm>
+#include <ctype.h>
 #include <iostream>
 #include <string>
 
+#include <parlay/internal/get_time.h>
 #include <parlay/io.h>
 #include <parlay/primitives.h>
 #include <parlay/sequence.h>
-#include <parlay/internal/get_time.h>
 
-#include "suffix_array.h"
 #include "benchmark.hpp"
+#include "suffix_array.h"
 
 // **************************************************************
 // Driver code
@@ -17,26 +17,27 @@
 using charseq = parlay::sequence<char>;
 using uint = unsigned int;
 
-auto check(parlay::sequence<char>& str) {
-  auto ustr = parlay::map(str, [] (char x) {return (unsigned char) x;});
-  auto less = [&] (uint i, uint j) {
-    return parlay::lexicographical_compare(ustr.cut(i,ustr.size()),ustr.cut(j,ustr.size()));};
+auto check(parlay::sequence<char> &str) {
+  auto ustr = parlay::map(str, [](char x) { return (unsigned char)x; });
+  auto less = [&](uint i, uint j) {
+    return parlay::lexicographical_compare(ustr.cut(i, ustr.size()),
+                                           ustr.cut(j, ustr.size()));
+  };
   return parlay::sort(parlay::iota<uint>(ustr.size()), less);
 }
 
-int main(int argc, char* argv[]) {
+int main(int argc, char *argv[]) {
   auto usage = "Usage: suffix_array <filename>";
-  if (argc != 2) std::cout << usage << std::endl;
+  if (argc != 2)
+    std::cout << usage << std::endl;
   else {
     charseq str = parlay::chars_from_file(argv[1]);
     using index = unsigned int;
     long n = str.size();
     parlay::sequence<index> result;
 
-    taskparts::benchmark([&] {
-      result = suffix_array(str);      
-    });
-    
+    taskparts::benchmark([&] { result = suffix_array(str); });
+
     // take first n entries
     auto cnt = std::min<long>(10, n);
     auto head = result.head(cnt);

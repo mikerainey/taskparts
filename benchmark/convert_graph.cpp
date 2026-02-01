@@ -1,9 +1,9 @@
 #include <iostream>
 #include <string>
 
+#include <parlay/internal/get_time.h>
 #include <parlay/primitives.h>
 #include <parlay/sequence.h>
-#include <parlay/internal/get_time.h>
 
 #include "BFS.h"
 #include "helper/graph_utils.h"
@@ -16,9 +16,10 @@ using nested_seq = parlay::sequence<parlay::sequence<vertex>>;
 using graph = nested_seq;
 using utils = graph_utils<vertex>;
 
-int main(int argc, char* argv[]) {
+int main(int argc, char *argv[]) {
   auto usage = "Usage: convert_graph <input filename> <output filename>";
-  if (argc != 3) std::cout << usage << std::endl;
+  if (argc != 3)
+    std::cout << usage << std::endl;
   else {
     graph G;
     G = utils::read_graph_from_file_pbbs(argv[1]);
