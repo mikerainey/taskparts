@@ -520,6 +520,191 @@ Expected output: `fib(35) = 9227465` with execution time and worker count.
 - **Stats enabled**: Performance overhead for collecting statistics
 - **Logging enabled**: Significant overhead, use only for debugging
 
+## Instrumentation and Profiling
+
+TaskPaRTS provides built-in instrumentation for performance analysis. These features are available to **any program using TaskPaRTS**, not just the benchmarks in the `benchmark/` folder.
+
+### Statistics Mode
+
+Stats mode collects runtime metrics about the work-stealing scheduler, including steal counts, utilization, and timing breakdowns.
+
+#### Compilation
+
+Add `-DTASKPARTS_STATS` to your compiler flags:
+
+```bash
+# For your own programs
+clang++ -std=c++17 -I/path/to/taskparts/include -I/path/to/taskparts/src \
+  -DTASKPARTS_HEADER_ONLY -DTASKPARTS_STATS \
+  -DTASKPARTS_POSIX=1 -DTASKPARTS_X64=1 \
+  myprogram.cpp -o myprogram -lpthread
+
+# Using the benchmark Makefile (builds .header_sta variant)
+make fib.header_sta
+```
+
+#### Runtime Configuration
+
+By default, stats are collected but **not printed** (silent mode). Control output with environment variables:
+
+| Environment Variable | Description |
+|---------------------|-------------|
+| `TASKPARTS_STATS_OUTFILE` | Core library output: `""` (silent), `"stdout"`, or filename |
+| `TASKPARTS_BENCHMARK_STATS_OUTFILE` | Benchmark framework output (defaults to `"stdout"`) |
+
+**Note**: The benchmark framework (`benchmark.hpp`) defaults to stdout output. For custom programs using TaskPaRTS directly, you must set `TASKPARTS_STATS_OUTFILE` to see output.
+
+#### Example Usage
+
+```bash
+# Build with stats enabled
+make fib.header_sta
+
+# Run - benchmark programs print stats to stdout by default
+./bin/fib.header_sta 45
+
+# Or redirect stats to a file
+TASKPARTS_BENCHMARK_STATS_OUTFILE=stats.json ./bin/fib.header_sta 45
+
+# For custom programs (not using benchmark.hpp), enable output explicitly
+TASKPARTS_STATS_OUTFILE=stdout ./myprogram
+```
+
+#### Stats Output Format
+
+Stats are output in JSON format:
+
+```json
+[{"exectime": 0.278,
+"usertime": 2.739,
+"systime": 0.005,
+"nvcsw": 0,
+"nivcsw": 1204,
+"maxrss": 24150016,
+"nsignals": 0,
+"nb_vertices": 4356640,
+"nb_steals": 146,
+"nb_suspends": 2,
+"nb_surplus_transitions": 699,
+"total_work_time": 2.082,
+"total_idle_time": 0.001,
+"total_suspend_time": 0.000,
+"total_time": 2.777,
+"utilization": 1.000}]
+```
+
+#### Stats Field Reference
+
+| Field | Description |
+|-------|-------------|
+| `exectime` | Wall-clock execution time (seconds) |
+| `usertime` | Total user CPU time across all workers (seconds) |
+| `systime` | Total system CPU time (seconds) |
+| `nvcsw` | Voluntary context switches |
+| `nivcsw` | Involuntary context switches |
+| `maxrss` | Maximum resident set size (bytes) |
+| `nb_vertices` | Total fork-join vertices created |
+| `nb_steals` | Number of successful work steals |
+| `nb_suspends` | Number of worker suspends (elastic scheduling) |
+| `nb_surplus_transitions` | Surplus worker state transitions |
+| `total_work_time` | Cumulative time spent doing work (seconds) |
+| `total_idle_time` | Cumulative idle time across workers (seconds) |
+| `total_suspend_time` | Cumulative suspend time (seconds) |
+| `total_time` | Total worker-time (exectime × num_workers) |
+| `utilization` | Work efficiency (1.0 = perfect, 0.0 = all idle) |
+
+### Logging Mode
+
+Logging mode records detailed scheduler events for debugging and visualization. This has **significant runtime overhead** and should only be used for debugging.
+
+#### Compilation
+
+Add `-DTASKPARTS_LOGGING` to your compiler flags:
+
+```bash
+# For your own programs
+clang++ -std=c++17 -I/path/to/taskparts/include -I/path/to/taskparts/src \
+  -DTASKPARTS_HEADER_ONLY -DTASKPARTS_LOGGING \
+  -DTASKPARTS_POSIX=1 -DTASKPARTS_X64=1 \
+  myprogram.cpp -o myprogram -lpthread
+
+# Using the benchmark Makefile (builds .header_log variant)
+make fib.header_log
+```
+
+#### Runtime Configuration
+
+| Environment Variable | Default | Description |
+|---------------------|---------|-------------|
+| `TASKPARTS_LOGGING_OUTPATH` | `""` | Output directory for log files |
+| `TASKPARTS_LOGGING_REALTIME` | `false` | Print events as they occur |
+| `TASKPARTS_LOGGING_PHASES` | `true` | Log scheduler phase events |
+| `TASKPARTS_LOGGING_VERTICES` | `false` | Log vertex creation/execution |
+| `TASKPARTS_LOGGING_MIGRATION` | `false` | Log task migration events |
+| `TASKPARTS_LOGGING_PROGRAM` | `true` | Log program-level events |
+
+#### Example Usage
+
+```bash
+# Build with logging enabled
+make fib.header_log
+
+# Run with real-time logging to see events as they happen
+TASKPARTS_LOGGING_REALTIME=1 ./bin/fib.header_log 30
+
+# Log all event types to files in a directory
+TASKPARTS_LOGGING_OUTPATH=./logs TASKPARTS_LOGGING_VERTICES=1 ./bin/fib.header_log 30
+```
+
+### Debug Builds
+
+Debug builds combine stats, logging, and debug symbols for comprehensive debugging:
+
+```bash
+# Build debug variant
+make fib.header_dbg
+
+# Run with GDB (Linux only)
+gdb ./bin/fib.header_dbg
+
+# Run with Valgrind for memory debugging (Linux only)
+valgrind --leak-check=full ./bin/fib.header_dbg 30
+```
+
+### Integrating Instrumentation in Your Programs
+
+For programs not using `benchmark.hpp`, integrate stats manually:
+
+```cpp
+#define TASKPARTS_HEADER_ONLY
+#include <taskparts/taskparts.hpp>
+#include <iostream>
+
+int main() {
+  // Your parallel computation
+  long result = 0;
+  taskparts::fork2join(
+    [&] { result += compute_left(); },
+    [&] { result += compute_right(); }
+  );
+
+  std::cout << "Result: " << result << std::endl;
+
+  // Stats are automatically reported on program exit if TASKPARTS_STATS_OUTFILE is set
+  return 0;
+}
+```
+
+Compile with:
+```bash
+clang++ -std=c++17 -DTASKPARTS_HEADER_ONLY -DTASKPARTS_STATS \
+  -DTASKPARTS_DARWIN=1 -DTASKPARTS_ARM64=1 \
+  -I./include -I./src myprogram.cpp -o myprogram -lpthread
+
+# Run with stats output
+TASKPARTS_STATS_OUTFILE=stdout ./myprogram
+```
+
 ## Common Tasks
 
 ### Adding a New Benchmark Program
@@ -545,21 +730,22 @@ make myprogram.header_opt
 
 ### Debugging Parallel Code
 
-Enable debug build with stats and logging:
-```bash
-make myprogram.header_dbg
-TASKPARTS_STATS=1 TASKPARTS_LOGGING=1 ./bin/myprogram.header_dbg
-```
+See the **Instrumentation and Profiling** section above for detailed coverage of stats and logging modes.
 
-Or use GDB:
+**Quick reference:**
 ```bash
-gdb ./bin/myprogram.header_dbg
-```
+# Stats-enabled build (collect scheduler metrics)
+make myprogram.header_sta
+./bin/myprogram.header_sta
 
-Valgrind for memory issues:
-```bash
+# Logging-enabled build (detailed event tracing)
+make myprogram.header_log
+TASKPARTS_LOGGING_REALTIME=1 ./bin/myprogram.header_log
+
+# Debug build with symbols (for GDB/Valgrind)
 make myprogram.header_dbg
-valgrind --leak-check=full ./bin/myprogram.header_dbg
+gdb ./bin/myprogram.header_dbg              # Linux only
+valgrind --leak-check=full ./bin/myprogram.header_dbg  # Linux only
 ```
 
 ### Switching Schedulers
@@ -640,7 +826,7 @@ make myprogram.homegrown_opt
 
 ## Version Information
 
-**Last Updated**: 2026-02-01
+**Last Updated**: 2026-02-02
 **TaskPaRTS Version**: 0.1.0 (from flake.nix)
 **LLVM Version**: 18.1.8 (from Nix flake)
 **CMake Version**: 4.1.2 (from Nix flake)
