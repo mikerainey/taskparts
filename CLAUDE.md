@@ -615,7 +615,7 @@ Stats are output in JSON format:
 
 ### Logging Mode
 
-Logging mode records detailed scheduler events for debugging and visualization. This has **significant runtime overhead** and should only be used for debugging.
+Logging mode records detailed scheduler events for debugging and visualization. The output format is compatible with [Perfetto UI](https://ui.perfetto.dev/) for interactive trace visualization. This has **significant runtime overhead** and should only be used for debugging.
 
 #### Compilation
 
@@ -655,6 +655,25 @@ TASKPARTS_LOGGING_REALTIME=1 ./bin/fib.header_log 30
 # Log all event types to files in a directory
 TASKPARTS_LOGGING_OUTPATH=./logs TASKPARTS_LOGGING_VERTICES=1 ./bin/fib.header_log 30
 ```
+
+#### Visualizing with Perfetto UI
+
+The logging output can be visualized using [Perfetto UI](https://ui.perfetto.dev/):
+
+1. Run your program with logging enabled and output to a file:
+   ```bash
+   TASKPARTS_LOGGING_OUTPATH=./logs ./bin/fib.header_log 35
+   ```
+
+2. Open https://ui.perfetto.dev/ in your browser
+
+3. Drag and drop the log file(s) from `./logs/` into the Perfetto UI
+
+4. Explore the trace to see:
+   - Worker thread timelines
+   - Task execution phases
+   - Steal events and work migration
+   - Suspend/resume cycles (elastic scheduling)
 
 ### Debug Builds
 
