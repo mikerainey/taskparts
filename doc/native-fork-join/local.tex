@@ -1,0 +1,55 @@
+\newcommand{\defeq}{\stackrel{\text{def}}{=}}
+\newcommand{\setbuild}[2]{\{#1~|~#2\}}
+
+% Syntax highlighting
+\newdimen\zzlistingsize
+\newdimen\zzlistingsizedefault
+\zzlistingsizedefault=9pt
+\newdimen\kwlistingsize
+\kwlistingsize=9pt
+\zzlistingsize=\zzlistingsizedefault
+\gdef\lco{black}
+\newcommand{\lcRed}{\gdef\lco{nred}}
+\newcommand{\lcBlack}{\gdef\lco{black}}
+\newcommand{\lcNormal}{\lcBlack}
+\newcommand{\lcBlue}{\gdef\lco{nblue}}
+\newcommand{\lcGreen}{\gdef\lco{ngreen}}
+\newcommand{\lcPurple}{\gdef\lco{npurple}}
+\newcommand{\Lstbasicstyle}{\fontsize{\zzlistingsize}{1.1\zzlistingsize}\ttfamily\color{\lco}}
+\newcommand{\keywordstyle}{\fontsize{1.09\kwlistingsize}{\kwlistingsize}\normalfont\bf\color{\lco}}
+\newlength{\zzlstwidth}
+\settowidth{\zzlstwidth}{{\Lstbasicstyle~}}
+\newcommand{\lcm}{\color{\lco}}
+
+\lstset{
+  basewidth=\zzlstwidth,
+%  basicstyle=\Lstbasicstyle,
+  basicstyle=\small\ttfamily,
+%  identifierstyle=,
+  numbers=left, numberstyle=\tiny, numbersep=5pt,
+%  frame=single,
+  keywordstyle=\keywordstyle,
+  keywords={fun,cfun,sfun,read,case,of,type,functor,structure,signature,sig,struct,datatype,let,letpar,val,fn,in,end,as,select,mod,apply,sapply,capply,write},  %nil,cons,
+  commentstyle=\rmfamily\slshape\color{\lco},
+  morecomment=[n]{(*}{*)},
+  lineskip={-0pt},
+%  columns=[l]flexible,
+  columns=[l]fullflexible,
+  keepspaces=true,
+  mathescape=true,
+% NOTE: need TWO sets of braces around each definition below!
+  literate={->}{{$\lcm\rightarrow$}}2
+           {->^S}{{$\lcm\hspace{-1pt}\arrowsymbol{\S}\hspace{-1pt}$}}2
+           {->^C}{{$\lcm\hspace{-1pt}\arrowsymbol{\C}\hspace{-1pt}$}}2
+           {->^D}{{$\lcm\hspace{-1pt}\arrowsymbol{\delta}\hspace{-1pt}$}}2
+           {->^Dh}{{$\lcm\hspace{-1pt}\arrowsymbol{\delta_h}\hspace{-1pt}$}}2
+           {->^Dt}{{$\lcm\hspace{-1pt}\arrowsymbol{\delta_t}\hspace{-1pt}$}}2
+%           {-c->}{${c\rightarrow}$}3
+%           {-s->}{${s\rightarrow}$}3
+%           {-c->}{$\rightarrow$}1
+%           {-s->}{$\rightarrow$}1
+%           {_}{{\lcm\_}}1
+           {'a}{{$\alpha$}}1
+           {'b}{{$\beta$}}1
+           {'d}{{$\lcm\delta$}}1
+}

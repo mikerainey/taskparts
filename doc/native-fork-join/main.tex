@@ -1,0 +1,775 @@
+\documentclass[sigplan,nonacm]{acmart}
+\makeatletter
+\renewcommand\@formatdoi[1]{\ignorespaces}
+\makeatother
+\settopmatter{printfolios=false,printccs=false,printacmref=false}
+
+\setcopyright{none}
+\acmConference[]{}{}{}
+
+\usepackage{enumitem}
+\usepackage{mathtools}
+\usepackage{amsmath}
+
+\usepackage{listings}
+
+\lstdefinelanguage{pcpp}{%
+  language     = C++,
+  morekeywords = {type,then,of,match,with,null},
+  keywordstyle=\ttfamily\bfseries
+}
+
+\usepackage{natbib}
+\usepackage{url}
+
+\input{local}
+
+\lstset{language=pcpp,numbers=none}
+
+\newcommand{\vz}{\mathtt{v_0}}
+\newcommand{\vo}{\mathtt{v_1}}
+\newcommand{\vt}{\mathtt{v_2}}
+\newcommand{\fo}{\mathtt{f_1}}
+\newcommand{\ft}{\mathtt{f_2}}
+% A step number, flush right in a listing.
+\newcommand{\stepc}[1]{\hfill{\rmfamily\slshape // (#1)}}
+% A timeline: two columns of pseudocode, in the font of listings.
+\newenvironment{timeline}[1]
+  {\par\raggedright\noindent\small\ttfamily\begin{tabular}{@{}#1@{}}}
+  {\end{tabular}\par}
+\newcommand{\tlhead}[1]{{\rmfamily\itshape #1}}
+\newcommand{\ind}{\hphantom{(0)~}}
+
+\title{Native fork join: work stealing by context switching}
+% TODO: add co-author, and check affiliation.
+\author{Mike Rainey}
+\affiliation{
+  \institution{Carnegie Mellon University}
+  \city{Pittsburgh}
+  \state{PA}
+  \country{USA}
+}
+\email{me@mike-rainey.site}
+
+\begin{document}
+
+\begin{abstract}
+TaskPaRTS is a C++ library for fork-join parallelism that requires no
+compiler support.
+%
+At its core is a technique we call \emph{native fork join}, which
+delivers work-stealing scheduling by context switching.
+%
+A fork saves the continuation of the parent task as a handful of
+machine registers that point into the parent's own stack.
+%
+When the join finds that the second branch was stolen, the worker
+neither blocks nor runs other work on top of the parent's frame:
+it leaves the parent's stack suspended and returns to its scheduler.
+%
+Whichever worker finishes the last branch then resumes the parent,
+possibly on a different thread.
+%
+When nothing is stolen, both branches run on the parent's stack, like
+ordinary calls, and the fork allocates no memory.
+%
+In this short paper, we present the algorithm in pseudocode, explain
+why it is safe, and describe what it means for programs that use it.
+%
+A companion implementation, micro taskparts, implements the same
+algorithm in a few hundred lines of C++.
+\end{abstract}
+
+\maketitle
+
+\section{Challenge: the join, in a library}
+
+We are to implement binary fork join, which runs two thunks, possibly
+in parallel, and returns once both have finished.
+%
+\begin{lstlisting}
+fork2join($\fo$, $\ft$ : () -> void) -> void
+\end{lstlisting}
+%
+For example:
+%
+\begin{lstlisting}
+fib(n : int) -> int {
+  if (n < 2) return n
+  fork2join($\lambda$ () $\Rightarrow$ {a = fib(n-1)},
+            $\lambda$ () $\Rightarrow$ {b = fib(n-2)})
+  return a + b }
+\end{lstlisting}
+%
+Work stealing~\cite{halstead84,blumofele99} is well suited to
+scheduling such programs.
+%
+Our constraint is that we are writing a library: there is no compiler
+support, and client code is ordinary C++, with lambdas for thunks.
+
+A library work stealer typically implements \lstinline|fork2join| by
+\emph{child stealing}: the second branch becomes a task that thieves
+may take.
+%
+\begin{lstlisting}
+fork2join($\fo$, $\ft$ : () -> void) -> void {
+  t = new_task($\ft$); push(t)  // t is now stealable
+  $\fo$()
+  if (pop() == t) { $\ft$(); return }  // not stolen
+  while (!t.done)            // stolen: wait for thief
+    { u = steal(); if (u != null) u.run() } }
+\end{lstlisting}
+%
+The common case, where \lstinline|t| is not stolen, is cheap.
+%
+The difficulty is the join when \lstinline|t| was stolen.
+%
+The parent's frame sits on the worker's thread stack, and must stay
+there until the join completes.
+%
+So the worker can either block, and sit idle, or, as TBB and
+ParlayLib do~\cite{threadingbuildingblocksmanual,blelloch20parlaylib},
+\emph{help}: run other tasks on top of the blocked frame, as in the
+loop above.
+%
+Helping keeps the worker busy, but the parent can resume only once the
+worker has unwound back down to its frame, even if the thief finished
+long before.
+%
+Cilk~\cite{frigo98cilk5,schardl2017tapir} avoids waiting by stealing
+the parent's continuation instead of the child.
+%
+But then the thief must resume a frame that sits on the victim's
+stack, which in Cilk relies on compiler support and a cactus
+stack~\cite{lee2010cilk-m}.
+
+Native fork join, which is at the core of
+TaskPaRTS~\cite{taskparts}, takes a different route.
+%
+When a worker finds at a join that the second branch was stolen, it
+\emph{suspends the parent's stack} and returns to its scheduler, which
+looks for other work.
+%
+The parent's continuation is a saved register context that points
+into the suspended stack.
+%
+Whichever worker finishes the last branch restores this context, and
+so the parent continues on that worker's thread.
+%
+No worker waits at a join, and no two workers ever run on the same
+stack at once.
+
+We present the algorithm in Section~\ref{sec:nfj}, trace its two cases
+in Section~\ref{sec:cases}, explain why it is safe in
+Section~\ref{sec:safety}, and discuss its costs and its consequences
+for client code in Section~\ref{sec:costs}.
+%
+The appendices give machine-level details, the work-stealing deque,
+and a map from the pseudocode to TaskPaRTS and to micro taskparts, a
+minimal C++ implementation that accompanies this paper.
+
+\section{Native fork join}
+\label{sec:nfj}
+
+\paragraph{Contexts}
+%
+Our one low-level primitive is the \emph{context}.
+%
+A context holds what the C calling convention requires a function
+call to preserve: the callee-saved registers, the stack pointer, and a
+return address.
+%
+That is 8 words on x86-64 and 21 on AArch64
+(Appendix~\ref{sec:contexts}).
+%
+\lstinline|save($k$)| stores its caller's context in $k$ and returns
+\lstinline|false|; \lstinline|restore($k$)| resumes that call to
+\lstinline|save|, which this time returns \lstinline|true|.
+%
+The pair behaves like \lstinline|setjmp| and \lstinline|longjmp|,
+except that the thread that restores a context need not be the one
+that saved it, and the context may point into any stack.
+%
+To the compiler, \lstinline|save| is an ordinary call (one that returns
+twice, like \lstinline|setjmp|), so it spills any live caller-saved
+registers before the call.
+%
+As a result, a save or a restore is a handful of loads and stores,
+with no system call.
+%
+We write \lstinline|swap($k_1$, $k_2$)| for
+\lstinline|if (!save($k_1$)) restore($k_2$)|, which saves the current
+context in $k_1$ and switches to $k_2$.
+
+\paragraph{Vertices and workers}
+%
+Following the DAG calculus~\cite{Dag_calculus_16}, the scheduler
+represents a computation as a DAG whose vertices each have an
+\emph{in-counter}, which counts unfinished predecessors, and an
+\emph{out-set}, which, in fork join, is a single successor
+(Figure~\ref{fig:scheduler}).
+%
+A vertex also has a context, \lstinline|k|, and an action,
+\lstinline|act|, which tells the scheduler what to do with the vertex.
+%
+\lstinline|Init| means that the vertex has never run;
+\lstinline|Resume|, that it is suspended inside \lstinline|fork2join|,
+with its context saved in \lstinline|k|; and \lstinline|Finish|, that
+it will have finished the next time it hands control back to the
+scheduler.
+
+Each worker runs a scheduler loop on its thread's own stack.
+%
+While the worker runs a vertex, \lstinline|cur|, it keeps the loop's
+context in \lstinline|k|.
+%
+Client code runs on separate \emph{task stacks}.
+%
+We write \lstinline|me| for the worker that runs the caller, which we
+look up again at each use, because the worker can change across a call
+to \lstinline|fork2join| (Section~\ref{sec:costs}).
+%
+Each worker also holds its ready vertices:
+\lstinline|schedule($v$)| makes $v$ ready, \lstinline|pop()| takes back
+the vertex scheduled most recently, if any, and \lstinline|steal()|
+takes the oldest ready vertex of another worker, chosen at random.
+%
+The vertex scheduled most recently can never be stolen
+(Appendix~\ref{sec:deque}), and \lstinline|fork2join| relies on this.
+
+\begin{figure}
+\hrule
+\begin{lstlisting}
+type action = Init | Resume | Finish
+type vertex = {in : atomic int, out : vertex*,
+  act : action, k : context, body : () -> void}
+type worker = {k : context, cur : vertex*, ...}
+
+loop() -> void {  // on the worker's own stack
+  while (!done) {
+    v = pop()
+    if (v == null) {
+      v = steal()
+      if (v != null) schedule(v)
+      continue }
+    me.cur = v
+    if (v.act == Init) {
+      v.k = new_context(new_stack(), enter)
+      v.act = Finish }
+    swap(me.k, v.k)  // run v until it yields
+    if (v.act == Finish) notify(v) } }
+
+enter() -> void {  // first frame on a fresh stack
+  me.cur.body(); restore(me.k) }
+
+notify(v : vertex*) -> void {
+  u = v.out  // read before u.in can reach 0
+  if (u == null) { done = true; return }  // root
+  if (fetch_and_add(u.in, -1) == 1) schedule(u) }
+\end{lstlisting}
+\hrule
+\caption{The scheduler}
+\label{fig:scheduler}
+\end{figure}
+
+\begin{figure}
+\hrule
+\begin{lstlisting}[escapechar=@]
+fork2join($\fo$, $\ft$ : () -> void) -> void {
+  $\vz$ = me.cur
+  $\vo$ = vertex{out = $\vz$, body = $\lambda$ () $\Rightarrow$ {}}
+  $\vt$ = vertex{out = $\vz$, body = $\ft$}
+  if (save($\vz$.k))@\stepc{1}@
+    { $\vz$.act = Finish; return }
+  $\vz$.act = Resume; $\vz$.in = 2@\stepc{2}@
+  schedule($\vt$); schedule($\vo$)
+  $\vo$.act = Resume@\stepc{3}@
+  swap($\vo$.k, me.k); $\vo$.act = Finish
+  $\fo$()
+  if (pop() == null) restore(me.k)@\stepc{4}@
+  $\vt$.act = Resume; schedule($\vt$)@\stepc{5}@
+  swap($\vt$.k, me.k); $\vt$.act = Finish
+  $\ft$()
+  swap($\vz$.k, me.k); $\vz$.act = Finish }@\stepc{6}@
+\end{lstlisting}
+\hrule
+\caption{Fork join}
+\label{fig:fork2join}
+\end{figure}
+
+\paragraph{The scheduler}
+%
+The scheduler loop (Figure~\ref{fig:scheduler}) is the only place
+where vertices start, resume, and finish.
+%
+It pops a vertex, or else steals one and makes it ready, and then makes
+the vertex current.
+%
+If the vertex has never run, the loop gives it a fresh stack and a
+context that, once restored, calls \lstinline|enter| at the top of that
+stack.
+%
+\lstinline|enter| runs the body of the vertex, and then switches to the
+scheduler of whichever worker it is on by then.
+%
+The loop then switches to the vertex, and regains control when the
+vertex yields.
+%
+If the action of the vertex is then \lstinline|Finish|, the loop
+notifies its successor: it decrements the successor's in-counter, and
+the worker whose decrement reaches zero schedules the successor.
+%
+A call to \lstinline|fork2join| from outside the scheduler starts the
+workers with a root vertex that makes the call, and the computation
+ends when the root, which has no successor, finishes.
+
+\paragraph{Fork join}
+%
+In \lstinline|fork2join| (Figure~\ref{fig:fork2join}), the parent,
+$\vz$, is the current vertex.
+%
+The function creates two vertices, $\vo$ and $\vt$, both with $\vz$ as
+their successor.
+%
+$\vt$ runs $\ft$, and $\vo$ has an empty body.
+%
+$\vo$ stands for the parent while the parent runs $\fo$ inline, so that
+any \lstinline|fork2join| nested inside $\fo$ uses the context and
+in-counter of $\vo$, and leaves those of $\vz$ alone.
+%
+The steps are as follows.
+%
+\begin{enumerate}[leftmargin=*,label=(\arabic*)]
+\item Save the parent's context in $\vz$\lstinline|.k|.
+  If $\vt$ is stolen, this is where the parent resumes.
+\item Set the in-counter of $\vz$ to 2, and schedule $\vt$, then
+  $\vo$, which leaves $\vt$ stealable and $\vo$ not.
+\item Yield to the scheduler, saving the context in $\vo$\lstinline|.k|.
+  The scheduler pops $\vo$ and resumes it at once, so execution
+  continues after the \lstinline|swap|, with $\vo$ as the current vertex.
+  Run $\fo$ inline.
+\item Pop.
+  If the pop fails, $\vt$ was stolen.
+  Then abandon the current stack by switching to the scheduler without
+  saving anything.
+  The stack stays suspended at step 1, and the scheduler notifies $\vz$
+  that $\vo$ has finished.
+\item Otherwise, the pop returned $\vt$.
+  Schedule $\vt$ again, so that it is the vertex scheduled most
+  recently and cannot be stolen, and yield.
+  The scheduler notifies $\vz$ that $\vo$ has finished, then pops $\vt$
+  and resumes it here.
+  Run $\ft$ inline.
+\item Yield once more, saving the context in $\vz$\lstinline|.k|.
+  The scheduler notifies $\vz$ that $\vt$ has finished, which makes $\vz$
+  ready, then pops $\vz$ and resumes it here, and
+  \lstinline|fork2join| returns.
+\end{enumerate}
+
+\section{The two cases}
+\label{sec:cases}
+
+\begin{figure}
+\hrule
+\vspace{4pt}
+\begin{timeline}{l@{\hspace{0.5em}}c@{\hspace{0.5em}}l}
+\tlhead{on task stack S} & & \tlhead{in the scheduler of worker A} \\
+(1) save($\vz$.k) \\
+(2) schedule($\vt$) \\
+\ind schedule($\vo$) \\
+(3) swap($\vo$.k, A.k) & $\rightarrow$ & pop $\vo$, resume it \\
+\ind $\fo$() \\
+(4) pop() returns $\vt$ \\
+(5) schedule($\vt$) \\
+\ind swap($\vt$.k, A.k) & $\rightarrow$ & notify: $\vz$.in = 1 \\
+& & pop $\vt$, resume it \\
+\ind $\ft$() \\
+(6) swap($\vz$.k, A.k) & $\rightarrow$ & notify: $\vz$.in = 0 \\
+& & schedule, pop, resume $\vz$ \\
+\ind \textbf{return}
+\end{timeline}
+\vspace{4pt}
+\hrule
+\vspace{4pt}
+\begin{timeline}{l@{\hspace{1em}}l}
+\tlhead{worker A} & \tlhead{worker B} \\
+(1)-(3); $\fo$() on S & steal $\vt$ from A \\
+& fresh stack T; $\ft$() on T \\
+(4) pop() returns \textbf{null} \\
+\ind restore(A.k) \\
+\ind notify: $\vz$.in = 1 \\
+\ind find other work ... \\
+& $\ft$() returns \\
+& restore(B.k) \\
+& notify: $\vz$.in = 0 \\
+& schedule, pop $\vz$ \\
+& restore($\vz$.k): the save \\
+& at (1) returns, on S
+\end{timeline}
+\vspace{4pt}
+\hrule
+\caption{The two cases: $\vt$ not stolen (top), and $\vt$ stolen by
+  worker B, which finishes last (bottom)}
+\label{fig:cases}
+\end{figure}
+
+Figure~\ref{fig:cases} traces both cases of \lstinline|fork2join|.
+
+\paragraph{Not stolen}
+%
+One worker, A, does everything.
+%
+$\fo$ and $\ft$ both run on the parent's task stack, S, as ordinary
+calls, and the only overhead is three round trips through the
+scheduler.
+
+\paragraph{Stolen}
+%
+Worker B steals $\vt$ from A while A runs $\fo$, gives $\vt$ a fresh
+stack, T, and runs $\ft$ there.
+%
+When the pop at step 4 fails, A abandons S, and its scheduler notifies
+$\vz$ that $\vo$ has finished, which brings the in-counter of $\vz$ to 1.
+%
+A then looks for other work.
+%
+When $\ft$ returns, B's scheduler notifies $\vz$ that $\vt$ has
+finished, which brings the in-counter to 0.
+%
+So B schedules $\vz$, pops it, and restores $\vz$\lstinline|.k|.
+%
+The call to \lstinline|save| at step 1 returns a second time, on stack
+S as before, but now on worker B, and \lstinline|fork2join| returns
+there.
+%
+Had A finished last, A would have resumed the parent itself.
+
+So a call to \lstinline|fork2join| can begin on one thread and return on
+another.
+%
+The stack stays the same throughout; only the thread that runs it
+changes.
+
+\section{Why it is safe}
+\label{sec:safety}
+
+The correctness of the algorithm rests on four facts.
+
+\paragraph{Only vertices that have never run are stolen}
+%
+\lstinline|fork2join| schedules $\vo$ (step 2) and $\vt$ (step 5)
+before it saves their contexts.
+%
+At that moment, each is the vertex scheduled most recently, so it
+cannot be stolen, and its own worker pops it only after the
+\lstinline|swap| to the scheduler has saved its context.
+%
+The only vertices that thieves ever see are those like $\vt$ at step 2,
+whose action is \lstinline|Init|.
+
+\paragraph{Completion is reported from the scheduler}
+%
+As soon as the in-counter of $\vz$ reaches zero, another worker may
+resume $\vz$ on stack S.
+%
+So the decrement on behalf of $\vo$ must happen after A has left S,
+which is why step 4 switches to the scheduler instead of decrementing
+in place.
+%
+Similarly, $\vo$ and $\vt$ live in the frame of $\vz$ on S, so
+\lstinline|notify| reads the successor of a vertex before decrementing,
+and does not touch the vertex afterward.
+
+\paragraph{The pop at step 4 is correct even if $\fo$ moved}
+%
+$\fo$ returns on a different worker only if a vertex forked inside $\fo$
+was stolen.
+%
+Thieves take the oldest ready vertex, and $\vt$ is older than any
+vertex forked by $\fo$.
+%
+So by then $\vt$ has been stolen as well, and the pop correctly fails.
+
+\paragraph{A fresh stack is freed only after its last use}
+%
+A stolen $\vt$ owns its fresh stack, and $\vt$ lives in the frame of
+$\vz$, so the stack is freed when the parent's call to
+\lstinline|fork2join| returns.
+%
+By then, $\ft$ has finished, and its worker has switched back to its
+scheduler.
+
+\section{Costs and consequences}
+\label{sec:costs}
+
+\paragraph{Costs}
+%
+A fork whose second branch is not stolen makes three round trips
+through the scheduler (steps 3, 5, and 6), each a save and a restore,
+and allocates nothing, because $\vo$ and $\vt$ live in the frame of
+\lstinline|fork2join|.
+%
+In this case, no other worker can reach the in-counter of $\vz$, so
+TaskPaRTS updates it with plain loads and stores, rather than with
+atomic operations.
+%
+The round trips are not essential to the technique.
+%
+They keep the scheduler loop the only place where vertices start,
+resume, and finish, and they could be optimized away.
+%
+A steal allocates one fresh stack, 512\,KB in TaskPaRTS, which is
+touched only as deep as $\ft$ recurses, and is freed when the parent
+returns from \lstinline|fork2join|.
+
+\paragraph{Consequences for client code}
+%
+Code that follows a call to \lstinline|fork2join| may run on a
+different thread from the code that precedes it.
+%
+So client code must not hold a lock across \lstinline|fork2join|, nor
+expect a thread-local variable or the thread id to be the same
+afterward.
+%
+More subtly, compilers assume that a function never changes threads,
+and so may reuse a thread-local address computed before the call.
+%
+Then even a fresh read of a thread-local variable after
+\lstinline|fork2join|, in the same function, can return the old
+thread's copy.
+%
+Reading thread-local state through a function that the compiler can
+neither inline nor treat as pure avoids this problem.
+%
+Other consequences follow from the use of task stacks.
+%
+Task stacks have a fixed size, and no guard page by default.
+%
+Exceptions must not escape $\fo$ or $\ft$, because unwinding cannot
+cross from a task stack into the scheduler.
+%
+Backtraces end at the bottom of a task stack.
+%
+And sanitizers, such as AddressSanitizer and ThreadSanitizer, are not
+told about the stack switches, so they may report false errors.
+
+\paragraph{Implementations}
+%
+TaskPaRTS implements the algorithm of Figures~\ref{fig:scheduler}
+and~\ref{fig:fork2join}, and adds lock-free
+deques~\cite{arora98,chasele05}, elastic scheduling, instrumentation,
+and CPU pinning around it.
+%
+Micro taskparts implements the same algorithm and nothing else, in
+about 440 lines of C++, including the assembly for x86-64 and AArch64.
+%
+Appendix~\ref{sec:map} maps the pseudocode to both.
+
+\bibliographystyle{abbrv}
+\bibliography{main}
+
+\clearpage
+\appendix
+
+\section{Machine contexts}
+\label{sec:contexts}
+
+A context holds the registers that the calling convention requires a
+callee to preserve~\cite{sysvabi,aapcs64}, plus the stack pointer and
+the address at which to resume:
+%
+\begin{center}
+\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+ & x86-64 & AArch64 \\
+\midrule
+callee-saved & \texttt{rbx}, \texttt{rbp}, \texttt{r12}--\texttt{r15} & \texttt{x19}--\texttt{x29}, \texttt{d8}--\texttt{d15} \\
+stack pointer & \texttt{rsp} & \texttt{sp} \\
+resume address & return address & \texttt{lr} (\texttt{x30}) \\
+total & 8 words & 21 words \\
+\bottomrule
+\end{tabular}
+\end{center}
+%
+Caller-saved registers need no saving: to the compiler,
+\lstinline|save| is an ordinary call, so the compiler has already
+spilled any live caller-saved registers before calling it.
+%
+Figure~\ref{fig:x64} shows both functions for x86-64.
+%
+\lstinline|save| records, as the stack pointer to restore, the value
+the stack pointer will have once \lstinline|save| has returned, and, as
+the resume address, its own return address.
+%
+\lstinline|restore| reloads the registers, switches stacks, and jumps
+to the resume address with 1 in the return register.
+%
+The AArch64 versions are analogous, and resume with
+\lstinline|ret| to the restored \lstinline|lr|.
+
+\begin{figure}
+\hrule
+\begin{lstlisting}[language={},mathescape=false]
+save:                     restore:
+  movq %rbx, 0(%rdi)        movq 0(%rdi), %rbx
+  movq %rbp, 8(%rdi)        movq 8(%rdi), %rbp
+  movq %r12, 16(%rdi)       movq 16(%rdi), %r12
+  movq %r13, 24(%rdi)       movq 24(%rdi), %r13
+  movq %r14, 32(%rdi)       movq 32(%rdi), %r14
+  movq %r15, 40(%rdi)       movq 40(%rdi), %r15
+  leaq 8(%rsp), %rdx        movq 48(%rdi), %rsp
+  movq %rdx, 48(%rdi)       movl $1, %eax
+  movq (%rsp), %rdx         jmpq *56(%rdi)
+  movq %rdx, 56(%rdi)
+  xorl %eax, %eax
+  ret
+\end{lstlisting}
+\hrule
+\caption{Saving and restoring a context on x86-64}
+\label{fig:x64}
+\end{figure}
+
+\paragraph{Declaring save to the compiler}
+%
+Because \lstinline|save| can return twice, it must be declared as such
+to the compiler (in GCC and Clang, with the attribute
+\lstinline|returns_twice|).
+%
+Otherwise, the compiler may keep a value that changes between the two
+returns in a callee-saved register, or reuse its stack slot for another
+value, and the second return then sees a stale or clobbered value.
+
+\paragraph{Fresh contexts}
+%
+To start a function $f$ on a fresh stack $s$, the scheduler makes a
+context with \lstinline|new_context($s$, $f$)|.
+%
+The stack pointer of this context is the top of $s$, aligned to 16
+bytes, its resume address is $f$, and its other registers are zero.
+%
+On x86-64, the stack pointer is a further 8 bytes down, as if a
+\lstinline|call| had pushed a return address.
+%
+Restoring the context then starts $f$ on $s$, as if $f$ had been called
+there.
+%
+TaskPaRTS builds fresh contexts differently, with the same effect: the
+scheduler loop calls \lstinline|save|, and then overwrites the saved
+stack pointer with the top of a fresh stack.
+%
+Restoring that context returns from that call to \lstinline|save| on
+the fresh stack, where the code that follows calls \lstinline|enter|.
+
+\section{Ready vertices}
+\label{sec:deque}
+
+\begin{figure}
+\hrule
+\begin{lstlisting}
+type worker = {k : context, cur : vertex*,
+  next : vertex*, dq : deque of vertex*}
+
+schedule(v : vertex*) -> void {
+  if (me.next != null) push_bottom(me.dq, me.next)
+  me.next = v }
+
+pop() -> vertex* {
+  v = me.next
+  if (v != null) { me.next = null; return v }
+  return pop_bottom(me.dq) }
+
+steal() -> vertex* {
+  return pop_top(random_other_worker().dq) }
+\end{lstlisting}
+\hrule
+\caption{Ready vertices: a private slot over a deque}
+\label{fig:deque}
+\end{figure}
+
+Each worker keeps its ready vertices in a private slot, \lstinline|next|,
+in front of a work-stealing deque, \lstinline|dq|
+(Figure~\ref{fig:deque}).
+%
+\lstinline|schedule($v$)| puts $v$ in the slot, and moves the slot's
+previous occupant to the bottom of the deque.
+%
+\lstinline|pop| takes from the slot first, and then from the bottom of
+the deque, and thieves take from the top of the deque.
+%
+So the vertex scheduled most recently is always in the slot, where no
+thief can reach it, which is the property that
+Section~\ref{sec:safety} relies on.
+
+At step 2 of \lstinline|fork2join|, the slot is empty: the current
+vertex was itself popped from it, and any nested \lstinline|fork2join|
+calls have taken back what they scheduled.
+%
+So \lstinline|schedule($\vt$)| puts $\vt$ in the slot, and
+\lstinline|schedule($\vo$)| moves $\vt$ to the deque.
+%
+The slot is also empty whenever \lstinline|notify| or a thief schedules
+a vertex, so a vertex that reaches the deque is always a $\vt$ displaced
+at step 2.
+
+Any work-stealing deque will do.
+%
+Micro taskparts uses a deque protected by a lock, whereas TaskPaRTS
+uses a lock-free deque, chosen at compile time among the
+deque of Arora et al.~\cite{arora98}, that of Chase and
+Lev~\cite{chasele05}, and a deque by Yao, Westrick, Rainey, and Acar,
+which supports elastic scheduling.
+% TODO: cite the Yao, Westrick, Rainey, and Acar deque.
+
+\section{From pseudocode to code}
+\label{sec:map}
+
+\begin{table*}
+\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+pseudocode & micro taskparts & TaskPaRTS \\
+\midrule
+\lstinline|save|, \lstinline|restore| & \lstinline|mtp_context_save|, \lstinline|mtp_context_restore| & \lstinline|context_save|, \lstinline|context_restore| \\
+\lstinline|vertex| & \lstinline|vertex| & \lstinline|native_fork_join_vertex| \\
+\lstinline|action| & \lstinline|action| & \lstinline|continuation_action| \\
+\lstinline|next|, \lstinline|dq| & \lstinline|next|, \lstinline|deque| & \lstinline|bottom|, \lstinline|deque| \\
+\lstinline|loop| & \lstinline|worker_loop| & \lstinline|loop| \\
+\lstinline|new_context| & \lstinline|new_context| & \lstinline|new_continuation| \\
+\lstinline|enter| & \lstinline|vertex_entry| & \lstinline|enter| \\
+\lstinline|notify| & \lstinline|notify| & \lstinline|parallel_notify| \\
+\lstinline|fork2join| & \lstinline|fork2join| & \lstinline|fork2join| \\
+\bottomrule
+\end{tabular}
+\caption{Names in the pseudocode, in micro taskparts, and in TaskPaRTS}
+\label{tbl:map}
+\end{table*}
+
+Table~\ref{tbl:map} maps the names in the pseudocode to their
+counterparts in micro taskparts and in TaskPaRTS.
+%
+Both are in the TaskPaRTS repository~\cite{taskparts}: micro taskparts
+in the directory \path{doc/native-fork-join/microtaskparts}, and
+TaskPaRTS in the files \path{src/taskparts.cpp} and
+\path{include/taskparts/taskparts_internal.hpp}.
+%
+Both implementations number the steps of \lstinline|fork2join| as in
+Figure~\ref{fig:fork2join}.
+
+Beyond micro taskparts, TaskPaRTS adds the following.
+%
+\begin{itemize}[leftmargin=*]
+\item Lock-free deques (Appendix~\ref{sec:deque}).
+\item Elastic scheduling: workers that fail to find work suspend on a
+  semaphore, instead of spinning, and are woken when there is surplus
+  work.
+\item Non-atomic in-counter updates when the second branch is not
+  stolen (\lstinline|clone_fast|).
+\item A persistent pool of workers, and a sink vertex that marks the
+  end of each top-level computation, in place of the
+  \lstinline|done| flag.
+\item Statistics, logging in a format that the Perfetto trace viewer
+  reads, and CPU pinning with hwloc.
+\end{itemize}
+
+\end{document}
