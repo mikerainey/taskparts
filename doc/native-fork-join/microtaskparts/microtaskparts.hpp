@@ -227,11 +227,7 @@ inline vertex *steal(worker &w) {
 
 // Save the current context in from, and switch to to. Returns once someone
 // restores from.
-inline void swap(context &from, context &to) {
-  if (mtp_context_save(&from) == 0) {
-    mtp_context_restore(&to);
-  }
-}
+inline void swap(context &from, context &to) { mtp_context_swap(&from, &to); }
 
 // Switch to to, discarding the current context.
 [[noreturn]] inline void throw_to(context &to) { mtp_context_restore(&to); }
