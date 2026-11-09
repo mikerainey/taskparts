@@ -5,20 +5,25 @@
 // A teaching companion to ../main.tex. It follows, step for step, the
 // protocol TaskPaRTS uses to implement fork2join (fork2join in
 // include/taskparts/taskparts_internal.hpp, native_fork_join_scheduler_family
-// in src/taskparts.cpp), and leaves out everything else: lock-free deques,
-// elastic scheduling, instrumentation, CPU pinning, and the persistent worker
-// pool. Use TaskPaRTS itself for performance measurements.
+// in src/taskparts.cpp), and leaves out everything else: elastic scheduling,
+// instrumentation, CPU pinning, and the persistent worker pool.
+//
+// It is fast enough to measure the costs of the technique itself (Appendix D
+// of ../main.tex), but it is not meant for benchmarking applications. Idle
+// workers spin, yielding between steal attempts, instead of sleeping; each
+// top-level call to fork2join starts and stops its own worker threads; and
+// there is no instrumentation and no ParlayLib integration. For benchmarking
+// applications, use TaskPaRTS.
 
 #include "context.hpp"
 
 #include <algorithm>
 #include <atomic>
 #include <cassert>
+#include <cstdint>
+#include <cstdio>
 #include <cstdlib>
-#include <deque>
 #include <memory>
-#include <mutex>
-#include <random>
 #include <thread>
 #include <vector>
 
@@ -53,6 +58,81 @@ template <typename F> struct thunk_vertex : vertex {
 };
 
 /*---------------------------------------------------------------------*/
+/* Work-stealing deque */
+
+// The deque of Arora, Blumofe, and Plaxton (SPAA 1998), as in TaskPaRTS (abp
+// in src/taskparts.cpp), plus one fence in steal. The owner pushes and pops
+// at the bottom, and thieves take from the top. When the owner empties the
+// deque, it resets both ends and bumps the tag, so that a thief holding the
+// old age fails its compare-and-swap.
+class alignas(64) abp {
+  struct alignas(8) age_t {
+    uint32_t tag;
+    uint32_t top;
+  };
+  struct alignas(64) slot { // one per cache line, to avoid false sharing
+    std::atomic<vertex *> v{nullptr};
+  };
+  // The deque holds at most one vertex per call to fork2join in progress on
+  // the current task stack, far fewer than this.
+  static constexpr uint32_t capacity = 10000;
+
+  std::atomic<uint32_t> bot{0};
+  std::atomic<age_t> age{age_t{0, 0}};
+  slot slots[capacity];
+
+public:
+  void push(vertex *v) {
+    uint32_t b = bot.load(std::memory_order_relaxed);
+    if (b == capacity) {
+      std::fprintf(stderr, "microtaskparts: deque overflow\n");
+      std::abort();
+    }
+    slots[b].v.store(v, std::memory_order_release);
+    bot.store(b + 1, std::memory_order_seq_cst);
+  }
+
+  vertex *pop() {
+    uint32_t b = bot.load(std::memory_order_relaxed);
+    if (b == 0) {
+      return nullptr;
+    }
+    b--;
+    bot.store(b, std::memory_order_release);
+    std::atomic_thread_fence(std::memory_order_seq_cst);
+    vertex *v = slots[b].v.load(std::memory_order_acquire);
+    age_t old_age = age.load(std::memory_order_acquire);
+    if (b > old_age.top) {
+      return v; // no thief can reach slot b
+    }
+    // Slot b holds the last vertex, or was stolen. Reset the deque, and race
+    // any thief for slot b.
+    bot.store(0, std::memory_order_release);
+    age_t new_age{old_age.tag + 1, 0};
+    if ((b == old_age.top) && age.compare_exchange_strong(old_age, new_age)) {
+      return v;
+    }
+    age.store(new_age, std::memory_order_seq_cst);
+    return nullptr;
+  }
+
+  vertex *steal() {
+    age_t old_age = age.load(std::memory_order_acquire);
+    // Pairs with the fence in pop, as in the Chase-Lev deque of Le et al.
+    // (PPoPP 2013): if the owner may have taken slot top without a
+    // compare-and-swap, we see its decrement of bot.
+    std::atomic_thread_fence(std::memory_order_seq_cst);
+    uint32_t b = bot.load(std::memory_order_acquire);
+    if (b <= old_age.top) {
+      return nullptr;
+    }
+    vertex *v = slots[old_age.top].v.load(std::memory_order_acquire);
+    age_t new_age{old_age.tag, old_age.top + 1};
+    return age.compare_exchange_strong(old_age, new_age) ? v : nullptr;
+  }
+};
+
+/*---------------------------------------------------------------------*/
 /* Workers */
 
 struct alignas(64) worker {
@@ -60,14 +140,12 @@ struct alignas(64) worker {
   // saved here while a vertex runs, and restored when the vertex yields.
   context loop_ctx;
   vertex *current = nullptr;
+  uint64_t nb_steal_attempts = 0; // seeds the choice of victim
 
   // Ready vertices: a private slot, plus a deque shared with thieves.
   // (TaskPaRTS: native_fork_join_deque_family, whose slot is called bottom.)
   vertex *next = nullptr;
-  std::mutex mutex;
-  std::deque<vertex *> deque;
-
-  std::minstd_rand rng;
+  abp deque;
 };
 
 inline std::unique_ptr<worker[]> workers;
@@ -100,8 +178,7 @@ inline worker &me() { return workers[get_my_id()]; }
 inline void schedule(vertex *v) {
   worker &w = me();
   if (w.next != nullptr) {
-    std::lock_guard<std::mutex> guard(w.mutex);
-    w.deque.push_back(w.next);
+    w.deque.push(w.next);
   }
   w.next = v;
 }
@@ -112,27 +189,33 @@ inline vertex *pop() {
     w.next = nullptr;
     return v;
   }
-  std::lock_guard<std::mutex> guard(w.mutex);
-  if (w.deque.empty()) {
-    return nullptr;
-  }
-  vertex *v = w.deque.back();
-  w.deque.pop_back();
+  return w.deque.pop();
+}
+
+// A 64-bit hash, as in TaskPaRTS (hash in src/taskparts.cpp).
+inline uint64_t hash(uint64_t u) {
+  uint64_t v = u * 3935559000370003845ul + 2691343689449507681ul;
+  v ^= v >> 21;
+  v ^= v << 37;
+  v ^= v >> 4;
+  v *= 4768777513237032717ul;
+  v ^= v << 20;
+  v ^= v >> 41;
+  v ^= v << 5;
   return v;
 }
 
+// Try to steal from another worker, chosen at random. As in TaskPaRTS
+// (random_other_worker), the random number hashes the caller's id and a
+// count of its attempts. Only the caller touches that count, so it needs no
+// synchronization.
 inline vertex *steal() {
   size_t my_id = get_my_id();
-  size_t victim = workers[my_id].rng() % (nb_workers - 1);
+  worker &w = workers[my_id];
+  uint64_t r = hash(my_id) + hash(w.nb_steal_attempts++);
+  size_t victim = r % (nb_workers - 1);
   victim += (victim >= my_id) ? 1 : 0;
-  worker &w = workers[victim];
-  std::lock_guard<std::mutex> guard(w.mutex);
-  if (w.deque.empty()) {
-    return nullptr;
-  }
-  vertex *v = w.deque.front();
-  w.deque.pop_front();
-  return v;
+  return workers[victim].deque.steal();
 }
 
 /*---------------------------------------------------------------------*/
@@ -220,9 +303,6 @@ template <typename F> void launch(F &&f) {
                    ? std::max(1, std::atoi(s))
                    : std::max(1u, std::thread::hardware_concurrency());
   workers.reset(new worker[nb_workers]);
-  for (size_t i = 0; i < nb_workers; i++) {
-    workers[i].rng.seed(i + 1);
-  }
   done.store(false);
   in_scheduler = true;
   tls_id = 0;
