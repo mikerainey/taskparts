@@ -22,6 +22,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <memory>
+#include <mutex>
 #include <thread>
 #include <vector>
 
@@ -60,75 +61,38 @@ template <typename F> struct thunk_task : task {
 /*---------------------------------------------------------------------*/
 /* Work-stealing deque */
 
-// The deque of Arora, Blumofe, and Plaxton (SPAA 1998), as in TaskPaRTS (abp
-// in src/taskparts.cpp), plus one fence in steal. The owner pushes and pops
-// at the bottom, and thieves take from the top. When the owner empties the
-// deque, it resets both ends and bumps the tag, so that a thief holding the
-// old age fails its compare-and-swap.
+// For measurement only: a deque protected by a lock, in place of the
+// lock-free deque. The owner pushes and pops at the bottom, and thieves take
+// from the top.
 class alignas(64) abp {
-  struct alignas(8) age_t {
-    uint32_t tag;
-    uint32_t top;
-  };
-  struct alignas(64) slot { // one per cache line, to avoid false sharing
-    std::atomic<task *> v{nullptr};
-  };
-  // The deque holds at most one task per call to fork2join in progress on
-  // the current task stack, far fewer than this.
   static constexpr uint32_t capacity = 10000;
-
-  std::atomic<uint32_t> bot{0};
-  std::atomic<age_t> age{age_t{0, 0}};
-  slot slots[capacity];
+  std::mutex m;
+  uint32_t top = 0;
+  uint32_t bot = 0;
+  task *slots[capacity];
 
 public:
   void push(task *v) {
-    uint32_t b = bot.load(std::memory_order_relaxed);
-    if (b == capacity) {
+    std::lock_guard<std::mutex> g(m);
+    if (bot == capacity) {
       std::fprintf(stderr, "microtaskparts: deque overflow\n");
       std::abort();
     }
-    slots[b].v.store(v, std::memory_order_release);
-    bot.store(b + 1, std::memory_order_seq_cst);
+    slots[bot++] = v;
   }
 
   task *pop() {
-    uint32_t b = bot.load(std::memory_order_relaxed);
-    if (b == 0) {
+    std::lock_guard<std::mutex> g(m);
+    if (bot == top) {
+      bot = top = 0;
       return nullptr;
     }
-    b--;
-    bot.store(b, std::memory_order_release);
-    std::atomic_thread_fence(std::memory_order_seq_cst);
-    task *v = slots[b].v.load(std::memory_order_acquire);
-    age_t old_age = age.load(std::memory_order_acquire);
-    if (b > old_age.top) {
-      return v; // no thief can reach slot b
-    }
-    // Slot b holds the last task, or was stolen. Reset the deque, and race
-    // any thief for slot b.
-    bot.store(0, std::memory_order_release);
-    age_t new_age{old_age.tag + 1, 0};
-    if ((b == old_age.top) && age.compare_exchange_strong(old_age, new_age)) {
-      return v;
-    }
-    age.store(new_age, std::memory_order_seq_cst);
-    return nullptr;
+    return slots[--bot];
   }
 
   task *steal() {
-    age_t old_age = age.load(std::memory_order_acquire);
-    // Pairs with the fence in pop, as in the Chase-Lev deque of Le et al.
-    // (PPoPP 2013): if the owner may have taken slot top without a
-    // compare-and-swap, we see its decrement of bot.
-    std::atomic_thread_fence(std::memory_order_seq_cst);
-    uint32_t b = bot.load(std::memory_order_acquire);
-    if (b <= old_age.top) {
-      return nullptr;
-    }
-    task *v = slots[old_age.top].v.load(std::memory_order_acquire);
-    age_t new_age{old_age.tag, old_age.top + 1};
-    return age.compare_exchange_strong(old_age, new_age) ? v : nullptr;
+    std::lock_guard<std::mutex> g(m);
+    return (top == bot) ? nullptr : slots[top++];
   }
 };
 
