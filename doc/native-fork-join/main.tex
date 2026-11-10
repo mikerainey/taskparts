@@ -468,7 +468,7 @@ It switches contexts not at all, allocates nothing, because the join
 and the task live in the frame of \lstinline|fork2join|, and performs
 no atomic operation beyond those of the deque.
 %
-With micro taskparts, such a fork takes about 6\,ns on an Apple M5
+With micro taskparts, such a fork takes about 5\,ns on an Apple M5
 (Appendix~\ref{sec:perf}).
 %
 A fork whose second branch is stolen allocates one fresh stack, of a
@@ -680,7 +680,7 @@ The last version is micro taskparts as it is.
 %
 On one worker, it takes \perftime{direct}{1}\,s instead of
 \perftime{serial}{1}\,s, so a fork that is not stolen costs about
-4\,ns more than two calls.
+3\,ns more than two calls.
 %
 That is the cost of initializing the join and the task, pushing,
 popping, and looking up the worker twice.
@@ -688,12 +688,12 @@ popping, and looking up the worker twice.
 \paragraph{Speedup}
 %
 With the lock-free deque, \lstinline|fib(38)| is about 4 times faster
-on 4 workers than on one, and about 6 times faster on 8, of which only
-4 run on performance cores.
+on 4 workers than on one, and more than 5 times faster on 8, of which
+only 4 run on performance cores.
 %
-But a fork costs several times what the work between forks does, so
-the program on 4 workers (\perftime{direct}{4}\,s) is only a little
-faster than the version without forks (\perftime{serial}{1}\,s).
+But a fork costs more than the work between forks does, so the program
+on 4 workers (\perftime{direct}{4}\,s) is only about 1.5 times faster
+than the version without forks (\perftime{serial}{1}\,s).
 %
 A program meant to run fast would stop forking below some problem size;
 this one does not, in order to measure the fork.
@@ -713,7 +713,24 @@ With the lock, a fork takes two uncontended locks, one to push and one
 to pop, and \lstinline|fib(38)| takes \perftime{locked}{1}\,s on one
 worker.
 %
-So the two locks cost more than the rest of the fork together.
+So the two locks cost about twice as much as the rest of the fork.
+
+\paragraph{Code that runs once}
+%
+The first call to \lstinline|fork2join| in a program starts the
+workers.
+%
+The code that does so runs once, yet it can slow down every fork.
+%
+The compiler inlines \lstinline|fork2join| into its caller, and if it
+also inlines that code, every call of the caller saves and restores
+the registers that the code uses.
+%
+In \lstinline|fib|, that was eight more registers, and
+\lstinline|fib(38)| took about 15\% longer on one worker.
+%
+So micro taskparts keeps the function that starts the workers out of
+line.
 
 \paragraph{Looking up the worker}
 %
