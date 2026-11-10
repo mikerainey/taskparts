@@ -26,6 +26,13 @@
 
 \lstset{language=pcpp,numbers=none}
 
+% The measurements of Appendix sec:perf, certified by Flexibench
+% (perf/README.md), and cited as flexibench-times (perf/times.bib).
+% \perftime{ROW}{P} is the time of row ROW of Table tbl:perf on P
+% workers.
+\input{perf/times}
+\newcommand{\perftime}[2]{\fbval{times}{#1}{P = #2}}
+
 \newcommand{\vz}{\mathtt{v_0}}
 \newcommand{\vo}{\mathtt{v_1}}
 \newcommand{\vt}{\mathtt{v_2}}
@@ -204,6 +211,9 @@ with no system call.
 We write \lstinline|swap($k_1$, $k_2$)| for
 \lstinline|if (!save($k_1$)) restore($k_2$)|, which saves the current
 context in $k_1$ and switches to $k_2$.
+%
+Micro taskparts does both in a single routine, which on Apple silicon
+makes a fork more than twice as fast (Appendix~\ref{sec:perf}).
 
 \paragraph{Vertices and workers}
 %
@@ -509,8 +519,8 @@ scheduler.
 \paragraph{Costs}
 %
 A fork whose second branch is not stolen makes three round trips
-through the scheduler (steps 3, 5, and 6), each a save and a restore,
-and allocates nothing, because $\vo$ and $\vt$ live in the frame of
+through the scheduler (steps 3, 5, and 6), six context switches in
+all, and allocates nothing, because $\vo$ and $\vt$ live in the frame of
 \lstinline|fork2join|.
 %
 In this case, no other worker can reach the in-counter of $\vz$, so
@@ -522,8 +532,9 @@ The round trips are not essential to the technique.
 They keep the scheduler loop the only place where vertices start,
 resume, and finish, and they could be optimized away.
 %
-Appendix~\ref{sec:perf} records other choices that matter on this
-path.
+As it is, how the six context switches are made matters more than any
+other choice on this path that we measured, and
+Appendix~\ref{sec:perf} records this choice and the others.
 %
 A steal allocates one fresh stack, 512\,KB in TaskPaRTS, which is
 touched only as deep as $\ft$ recurses, and is freed when the parent
@@ -570,12 +581,12 @@ and CPU pinning around it.
 %
 Micro taskparts implements the same algorithm, with a lock-free
 deque~\cite{arora98} that TaskPaRTS also uses, and nothing else, in
-about 500 lines of C++, including the assembly for x86-64 and AArch64.
+about 600 lines of C++, including the assembly for x86-64 and AArch64.
 %
 Appendix~\ref{sec:map} maps the pseudocode to both.
 
 \bibliographystyle{abbrv}
-\bibliography{main}
+\bibliography{main,perf/times}
 
 \clearpage
 \appendix
@@ -614,8 +625,16 @@ the resume address, its own return address.
 \lstinline|restore| reloads the registers, switches stacks, and jumps
 to the resume address with 1 in the return register.
 %
-The AArch64 versions are analogous, and resume with
-\lstinline|ret| to the restored \lstinline|lr|.
+\lstinline|swap($k_1$, $k_2$)| is a single routine: the code of
+\lstinline|save|, up to its return, followed by the code of
+\lstinline|restore|, which reads $k_2$ from the second argument
+register, \texttt{\%rsi}.
+%
+The AArch64 versions are analogous.
+%
+They too resume with an indirect branch to the restored
+\lstinline|lr|, \lstinline|br x30|, rather than with
+\lstinline|ret| (Appendix~\ref{sec:perf}).
 
 \begin{figure}
 \hrule
@@ -648,6 +667,9 @@ to the compiler (in GCC and Clang, with the attribute
 Otherwise, the compiler may keep a value that changes between the two
 returns in a callee-saved register, or reuse its stack slot for another
 value, and the second return then sees a stale or clobbered value.
+%
+\lstinline|swap| returns only once, when its context is restored, so it
+needs no such declaration.
 
 \paragraph{Fresh contexts}
 %
@@ -742,6 +764,7 @@ Rainey, and Acar, which supports it.
 pseudocode & micro taskparts & TaskPaRTS \\
 \midrule
 \lstinline|save|, \lstinline|restore| & \lstinline|mtp_context_save|, \lstinline|mtp_context_restore| & \lstinline|context_save|, \lstinline|context_restore| \\
+\lstinline|swap| & \lstinline|mtp_context_swap| & \lstinline|swap| \\
 \lstinline|vertex| & \lstinline|vertex| & \lstinline|native_fork_join_vertex| \\
 \lstinline|action| & \lstinline|action| & \lstinline|continuation_action| \\
 \lstinline|next|, \lstinline|dq| & \lstinline|next|, \lstinline|deque| & \lstinline|bottom|, \lstinline|deque| \\
@@ -796,25 +819,36 @@ taskparts, running \lstinline|fib(38)|, which makes 63 million forks,
 on an Apple M5 with 4 performance and 6 efficiency cores
 (Table~\ref{tbl:perf}).
 %
-TaskPaRTS makes the same choices, except where noted.
+Each time in the table is the median of five runs, and the runs of the
+six versions were interleaved.
 %
-Times vary by a few percent from run to run.
+Flexibench recorded the runs, checked that every version computes
+correct results, and certified the values in the
+table~\cite{flexibench-times}.
+%
+The record is in the directory \path{doc/native-fork-join/perf} of the
+TaskPaRTS repository~\cite{taskparts}.
+%
+TaskPaRTS makes the same choices, except where noted.
 
 \begin{table}
 \small
 \begin{tabular}{@{}lrrr@{}}
 \toprule
  & \multicolumn{3}{c}{workers} \\
-variant & 1 & 4 & 8 \\
+version & 1 & 4 & 8 \\
 \midrule
-deque protected by a lock & 5.45 & 1.45 & 1.21 \\
-lock-free deque & 4.89 & 2.69 & 3.25 \\
-\quad + one cache line per vertex field & 4.88 & 1.30 & 0.92 \\
-\quad + fewer lookups of the worker & 4.29 & 1.15 & 0.73 \\
+deque protected by a lock & \perftime{lock}{1} & \perftime{lock}{4} & \perftime{lock}{8} \\
+lock-free deque & \perftime{lockfree}{1} & \perftime{lockfree}{4} & \perftime{lockfree}{8} \\
+\quad + victims chosen by hashing & \perftime{hash}{1} & \perftime{hash}{4} & \perftime{hash}{8} \\
+\quad + one cache line per vertex field & \perftime{lines}{1} & \perftime{lines}{4} & \perftime{lines}{8} \\
+\quad + fewer lookups of the worker & \perftime{lookups}{1} & \perftime{lookups}{4} & \perftime{lookups}{8} \\
+\quad + context switch in one call & \perftime{swap}{1} & \perftime{swap}{4} & \perftime{swap}{8} \\
 \bottomrule
 \end{tabular}
 \caption{Running time of \lstinline|fib(38)|, in seconds, with micro
-  taskparts, as each change is applied in turn}
+  taskparts, as each change is applied in turn: the median of five
+  runs}
 \label{tbl:perf}
 \end{table}
 
@@ -828,11 +862,18 @@ of Appendix~\ref{sec:deque} is about 10\% faster on one worker.
 %
 But the lock had hidden the next problem.
 
-\paragraph{One cache line per vertex field}
+\paragraph{A slowdown with several workers}
 %
-With the lock-free deque, and with the fields of a vertex packed
-together, each worker ran about twice as slowly as soon as two or more
-workers ran.
+In the first two versions, each worker chose its victims with a
+generator of its own, of type \lstinline|std::minstd_rand|.
+%
+With the lock-free deque, \lstinline|fib(38)| then took
+\perftime{lockfree}{4}\,s on 4 workers, about twice as long as with the
+next version (\perftime{hash}{4}\,s), which differs only in choosing
+victims by hashing the worker's id and a count of its steal attempts,
+as TaskPaRTS does.
+%
+On 8 workers, it took longer still (\perftime{lockfree}{8}\,s).
 %
 Yet workers attempted only a few hundred steals per run, and, in the
 common case, no two workers touch the same vertex.
@@ -840,23 +881,24 @@ common case, no two workers touch the same vertex.
 The slowdown persisted even when we allowed a single steal, after
 which the two workers ran disjoint subcomputations.
 %
-It disappeared when the in-counter, the out-set, and the context of a
-vertex each start a cache line, as in TaskPaRTS.
+In earlier measurements, outside the table, other changes also removed
+the slowdown while keeping the generator: starting the in-counter, the
+out-set, and the context of a vertex each on a cache line of its own,
+as in TaskPaRTS; updating the in-counter on the fast path with plain
+loads and stores, rather than with an atomic decrement, which TaskPaRTS
+also does (\lstinline|clone_fast|); and adding any atomic operation
+just before the pop at step 4, even one with no memory ordering, which
+is how the lock had hidden the slowdown.
 %
-It also disappeared when the fast path updated the in-counter with
-plain loads and stores, rather than with an atomic decrement, which
-TaskPaRTS also does (\lstinline|clone_fast|).
+These changes have little in common, and we have not found the cause.
 %
-Both remedies concern the atomic decrement of the in-counter, which,
-with the fields packed, shares a cache line with the context that the
-scheduler has just saved at step 6.
+The slowdown seems to depend on details of the code and of the layout
+of data, rather than on the algorithm, and so it may reappear after
+unrelated changes.
 %
-We have not pinned down why this slows down workers only when several
-run.
-%
-Any atomic operation just before the pop at step 4, even one with no
-memory ordering, also removed the slowdown, which is how the lock had
-hidden it.
+Once victims are chosen by hashing, one cache line per vertex field
+makes no measurable difference, but micro taskparts keeps it, as
+TaskPaRTS does.
 
 \paragraph{Fewer lookups of the worker}
 %
@@ -867,8 +909,6 @@ pure (Section~\ref{sec:costs}).
 The compiler barrier that enforces this emits no instruction.
 %
 The cost is the call and the lookup, which on macOS is itself a call.
-%
-Together, they took about 12\% of the running time.
 %
 But in \lstinline|fork2join|, the worker changes only across the calls
 to $\fo$ and $\ft$, and across the second return from
@@ -881,9 +921,42 @@ slot.
 And the scheduler loop never changes worker.
 %
 Looking up the worker once per stretch, rather than at each use, cuts
-the lookups per fork from about 12 to 3.
+the lookups per fork from about 12 to 3, and the running time on one
+worker by about 8\%.
 %
 TaskPaRTS looks up the worker at each use.
+
+\paragraph{A context switch in one call}
+%
+In the other versions, a context switch is two calls,
+\lstinline|save| and then \lstinline|restore|, as in the definition of
+\lstinline|swap| in Section~\ref{sec:nfj}, and, on AArch64,
+\lstinline|restore| resumes with \lstinline|ret|.
+%
+The processor predicts where a \lstinline|ret| goes from a stack of the
+return addresses of recent calls, and after a context switch, this
+prediction is wrong.
+%
+The last version switches with a single routine
+(Appendix~\ref{sec:contexts}), and resumes with an indirect branch,
+\lstinline|br x30|, instead.
+%
+This makes \lstinline|fib(38)| more than twice as fast on 1, 4, and 8
+workers.
+%
+On one worker, it takes \perftime{swap}{1}\,s instead of
+\perftime{lookups}{1}\,s, or about 29\,ns per fork instead of 72.
+%
+In measurements outside the table, each half of the change helped on
+its own, the single routine more than the indirect branch, but we have
+not established why the single routine helps as much as it does.
+%
+TaskPaRTS still switches with two calls, and on AArch64 resumes with
+\lstinline|ret|.
+%
+On x86-64, both already resume with an indirect jump
+(Figure~\ref{fig:x64}), and we have not measured the single routine
+there.
 
 \section{Native fork join and the cactus-stack problem}
 \label{sec:lore}

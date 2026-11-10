@@ -12,6 +12,8 @@ that file from the measurements recorded in the store `.flexibench/`.
   LaTeX macros. After `\input{perf/times}`, `\fbval{times}{swap}{P = 4}` prints a value
   and `\fbcertificate{times}` prints the certificate's digest.
 - `times.html`: the same view, as a web page.
+- `times.bib`: the paper's citation of the view, `flexibench-times`, which gives the
+  certificate's digest. It is written by hand for now, so `check-view` doesn't check it.
 
 The view is certified by certificate
 `df59c9d1b458e4c9de65cf06ff47b54d6ec0ac9711ff30cb9f560694a704cfdd`, issued by Flexibench
