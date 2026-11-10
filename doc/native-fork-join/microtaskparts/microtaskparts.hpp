@@ -284,6 +284,11 @@ template <typename F> void launch(F &&f) {
 // Run f1() and f2(), possibly in parallel, and return when both are done.
 // The numbered steps match Figure 2 of ../main.tex.
 template <typename F1, typename F2> void fork2join(F1 &&f1, F2 &&f2) {
+  // For measurement only: the serial elision, which runs the two branches
+  // as two calls.
+  f1();
+  f2();
+  return;
   if (!in_scheduler) {
     launch([&] { fork2join(f1, f2); });
     return;
