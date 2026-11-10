@@ -170,8 +170,7 @@ Section~\ref{sec:safety}, and discuss its costs and its consequences
 for client code in Section~\ref{sec:costs}.
 %
 The appendices give machine-level details, the requirements on the
-work-stealing deque, the earlier formulation of native fork join that
-TaskPaRTS implements, and notes on performance.
+work-stealing deque, and notes on performance.
 %
 The last appendix compares native fork join with other ways of
 managing stacks under work stealing.
@@ -522,10 +521,6 @@ including the assembly for x86-64 and AArch64.
 It is in the directory \path{doc/native-fork-join/microtaskparts} of
 the TaskPaRTS repository~\cite{taskparts}, and numbers the steps of
 \lstinline|fork2join| as in Figure~\ref{fig:fork2join}.
-%
-TaskPaRTS implements an earlier formulation of native fork join, in
-which every fork passes through the scheduler loop
-(Appendix~\ref{sec:dag}).
 
 \bibliographystyle{abbrv}
 \bibliography{main,perf/times}
@@ -636,84 +631,21 @@ A deque holds at most one task per call to \lstinline|fork2join| in
 progress on the stack that its worker is running, so a small, fixed
 capacity suffices.
 
-\section{Fork join through the scheduler}
-\label{sec:dag}
-
-TaskPaRTS implements an earlier formulation of native fork join, in
-which every fork passes through the scheduler loop, whether or not
-anything is stolen.
-%
-We describe it here because the algorithm of Section~\ref{sec:nfj} was
-distilled from it, and because Appendix~\ref{sec:perf} measures both.
-
-In this formulation, the scheduler loop is the only place where a task
-starts, resumes, or finishes.
-%
-Each task has a count of the tasks it is waiting for, a pointer to the
-task that is waiting for it, a context, and an action, which tells the
-loop what to do with the task: start it on a fresh stack, resume its
-context, or, the next time it yields, report to the task that is
-waiting for it that it has finished.
-%
-The loop pops or steals a task, and starts or resumes it.
-%
-When a task yields as finished, the loop decrements the count of the
-task that is waiting for it, and makes that task ready if the count
-reaches zero.
-
-The parent of a fork is the task that the worker is currently running.
-%
-\lstinline|fork2join| creates two tasks that the parent waits for: one
-for the second branch, and one that stands for the parent while it
-runs the first branch inline.
-%
-It saves the parent's context before anything else, with a function
-that, like \lstinline|setjmp|, returns a second time when the context
-is resumed.
-%
-It then yields to the scheduler loop three times, even when nothing is
-stolen: to start the first branch, to finish the first branch and start
-the second, and to finish the second branch and continue as the parent.
-%
-Each yield is a round trip, so a fork makes six context switches.
-%
-A task is made ready before its context is saved, so the formulation
-also needs a private slot in front of each deque, which keeps the task
-made ready most recently out of the reach of thieves.
-
-The algorithm of Section~\ref{sec:nfj} is what remains once the round
-trips are removed.
-%
-The count and the context of the parent become the join, the task for
-the second branch remains, and the stand-in task, the actions, the
-private slot, and the second return disappear.
-%
-What the two share is the technique: a parent whose second branch was
-stolen is suspended on its own stack, a branch is counted from the
-scheduler loop, and the worker that counts last resumes the parent.
-%
-What the formulation of this appendix offers in exchange for its cost
-is uniformity: every transition of every task passes through one loop,
-which is a convenient place for a scheduler to keep statistics, log
-events, or put workers to sleep.
-
 \section{Performance notes}
 \label{sec:perf}
 
-A fork whose second branch is not stolen does little work, so small
-choices in the implementation show up in the running time.
+This appendix measures what a fork costs when its second branch is
+rarely stolen.
 %
-This appendix records the choices that we measured with seven versions
-of micro taskparts, running \lstinline|fib(38)|, which makes 63 million
-forks, on an Apple M5 with 4 performance and 6 efficiency cores
+We ran \lstinline|fib(38)|, from Section~1, with micro taskparts, on an
+Apple M5 with 4 performance and 6 efficiency cores
 (Table~\ref{tbl:perf}).
 %
-The first six versions implement the formulation of
-Appendix~\ref{sec:dag}, and the last implements the algorithm of
-Section~\ref{sec:nfj}.
+The program makes 63 million forks, and does almost nothing else, so
+it shows the cost of a fork at its worst.
 %
 Each time in the table is the median of five runs, and the runs of the
-seven versions were interleaved.
+three versions were interleaved.
 %
 Flexibench recorded the runs, checked that every version computes
 correct results, and certified the values in the
@@ -729,175 +661,88 @@ TaskPaRTS repository~\cite{taskparts}.
  & \multicolumn{3}{c}{workers} \\
 version & 1 & 4 & 8 \\
 \midrule
-\multicolumn{4}{@{}l}{\emph{through the scheduler} (Appendix~\ref{sec:dag})} \\
-deque protected by a lock & \perftime{lock}{1} & \perftime{lock}{4} & \perftime{lock}{8} \\
-lock-free deque & \perftime{lockfree}{1} & \perftime{lockfree}{4} & \perftime{lockfree}{8} \\
-\quad + victims chosen by hashing & \perftime{hash}{1} & \perftime{hash}{4} & \perftime{hash}{8} \\
-\quad + one cache line per task field & \perftime{lines}{1} & \perftime{lines}{4} & \perftime{lines}{8} \\
-\quad + fewer lookups of the worker & \perftime{lookups}{1} & \perftime{lookups}{4} & \perftime{lookups}{8} \\
-\quad + context switch in one call & \perftime{swap}{1} & \perftime{swap}{4} & \perftime{swap}{8} \\
-\midrule
-\multicolumn{4}{@{}l}{\emph{directly} (Section~\ref{sec:nfj})} \\
-the algorithm of Figure~\ref{fig:fork2join} & \perftime{direct}{1} & \perftime{direct}{4} & \perftime{direct}{8} \\
+two calls in place of each fork & \perftime{serial}{1} & & \\
+fork join, deque protected by a lock & \perftime{locked}{1} & \perftime{locked}{4} & \perftime{locked}{8} \\
+fork join, lock-free deque & \perftime{direct}{1} & \perftime{direct}{4} & \perftime{direct}{8} \\
 \bottomrule
 \end{tabular}
 \caption{Running time of \lstinline|fib(38)|, in seconds, with micro
-  taskparts, as each change is applied in turn: the median of five
-  runs}
+  taskparts: the median of five runs}
 \label{tbl:perf}
 \end{table}
 
-\paragraph{No round trips}
+\paragraph{The cost of a fork}
 %
-The last version in the table is the algorithm of this paper, as
-presented in Section~\ref{sec:nfj}
-(Figures~\ref{fig:scheduler} and~\ref{fig:fork2join}).
+The first version measures the program without its forks: there, a
+call to \lstinline|fork2join| just calls $\fo$ and then $\ft$.
 %
-A fork that is not stolen is a push, two calls, and a pop, and never
-enters the scheduler loop.
+The last version is micro taskparts as it is.
 %
-The six versions above it implement the earlier formulation of
-Appendix~\ref{sec:dag}, in which every fork makes three round trips
-through the scheduler loop.
+On one worker, it takes \perftime{direct}{1}\,s instead of
+\perftime{serial}{1}\,s, so a fork that is not stolen costs about
+4\,ns more than two calls.
 %
-This difference matters more than any other choice in the table.
-%
-Without the round trips, \lstinline|fib(38)| takes
-\perftime{direct}{1}\,s on one worker, instead of
-\perftime{swap}{1}\,s with the fastest version that makes them: about
-6\,ns per fork instead of 29.
+That is the cost of initializing the join and the task, pushing,
+popping, and looking up the worker twice.
 
-The remaining paragraphs concern the six versions that make the round
-trips, in the order in which we arrived at them.
+\paragraph{Speedup}
 %
-Three of their choices carry over to the last version, which uses the
-same deque, the same way of choosing victims, and the same context
-switch as the sixth.
+With the lock-free deque, \lstinline|fib(38)| is about 4 times faster
+on 4 workers than on one, and about 6 times faster on 8, of which only
+4 run on performance cores.
+%
+But a fork costs several times what the work between forks does, so
+the program on 4 workers (\perftime{direct}{4}\,s) is only a little
+faster than the version without forks (\perftime{serial}{1}\,s).
+%
+A program meant to run fast would stop forking below some problem size;
+this one does not, in order to measure the fork.
 
 \paragraph{A lock-free deque}
 %
-The first version protects each deque with a lock.
+In the second version, a lock protects each deque.
 %
 This is the simplest correct design, but a naive one: it has long been
 known that the owner of a deque need not, and should not, take a lock
 in the common case~\cite{frigo98cilk5,arora98,chasele05}.
 %
-We include it as a baseline, to show what synchronizing on the deque
-costs on this machine.
+We include it to show what synchronizing on the deque costs on this
+machine.
 %
-With the lock, a fork takes two uncontended locks, one to schedule
-the second branch and one to pop it.
+With the lock, a fork takes two uncontended locks, one to push and one
+to pop, and \lstinline|fib(38)| takes \perftime{locked}{1}\,s on one
+worker.
 %
-The lock-free deque of Appendix~\ref{sec:deque} removes them, and is
-about 10\% faster on one worker.
-%
-So, for \lstinline|fib|, the deque was not the bottleneck: most of the
-time of a fork went elsewhere, as the later rows of the table show.
-%
-But the lock had hidden the next problem.
+So the two locks cost more than the rest of the fork together.
 
-\paragraph{A slowdown with several workers}
-%
-The second version in the table scales poorly, and we have not found
-out why.
-%
-On 4 workers, it takes \perftime{lockfree}{4}\,s, about twice as long
-as the third version (\perftime{hash}{4}\,s), and on 8 workers, it
-takes longer still (\perftime{lockfree}{8}\,s).
-%
-The two versions differ only in how a worker chooses a victim to steal
-from.
-%
-In the second version, each worker draws from a random-number generator
-of its own, of type \lstinline|std::minstd_rand|.
-%
-In the third, it hashes its id and a count of its steal attempts.
-%
-This difference should not matter, because steals are rare: workers
-attempt only a few hundred per run.
-%
-Nor does the slowdown need workers to keep stealing from one another:
-it persisted even when we allowed a single steal, after which the two
-workers ran disjoint subcomputations.
-
-In earlier measurements, outside the table, three other changes each
-removed the slowdown, with the generator still in place.
-%
-\begin{itemize}[leftmargin=*]
-\item Starting the count, the pointer, and the context of a task each
-  on a cache line of its own.
-\item Updating the count with plain loads and stores, rather than
-  with an atomic decrement, when the second branch is not stolen.
-\item Adding any atomic operation just before the pop that follows
-  $\fo$, even one with no memory ordering.
-  The lock of the first version is such an operation, which is how it
-  had hidden the slowdown.
-\end{itemize}
-%
-These changes have little in common with one another, or with the
-choice of victim.
-%
-So the slowdown seems to depend on details of the code and of the
-layout of data, rather than on the algorithm, and it may reappear after
-an unrelated change.
-%
-As a precaution, the fourth version adds the first of these changes,
-although, once victims are chosen by hashing, it makes no measurable
-difference.
-
-\paragraph{Fewer lookups of the worker}
+\paragraph{Looking up the worker}
 %
 Each use of \lstinline|me| looks up the worker in thread-local storage,
 through a function that the compiler can neither inline nor treat as
 pure (Section~\ref{sec:costs}).
 %
-The compiler barrier that enforces this emits no instruction.
+The compiler barrier that enforces this emits no instruction, but the
+call remains, and on macOS the lookup is itself a call.
 %
-The cost is the call and the lookup, which on macOS is itself a call.
-%
-But in a fork, the worker changes only across the calls to $\fo$ and
-$\ft$, and across the second return of the function that saved the
-parent's context.
-%
-The three yields to the scheduler resume the task on the same
-worker, because the task is in that worker's private slot.
-%
-And the scheduler loop never changes worker.
-%
-Looking up the worker once per stretch, rather than at each use, cuts
-the lookups per fork from about 12 to 3, and the running time on one
-worker by about 8\%.
-%
-The algorithm of Section~\ref{sec:nfj} needs two lookups per fork, one
-before the push and one after $\fo$.
+So \lstinline|fork2join| looks up the worker only where it may have
+changed: once before the push, and once after $\fo$ returns.
 
-\paragraph{A context switch in one call}
+\paragraph{Switching contexts}
 %
-In the first five versions, a context switch is two calls, one that
-saves a context and then \lstinline|restore|, and, on AArch64,
-\lstinline|restore| resumes with \lstinline|ret|.
+Contexts are switched only when a task is stolen, so the switch is off
+the path that Table~\ref{tbl:perf} measures.
 %
-The processor predicts where a \lstinline|ret| goes from a stack of the
-return addresses of recent calls, and after a context switch, this
-prediction is wrong.
+Two choices of Appendix~\ref{sec:contexts} are nevertheless deliberate.
 %
-The sixth version switches with the single routine \lstinline|swap| of
-Appendix~\ref{sec:contexts}, and resumes with an indirect branch,
-\lstinline|br x30|, instead.
+A switch is a single routine, rather than a call that saves followed
+by a call that resumes.
 %
-This makes \lstinline|fib(38)| more than twice as fast on 1, 4, and 8
-workers.
+And it resumes with an indirect branch, rather than with
+\lstinline|ret|: the processor predicts where a \lstinline|ret| goes
+from a stack of the return addresses of recent calls, and after a
+context switch, this prediction is wrong.
 %
-On one worker, it takes \perftime{swap}{1}\,s instead of
-\perftime{lookups}{1}\,s, or about 29\,ns per fork instead of 72.
-%
-In measurements outside the table, each half of the change helped on
-its own, the single routine more than the indirect branch, but we have
-not established why the single routine helps as much as it does.
-%
-On x86-64, \lstinline|restore| already resumes with an indirect jump
-(Figure~\ref{fig:x64}), and we have not measured the single routine
-there.
+We have not measured the cost of a steal in isolation.
 
 \section{Native fork join and the cactus-stack problem}
 \label{sec:lore}
