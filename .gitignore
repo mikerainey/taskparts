@@ -34,3 +34,5 @@
 /result
 /result-*
 .direnv/
+# Built documents: build them with make
+*.pdf
