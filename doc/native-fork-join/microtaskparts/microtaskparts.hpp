@@ -218,7 +218,9 @@ inline void worker_loop(task *first) {
 }
 
 // Run f as the root task, on nb_workers threads; the caller is worker 0.
-template <typename F> void launch(F &&f) {
+// Kept out of line: it runs once, and inlined into a caller of fork2join it would
+// make every call of that caller save the registers it uses.
+template <typename F> __attribute__((noinline)) void launch(F &&f) {
   thunk_task root(f, nullptr);
   const char *s = std::getenv("TASKPARTS_NUM_WORKERS");
   nb_workers = (s != nullptr)
