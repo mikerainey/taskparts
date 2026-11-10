@@ -1,0 +1,3 @@
+fib(27) = 196418
+workers   16
+exectime  0.004 s
