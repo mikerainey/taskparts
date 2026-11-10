@@ -38,7 +38,7 @@ join through the scheduler". Each is the one before it with one change, and `dir
 replaces that formulation with the paper's algorithm.
 
 Commits 9764023, a407ae3, a22aa14 and c73ab63 were made only for this table. They are on
-the branches `perf-step-minstd`, `perf-steps` and `perf-direct`.
+the branches `perf-step-minstd`, `perf-steps` and `perf-direct-clean`.
 
 ## Checking
 

@@ -738,7 +738,7 @@ lock-free deque & \perftime{lockfree}{1} & \perftime{lockfree}{4} & \perftime{lo
 \quad + context switch in one call & \perftime{swap}{1} & \perftime{swap}{4} & \perftime{swap}{8} \\
 \midrule
 \multicolumn{4}{@{}l}{\emph{directly} (Section~\ref{sec:nfj})} \\
-no round trips & \perftime{direct}{1} & \perftime{direct}{4} & \perftime{direct}{8} \\
+the algorithm of Figure~\ref{fig:fork2join} & \perftime{direct}{1} & \perftime{direct}{4} & \perftime{direct}{8} \\
 \bottomrule
 \end{tabular}
 \caption{Running time of \lstinline|fib(38)|, in seconds, with micro
@@ -749,19 +749,30 @@ no round trips & \perftime{direct}{1} & \perftime{direct}{4} & \perftime{direct}
 
 \paragraph{No round trips}
 %
-The choice that matters most is the one between the two formulations.
+The last version in the table is the algorithm of this paper, as
+presented in Section~\ref{sec:nfj}
+(Figures~\ref{fig:scheduler} and~\ref{fig:fork2join}).
 %
-Without the round trips through the scheduler loop, \lstinline|fib(38)|
-takes \perftime{direct}{1}\,s on one worker, instead of
+A fork that is not stolen is a push, two calls, and a pop, and never
+enters the scheduler loop.
+%
+The six versions above it implement the earlier formulation of
+Appendix~\ref{sec:dag}, in which every fork makes three round trips
+through the scheduler loop.
+%
+This difference matters more than any other choice in the table.
+%
+Without the round trips, \lstinline|fib(38)| takes
+\perftime{direct}{1}\,s on one worker, instead of
 \perftime{swap}{1}\,s with the fastest version that makes them: about
 6\,ns per fork instead of 29.
-%
-The remaining paragraphs concern the versions that make the round
+
+The remaining paragraphs concern the six versions that make the round
 trips, in the order in which we arrived at them.
 %
-Of their lessons, the choice of deque, the choice of victims, and the
-way contexts are switched carry over to the last version, which makes
-all three choices as the sixth version does.
+Three of their choices carry over to the last version, which uses the
+same deque, the same way of choosing victims, and the same context
+switch as the sixth.
 
 \paragraph{A lock-free deque}
 %
