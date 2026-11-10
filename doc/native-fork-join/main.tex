@@ -33,9 +33,6 @@
 \input{perf/times}
 \newcommand{\perftime}[2]{\fbval{times}{#1}{P = #2}}
 
-\newcommand{\vz}{\mathtt{v_0}}
-\newcommand{\vo}{\mathtt{v_1}}
-\newcommand{\vt}{\mathtt{v_2}}
 \newcommand{\fo}{\mathtt{f_1}}
 \newcommand{\ft}{\mathtt{f_2}}
 % A step number, flush right in a listing.
@@ -67,18 +64,19 @@ compiler support.
 At its core is a technique we call \emph{native fork join}, which
 delivers work-stealing scheduling by context switching.
 %
-A fork saves the continuation of the parent task as a handful of
-machine registers that point into the parent's own stack.
+When nothing is stolen, a fork is a push, two ordinary calls, and a
+pop: both branches run on the parent's stack, and the fork neither
+allocates memory nor switches contexts.
 %
 When the join finds that the second branch was stolen, the worker
-neither blocks nor runs other work on top of the parent's frame:
-it leaves the parent's stack suspended and returns to its scheduler.
+neither blocks nor runs other work on top of the parent's frame.
+%
+It saves the continuation of the parent as a handful of machine
+registers that point into the parent's own stack, leaves that stack
+suspended, and returns to its scheduler.
 %
 Whichever worker finishes the last branch then resumes the parent,
 possibly on a different thread.
-%
-When nothing is stolen, both branches run on the parent's stack, like
-ordinary calls, and the fork allocates no memory.
 %
 In this short paper, we present the algorithm in pseudocode, explain
 why it is safe, and describe what it means for programs that use it.
@@ -91,8 +89,8 @@ algorithm in a few hundred lines of C++.
 
 \section{Challenge: the join, in a library}
 
-We are to implement binary fork join, which runs two thunks, possibly
-in parallel, and returns once both have finished.
+The problem is to implement binary fork join: a function that runs two
+thunks, possibly in parallel, and returns once both have finished.
 %
 \begin{lstlisting}
 fork2join($\fo$, $\ft$ : () -> void) -> void
@@ -171,13 +169,15 @@ in Section~\ref{sec:cases}, explain why it is safe in
 Section~\ref{sec:safety}, and discuss its costs and its consequences
 for client code in Section~\ref{sec:costs}.
 %
-The appendices give machine-level details, the work-stealing deque, a
-map from the pseudocode to TaskPaRTS and to micro taskparts (a minimal
-C++ implementation that accompanies this paper), and notes on
-performance.
+The appendices give machine-level details, the requirements on the
+work-stealing deque, the earlier formulation of native fork join that
+TaskPaRTS implements, and notes on performance.
 %
 The last appendix compares native fork join with other ways of
 managing stacks under work stealing.
+%
+Micro taskparts, a minimal C++ implementation of the algorithm,
+accompanies this paper.
 
 \section{Native fork join}
 \label{sec:nfj}
@@ -193,93 +193,80 @@ return address.
 That is 8 words on x86-64 and 21 on AArch64
 (Appendix~\ref{sec:contexts}).
 %
-\lstinline|save($k$)| stores its caller's context in $k$ and returns
-\lstinline|false|; \lstinline|restore($k$)| resumes that call to
-\lstinline|save|, which this time returns \lstinline|true|.
+\lstinline|swap($k_1$, $k_2$)| saves its caller's context in $k_1$ and
+resumes $k_2$; the call returns when some worker later resumes $k_1$.
 %
-The pair behaves like \lstinline|setjmp| and \lstinline|longjmp|,
-except that the thread that restores a context need not be the one
-that saved it, and the context may point into any stack.
+\lstinline|restore($k$)| resumes $k$ without saving anything, and so
+never returns.
 %
-To the compiler, \lstinline|save| is an ordinary call (one that returns
-twice, like \lstinline|setjmp|), so it spills any live caller-saved
-registers before the call.
+The worker that resumes a context need not be the one that saved it,
+and the context may point into any stack.
 %
-As a result, a save or a restore is a handful of loads and stores,
-with no system call.
+To the compiler, \lstinline|swap| is an ordinary call, so it spills
+any live caller-saved registers before the call.
 %
-We write \lstinline|swap($k_1$, $k_2$)| for
-\lstinline|if (!save($k_1$)) restore($k_2$)|, which saves the current
-context in $k_1$ and switches to $k_2$.
-%
-Micro taskparts does both in a single routine, which on Apple silicon
-makes a fork more than twice as fast (Appendix~\ref{sec:perf}).
+As a result, a context switch is a handful of loads and stores, with no
+system call.
 
-\paragraph{Vertices and workers}
+\paragraph{Joins, tasks, and workers}
 %
-Following the DAG calculus~\cite{Dag_calculus_16}, the scheduler
-represents a computation as a DAG whose vertices each have an
-\emph{in-counter}, which counts unfinished predecessors, and an
-\emph{out-set}, which, in fork join, is a single successor
+Each call to \lstinline|fork2join| keeps two records in its own frame
 (Figure~\ref{fig:scheduler}).
 %
-A vertex also has a context, \lstinline|k|, and an action,
-\lstinline|act|, which tells the scheduler what to do with the vertex.
+The \emph{join} holds a count, \lstinline|pending|, of the branches
+that have yet to reach the join, and a context, \lstinline|k|, in which
+the parent is saved if it must be suspended.
 %
-\lstinline|Init| means that the vertex has never run;
-\lstinline|Resume|, that it is suspended inside \lstinline|fork2join|,
-with its context saved in \lstinline|k|; and \lstinline|Finish|, that
-it will have finished the next time it hands control back to the
-scheduler.
+The \emph{task} stands for the second branch, and is what thieves
+steal.
+%
+It points to its join, and holds the context in which a thief starts
+it.
 
-Each worker runs a scheduler loop on its thread's own stack.
+Each worker runs a scheduler loop on its thread's own stack, and
+client code on separate \emph{task stacks}.
 %
-While the worker runs a vertex, \lstinline|cur|, it keeps the loop's
-context in \lstinline|k|.
+While the worker runs client code, it keeps the loop's context in
+\lstinline|k|.
 %
-Client code runs on separate \emph{task stacks}.
+Each worker also has a work-stealing deque of tasks
+(Appendix~\ref{sec:deque}): \lstinline|push($t$)| adds $t$ to the
+caller's deque, \lstinline|pop()| takes back the task pushed most
+recently, if it is still there, and \lstinline|steal()| takes the
+oldest task of another worker, chosen at random.
 %
 We write \lstinline|me| for the worker that runs the caller, which we
 look up again at each use, because the worker can change across a call
 to \lstinline|fork2join| (Section~\ref{sec:costs}).
-%
-Each worker also holds its ready vertices:
-\lstinline|schedule($v$)| makes $v$ ready, \lstinline|pop()| takes back
-the vertex scheduled most recently, if any, and \lstinline|steal()|
-takes the oldest ready vertex of another worker, chosen at random.
-%
-The vertex scheduled most recently can never be stolen
-(Appendix~\ref{sec:deque}), and \lstinline|fork2join| relies on this.
 
 \begin{figure}
 \hrule
 \begin{lstlisting}
-type action = Init | Resume | Finish
-type vertex = {in : atomic int, out : vertex*,
-  act : action, k : context, body : () -> void}
-type worker = {k : context, cur : vertex*, ...}
+type join = {pending : atomic int, k : context}
+type task = {body : () -> void, j : join*,
+  k : context}
+type worker = {k : context, dq : deque of task*,
+  starting : task*, reached : join*}
 
 loop() -> void {  // on the worker's own stack
   while (!done) {
-    v = pop()
-    if (v == null) {
-      v = steal()
-      if (v != null) schedule(v)
+    j = me.reached; me.reached = null
+    if (j != null) {  // a branch reached j
+      if (fetch_and_add(j.pending, -1) == 1)
+        swap(me.k, j.k)  // resume the parent
       continue }
-    me.cur = v
-    if (v.act == Init) {
-      v.k = new_context(new_stack(), enter)
-      v.act = Finish }
-    swap(me.k, v.k)  // run v until it yields
-    if (v.act == Finish) notify(v) } }
+    t = steal()
+    if (t == null) continue
+    t.k = new_context(new_stack(), enter)
+    me.starting = t
+    swap(me.k, t.k) } }
 
 enter() -> void {  // first frame on a fresh stack
-  me.cur.body(); restore(me.k) }
+  t = me.starting; t.body(); finish(t.j) }
 
-notify(v : vertex*) -> void {
-  u = v.out  // read before u.in can reach 0
-  if (u == null) { done = true; return }  // root
-  if (fetch_and_add(u.in, -1) == 1) schedule(u) }
+finish(j : join*) -> void {  // leave this stack
+  if (j == null) done = true  // root
+  me.reached = j; restore(me.k) }
 \end{lstlisting}
 \hrule
 \caption{The scheduler}
@@ -290,173 +277,130 @@ notify(v : vertex*) -> void {
 \hrule
 \begin{lstlisting}[escapechar=@]
 fork2join($\fo$, $\ft$ : () -> void) -> void {
-  $\vz$ = me.cur
-  $\vo$ = vertex{out = $\vz$, body = $\lambda$ () $\Rightarrow$ {}}
-  $\vt$ = vertex{out = $\vz$, body = $\ft$}
-  if (save($\vz$.k))@\stepc{1}@
-    { $\vz$.act = Finish; return }
-  $\vz$.act = Resume; $\vz$.in = 2@\stepc{2}@
-  schedule($\vt$); schedule($\vo$)
-  $\vo$.act = Resume@\stepc{3}@
-  swap($\vo$.k, me.k); $\vo$.act = Finish
+  j = join{pending = 2}
+  t = task{body = $\ft$, j = &j}
+  push(&t)@\stepc{1}@
   $\fo$()
-  if (pop() == null) restore(me.k)@\stepc{4}@
-  $\vt$.act = Resume; schedule($\vt$)@\stepc{5}@
-  swap($\vt$.k, me.k); $\vt$.act = Finish
-  $\ft$()
-  swap($\vz$.k, me.k); $\vz$.act = Finish }@\stepc{6}@
+  if (pop() != null)@\stepc{2}@
+    { $\ft$(); return }@\stepc{3}@
+  me.reached = &j@\stepc{4}@
+  swap(j.k, me.k) }
 \end{lstlisting}
 \hrule
 \caption{Fork join}
 \label{fig:fork2join}
 \end{figure}
 
-\paragraph{The scheduler}
-%
-The scheduler loop (Figure~\ref{fig:scheduler}) is the only place
-where vertices start, resume, and finish.
-%
-It pops a vertex, or else steals one and makes it ready, and then makes
-the vertex current.
-%
-If the vertex has never run, the loop gives it a fresh stack and a
-context that, once restored, calls \lstinline|enter| at the top of that
-stack.
-%
-\lstinline|enter| runs the body of the vertex, and then switches to the
-scheduler of whichever worker it is on by then.
-%
-The loop then switches to the vertex, and regains control when the
-vertex yields.
-%
-If the action of the vertex is then \lstinline|Finish|, the loop
-notifies its successor: it decrements the successor's in-counter, and
-the worker whose decrement reaches zero schedules the successor.
-%
-A call to \lstinline|fork2join| from outside the scheduler starts the
-workers with a root vertex that makes the call, and the computation
-ends when the root, which has no successor, finishes.
-
 \paragraph{Fork join}
 %
-In \lstinline|fork2join| (Figure~\ref{fig:fork2join}), the parent,
-$\vz$, is the current vertex.
-%
-The function creates two vertices, $\vo$ and $\vt$, both with $\vz$ as
-their successor.
-%
-$\vt$ runs $\ft$, and $\vo$ has an empty body.
-%
-$\vo$ stands for the parent while the parent runs $\fo$ inline, so that
-any \lstinline|fork2join| nested inside $\fo$ uses the context and
-in-counter of $\vo$, and leaves those of $\vz$ alone.
-%
-The steps are as follows.
+\lstinline|fork2join| (Figure~\ref{fig:fork2join}) has four steps.
 %
 \begin{enumerate}[leftmargin=*,label=(\arabic*)]
-\item Save the parent's context in $\vz$\lstinline|.k|.
-  If $\vt$ is stolen, this is where the parent resumes.
-\item Set the in-counter of $\vz$ to 2, and schedule $\vt$, then
-  $\vo$, which leaves $\vt$ stealable and $\vo$ not.
-\item Yield to the scheduler, saving the context in $\vo$\lstinline|.k|.
-  The scheduler pops $\vo$ and resumes it at once, so execution
-  continues after the \lstinline|swap|, with $\vo$ as the current vertex.
-  Run $\fo$ inline.
+\item Push a task for the second branch, which makes it stealable, and
+  run $\fo$ as an ordinary call.
 \item Pop.
-  If the pop fails, $\vt$ was stolen.
-  Then abandon the current stack by switching to the scheduler without
-  saving anything.
-  The stack stays suspended at step 1, and the scheduler notifies $\vz$
-  that $\vo$ has finished.
-\item Otherwise, the pop returned $\vt$.
-  Schedule $\vt$ again, so that it is the vertex scheduled most
-  recently and cannot be stolen, and yield.
-  The scheduler notifies $\vz$ that $\vo$ has finished, then pops $\vt$
-  and resumes it here.
-  Run $\ft$ inline.
-\item Yield once more, saving the context in $\vz$\lstinline|.k|.
-  The scheduler notifies $\vz$ that $\vt$ has finished, which makes $\vz$
-  ready, then pops $\vz$ and resumes it here, and
-  \lstinline|fork2join| returns.
+\item If the pop succeeds, it returns the task pushed at step 1, so the
+  second branch was not stolen.
+  Run $\ft$ as an ordinary call, and return.
+\item Otherwise, the second branch was stolen.
+  Tell the scheduler loop that a branch has reached the join, and
+  switch to the loop, saving the parent's context in the join.
+  The call to \lstinline|swap| returns, and with it
+  \lstinline|fork2join|, when both branches have reached the join.
 \end{enumerate}
+
+\paragraph{The scheduler}
+%
+The scheduler loop (Figure~\ref{fig:scheduler}) does two things.
+%
+First, it counts the branches that reach a join.
+%
+A branch never decrements the count of its join itself.
+%
+Instead, it leaves its join in \lstinline|reached| and switches to the
+loop, which decrements the count on its behalf.
+%
+The worker whose decrement brings the count to zero resumes the parent
+at once, by switching to the context saved in the join.
+%
+Second, when no branch has just reached a join, the loop steals.
+%
+It gives a stolen task a fresh stack and a context that, once resumed,
+calls \lstinline|enter| at the top of that stack.
+%
+\lstinline|enter| runs the body of the task, and then reports to the
+task's join, through the loop of whichever worker it is on by then.
+
+A worker's deque is empty whenever the worker is in its loop, which is
+why the loop never pops.
+%
+A worker enters its loop either from step 4, where the pop has just
+failed, or from \lstinline|finish|, at the bottom of a task stack,
+where every task pushed on that stack has been popped or stolen.
+
+A call to \lstinline|fork2join| from outside the scheduler starts the
+workers, one of which starts a root task that makes the call.
+%
+The root has no join, and the computation ends when it finishes.
 
 \section{The two cases}
 \label{sec:cases}
 
+\paragraph{Not stolen}
+%
+Steps 1 to 3 are all that happens.
+%
+$\fo$ and $\ft$ both run on the parent's stack, as ordinary calls, on
+one worker, and the join is never used.
+%
+The fork costs a push and a pop.
+
 \begin{figure}
-\hrule
-\vspace{4pt}
-\begin{timeline}{l@{\hspace{0.5em}}c@{\hspace{0.5em}}l}
-\tlhead{on task stack S} & & \tlhead{in the scheduler of worker A} \\
-(1) save($\vz$.k) \\
-(2) schedule($\vt$) \\
-\ind schedule($\vo$) \\
-(3) swap($\vo$.k, A.k) & $\rightarrow$ & pop $\vo$, resume it \\
-\ind $\fo$() \\
-(4) pop() returns $\vt$ \\
-(5) schedule($\vt$) \\
-\ind swap($\vt$.k, A.k) & $\rightarrow$ & notify: $\vz$.in = 1 \\
-& & pop $\vt$, resume it \\
-\ind $\ft$() \\
-(6) swap($\vz$.k, A.k) & $\rightarrow$ & notify: $\vz$.in = 0 \\
-& & schedule, pop, resume $\vz$ \\
-\ind \textbf{return}
-\end{timeline}
-\vspace{4pt}
 \hrule
 \vspace{4pt}
 \begin{timeline}{l@{\hspace{1em}}l}
 \tlhead{worker A} & \tlhead{worker B} \\
-(1)-(3); $\fo$() on S & steal $\vt$ from A \\
+(1) push(\&t); $\fo$() on S & steal t from A \\
 & fresh stack T; $\ft$() on T \\
-(4) pop() returns \textbf{null} \\
-\ind restore(A.k) \\
-\ind notify: $\vz$.in = 1 \\
-\ind find other work ... \\
-& $\ft$() returns \\
-& restore(B.k) \\
-& notify: $\vz$.in = 0 \\
-& schedule, pop $\vz$ \\
-& restore($\vz$.k): the save \\
-& at (1) returns, on S
+(2) pop() returns \textbf{null} \\
+(4) swap(j.k, A.k) \\
+\ind in loop: j.pending = 1 \\
+\ind steal other work ... \\
+& $\ft$() returns; finish(\&j) \\
+& in loop: j.pending = 0 \\
+& swap(B.k, j.k): the swap \\
+& at (4) returns, on S
 \end{timeline}
 \vspace{4pt}
 \hrule
-\caption{The two cases: $\vt$ not stolen (top), and $\vt$ stolen by
-  worker B, which finishes last (bottom)}
+\caption{The second branch is stolen by worker B, which reaches the
+  join last}
 \label{fig:cases}
 \end{figure}
 
-Figure~\ref{fig:cases} traces both cases of \lstinline|fork2join|.
-
-\paragraph{Not stolen}
-%
-One worker, A, does everything.
-%
-$\fo$ and $\ft$ both run on the parent's task stack, S, as ordinary
-calls, and the only overhead is three round trips through the
-scheduler.
-
 \paragraph{Stolen}
 %
-Worker B steals $\vt$ from A while A runs $\fo$, gives $\vt$ a fresh
-stack, T, and runs $\ft$ there.
+Figure~\ref{fig:cases} traces the other case.
 %
-When the pop at step 4 fails, A abandons S, and its scheduler notifies
-$\vz$ that $\vo$ has finished, which brings the in-counter of $\vz$ to 1.
+Worker B steals the task from A while A runs $\fo$ on the parent's
+stack, S.
+%
+B gives the task a fresh stack, T, and runs $\ft$ there.
+%
+When the pop at step 2 fails, A suspends S at the join and switches to
+its loop, which brings the count to 1.
 %
 A then looks for other work.
 %
-When $\ft$ returns, B's scheduler notifies $\vz$ that $\vt$ has
-finished, which brings the in-counter to 0.
+When $\ft$ returns, B switches to its loop, which brings the count to
+0.
 %
-So B schedules $\vz$, pops it, and restores $\vz$\lstinline|.k|.
+So B resumes the context saved in the join: the call to
+\lstinline|swap| at step 4 returns, on stack S as before, but now on
+worker B, and \lstinline|fork2join| returns there.
 %
-The call to \lstinline|save| at step 1 returns a second time, on stack
-S as before, but now on worker B, and \lstinline|fork2join| returns
-there.
-%
-Had A finished last, A would have resumed the parent itself.
+Had A reached the join last, A would have found the count at 1,
+brought it to 0, and resumed the parent itself.
 
 So a call to \lstinline|fork2join| can begin on one thread and return on
 another.
@@ -469,76 +413,71 @@ changes.
 
 The correctness of the algorithm rests on four facts.
 
-\paragraph{Only vertices that have never run are stolen}
+\paragraph{A branch is counted only after it has left its stack}
 %
-\lstinline|fork2join| schedules $\vo$ (step 2) and $\vt$ (step 5)
-before it saves their contexts.
+As soon as the count of a join reaches zero, another worker may resume
+the parent on stack S, and the parent may return from
+\lstinline|fork2join|, which pops the frame that holds the join and the
+task, and frees the stack of the stolen task.
 %
-At that moment, each is the vertex scheduled most recently, so it
-cannot be stolen, and its own worker pops it only after the
-\lstinline|swap| to the scheduler has saved its context.
+So the first branch must be off S, and the second off its stack, T,
+before either is counted.
 %
-The only vertices that thieves ever see are those like $\vt$ at step 2,
-whose action is \lstinline|Init|.
+This is why a branch switches to the scheduler loop to be counted,
+instead of decrementing in place, and why the loop does not touch the
+join after its decrement, unless it brought the count to zero.
 
-\paragraph{Completion is reported from the scheduler}
+\paragraph{No two workers run on the same stack}
 %
-As soon as the in-counter of $\vz$ reaches zero, another worker may
-resume $\vz$ on stack S.
+A suspended parent is reachable only through the context saved in its
+join.
 %
-So the decrement on behalf of $\vo$ must happen after A has left S,
-which is why step 4 switches to the scheduler instead of decrementing
-in place.
+Each branch decrements the count once, so exactly one worker brings it
+to zero, and only that worker resumes the context.
 %
-Similarly, $\vo$ and $\vt$ live in the frame of $\vz$ on S, so
-\lstinline|notify| reads the successor of a vertex before decrementing,
-and does not touch the vertex afterward.
+By then, the context has been saved: the first branch is counted after
+the \lstinline|swap| at step 4 has saved it.
 
-\paragraph{The pop at step 4 is correct even if $\fo$ moved}
+\paragraph{The pop at step 2 is correct even if $\fo$ moved}
 %
-$\fo$ returns on a different worker only if a vertex forked inside $\fo$
+$\fo$ returns on a different worker only if a task pushed inside $\fo$
 was stolen.
 %
-Thieves take the oldest ready vertex, and $\vt$ is older than any
-vertex forked by $\fo$.
+Thieves take the oldest task of a deque, and the task of this fork is
+older than any task pushed inside $\fo$.
 %
-So by then $\vt$ has been stolen as well, and the pop correctly fails.
+So by then it has been stolen as well.
+%
+And the worker on which $\fo$ returns resumed this stack from its loop,
+with an empty deque, so the pop there correctly fails.
 
-\paragraph{A fresh stack is freed only after its last use}
+\paragraph{Only tasks that have never run are stolen}
 %
-A stolen $\vt$ owns its fresh stack, and $\vt$ lives in the frame of
-$\vz$, so the stack is freed when the parent's call to
-\lstinline|fork2join| returns.
+A deque holds only tasks pushed at step 1, which have not started.
 %
-By then, $\ft$ has finished, and its worker has switched back to its
-scheduler.
+A suspended parent is never in a deque, so no thief can resume it.
 
 \section{Costs and consequences}
 \label{sec:costs}
 
 \paragraph{Costs}
 %
-A fork whose second branch is not stolen makes three round trips
-through the scheduler (steps 3, 5, and 6), six context switches in
-all, and allocates nothing, because $\vo$ and $\vt$ live in the frame of
-\lstinline|fork2join|.
+A fork whose second branch is not stolen makes one push and one pop,
+looks up its worker twice, and calls $\fo$ and $\ft$.
 %
-In this case, no other worker can reach the in-counter of $\vz$, so
-TaskPaRTS updates it with plain loads and stores, rather than with
-atomic operations.
+It switches contexts not at all, allocates nothing, because the join
+and the task live in the frame of \lstinline|fork2join|, and performs
+no atomic operation beyond those of the deque.
 %
-The round trips are not essential to the technique.
+With micro taskparts, such a fork takes about 6\,ns on an Apple M5
+(Appendix~\ref{sec:perf}).
 %
-They keep the scheduler loop the only place where vertices start,
-resume, and finish, and they could be optimized away.
+A fork whose second branch is stolen allocates one fresh stack, of a
+fixed size, which is touched only as deep as $\ft$ recurses, and is
+freed when the parent returns from \lstinline|fork2join|.
 %
-As it is, how the six context switches are made matters more than any
-other choice on this path that we measured, and
-Appendix~\ref{sec:perf} records this choice and the others.
-%
-A steal allocates one fresh stack, 512\,KB in TaskPaRTS, which is
-touched only as deep as $\ft$ recurses, and is freed when the parent
-returns from \lstinline|fork2join|.
+It also makes four context switches: to the stolen task and back to
+the thief's loop, and from the parent to a loop and back to the parent.
 %
 Appendix~\ref{sec:lore} bounds the number of stacks in use.
 
@@ -575,15 +514,18 @@ told about the stack switches, so they may report false errors.
 
 \paragraph{Implementations}
 %
-TaskPaRTS implements the algorithm of Figures~\ref{fig:scheduler}
-and~\ref{fig:fork2join}, and adds elastic scheduling, instrumentation,
-and CPU pinning around it.
+Micro taskparts implements the algorithm of
+Figures~\ref{fig:scheduler} and~\ref{fig:fork2join}, with a lock-free
+deque~\cite{arora98}, and nothing else, in about 500 lines of C++,
+including the assembly for x86-64 and AArch64.
 %
-Micro taskparts implements the same algorithm, with a lock-free
-deque~\cite{arora98} that TaskPaRTS also uses, and nothing else, in
-about 600 lines of C++, including the assembly for x86-64 and AArch64.
+It is in the directory \path{doc/native-fork-join/microtaskparts} of
+the TaskPaRTS repository~\cite{taskparts}, and numbers the steps of
+\lstinline|fork2join| as in Figure~\ref{fig:fork2join}.
 %
-Appendix~\ref{sec:map} maps the pseudocode to both.
+TaskPaRTS implements an earlier formulation of native fork join, in
+which every fork passes through the scheduler loop
+(Appendix~\ref{sec:dag}).
 
 \bibliographystyle{abbrv}
 \bibliography{main,perf/times}
@@ -613,22 +555,22 @@ total & 8 words & 21 words \\
 \end{center}
 %
 Caller-saved registers need no saving: to the compiler,
-\lstinline|save| is an ordinary call, so the compiler has already
+\lstinline|swap| is an ordinary call, so the compiler has already
 spilled any live caller-saved registers before calling it.
 %
 Figure~\ref{fig:x64} shows both functions for x86-64.
 %
-\lstinline|save| records, as the stack pointer to restore, the value
-the stack pointer will have once \lstinline|save| has returned, and, as
-the resume address, its own return address.
+\lstinline|swap| first saves into $k_1$, which it receives in
+\texttt{\%rdi}.
 %
-\lstinline|restore| reloads the registers, switches stacks, and jumps
-to the resume address with 1 in the return register.
+It records, as the stack pointer to resume with, the value the stack
+pointer will have once \lstinline|swap| has returned, and, as the
+resume address, its own return address.
 %
-\lstinline|swap($k_1$, $k_2$)| is a single routine: the code of
-\lstinline|save|, up to its return, followed by the code of
-\lstinline|restore|, which reads $k_2$ from the second argument
-register, \texttt{\%rsi}.
+It then reloads the registers from $k_2$, in \texttt{\%rsi}, switches
+stacks, and jumps to the resume address.
+%
+\lstinline|restore| is the second half alone.
 %
 The AArch64 versions are analogous.
 %
@@ -639,7 +581,7 @@ They too resume with an indirect branch to the restored
 \begin{figure}
 \hrule
 \begin{lstlisting}[language={},mathescape=false]
-save:                     restore:
+swap:                     restore:
   movq %rbx, 0(%rdi)        movq 0(%rdi), %rbx
   movq %rbp, 8(%rdi)        movq 8(%rdi), %rbp
   movq %r12, 16(%rdi)       movq 16(%rdi), %r12
@@ -647,29 +589,22 @@ save:                     restore:
   movq %r14, 32(%rdi)       movq 32(%rdi), %r14
   movq %r15, 40(%rdi)       movq 40(%rdi), %r15
   leaq 8(%rsp), %rdx        movq 48(%rdi), %rsp
-  movq %rdx, 48(%rdi)       movl $1, %eax
-  movq (%rsp), %rdx         jmpq *56(%rdi)
+  movq %rdx, 48(%rdi)       jmpq *56(%rdi)
+  movq (%rsp), %rdx
   movq %rdx, 56(%rdi)
-  xorl %eax, %eax
-  ret
+  movq 0(%rsi), %rbx
+  movq 8(%rsi), %rbp
+  movq 16(%rsi), %r12
+  movq 24(%rsi), %r13
+  movq 32(%rsi), %r14
+  movq 40(%rsi), %r15
+  movq 48(%rsi), %rsp
+  jmpq *56(%rsi)
 \end{lstlisting}
 \hrule
-\caption{Saving and restoring a context on x86-64}
+\caption{Switching contexts on x86-64}
 \label{fig:x64}
 \end{figure}
-
-\paragraph{Declaring save to the compiler}
-%
-Because \lstinline|save| can return twice, it must be declared as such
-to the compiler (in GCC and Clang, with the attribute
-\lstinline|returns_twice|).
-%
-Otherwise, the compiler may keep a value that changes between the two
-returns in a callee-saved register, or reuse its stack slot for another
-value, and the second return then sees a stale or clobbered value.
-%
-\lstinline|swap| returns only once, when its context is restored, so it
-needs no such declaration.
 
 \paragraph{Fresh contexts}
 %
@@ -682,131 +617,85 @@ bytes, its resume address is $f$, and its other registers are zero.
 On x86-64, the stack pointer is a further 8 bytes down, as if a
 \lstinline|call| had pushed a return address.
 %
-Restoring the context then starts $f$ on $s$, as if $f$ had been called
+Resuming the context then starts $f$ on $s$, as if $f$ had been called
 there.
-%
-TaskPaRTS builds fresh contexts differently, with the same effect: the
-scheduler loop calls \lstinline|save|, and then overwrites the saved
-stack pointer with the top of a fresh stack.
-%
-Restoring that context returns from that call to \lstinline|save| on
-the fresh stack, where the code that follows calls \lstinline|enter|.
 
-\section{Ready vertices}
+\section{The deque}
 \label{sec:deque}
 
-\begin{figure}
-\hrule
-\begin{lstlisting}
-type worker = {k : context, cur : vertex*,
-  next : vertex*, dq : deque of vertex*}
-
-schedule(v : vertex*) -> void {
-  if (me.next != null) push_bottom(me.dq, me.next)
-  me.next = v }
-
-pop() -> vertex* {
-  v = me.next
-  if (v != null) { me.next = null; return v }
-  return pop_bottom(me.dq) }
-
-steal() -> vertex* {
-  return pop_top(random_other_worker().dq) }
-\end{lstlisting}
-\hrule
-\caption{Ready vertices: a private slot over a deque}
-\label{fig:deque}
-\end{figure}
-
-Each worker keeps its ready vertices in a private slot, \lstinline|next|,
-in front of a work-stealing deque, \lstinline|dq|
-(Figure~\ref{fig:deque}).
+Any work-stealing deque will do, as long as thieves take the oldest
+task, which Section~\ref{sec:safety} relies on.
 %
-\lstinline|schedule($v$)| puts $v$ in the slot, and moves the slot's
-previous occupant to the bottom of the deque.
-%
-\lstinline|pop| takes from the slot first, and then from the bottom of
-the deque, and thieves take from the top of the deque.
-%
-So the vertex scheduled most recently is always in the slot, where no
-thief can reach it, which is the property that
-Section~\ref{sec:safety} relies on.
-
-At step 2 of \lstinline|fork2join|, the slot is empty: the current
-vertex was itself popped from it, and any nested \lstinline|fork2join|
-calls have taken back what they scheduled.
-%
-So \lstinline|schedule($\vt$)| puts $\vt$ in the slot, and
-\lstinline|schedule($\vo$)| moves $\vt$ to the deque.
-%
-The slot is also empty whenever \lstinline|notify| or a thief schedules
-a vertex, so a vertex that reaches the deque is always a $\vt$ displaced
-at step 2.
-
-Any work-stealing deque will do.
+The owner pushes and pops at one end, and thieves take from the other.
 %
 Micro taskparts uses the lock-free deque of Arora et
-al.~\cite{arora98}, which TaskPaRTS also uses when elastic scheduling
-is disabled, unless it is configured to use the deque of Chase and
-Lev~\cite{chasele05}.
+al.~\cite{arora98}; the deque of Chase and Lev~\cite{chasele05} would
+serve as well.
 %
-With elastic scheduling, TaskPaRTS uses a deque by Yao, Westrick,
-Rainey, and Acar, which supports it.
-% TODO: cite the Yao, Westrick, Rainey, and Acar deque.
+A deque holds at most one task per call to \lstinline|fork2join| in
+progress on the stack that its worker is running, so a small, fixed
+capacity suffices.
 
-\section{From pseudocode to code}
-\label{sec:map}
+\section{Fork join through the scheduler}
+\label{sec:dag}
 
-\begin{table*}
-\small
-\begin{tabular}{@{}lll@{}}
-\toprule
-pseudocode & micro taskparts & TaskPaRTS \\
-\midrule
-\lstinline|save|, \lstinline|restore| & \lstinline|mtp_context_save|, \lstinline|mtp_context_restore| & \lstinline|context_save|, \lstinline|context_restore| \\
-\lstinline|swap| & \lstinline|mtp_context_swap| & \lstinline|swap| \\
-\lstinline|vertex| & \lstinline|vertex| & \lstinline|native_fork_join_vertex| \\
-\lstinline|action| & \lstinline|action| & \lstinline|continuation_action| \\
-\lstinline|next|, \lstinline|dq| & \lstinline|next|, \lstinline|deque| & \lstinline|bottom|, \lstinline|deque| \\
-\lstinline|deque| & \lstinline|abp| & \lstinline|abp|, \lstinline|chaselev|, \lstinline|ywra| \\
-\lstinline|loop| & \lstinline|worker_loop| & \lstinline|loop| \\
-\lstinline|new_context| & \lstinline|new_context| & \lstinline|new_continuation| \\
-\lstinline|enter| & \lstinline|vertex_entry| & \lstinline|enter| \\
-\lstinline|notify| & \lstinline|notify| & \lstinline|parallel_notify| \\
-\lstinline|fork2join| & \lstinline|fork2join| & \lstinline|fork2join| \\
-\bottomrule
-\end{tabular}
-\caption{Names in the pseudocode, in micro taskparts, and in TaskPaRTS}
-\label{tbl:map}
-\end{table*}
-
-Table~\ref{tbl:map} maps the names in the pseudocode to their
-counterparts in micro taskparts and in TaskPaRTS.
+TaskPaRTS implements an earlier formulation of native fork join, in
+which every fork passes through the scheduler loop, whether or not
+anything is stolen.
 %
-Both are in the TaskPaRTS repository~\cite{taskparts}: micro taskparts
-in the directory \path{doc/native-fork-join/microtaskparts}, and
-TaskPaRTS in the files \path{src/taskparts.cpp} and
-\path{include/taskparts/taskparts_internal.hpp}.
-%
-Both implementations number the steps of \lstinline|fork2join| as in
-Figure~\ref{fig:fork2join}.
+We describe it here because the algorithm of Section~\ref{sec:nfj} was
+distilled from it, and because Appendix~\ref{sec:perf} measures both.
 
-Beyond micro taskparts, TaskPaRTS adds the following.
+In this formulation, the scheduler loop is the only place where a task
+starts, resumes, or finishes.
 %
-\begin{itemize}[leftmargin=*]
-\item A choice of deques, including one that supports elastic
-  scheduling (Appendix~\ref{sec:deque}).
-\item Elastic scheduling: workers that fail to find work suspend on a
-  semaphore, instead of spinning, and are woken when there is surplus
-  work.
-\item Non-atomic in-counter updates when the second branch is not
-  stolen (\lstinline|clone_fast|).
-\item A persistent pool of workers, and a sink vertex that marks the
-  end of each top-level computation, in place of the
-  \lstinline|done| flag.
-\item Statistics, logging in a format that the Perfetto trace viewer
-  reads, and CPU pinning with hwloc.
-\end{itemize}
+Each task has a count of the tasks it is waiting for, a pointer to the
+task that is waiting for it, a context, and an action, which tells the
+loop what to do with the task: start it on a fresh stack, resume its
+context, or, the next time it yields, report to the task that is
+waiting for it that it has finished.
+%
+The loop pops or steals a task, and starts or resumes it.
+%
+When a task yields as finished, the loop decrements the count of the
+task that is waiting for it, and makes that task ready if the count
+reaches zero.
+
+The parent of a fork is the task that the worker is currently running.
+%
+\lstinline|fork2join| creates two tasks that the parent waits for: one
+for the second branch, and one that stands for the parent while it
+runs the first branch inline.
+%
+It saves the parent's context before anything else, with a function
+that, like \lstinline|setjmp|, returns a second time when the context
+is resumed.
+%
+It then yields to the scheduler loop three times, even when nothing is
+stolen: to start the first branch, to finish the first branch and start
+the second, and to finish the second branch and continue as the parent.
+%
+Each yield is a round trip, so a fork makes six context switches.
+%
+A task is made ready before its context is saved, so the formulation
+also needs a private slot in front of each deque, which keeps the task
+made ready most recently out of the reach of thieves.
+
+The algorithm of Section~\ref{sec:nfj} is what remains once the round
+trips are removed.
+%
+The count and the context of the parent become the join, the task for
+the second branch remains, and the stand-in task, the actions, the
+private slot, and the second return disappear.
+%
+What the two share is the technique: a parent whose second branch was
+stolen is suspended on its own stack, a branch is counted from the
+scheduler loop, and the worker that counts last resumes the parent.
+%
+What the formulation of this appendix offers in exchange for its cost
+is uniformity: every transition of every task passes through one loop,
+which is a convenient place for a scheduler to keep statistics, log
+events, or put workers to sleep.
 
 \section{Performance notes}
 \label{sec:perf}
@@ -814,13 +703,17 @@ Beyond micro taskparts, TaskPaRTS adds the following.
 A fork whose second branch is not stolen does little work, so small
 choices in the implementation show up in the running time.
 %
-This appendix records the choices that we measured with micro
-taskparts, running \lstinline|fib(38)|, which makes 63 million forks,
-on an Apple M5 with 4 performance and 6 efficiency cores
+This appendix records the choices that we measured with seven versions
+of micro taskparts, running \lstinline|fib(38)|, which makes 63 million
+forks, on an Apple M5 with 4 performance and 6 efficiency cores
 (Table~\ref{tbl:perf}).
 %
+The first six versions implement the formulation of
+Appendix~\ref{sec:dag}, and the last implements the algorithm of
+Section~\ref{sec:nfj}.
+%
 Each time in the table is the median of five runs, and the runs of the
-six versions were interleaved.
+seven versions were interleaved.
 %
 Flexibench recorded the runs, checked that every version computes
 correct results, and certified the values in the
@@ -828,8 +721,6 @@ table~\cite{flexibench-times}.
 %
 The record is in the directory \path{doc/native-fork-join/perf} of the
 TaskPaRTS repository~\cite{taskparts}.
-%
-TaskPaRTS makes the same choices, except where noted.
 
 \begin{table}
 \small
@@ -838,12 +729,16 @@ TaskPaRTS makes the same choices, except where noted.
  & \multicolumn{3}{c}{workers} \\
 version & 1 & 4 & 8 \\
 \midrule
+\multicolumn{4}{@{}l}{\emph{through the scheduler} (Appendix~\ref{sec:dag})} \\
 deque protected by a lock & \perftime{lock}{1} & \perftime{lock}{4} & \perftime{lock}{8} \\
 lock-free deque & \perftime{lockfree}{1} & \perftime{lockfree}{4} & \perftime{lockfree}{8} \\
 \quad + victims chosen by hashing & \perftime{hash}{1} & \perftime{hash}{4} & \perftime{hash}{8} \\
-\quad + one cache line per vertex field & \perftime{lines}{1} & \perftime{lines}{4} & \perftime{lines}{8} \\
+\quad + one cache line per task field & \perftime{lines}{1} & \perftime{lines}{4} & \perftime{lines}{8} \\
 \quad + fewer lookups of the worker & \perftime{lookups}{1} & \perftime{lookups}{4} & \perftime{lookups}{8} \\
 \quad + context switch in one call & \perftime{swap}{1} & \perftime{swap}{4} & \perftime{swap}{8} \\
+\midrule
+\multicolumn{4}{@{}l}{\emph{directly} (Section~\ref{sec:nfj})} \\
+no round trips & \perftime{direct}{1} & \perftime{direct}{4} & \perftime{direct}{8} \\
 \bottomrule
 \end{tabular}
 \caption{Running time of \lstinline|fib(38)|, in seconds, with micro
@@ -852,53 +747,92 @@ lock-free deque & \perftime{lockfree}{1} & \perftime{lockfree}{4} & \perftime{lo
 \label{tbl:perf}
 \end{table}
 
+\paragraph{No round trips}
+%
+The choice that matters most is the one between the two formulations.
+%
+Without the round trips through the scheduler loop, \lstinline|fib(38)|
+takes \perftime{direct}{1}\,s on one worker, instead of
+\perftime{swap}{1}\,s with the fastest version that makes them: about
+6\,ns per fork instead of 29.
+%
+The remaining paragraphs concern the versions that make the round
+trips, in the order in which we arrived at them.
+%
+Of their lessons, the choice of deque, the choice of victims, and the
+way contexts are switched carry over to the last version, which makes
+all three choices as the sixth version does.
+
 \paragraph{A lock-free deque}
 %
-With a deque protected by a lock, a fork takes two uncontended locks,
-at steps 2 and 4.
+The first version protects each deque with a lock.
 %
-For \lstinline|fib|, this was not the bottleneck: the lock-free deque
-of Appendix~\ref{sec:deque} is about 10\% faster on one worker.
+This is the simplest correct design, but a naive one: it has long been
+known that the owner of a deque need not, and should not, take a lock
+in the common case~\cite{frigo98cilk5,arora98,chasele05}.
+%
+We include it as a baseline, to show what synchronizing on the deque
+costs on this machine.
+%
+With the lock, a fork takes two uncontended locks, one to schedule
+the second branch and one to pop it.
+%
+The lock-free deque of Appendix~\ref{sec:deque} removes them, and is
+about 10\% faster on one worker.
+%
+So, for \lstinline|fib|, the deque was not the bottleneck: most of the
+time of a fork went elsewhere, as the later rows of the table show.
 %
 But the lock had hidden the next problem.
 
 \paragraph{A slowdown with several workers}
 %
-In the first two versions, each worker chose its victims with a
-generator of its own, of type \lstinline|std::minstd_rand|.
+The second version in the table scales poorly, and we have not found
+out why.
 %
-With the lock-free deque, \lstinline|fib(38)| then took
-\perftime{lockfree}{4}\,s on 4 workers, about twice as long as with the
-next version (\perftime{hash}{4}\,s), which differs only in choosing
-victims by hashing the worker's id and a count of its steal attempts,
-as TaskPaRTS does.
+On 4 workers, it takes \perftime{lockfree}{4}\,s, about twice as long
+as the third version (\perftime{hash}{4}\,s), and on 8 workers, it
+takes longer still (\perftime{lockfree}{8}\,s).
 %
-On 8 workers, it took longer still (\perftime{lockfree}{8}\,s).
+The two versions differ only in how a worker chooses a victim to steal
+from.
 %
-Yet workers attempted only a few hundred steals per run, and, in the
-common case, no two workers touch the same vertex.
+In the second version, each worker draws from a random-number generator
+of its own, of type \lstinline|std::minstd_rand|.
 %
-The slowdown persisted even when we allowed a single steal, after
-which the two workers ran disjoint subcomputations.
+In the third, it hashes its id and a count of its steal attempts.
 %
-In earlier measurements, outside the table, other changes also removed
-the slowdown while keeping the generator: starting the in-counter, the
-out-set, and the context of a vertex each on a cache line of its own,
-as in TaskPaRTS; updating the in-counter on the fast path with plain
-loads and stores, rather than with an atomic decrement, which TaskPaRTS
-also does (\lstinline|clone_fast|); and adding any atomic operation
-just before the pop at step 4, even one with no memory ordering, which
-is how the lock had hidden the slowdown.
+This difference should not matter, because steals are rare: workers
+attempt only a few hundred per run.
 %
-These changes have little in common, and we have not found the cause.
+Nor does the slowdown need workers to keep stealing from one another:
+it persisted even when we allowed a single steal, after which the two
+workers ran disjoint subcomputations.
+
+In earlier measurements, outside the table, three other changes each
+removed the slowdown, with the generator still in place.
 %
-The slowdown seems to depend on details of the code and of the layout
-of data, rather than on the algorithm, and so it may reappear after
-unrelated changes.
+\begin{itemize}[leftmargin=*]
+\item Starting the count, the pointer, and the context of a task each
+  on a cache line of its own.
+\item Updating the count with plain loads and stores, rather than
+  with an atomic decrement, when the second branch is not stolen.
+\item Adding any atomic operation just before the pop that follows
+  $\fo$, even one with no memory ordering.
+  The lock of the first version is such an operation, which is how it
+  had hidden the slowdown.
+\end{itemize}
 %
-Once victims are chosen by hashing, one cache line per vertex field
-makes no measurable difference, but micro taskparts keeps it, as
-TaskPaRTS does.
+These changes have little in common with one another, or with the
+choice of victim.
+%
+So the slowdown seems to depend on details of the code and of the
+layout of data, rather than on the algorithm, and it may reappear after
+an unrelated change.
+%
+As a precaution, the fourth version adds the first of these changes,
+although, once victims are chosen by hashing, it makes no measurable
+difference.
 
 \paragraph{Fewer lookups of the worker}
 %
@@ -910,13 +844,12 @@ The compiler barrier that enforces this emits no instruction.
 %
 The cost is the call and the lookup, which on macOS is itself a call.
 %
-But in \lstinline|fork2join|, the worker changes only across the calls
-to $\fo$ and $\ft$, and across the second return from
-\lstinline|save| at step 1.
+But in a fork, the worker changes only across the calls to $\fo$ and
+$\ft$, and across the second return of the function that saved the
+parent's context.
 %
-The switches to the scheduler at steps 3, 5, and 6 resume the vertex
-on the same worker, because the vertex is in that worker's private
-slot.
+The three yields to the scheduler resume the task on the same
+worker, because the task is in that worker's private slot.
 %
 And the scheduler loop never changes worker.
 %
@@ -924,21 +857,21 @@ Looking up the worker once per stretch, rather than at each use, cuts
 the lookups per fork from about 12 to 3, and the running time on one
 worker by about 8\%.
 %
-TaskPaRTS looks up the worker at each use.
+The algorithm of Section~\ref{sec:nfj} needs two lookups per fork, one
+before the push and one after $\fo$.
 
 \paragraph{A context switch in one call}
 %
-In the other versions, a context switch is two calls,
-\lstinline|save| and then \lstinline|restore|, as in the definition of
-\lstinline|swap| in Section~\ref{sec:nfj}, and, on AArch64,
+In the first five versions, a context switch is two calls, one that
+saves a context and then \lstinline|restore|, and, on AArch64,
 \lstinline|restore| resumes with \lstinline|ret|.
 %
 The processor predicts where a \lstinline|ret| goes from a stack of the
 return addresses of recent calls, and after a context switch, this
 prediction is wrong.
 %
-The last version switches with a single routine
-(Appendix~\ref{sec:contexts}), and resumes with an indirect branch,
+The sixth version switches with the single routine \lstinline|swap| of
+Appendix~\ref{sec:contexts}, and resumes with an indirect branch,
 \lstinline|br x30|, instead.
 %
 This makes \lstinline|fib(38)| more than twice as fast on 1, 4, and 8
@@ -951,25 +884,18 @@ In measurements outside the table, each half of the change helped on
 its own, the single routine more than the indirect branch, but we have
 not established why the single routine helps as much as it does.
 %
-TaskPaRTS still switches with two calls, and on AArch64 resumes with
-\lstinline|ret|.
-%
-On x86-64, both already resume with an indirect jump
+On x86-64, \lstinline|restore| already resumes with an indirect jump
 (Figure~\ref{fig:x64}), and we have not measured the single routine
 there.
 
 \section{Native fork join and the cactus-stack problem}
 \label{sec:lore}
 
-% This appendix collects lore on how other systems manage stacks under
-% work stealing. Candidates to add, once checked against the papers:
-% Fibril (Yang and Mellor-Crummey), lazy threads and stacklets
-% (Goldstein, Schauser, and Culler), StackThreads/MP (Taura et al.),
-% libfork (Williams), and libraries of user-level threads.
-
 This appendix places native fork join among other ways of managing
-stacks under work stealing, starting from the survey of Lee et
-al.~\cite{lee2010cilk-m}.
+stacks under work stealing.
+%
+It starts from the survey of Lee et al.~\cite{lee2010cilk-m}, and ends
+with systems outside that survey.
 
 \paragraph{The cactus-stack problem}
 %
@@ -1041,7 +967,7 @@ Native fork join & yes & very strong$^\dagger$ & weak \\
 Native fork join is not orthogonal to these strategies: it manages
 stacks in the same way as Strategy 5.
 %
-A thief always runs a stolen vertex on a fresh stack.
+A thief always runs a stolen task on a fresh stack.
 %
 A worker that reaches a join whose second branch is still running
 leaves its stack suspended and returns to its scheduler, so whatever it
@@ -1062,15 +988,15 @@ processor.
 That happens when a parent can keep forking before it runs any child,
 as in a loop of spawns.
 %
-Binary fork join rules this out: a fork pushes one vertex and runs
-$\fo$ at once, so a worker's deque holds at most one vertex per call to
+Binary fork join rules this out: a fork pushes one task and runs
+$\fo$ at once, so a worker's deque holds at most one task per call to
 \lstinline|fork2join| in progress on its stack, just as a Cilk deque
 holds at most one frame per spawn in progress.
 %
 In fact, for binary fork join, the two disciplines steal the same work.
 %
 \lstinline|fork2join($\fo$, $\ft$)| corresponds to spawning $\fo$,
-calling $\ft$, and syncing, and the stolen $\vt$ corresponds to the
+calling $\ft$, and syncing, and the stolen task corresponds to the
 continuation of the spawn, up to the sync.
 %
 In both, whoever reaches the join last runs the code that follows it,
@@ -1098,7 +1024,7 @@ Native fork join never splits a frame between stacks.
 %
 A thief runs only the thunk $\ft$, as an ordinary call on its own
 stack, and the parent resumes on its own stack, by restoring a context
-saved by an ordinary call to \lstinline|save|.
+saved by an ordinary call to \lstinline|swap|.
 %
 The only pointers from one stack into another are those that client
 code creates, such as the references that $\ft$ captures, which are
@@ -1126,9 +1052,9 @@ costs one stack allocation.
 Moreover, execution fits the DAG model analyzed by Arora et
 al.~\cite{arora98}.
 %
-A vertex that forks pushes one of its successors and runs the other
-next, and a vertex that a join makes ready runs next on the worker that
-made it ready, through the private slot of Appendix~\ref{sec:deque}.
+A fork pushes one of its branches and runs the other next, and a
+parent that a join makes ready runs next on the worker that made it
+ready.
 %
 So we expect native fork join to meet the time bound of Strategy 5,
 with a constant $c_\infty$, but we have not written out a proof.
@@ -1145,18 +1071,18 @@ time bound.
 Native fork join pays the price of Strategy 5.
 %
 As Lee et al. note for Strategy 5, the busy-leaves property holds: a
-stack suspended at a join waits on a stolen vertex, whose stack is
+stack suspended at a join waits on a stolen task, whose stack is
 either running or itself suspended at a join, and so on, down to a
 stack that a worker is running.
 %
 So the stacks in use form a tree with at most $P$ leaves.
 %
-Each stack starts at a vertex nested more deeply in calls to
-\lstinline|fork2join| than the vertex that starts its parent, so the
+Each stack starts at a task nested more deeply in calls to
+\lstinline|fork2join| than the task that starts its parent, so the
 tree has depth at most $D$, the maximum nesting depth of calls to
 \lstinline|fork2join|, and there are $O(PD)$ stacks in use.
 %
-This count holds even if the stack of a stolen vertex counts as in use
+This count holds even if the stack of a stolen task counts as in use
 until its parent returns from \lstinline|fork2join|
 (Section~\ref{sec:safety}).
 %
@@ -1166,38 +1092,119 @@ $PS_1$.
 But a stack can grow as large as $S_1$, and is recycled only when it
 holds no frames, so stacks can take up to $DPS_1$ of virtual memory.
 %
-In native fork join, each stack has a fixed size $Z$, 512\,KB in
-TaskPaRTS, so stacks take $O(PDZ)$ of virtual memory.
+In native fork join, each stack has a fixed size $Z$, a parameter of
+the implementation, so stacks take $O(PDZ)$ of virtual memory.
 %
-And a page of a stack, once touched, stays in memory at least until the
+The operating system gives a page of a stack physical memory only when
+the page is first touched, so a generous $Z$ costs address space rather
+than memory.
+%
+But a page of a stack, once touched, stays in memory at least until the
 stack is freed.
 
 \paragraph{Refinements}
 %
 Lee et al. mention two refinements of Strategy 5 that appear to carry
-over to native fork join, and that neither TaskPaRTS nor micro
-taskparts implements.
+over to native fork join, and that micro taskparts does not
+implement.
 %
 One is to unmap the pages of frames once they are popped, to give their
 physical memory back, which they expect to be costly unless done
 lazily.
 %
-The other is Strategy 6, in which a thief runs a stolen vertex on the
+The other is Strategy 6, in which a thief runs a stolen task on the
 stack of a suspended ancestor, when no frame lies above that ancestor's
 frame.
 %
 This is safe, because the ancestor cannot resume before the stolen
-vertex finishes.
+task finishes.
 %
 But Lee et al. report that Strategy 6 can still need
 $\Omega(P^2 S_1)$ stack space.
+
+\paragraph{Paying only when stolen}
+%
+The idea that a fork should cost little more than a call unless its
+work is actually stolen goes back to lazy task
+creation~\cite{mohr1991lazy} and to lazy
+threads~\cite{goldstein1996lazythreads}.
+%
+Lazy task creation steals the continuation of the parent, which
+requires splitting a stack, and is built into a compiler.
+%
+Lazy threads, like native fork join, run a child on the parent's stack
+as if it had been called sequentially, and give a child a stack of its
+own only when another processor asks for work.
+%
+But lazy threads rely extensively on compiler support, whereas native
+fork join uses ordinary calls and the standard calling convention.
+%
+StackThreads/MP~\cite{taura1999stackthreads} also keeps the standard
+calling convention, with modest extensions to the compiler.
+%
+It migrates the parent, and leaves the frames of suspended threads in
+place within the worker's stack.
+
+\paragraph{Continuation stealing in a library}
+%
+Fibril~\cite{yang2016fibril} is the system closest to native fork join
+in its treatment of stacks.
+%
+It is a C library that needs no custom compiler, and, like Strategy 5,
+it runs stolen work on a stack taken from a pool.
+%
+It steals continuations: a thief resumes the stolen frame where it
+lies, on the victim's stack, with a stack pointer that points into a
+new stack, which requires every such function to keep a frame pointer.
+%
+A worker that must wait at a join unmaps the unused part of its stack,
+which gives Fibril a strong space bound, $S_P \le P(S_1 + D)$, where
+native fork join has only the weak one.
+%
+Nowa~\cite{schmaus2021nowa} builds on Fibril's stacks, and makes the
+coordination of joins wait-free.
+%
+Libfork~\cite{williams2025libfork} obtains continuation stealing
+portably, from the stackless coroutines of C++20, at the price that
+tasks are written as coroutines, whose frames it allocates on segmented
+stacks.
+%
+Native fork join steals children instead, so no frame is ever split
+between stacks, and client code consists of ordinary functions.
+
+\paragraph{Child stealing that does not wait}
+%
+Robison~\cite{robison2014primer} classifies work-stealing schedulers by
+what is stolen, the child or the continuation, and by what happens at
+a join that must wait: the worker \emph{stalls}, or the scheduler is
+\emph{greedy}, and the last worker to reach the join continues past it.
+%
+The child-stealing libraries in his table, among them TBB, stall, and
+the only examples of greedy child stealing are an unpublished scheduler
+and the untied tasks of OpenMP.
+%
+Native fork join belongs to this last, sparsely populated class.
+%
+Wool~\cite{faxen2008wool} has the same fast path as native fork join:
+a spawned task that is not stolen is run by an ordinary call.
+%
+But when the task was stolen and has not finished, the worker stays at
+the join and steals back from the thief, a strategy called
+leapfrogging~\cite{wagner1993leapfrogging}, which bounds the depth of
+the worker's stack by restricting what the worker may steal.
+%
+Native fork join places no such restriction: the worker is free to
+steal anything, because what it steals runs on another stack.
 
 \paragraph{Stacks per steal, not per thread}
 %
 A library of user-level threads typically gives each thread a stack
 when the thread is created.
 %
-Native fork join creates a stack only when a vertex is stolen; a vertex
+In Argobots~\cite{seo2018argobots}, for example, each user-level thread
+has its own, dynamically allocated stack.
+%
+Native fork join creates a stack only when a task is stolen; a task
 that is not stolen runs on the stack of its parent.
 %
 So a computation allocates one stack per steal, rather than one per
