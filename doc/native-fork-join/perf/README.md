@@ -16,7 +16,7 @@ that file from the measurements recorded in the store `.flexibench/`.
   certificate's digest. It is written by hand for now, so `check-view` doesn't check it.
 
 The view is certified by certificate
-`a5cf1c2f58147214740c9af4ea1a575e5a9f08cb18efc5bd0dc1ad28cd5b684d`, issued by Flexibench
+`6d8c6e88c5502ef9fae471ffecd644fce5d5c8d2a355c874efeaf34797b7b34e`, issued by Flexibench
 2a10c0c with Lean 4.30.0.
 
 ## The builds
@@ -31,13 +31,13 @@ Each row of the table is a build of `doc/native-fork-join/microtaskparts`.
 | `lines` | a22aa14 | the in-counter, the out-set and the context of a vertex each start a cache line |
 | `lookups` | 5c7831a | the worker looked up only where it may have changed |
 | `swap` | 7fb2c44 | a context switch in one call, resuming with a jump |
-| `direct` | 23adce6 | no round trips through the scheduler loop: the algorithm of the paper's Section 2 |
+| `direct` | c73ab63 | no round trips through the scheduler loop: the algorithm of the paper's Section 2 |
 
 The first six builds implement the earlier formulation of the paper's appendix "Fork
 join through the scheduler". Each is the one before it with one change, and `direct`
 replaces that formulation with the paper's algorithm.
 
-Commits 9764023, a407ae3, a22aa14 and 23adce6 were made only for this table. They are on
+Commits 9764023, a407ae3, a22aa14 and c73ab63 were made only for this table. They are on
 the branches `perf-step-minstd`, `perf-steps` and `perf-direct`.
 
 ## Checking
@@ -45,7 +45,7 @@ the branches `perf-step-minstd`, `perf-steps` and `perf-direct`.
 From this directory, with Flexibench 2a10c0c:
 
     flexibench check-objects
-    flexibench check a5cf1c2f58147214740c9af4ea1a575e5a9f08cb18efc5bd0dc1ad28cd5b684d
+    flexibench check 6d8c6e88c5502ef9fae471ffecd644fce5d5c8d2a355c874efeaf34797b7b34e
     flexibench check-view times.tex
     flexibench check-view times.html
 
