@@ -121,7 +121,7 @@ class alignas(64) abp {
     uint32_t top;
   };
   struct alignas(64) slot { // one per cache line, to avoid false sharing
-    std::atomic<task *> v; // read only below bot, so never uninitialized
+    std::atomic<task *> t; // read only below bot, so never uninitialized
   };
   // The deque holds the second branches of the calls to fork2join in
   // progress on its worker, and the vertices that its worker made ready.
@@ -132,13 +132,13 @@ class alignas(64) abp {
   slot slots[capacity];
 
 public:
-  void push(task *v) {
+  void push(task *t) {
     uint32_t b = bot.load(std::memory_order_relaxed);
     if (b == capacity) {
       std::fprintf(stderr, "microtaskparts: deque overflow\n");
       std::abort();
     }
-    slots[b].v.store(v, std::memory_order_release);
+    slots[b].t.store(t, std::memory_order_release);
     bot.store(b + 1, std::memory_order_seq_cst);
   }
 
@@ -150,17 +150,17 @@ public:
     b--;
     bot.store(b, std::memory_order_release);
     std::atomic_thread_fence(std::memory_order_seq_cst);
-    task *v = slots[b].v.load(std::memory_order_acquire);
+    task *t = slots[b].t.load(std::memory_order_acquire);
     age_t old_age = age.load(std::memory_order_acquire);
     if (b > old_age.top) {
-      return v; // no thief can reach slot b
+      return t; // no thief can reach slot b
     }
     // Slot b holds the last task, or was stolen. Reset the deque, and race
     // any thief for slot b.
     bot.store(0, std::memory_order_release);
     age_t new_age{old_age.tag + 1, 0};
     if ((b == old_age.top) && age.compare_exchange_strong(old_age, new_age)) {
-      return v;
+      return t;
     }
     age.store(new_age, std::memory_order_seq_cst);
     return nullptr;
@@ -176,9 +176,9 @@ public:
     if (b <= old_age.top) {
       return nullptr;
     }
-    task *v = slots[old_age.top].v.load(std::memory_order_acquire);
+    task *t = slots[old_age.top].t.load(std::memory_order_acquire);
     age_t new_age{old_age.tag, old_age.top + 1};
-    return age.compare_exchange_strong(old_age, new_age) ? v : nullptr;
+    return age.compare_exchange_strong(old_age, new_age) ? t : nullptr;
   }
 };
 
@@ -427,27 +427,28 @@ template <typename F1, typename F2> void fork2join(F1 &&f1, F2 &&f2) {
     return;
   }
   join j;
-  fork_task<F2> t(f2, &j);
+  fork_task<F2> own(f2, &j);
 
   // (1) Fork: make the second branch stealable, and run the first.
-  me().deque.push(&t);
+  me().deque.push(&own);
   f1();
 
   // (2) Try to take the second branch back. f1 may have returned on another
   // worker, so look the worker up again.
   worker &w = me();
-  task *u = w.deque.pop();
-  if (u == &t) {
+  task *t = w.deque.pop();
+  if (t == &own) {
     // (3) Not stolen: run the second branch here, as an ordinary call.
     f2();
     return;
   }
-  // We popped some other task: a vertex that became ready and was pushed on
-  // this deque above t, or below which t never was. Put it back. Either
-  // way, t is not ours to run: a thief has it, or it is still in a deque,
-  // and whichever worker takes it out will start it on a fresh stack.
-  if (u != nullptr) {
-    w.deque.push(u);
+  // We popped some other task t: a vertex or a suspension that became ready
+  // and was pushed on this deque above own, or below which own never was.
+  // Put it back. Either way, own is not ours to run: a thief has it, or it
+  // is still in a deque, and whichever worker takes it out will start it on
+  // a fresh stack.
+  if (t != nullptr) {
+    w.deque.push(t);
   }
 
   // (4) Suspend this stack at the join, and switch to the scheduler loop,

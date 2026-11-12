@@ -79,8 +79,8 @@ its own, and stacks belong to workers rather than to tasks.
 The fast path of a fork performs the same operations as before.
 %
 A companion implementation extends micro taskparts by about 190 lines
-of C++, and includes two examples: a Gauss-Seidel stencil, and a
-pipeline whose edges are added while it runs.
+of C++, and includes two examples: a pipeline whose edges are added
+while it runs, and a Gauss-Seidel stencil.
 \end{abstract}
 
 \maketitle
@@ -181,8 +181,8 @@ Section~\ref{sec:nfj} recalls native fork join.
 Section~\ref{sec:vertices} adds vertices, and
 Section~\ref{sec:safety} revisits the safety argument.
 %
-Sections~\ref{sec:stencil} and~\ref{sec:pipeline} present two
-examples, a stencil and a pipeline, and Section~\ref{sec:costs}
+Sections~\ref{sec:pipeline} and~\ref{sec:stencil} present two
+examples, a pipeline and a stencil, and Section~\ref{sec:costs}
 discusses costs and limits.
 %
 The appendices relate the design to DAG calculus and its original
@@ -283,7 +283,10 @@ enter() -> void {  // first frame on a fresh stack
   restore(me.k) }  // leave this stack
 \end{lstlisting}
 \hrule
-\caption{The scheduler, with vertices}
+\caption{The scheduler, with vertices.  Here and in
+  Figure~\ref{fig:ops}, \lstinline|t| names a task of any kind,
+  \lstinline|u| and \lstinline|v| name tasks that have a count
+  (vertices and suspensions), and \lstinline|s| names a suspension.}
 \label{fig:scheduler}
 \end{figure}
 
@@ -292,12 +295,12 @@ enter() -> void {  // first frame on a fresh stack
 \begin{lstlisting}[escapechar=@]
 fork2join($\fo$, $\ft$ : () -> void) -> void {
   j = join{pending = 2}
-  t = fork{body = $\ft$, j = &j}
-  push(&t)@\stepc{1}@
+  own = fork{body = $\ft$, j = &j}
+  push(&own)@\stepc{1}@
   $\fo$()
-  u = pop()@\stepc{2}@
-  if (u == &t) { $\ft$(); return }@\stepc{3}@
-  if (u != null) push(u)@\stepc{4}@
+  t = pop()@\stepc{2}@
+  if (t == &own) { $\ft$(); return }@\stepc{3}@
+  if (t != null) push(t)@\stepc{4}@
   me.reached = &j
   swap(j.k, me.k) }
 
@@ -336,6 +339,8 @@ out-set, \lstinline|out|.
 %
 A \emph{suspension} is the rest of a stack: it has a saved context
 where the others have a body, and an in-counter too.
+%
+We write \emph{task} for all three kinds, and never for a fork alone.
 %
 Whatever its kind, a task in a deque is ready to run and is not
 running, and the worker that takes it out of the deque starts it,
@@ -501,108 +506,37 @@ A join is never in a deque.
 
 \paragraph{Whose stack?}
 %
-In the original, a stolen task records the stack it runs on, and the
-frame that holds the task frees that stack.
+Which code runs on which stack is as before: a task taken from a
+deque starts on a fresh stack, and everything else is an ordinary
+call.
 %
-A vertex has no such frame, and may be freed before its stack is.
+For a program that only forks, the stacks in use at any moment are the
+same as in the original.
 %
-So stacks now belong to workers.
+What changes is who gets a stack and who gives it back.
+%
+In the original, the loop allocates a stack for each stolen task and
+records it in the task, and the stack is freed when the call to
+\lstinline|fork2join| that holds the task returns.
+%
+A vertex has no such call, and may be freed before its stack is.
+%
+So a stack now passes from worker to worker, and a task never holds
+one.
 %
 A loop that starts a task takes a stack from its worker's cache, or
 allocates one.
 %
-The first frame on the stack remembers the stack, and hands it to the
-loop of whichever worker the task finishes on, which puts it in its
-own cache.
+The first frame on the stack remembers the stack, and when the task
+finishes, it hands the stack to the loop of the worker it finishes on,
+which puts it in its own cache.
+%
+So a stack is given back as soon as its task leaves it, a little
+earlier than before, and is reused instead of freed.
 %
 The scheduler stores nothing in a task while the task runs, which is
 what allows a vertex to be made ready again before the loop has
 finished with its previous run.
-
-\section{Example: a stencil}
-\label{sec:stencil}
-
-\begin{figure}
-\hrule
-\begin{lstlisting}
-type block = vertex with {i, j, steps_left : int}
-
-body(b : block*) -> void { update block (b.i, b.j) }
-
-notify(b : block*) -> void {  // in the loop
-  b.steps_left = b.steps_left - 1
-  b.pending = number of neighbors of b
-  count_down(below(b)); count_down(right(b))
-  if (b.steps_left > 0)
-    { count_down(above(b)); count_down(left(b)) }
-  else if (b is the last block)
-    for (u in close(b.out)) count_down(u) }
-
-seidel(steps : int) -> void {
-  for each block b {
-    b.steps_left = steps
-    b.pending = number of neighbors above
-                and to the left of b }
-  first.pending = 1; release(first)
-  wait(last) }
-\end{lstlisting}
-\hrule
-\caption{The Gauss-Seidel stencil.  Neighbors that do not exist are
-  skipped.}
-\label{fig:stencil}
-\end{figure}
-
-Our example is the Gauss-Seidel benchmark of the DAG calculus
-paper~\cite{Dag_calculus_16}.
-%
-The grid is divided into square blocks.
-%
-One time step of a block replaces each of its cells, in place and in
-row order, by the average of the cell and its four neighbors.
-%
-So time step $t$ of a block depends on step $t$ of the blocks above and
-to the left, and on step $t-1$ of the blocks below and to the right.
-
-Figure~\ref{fig:stencil} shows the program.
-%
-There is one vertex per block, which runs once per time step, so the
-vertices are allocated once, in an array.
-%
-A block's edges are implicit: they go to its neighbors.
-%
-So a block replaces the out-set by code of its own, which the scheduler
-loop runs in place of closing the out-set.
-%
-After each step, the block sets its count to the number of its
-neighbors, for the next step, and then counts its neighbors down.
-%
-The block does all this in the loop, off its stack, which is why a
-neighbor can make it ready again at once.
-%
-The caller releases the first block, and waits for the last, which
-closes its out-set when it has run its final step.
-
-The original implementation did not make a vertex of each block,
-because starting a vertex was too expensive.
-%
-It kept the ready blocks in a queue inside one vertex, and split the
-queue when another processor asked for work.
-%
-Here, a ready block is a pointer pushed on a deque, and the deque
-already shares work on demand.
-
-For comparison, the companion code has a fork-join version of the same
-computation.
-%
-Block $(i, j)$ at step $t$ depends only on blocks whose
-$i + j + 2t$ is smaller by one, so the blocks with the same
-$i + j + 2t$ are independent.
-%
-The fork-join version runs these groups one after another, each as a
-parallel loop.
-%
-Both versions compute, bit for bit, the grid that the serial program
-computes.
 
 \section{Example: a pipeline}
 \label{sec:pipeline}
@@ -630,9 +564,10 @@ pipeline(K : int) -> void {
 \label{fig:pipeline}
 \end{figure}
 
-In the stencil, every edge is known before the computation starts.
+Our first example is written with the operations of
+Figure~\ref{fig:ops} and nothing else.
 %
-Our second example needs edges that are not: the out-set of a vertex
+It needs edges that are not known in advance: the out-set of a vertex
 grows after the vertex has started its work.
 %
 That is what a future requires, since a future may be forced at any
@@ -713,11 +648,144 @@ loop and one for each kind of stage.
 Here, the pipeline is a client of the operations of
 Figure~\ref{fig:ops}, and uses nothing else.
 %
-Where the stencil used a vertex that runs many times and whose edges
-are implicit, the pipeline uses vertices that run once and whose edges
-are added on the fly.
-%
 Its output is, byte for byte, that of the serial program.
+
+\section{Example: a stencil}
+\label{sec:stencil}
+
+\begin{figure}
+\hrule
+\begin{lstlisting}
+type block = vertex with {i, j, steps_left : int}
+
+body(b : block*) -> void { update block (b.i, b.j) }
+
+notify(b : block*) -> void {  // in the loop
+  b.steps_left = b.steps_left - 1
+  b.pending = number of neighbors of b
+  count_down(below(b)); count_down(right(b))
+  if (b.steps_left > 0)
+    { count_down(above(b)); count_down(left(b)) }
+  else if (b is the last block)
+    for (u in close(b.out)) count_down(u) }
+
+seidel(steps : int) -> void {
+  for each block b {
+    b.steps_left = steps
+    b.pending = number of neighbors above
+                and to the left of b }
+  first.pending = 1; release(first)
+  wait(last) }
+\end{lstlisting}
+\hrule
+\caption{The Gauss-Seidel stencil.  Neighbors that do not exist are
+  skipped.}
+\label{fig:stencil}
+\end{figure}
+
+The pipeline fits the operations of Figure~\ref{fig:ops}: it pays
+for a vertex and an edge per chunk, and a chunk is large.
+%
+Our second example does not fit them as well.
+%
+It is the Gauss-Seidel benchmark of the DAG calculus
+paper~\cite{Dag_calculus_16}, in which a block may be small, runs
+once per time step, and has up to four edges each time.
+%
+With the operations, every run of a block would allocate a vertex and
+up to four edges, which is a large cost beside a small block.
+%
+So the program goes below the operations, to the two things they are
+built from: the in-counter, and the code that notifies.
+%
+It is still a program of the calculus, with vertices, counts, and
+edges, but it chooses how to represent them.
+
+%
+The grid is divided into square blocks.
+%
+One time step of a block replaces each of its cells, in place and in
+row order, by the average of the cell and its four neighbors.
+%
+So time step $t$ of a block depends on step $t$ of the blocks above and
+to the left, and on step $t-1$ of the blocks below and to the right.
+
+Figure~\ref{fig:stencil} shows the program.
+%
+There is one vertex per block, which runs once per time step, so the
+vertices are allocated once, before the computation starts, in a
+two-dimensional array.
+%
+A block's edges are implicit: they go to its neighbors, which are
+found by their position in the array.
+%
+So a block replaces the out-set by code of its own, which the scheduler
+loop runs in place of closing the out-set.
+%
+After each step, the block sets its count to the number of its
+neighbors, for the next step, and then counts its neighbors down, by
+calling \lstinline|count_down|, which the scheduler itself uses.
+%
+A run of a block allocates nothing.
+%
+The block does all this in the loop, off its stack, which is why a
+neighbor can make it ready again at once.
+%
+The caller releases the first block, and waits for the last, which
+closes its out-set when it has run its final step.
+
+The original implementation made the same choice of representation,
+and went further.
+%
+It too allocated once, a two-dimensional array of in-counters and one
+of step counts, with an entry per block.
+%
+But it did not make a vertex of each block, because starting a vertex
+was too expensive.
+%
+It kept the ready blocks in a queue inside one vertex, as pairs of
+grid indices.
+%
+The vertex ran the blocks of its queue one after another, counted
+their neighbors down, and put those that became ready on its own
+queue.
+%
+When another processor asked for work, the vertex gave it half of the
+queue, as a new vertex.
+%
+So the program bypassed the scheduler's deque for all but that
+sharing: it was a scheduler nested within the scheduler, with a policy
+and a queue fitted to the stencil.
+%
+Here the program schedules nothing: a ready block is a pointer pushed
+on a deque, and the deque already shares work on demand.
+
+We take this to be a reasonable way to write such a program.
+%
+Where the pipeline used vertices that run once and edges that are
+added on the fly, the stencil uses vertices that run many times and
+edges that are never stored.
+%
+When the operations cost more than a program can afford, the program
+can keep the model of the calculus, and the scheduler, and change only
+the representation.
+
+A queue and a policy of one's own, as in the original stencil, is a
+separate matter from the calculus: any task could have them, vertex or
+not.
+
+For comparison, the companion code has a fork-join version of the same
+computation.
+%
+Block $(i, j)$ at step $t$ depends only on blocks whose
+$i + j + 2t$ is smaller by one, so the blocks with the same
+$i + j + 2t$ are independent.
+%
+The fork-join version runs these groups one after another, each as a
+parallel loop.
+%
+Both versions compute, bit for bit, the grid that the serial program
+computes.
 
 \section{Costs and limits}
 \label{sec:costs}
