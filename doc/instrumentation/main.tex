@@ -1,0 +1,933 @@
+\documentclass[sigplan,nonacm]{acmart}
+\makeatletter
+\renewcommand\@formatdoi[1]{\ignorespaces}
+\makeatother
+\settopmatter{printfolios=false,printccs=false,printacmref=false}
+
+\setcopyright{none}
+\acmConference[]{}{}{}
+
+\usepackage{enumitem}
+\usepackage{mathtools}
+\usepackage{amsmath}
+
+\usepackage{listings}
+
+\lstdefinelanguage{pcpp}{%
+  language     = C++,
+  morekeywords = {type,then,of,match,with,null},
+  keywordstyle=\ttfamily\bfseries
+}
+
+\usepackage{natbib}
+\usepackage{url}
+
+\input{local}
+
+\lstset{language=pcpp,numbers=none}
+
+% The measurements of Appendix sec:perf, certified by Flexibench
+% (perf/README.md), and cited as flexibench-times (perf/times.bib).
+% \perftime{ROW}{P} is the time of row ROW of Table tbl:cost on P
+% workers.
+\input{perf/times}
+\newcommand{\perftime}[2]{\fbval{times}{#1}{P = #2}}
+
+\newcommand{\fo}{\mathtt{f_1}}
+\newcommand{\ft}{\mathtt{f_2}}
+% A line that only instrumentation adds, marked flush right in a listing.
+\newcommand{\added}{\hfill{\rmfamily\slshape // new}}
+
+\title{Instrumenting a work stealer off the fast path}
+% TODO: add co-author, and check affiliation.
+\author{Mike Rainey}
+\affiliation{
+  \institution{Carnegie Mellon University}
+  \city{Pittsburgh}
+  \state{PA}
+  \country{USA}
+}
+\email{me@mike-rainey.site}
+
+\begin{document}
+
+\begin{abstract}
+A parallel program that runs on $P$ cores is rarely $P$ times faster
+than its sequential counterpart, and the first question is where the
+rest of the time went.
+%
+A work-stealing scheduler can answer, if it records what each worker
+is doing: running the program, scheduling, or looking for work.
+%
+From those three totals, a speedup factors into parts that each name
+one cause of loss, and from a log of the same changes of state, a trace
+viewer shows when each loss occurred.
+%
+The difficulty is cost.
+%
+A fork takes a few nanoseconds, about as long as reading a clock, so a
+scheduler that reads the clock at each fork distorts what it measures.
+%
+In this short paper, we show that under native fork join, no fork needs
+to be instrumented: every change of state happens in the scheduler
+loop, which a fork enters only if its second branch is stolen.
+%
+So the instrumentation costs a few clock readings per steal, and
+nothing per fork.
+%
+We describe what to record, where to record it, and what to avoid, and
+we extend micro taskparts, a minimal implementation of native fork
+join, accordingly.
+\end{abstract}
+
+\maketitle
+
+\section{What instrumentation is for}
+
+Suppose a fork-join program takes time $T_s$ when its forks are
+replaced by ordinary calls, and time $T_P$ on $P$ workers under a
+work-stealing scheduler~\cite{blumofele99}.
+%
+Its speedup, $T_s/T_P$, is usually less than $P$.
+%
+The causes of the loss are few, and they call for different remedies.
+%
+\begin{itemize}[leftmargin=*]
+\item \emph{The forks themselves cost time}, even when nothing is
+  stolen.
+  The remedy is to fork less often, by running small problems
+  sequentially.
+\item \emph{The same work takes longer on $P$ cores than on one.}
+  The cores compete for memory bandwidth and for cache, some cores are
+  slower than others, and many slow down when all are busy.
+  This is \emph{work inflation}~\cite{acar2017inflation}.
+  The remedy lies in the program and the machine, not in the
+  scheduler.
+\item \emph{Workers are idle}, because the program offers too little
+  parallelism, or offers it too late.
+  The remedy is in the algorithm.
+\item \emph{Workers are scheduling}: stealing, allocating stacks, and
+  switching contexts.
+  The remedy is in the scheduler, or in forking less often.
+\end{itemize}
+%
+A running time alone cannot tell these causes apart.
+%
+Acar et al.~\cite{acar2017inflation} show that a few totals, kept by
+the scheduler, can: they factor a speedup into parts, one per cause.
+%
+Totals say how much time was lost, but not when.
+%
+For that, the scheduler keeps a log, which a trace viewer such as
+Perfetto~\cite{perfetto} displays as one timeline per worker.
+
+Both are worth having only if they are cheap, for two reasons.
+%
+Instrumentation that slows the program changes the quantity it
+reports.
+%
+And instrumentation that must be compiled in separately tends to be
+absent on the day it is needed.
+%
+The fork is where the danger lies.
+%
+Under native fork join~\cite{nativeforkjoin}, a fork whose second
+branch is not stolen costs a few nanoseconds more than two calls,
+which is about what one reading of a clock costs.
+%
+A program may fork tens of millions of times a second.
+
+Our observation is that, under native fork join, the fork needs no
+instrumentation at all.
+%
+A worker changes what it is doing only in its scheduler loop, and a
+fork whose second branch is not stolen never enters the loop.
+%
+So everything above can be recorded in the loop, at a cost
+proportional to the number of steals, which is far smaller than the
+number of forks~\cite{blumofele99,arora98}.
+
+Section~\ref{sec:what} defines what is recorded and what it tells us,
+Section~\ref{sec:where} shows where the scheduler records it,
+Section~\ref{sec:cost} discusses its cost, and
+Section~\ref{sec:techniques} describes how to keep that cost from
+leaking onto the fork.
+%
+The appendices cover how to collect a factored speedup, the trace
+format, the clock, and measurements.
+%
+This paper builds on the algorithm and the notation of the native fork
+join paper~\cite{nativeforkjoin}; Section~\ref{sec:where} recalls what
+it needs.
+%
+An extended micro taskparts accompanies this paper.
+
+\section{What is recorded, and what it tells us}
+\label{sec:what}
+
+\paragraph{States}
+%
+At every moment of a run, each worker is in exactly one of three
+states.
+%
+\begin{itemize}[leftmargin=*]
+\item \emph{Working}: running client code, which includes the forks
+  that client code makes.
+\item \emph{Scheduling}: in its scheduler loop with something to do,
+  such as counting a branch at a join, preparing a stolen task, or
+  switching to one.
+\item \emph{Idle}: in its scheduler loop, and failing to steal.
+\end{itemize}
+%
+The scheduler keeps, for each worker, the total time spent in each
+state.
+%
+Summed over the workers, these give the total work $W_P$, scheduling
+time $S_P$, and idle time $I_P$ of a run on $P$ workers.
+%
+Because each worker is always in exactly one state,
+\[ P \cdot T_P = W_P + S_P + I_P. \]
+
+\paragraph{Factoring a speedup}
+%
+Let $W_1$ be the work of a run on one worker.
+%
+Then the speedup is, exactly,
+\[
+\frac{T_s}{T_P} \;=\; P \cdot \frac{T_s}{W_1} \cdot \frac{W_1}{W_P}
+  \cdot \frac{W_P}{W_P + S_P + I_P}.
+\]
+%
+Each of the three fractions is 1 in the ideal case, and each falls
+below 1 for one of the causes of Section~1.
+%
+\begin{itemize}[leftmargin=*]
+\item $T_s/W_1$ is the price of the forks: how much slower the
+  parallel code is than the sequential code, with no other worker
+  around.
+\item $W_1/W_P$ is the inverse of the work inflation: how much more
+  time the same work takes when $P$ workers share the machine.
+\item The last fraction is the \emph{utilization}: the share of the
+  workers' time that goes to work, which idle time and scheduling time
+  reduce separately.
+\end{itemize}
+%
+This is the idea behind the factored speedup plots of Acar et
+al.~\cite{acar2017inflation}, adapted to the three states above.
+%
+Computing it takes two instrumented runs, on 1 and on $P$ workers, and
+one run of the sequential program.
+%
+Appendix~\ref{sec:collect} gives the recipe: which builds to run, and
+which of the values that the scheduler reports stands for each symbol.
+
+\paragraph{Counts}
+%
+The scheduler also counts steals, which says how often work moved
+between workers, and which bounds the stacks allocated and the
+contexts switched~\cite{nativeforkjoin}.
+%
+A count of forks is useful too: divided into the work, it gives the
+grain of the program, the time between forks.
+%
+But it is the one item here that belongs to the fork, and
+Section~\ref{sec:cost} treats it apart.
+
+\paragraph{The log}
+%
+The log holds the same information before it is totaled.
+%
+Each worker appends an entry whenever it changes state, giving the
+time and the new state, and whenever it steals, giving the time and
+the victim.
+%
+From a log, a viewer draws each worker as a timeline of working,
+scheduling, and idle intervals, with a mark at each steal.
+%
+Such a picture shows what totals hide: a sequential phase, in which
+one worker works and the rest are idle; a burst of steals as a
+computation spreads out; or a worker that the operating system
+descheduled.
+%
+The totals take constant space per worker, and the log takes space
+proportional to the number of steals.
+
+\section{Where it is recorded}
+\label{sec:where}
+
+\paragraph{Native fork join, in brief}
+%
+Under native fork join~\cite{nativeforkjoin}, each worker runs a
+scheduler loop on its thread's own stack, and client code on separate
+task stacks.
+%
+\lstinline|fork2join($\fo$, $\ft$)| pushes a task for $\ft$ on the
+worker's deque, calls $\fo$, and pops.
+%
+If the pop succeeds, it calls $\ft$ and returns, without ever leaving
+client code.
+%
+If instead the task was stolen, it saves the parent's context in the
+join and switches to the worker's loop.
+%
+The loop counts the branches that reach a join, resumes the parent
+once both have, and otherwise steals, starting each stolen task on a
+fresh stack.
+%
+A task that finishes on such a stack switches to the loop as well.
+
+\begin{figure}
+\hrule
+\begin{lstlisting}[escapechar=@]
+type state = working | scheduling | idle
+type recorder = {cur : state, since : time,
+  total : time[state], steals : int,
+  log : list of (time, state or worker)}
+
+mark(s : state) -> void {  // called in loop only
+  r = me.rec
+  if (r.cur == s) return
+  now = clock()
+  r.total[r.cur] += now - r.since
+  r.cur = s; r.since = now
+  append(r.log, (now, s)) }  // if logging
+
+loop() -> void {  // on the worker's own stack
+  while (!done) {
+    j = me.reached; me.reached = null
+    if (j != null) {  // a branch reached j
+      if (fetch_and_add(j.pending, -1) == 1) {
+        mark(working)@\added@
+        swap(me.k, j.k)  // resume the parent
+        mark(scheduling) }@\added@
+      continue }
+    t = steal()
+    if (t == null) { mark(idle); continue }@\added@
+    mark(scheduling); me.rec.steals++@\added@
+    t.k = new_context(new_stack(), enter)
+    me.starting = t
+    mark(working)@\added@
+    swap(me.k, t.k)
+    mark(scheduling) } }@\added@
+\end{lstlisting}
+\hrule
+\caption{The scheduler loop of native fork join, with the lines that
+  instrumentation adds.
+  \lstinline|fork2join| is unchanged.}
+\label{fig:loop}
+\end{figure}
+
+\paragraph{Every change of state is in the loop}
+%
+A worker starts working when its loop switches to a task stack: to a
+stolen task, or to a parent whose join is complete.
+%
+It stops working when something switches back to its loop: a fork
+whose second branch was stolen, or a task that has finished.
+%
+Either way, the next thing to run is the instruction that follows a
+\lstinline|swap| in the loop.
+%
+And a worker is idle only while its loop fails to steal.
+%
+So the loop can do all the recording, as Figure~\ref{fig:loop} shows.
+%
+\lstinline|mark($s$)| records that the worker is now in state $s$: it
+reads the clock, charges the time since the last change to the state
+the worker was in, and, in a build that logs, appends an entry to the
+worker's log.
+%
+It does nothing if the worker is already in state $s$, so a worker
+that fails to steal many times in a row reads the clock once.
+
+\lstinline|fork2join| does not appear in Figure~\ref{fig:loop},
+because nothing in it changes.
+%
+The code that switches from client code to the loop does not change
+either: the loop records the change of state once it is running again.
+%
+So the few instructions of the switch are charged to work.
+
+\paragraph{What a steal costs in clock readings}
+%
+A steal causes at most six calls to \lstinline|mark| that read the
+clock.
+%
+The thief stops being idle, starts the stolen task, and returns to its
+loop when the task finishes; if it then resumes the parent, that is a
+fourth.
+%
+The victim returns to its loop when it finds its task stolen, and then
+either becomes idle or starts something else.
+%
+A fork whose second branch is not stolen causes none.
+
+\section{What it costs}
+\label{sec:cost}
+
+\paragraph{Per fork, nothing}
+%
+With totals and the log turned on, a fork whose second branch is not
+stolen runs the same instructions as with both turned off.
+%
+We mean this literally.
+%
+In micro taskparts, the compiled code of a client function that forks
+is the same in the three builds, apart from the addresses of other
+functions and one constant, the size of a worker.
+%
+Section~\ref{sec:techniques} explains what it took to make this true.
+
+\paragraph{Per steal, a little}
+%
+Each steal adds a few readings of the clock, each a single
+instruction (Appendix~\ref{sec:clock}), a few additions, and, with the
+log, up to seven entries of 16 bytes.
+%
+This is small beside what a steal already costs: one stack allocation
+and four context switches~\cite{nativeforkjoin}.
+
+\paragraph{The count of forks}
+%
+Counting forks is the exception: it puts one increment of a counter in
+memory on every fork.
+%
+Done well, this is cheap, but it is not free, so it is a separate
+option.
+%
+Done carelessly, it is the costliest thing in this paper.
+%
+Table~\ref{tbl:cost} in Appendix~\ref{sec:perf} compares three ways to
+count: in a counter private to each worker, in one atomic counter that
+all workers share, and in private counters packed side by side in one
+array.
+%
+On one worker, the three cost about the same.
+%
+On several, the last two make a program that does little but fork
+far slower than it is with no counting at all, and slower than it is
+on one worker: on 4 workers, it takes \perftime{atomic}{4}\,s and
+\perftime{packed}{4}\,s instead of \perftime{plain}{4}\,s.
+%
+The shared counter fails for the obvious reason: every fork on every
+worker writes to the same cache line.
+%
+The packed counters fail for the same reason, less obviously: no two
+workers write to the same counter, but several counters share a line.
+
+\paragraph{Pay as you go}
+%
+A build of micro taskparts chooses among four levels: nothing; the
+totals and the count of steals; those plus the log; and those plus the
+count of forks.
+%
+The first three run the same code at a fork, so the choice among them
+is a matter of memory for the log, not of time.
+%
+Only the count of forks is a real decision.
+
+\section{Keeping the cost off the fork}
+\label{sec:techniques}
+
+What Section~\ref{sec:where} adds is simple.
+%
+The care goes into four things that would otherwise put the cost back
+on the fork, or on other workers.
+
+\paragraph{No synchronization}
+%
+Each worker has its own recorder, and writes to no other.
+%
+Nobody reads a recorder until the workers have stopped, when one
+thread adds up the totals and writes out the logs.
+%
+So no field of a recorder is atomic, and no log is locked.
+%
+The price is that totals are not available while the computation
+runs.
+%
+\lstinline|mark| needs no lookup of the current worker either: only
+the loop calls it, and a loop always runs on its own worker.
+
+\paragraph{No false sharing}
+%
+A recorder that no other worker writes to can still be slowed by
+other workers, if it shares a cache line with something they write.
+%
+Two things qualify.
+%
+One is another worker's recorder, as with the packed counters of
+Section~\ref{sec:cost}.
+%
+The other is a deque: thieves write to the deque of their victim.
+%
+So each recorder starts and ends at a cache-line boundary, as does
+each deque.
+
+\paragraph{No change to the layout that the fork uses}
+%
+A fork reads and writes a few fields of its worker, among them the
+ends of the deque.
+%
+If the recorder were placed before those fields, their offsets would
+change, and with them the instructions of every fork.
+%
+So the recorder comes last in the worker, after the deque.
+
+\paragraph{No cold code inlined into hot code}
+%
+\lstinline|fork2join| is inlined into the client function that calls
+it, which is what makes a fork cheap.
+%
+But then whatever \lstinline|fork2join| inlines becomes part of that
+function too.
+%
+In micro taskparts, \lstinline|fork2join| begins with a test: if the
+scheduler is not running, start it.
+%
+The code that starts it runs once, but when the compiler inlines it,
+the client function must save, on \emph{every} call, each callee-saved
+register that this code uses.
+%
+The instrumentation made this worse, because the code that starts the
+scheduler now also reads the time and converts it to seconds, which
+uses floating-point registers.
+%
+The first instrumented build of micro taskparts was slower at forking
+for this reason alone, with not one instruction added to the path of a
+fork.
+%
+The fix is to forbid the compiler from inlining the code that starts
+the scheduler.
+%
+That also made the build with no instrumentation faster, as the
+native fork join paper reports~\cite{nativeforkjoin}.
+
+\paragraph{Comparing builds}
+%
+A last caution concerns measurement, not design.
+%
+Adding code anywhere in a program moves the functions that follow it,
+and where a hot function lands, relative to cache lines, can change
+its running time by a few percent~\cite{mytkowicz2009wrong}.
+%
+That is as large as the differences we are looking for.
+%
+So the builds we compare align every function to a cache line.
+
+\paragraph{Implementation}
+%
+Micro taskparts with instrumentation is in the directory
+\path{doc/instrumentation/microtaskparts} of the TaskPaRTS
+repository~\cite{taskparts}.
+%
+It adds about 250 lines of C++ to the micro taskparts of the native
+fork join paper, most of them for writing the totals and the trace.
+
+\bibliographystyle{abbrv}
+\bibliography{main,perf/times}
+
+\clearpage
+\appendix
+
+\section{Collecting a factored speedup}
+\label{sec:collect}
+
+This appendix says how a client of micro taskparts obtains each
+quantity of Section~\ref{sec:what}.
+
+\paragraph{What the scheduler reports}
+%
+A build with totals is one compiled with \lstinline|-DMTP_STATS|.
+%
+In such a build, each outermost call to \lstinline|fork2join| leaves
+a record of itself in the variable \lstinline|last_stats|, with times
+in seconds:
+%
+\begin{center}
+\small
+\begin{tabular}{@{}ll@{}}
+\toprule
+field & meaning \\
+\midrule
+\lstinline|nb_workers| & $P$ \\
+\lstinline|exectime| & $T_P$: wall-clock time of the call \\
+\lstinline|work| & $W_P$: time working, summed over workers \\
+\lstinline|sched| & $S_P$: time scheduling, likewise \\
+\lstinline|idle| & $I_P$: time idle, likewise \\
+\lstinline|nb_steals| & steals \\
+\lstinline|nb_forks| & forks, if the build counts them \\
+\bottomrule
+\end{tabular}
+\end{center}
+%
+\lstinline|print_stats| writes the record as one line of JSON.
+
+\paragraph{Three runs}
+%
+A factored speedup on $P$ workers takes three runs of the program,
+with two builds.
+%
+The environment variable \lstinline|TASKPARTS_NUM_WORKERS| sets the
+number of workers.
+%
+\begin{center}
+\small
+\begin{tabular}{@{}llll@{}}
+\toprule
+build & workers & read & as \\
+\midrule
+\lstinline|-DMTP_SERIAL| & & the program's own timing & $T_s$ \\
+\lstinline|-DMTP_STATS| & 1 & \lstinline|work| & $W_1$ \\
+\lstinline|-DMTP_STATS| & $P$ & \lstinline|exectime|, \lstinline|work|,
+  & $T_P$, $W_P$, \\
+ & & \lstinline|sched|, \lstinline|idle| & $S_P$, $I_P$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+%
+In the first build, \lstinline|fork2join| is two ordinary calls, so
+the program is the sequential one, and there is no scheduler to
+report anything: the program times the outermost call itself.
+%
+The second run is needed even though the third reports its own work,
+because work inflation compares the work on $P$ workers with the work
+on one.
+
+\paragraph{The factors}
+%
+From these seven numbers:
+%
+\begin{center}
+\small
+\begin{tabular}{@{}ll@{}}
+\toprule
+speedup & $T_s / T_P$ \\
+price of the forks & $T_s / W_1$ \\
+work inflation & $W_P / W_1$ \\
+utilization & $W_P / (P \cdot T_P)$ \\
+share lost to idle time & $I_P / (P \cdot T_P)$ \\
+share lost to scheduling & $S_P / (P \cdot T_P)$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+%
+The speedup is $P$ times the price of the forks, times the
+utilization, divided by the work inflation.
+%
+Running the third build at each number of workers of interest gives
+the curves of a factored speedup plot.
+
+\paragraph{Cautions}
+%
+The utilization above divides by $P \cdot T_P$ rather than by
+$W_P + S_P + I_P$, as Section~\ref{sec:what} does.
+%
+The two differ slightly in practice: a worker stops its clock when it
+leaves its loop, a moment before the outermost call returns.
+%
+Dividing by $P \cdot T_P$ keeps the product of the factors exactly
+equal to the speedup, and leaves that moment as a small remainder
+beside the idle and scheduling shares.
+
+The record covers one outermost call to \lstinline|fork2join|.
+%
+A program that makes several must add up the records, and whatever it
+does between those calls is sequential time that no record covers.
+%
+Appendix~\ref{sec:region} discusses measuring a part of a program.
+%
+$T_s$ must time the same region of the program as $T_P$ does.
+
+Each of the three runs is one sample.
+%
+As with any timing, each should be repeated, and the factors computed
+from medians.
+
+\section{The trace}
+\label{sec:trace}
+
+After a run, micro taskparts writes the logs as one file in the JSON
+trace-event format, which Perfetto~\cite{perfetto} opens directly.
+%
+Each worker becomes a thread of the trace, named by a metadata event.
+%
+Each stay in a state becomes a complete event (\lstinline|"ph": "X"|),
+named \lstinline|work|, \lstinline|sched|, or \lstinline|idle|, with a
+start time and a duration in microseconds.
+%
+Each steal becomes an instant event (\lstinline|"ph": "i"|) on the
+thief's thread, which carries the victim as an argument.
+%
+For example:
+%
+\begin{lstlisting}[language={},mathescape=false,basicstyle=\footnotesize\ttfamily]
+{"name": "work", "ph": "X", "pid": 0, "tid": 3,
+ "ts": 2570.130, "dur": 402.641}
+{"name": "steal", "ph": "i", "s": "t",
+ "pid": 0, "tid": 3, "ts": 2972.771,
+ "args": {"victim": 1}}
+\end{lstlisting}
+%
+A log entry in memory is 16 bytes: the time, in ticks of the clock,
+what happened, and, for a steal, the victim.
+%
+Intervals are formed, and ticks converted, only when the file is
+written.
+
+% TODO: a figure with a Perfetto screenshot of a small run.
+
+\section{The clock}
+\label{sec:clock}
+
+\lstinline|clock()| reads a counter of the processor directly.
+%
+On AArch64, it is the virtual counter, \lstinline|cntvct_el0|, and on
+x86-64, the time-stamp counter, read with \lstinline|rdtsc|.
+%
+Each is one instruction, with no call into a library or the operating
+system.
+%
+The scheduler keeps times in ticks of this counter, and never converts
+them while workers run.
+%
+To convert them afterward, it needs the length of a tick, which it
+measures rather than looks up: it reads both the counter and the
+system's monotonic clock when the workers start and when they have
+stopped, and divides.
+
+The counter can be coarse.
+%
+A stay in the scheduling state may last only a few ticks, so a single
+interval can be badly rounded.
+%
+The totals are still sound: each reading of the clock ends one
+interval and begins the next, so the rounding of one interval is
+returned to its neighbor, and the three totals of a worker always sum
+to the time the worker ran.
+
+If the operating system deschedules a worker, the time until it runs
+again is charged to the state it was in.
+%
+The log shows such gaps only indirectly, as an interval that is longer
+than it should be.
+
+\section{Performance notes}
+\label{sec:perf}
+
+We ran \lstinline|fib(38)|, as in the native fork join
+paper~\cite{nativeforkjoin}, with six builds of micro taskparts, on an
+Apple M5 with 4 performance and 6 efficiency cores
+(Table~\ref{tbl:cost}).
+%
+The program makes 63 million forks and does almost nothing else, so it
+shows the cost of anything on the path of a fork at its worst.
+%
+The first four builds are the levels of Section~\ref{sec:cost}.
+%
+The last two have no other instrumentation, and count forks in the two
+careless ways described there.
+%
+Each time in the table is the median of five runs, and the runs of the
+six builds were interleaved.
+%
+Every build aligns its functions to a cache line
+(Section~\ref{sec:techniques}).
+%
+Flexibench recorded the runs, checked that every build computes
+correct results and that every count of forks is exact, and certified
+the values in the table~\cite{flexibench-times}.
+%
+The record is in the directory \path{doc/instrumentation/perf} of the
+TaskPaRTS repository~\cite{taskparts}.
+
+\begin{table}
+\small
+\begin{tabular}{@{}lrrr@{}}
+\toprule
+ & \multicolumn{3}{c}{workers} \\
+build & 1 & 4 & 8 \\
+\midrule
+no instrumentation & \perftime{plain}{1} & \perftime{plain}{4} & \perftime{plain}{8} \\
+totals & \perftime{stats}{1} & \perftime{stats}{4} & \perftime{stats}{8} \\
+totals and log & \perftime{log}{1} & \perftime{log}{4} & \perftime{log}{8} \\
+totals and count of forks & \perftime{forks}{1} & \perftime{forks}{4} & \perftime{forks}{8} \\
+\midrule
+count of forks, shared atomic counter & \perftime{atomic}{1} & \perftime{atomic}{4} & \perftime{atomic}{8} \\
+count of forks, packed counters & \perftime{packed}{1} & \perftime{packed}{4} & \perftime{packed}{8} \\
+\bottomrule
+\end{tabular}
+\caption{Running time of \lstinline|fib(38)|, in seconds, with micro
+  taskparts and each kind of instrumentation: the median of five runs}
+\label{tbl:cost}
+\end{table}
+
+\paragraph{Totals and the log}
+%
+The first three builds take the same time, to within a few
+milliseconds, at every number of workers.
+%
+A fork runs the same instructions in all three, and \lstinline|fib(38)|
+steals too rarely for the cost per steal to show.
+
+\paragraph{The count of forks}
+%
+Counting forks in each worker's recorder costs at most a few
+milliseconds over 63 million forks.
+%
+The two careless counts cost nothing extra on one worker, where no
+other worker contends for the cache line.
+%
+On 4 workers they take \perftime{atomic}{4}\,s and
+\perftime{packed}{4}\,s, about 20 times as long as the build with no
+instrumentation, and on 8 workers \perftime{atomic}{8}\,s and
+\perftime{packed}{8}\,s, roughly 40 to 50 times as long.
+%
+So with either of them, adding workers makes the program slower.
+
+% TODO:
+% - the factored speedup of fib(38) on 4 and 8 workers, from the totals,
+%   as a worked example of Section sec:what. The round recorded each run's
+%   totals; they need an analysis and a view of their own.
+% - the same for a second program that does real work between forks.
+
+\section{Measuring part of a program}
+\label{sec:region}
+
+A benchmark seldom wants totals for a whole process.
+%
+A typical one loads or generates its input, and only then runs the
+algorithm to be measured.
+%
+It may first run the algorithm a few times unmeasured, to warm up the
+machine and to get the operating system to schedule the workers'
+threads.
+%
+And it may then take several samples in one process.
+%
+So the totals and the log must be able to cover a \emph{region} of
+the program's execution, and to do so again and again.
+%
+We know three ways to arrange this.
+
+\paragraph{One launch per region}
+%
+This is what micro taskparts does.
+%
+Each outermost call to \lstinline|fork2join| starts the workers,
+stops them when it returns, and reports on itself alone.
+%
+Nothing needs to be reset, because every recorder is new, and nothing
+is read while a worker runs.
+%
+A program measures a region by making it one outermost call, and
+samples it by repeating the call.
+%
+The price is that every region starts its threads afresh.
+%
+That time is not hidden: it is charged to scheduling.
+%
+But it is the same whether the region lasts a second or a
+millisecond, so it distorts a short region, and a region never runs on
+threads that are already warm.
+% TODO: measure this. In an informal test, starting the threads cost
+% about a millisecond of scheduling time, summed over 8 workers, and a
+% few times that in the first launches of a process.
+
+\paragraph{A rendezvous}
+%
+A scheduler that keeps its workers from one region to the next must
+do something at the boundaries of a region.
+%
+If only its owner may touch a recorder, as in
+Section~\ref{sec:techniques}, then at each boundary every worker must
+be made to act on its own recorder: to zero it at the start, and to
+bring it up to date at the end.
+%
+TaskPaRTS has done this with a rendezvous built from
+\lstinline|fork2join|~\cite{taskparts}.
+%
+A function forks, spins in its first branch until a flag is set, and
+calls itself in its second.
+%
+A worker that spins cannot run the second branch, so another worker
+must steal it, and after $P$ levels each worker holds one.
+%
+The last to arrive acts for all, sets the flag, and each worker then
+acts for itself.
+%
+This works, but it is delicate.
+%
+It depends on how workers steal.
+%
+It costs $P$ steals at each boundary, just outside the region.
+%
+And the order of the shared action and the workers' own actions
+matters: if the totals are added up before each worker has closed the
+interval it is in, that interval is lost.
+
+\paragraph{Snapshots}
+%
+The rendezvous exists to make each worker restart its own clock at
+one instant.
+%
+But a recorder already says which state its worker is in and since
+when, so anyone who can read it can work out the worker's totals as of
+any instant, without the worker's help.
+%
+Then a region needs no reset at all.
+%
+The program takes a \emph{snapshot} of every recorder when the region
+starts and another when it ends, and the totals of the region are the
+difference.
+%
+The log of the region is the entries between the two times.
+%
+Regions may then follow one another, nest, or overlap, and no worker
+stops for any of them.
+
+What this asks of the recorder is that another thread can read it
+while its owner writes it.
+%
+Under native fork join that is nearly free, for the reason that runs
+through this paper: the owner writes its recorder only in its loop.
+%
+There, the owner can afford to mark each update with a sequence
+number, which a reader checks before and after reading, and reads
+again if it changed.
+%
+The count of forks is the exception once more, since it is written at
+each fork, but a single counter can be read without a sequence number.
+
+Micro taskparts does not implement snapshots, because it does not yet
+keep its workers between outermost calls.
+%
+We expect to add both together.
+
+\section{What is left out}
+\label{sec:limits}
+
+\paragraph{Events at each fork}
+%
+A log entry at each fork, or a time for each task, would let a tool
+rebuild the whole computation DAG.
+%
+But it would put a reading of the clock and a write to the log on the
+path of every fork, which is the cost this paper avoids.
+%
+We leave it to a separate build for debugging.
+
+\paragraph{Sleeping workers}
+%
+In micro taskparts, an idle worker spins, yielding its processor
+between attempts to steal.
+%
+A scheduler that puts idle workers to sleep has a fourth state, which
+it enters and leaves in its loop, so \lstinline|mark| records it in
+the same way.
+
+% TODO: debugging modes. Candidates that stay off the path of a fork: a
+% check, in the loop, that the deque is empty on entry; a canary at the
+% low end of each task stack, checked when the stack is freed.
+
+\end{document}
