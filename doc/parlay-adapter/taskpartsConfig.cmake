@@ -12,9 +12,17 @@ if(NOT EXISTS "${MTP_DIR}/microtaskparts.hpp")
   message(FATAL_ERROR "MTP_DIR=${MTP_DIR} has no microtaskparts.hpp")
 endif()
 
+# The adapter renames each program's main (see taskparts/taskparts.hpp). A main
+# that ends without a return statement is then a function whose end the
+# compiler may treat as unreachable; -fno-strict-return, of Clang, prevents it.
+if(NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  message(FATAL_ERROR "The micro taskparts adapter needs Clang, for -fno-strict-return")
+endif()
+
 if(NOT TARGET taskparts::taskparts)
   add_library(taskparts::taskparts INTERFACE IMPORTED)
   set_target_properties(taskparts::taskparts PROPERTIES
-    INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_CURRENT_LIST_DIR};${MTP_DIR}")
+    INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_CURRENT_LIST_DIR};${MTP_DIR}"
+    INTERFACE_COMPILE_OPTIONS "-fno-strict-return")
 endif()
 set(taskparts_FOUND TRUE)
