@@ -12,6 +12,14 @@
 //
 // Idle workers spin, yielding between steal attempts, instead of sleeping,
 // and each call to launch starts and stops its own worker threads.
+//
+// For testing, three things can be switched on, and cost nothing otherwise:
+// - built with -fsanitize=address or -fsanitize=thread, the scheduler tells
+//   the sanitizer about every switch between stacks;
+// - with -DMTP_PERTURB, workers pause at random at the points where the
+//   scheduler's races are decided;
+// - with -DMTP_CHECK_STACKS, each stack records whether a task is using it,
+//   and is overwritten when it is given back.
 
 #include "context.hpp"
 
@@ -26,7 +34,174 @@
 #include <utility>
 #include <vector>
 
+#include <sys/mman.h>
+#include <unistd.h>
+
+#if defined(__has_feature)
+#if __has_feature(address_sanitizer)
+#define MTP_ASAN 1
+#endif
+#if __has_feature(thread_sanitizer)
+#define MTP_TSAN 1
+#endif
+#endif
+#if defined(__SANITIZE_ADDRESS__) && !defined(MTP_ASAN)
+#define MTP_ASAN 1
+#endif
+#if defined(__SANITIZE_THREAD__) && !defined(MTP_TSAN)
+#define MTP_TSAN 1
+#endif
+#if defined(MTP_ASAN) || defined(MTP_TSAN)
+#define MTP_FIBERS 1
+#endif
+#ifdef MTP_ASAN
+#include <sanitizer/asan_interface.h>
+#include <sanitizer/common_interface_defs.h>
+#endif
+#ifdef MTP_TSAN
+#include <sanitizer/tsan_interface.h>
+#endif
+#ifdef MTP_PERTURB
+#include <chrono>
+#endif
+#ifdef MTP_CHECK_STACKS
+#include <cstring>
+#endif
+
 namespace microtaskparts {
+
+/*---------------------------------------------------------------------*/
+/* Testing aids */
+
+// What a sanitizer needs to know about a stack in order to follow a switch
+// to it: its bounds, for the address sanitizer, and the thread sanitizer's
+// own handle for it. Empty, and unused, in an ordinary build.
+struct fiber {
+#ifdef MTP_FIBERS
+  const void *bottom = nullptr;
+  size_t szb = 0;
+  void *tsan = nullptr;
+#endif
+};
+
+// Call just before switching from the current stack to the stack `to`. save
+// is where to keep the address sanitizer's record of the current stack until
+// it is resumed, or null if the current stack is being left for good.
+//
+// Always inlined: the thread sanitizer keeps a record of the calls in
+// progress on each stack, and a call that began on one stack and returned on
+// another would corrupt two of them.
+__attribute__((always_inline)) inline void fiber_leave(void **save, const fiber &to) {
+#ifdef MTP_ASAN
+  __sanitizer_start_switch_fiber(save, to.bottom, to.szb);
+#endif
+#ifdef MTP_TSAN
+  __tsan_switch_to_fiber(to.tsan, 0);
+#endif
+  (void)save;
+  (void)to;
+}
+
+// Call just after arriving on a stack. save is what fiber_leave kept when
+// this stack was left, or null on a fresh stack. If from is not null, it
+// receives the bounds of the stack we came from.
+__attribute__((always_inline)) inline void fiber_arrive(void *save, fiber *from = nullptr) {
+#ifdef MTP_ASAN
+  const void *bottom;
+  size_t szb;
+  __sanitizer_finish_switch_fiber(save, &bottom, &szb);
+  if (from != nullptr) {
+    from->bottom = bottom;
+    from->szb = szb;
+  }
+#endif
+  (void)save;
+  (void)from;
+}
+
+// Pause at random. Called where the scheduler's races are decided, so that a
+// test visits orders of events that are rare otherwise. Not inlined, for the
+// reason given at get_my_id: the caller may have changed threads.
+#ifdef MTP_PERTURB
+__attribute__((noinline)) inline void perturb() {
+  asm volatile("" ::: "memory");
+  static thread_local uint64_t x =
+      0x9e3779b97f4a7c15ull ^
+      std::hash<std::thread::id>()(std::this_thread::get_id());
+  x ^= x << 13;
+  x ^= x >> 7;
+  x ^= x << 17;
+  if ((x & 3) == 0) {
+    std::this_thread::yield();
+  } else if ((x & 127) == 1) {
+    std::this_thread::sleep_for(std::chrono::microseconds((x >> 8) & 63));
+  }
+}
+#else
+inline void perturb() {}
+#endif
+
+/*---------------------------------------------------------------------*/
+/* Stacks of tasks */
+
+#ifndef MTP_STACK_SZB
+#define MTP_STACK_SZB (512 * 1024)
+#endif
+static constexpr size_t stack_szb = MTP_STACK_SZB;
+
+inline size_t page_szb() {
+  static const size_t szb = static_cast<size_t>(sysconf(_SC_PAGESIZE));
+  return szb;
+}
+
+// A fresh stack of stack_szb bytes. The page below it is protected, so that a
+// task that overflows its stack crashes instead of overwriting memory.
+inline char *new_stack() {
+  void *p = mmap(nullptr, page_szb() + stack_szb, PROT_READ | PROT_WRITE,
+                 MAP_PRIVATE | MAP_ANON, -1, 0);
+  if ((p == MAP_FAILED) || (mprotect(p, page_szb(), PROT_NONE) != 0)) {
+    std::perror("microtaskparts: cannot allocate a stack");
+    std::abort();
+  }
+  return static_cast<char *>(p) + page_szb();
+}
+
+inline void delete_stack(char *stack) {
+  if (stack != nullptr) {
+    munmap(stack - page_szb(), page_szb() + stack_szb);
+  }
+}
+
+// With MTP_CHECK_STACKS, the lowest word of a stack says whether a task is
+// using it. A task's frames grow down from the other end, and never reach
+// that word unless the stack is about to overflow.
+inline void stack_taken(char *stack) {
+#ifdef MTP_CHECK_STACKS
+  auto in_use = reinterpret_cast<std::atomic<uint64_t> *>(stack);
+  if (in_use->exchange(1) != 0) {
+    std::fprintf(stderr, "microtaskparts: a stack was given to two tasks\n");
+    std::abort();
+  }
+#endif
+  (void)stack;
+}
+
+inline void stack_given_back(char *stack) {
+#ifdef MTP_CHECK_STACKS
+  auto in_use = reinterpret_cast<std::atomic<uint64_t> *>(stack);
+  if (in_use->exchange(0) != 1) {
+    std::fprintf(stderr, "microtaskparts: a stack was given back twice\n");
+    std::abort();
+  }
+  // Anything that still runs on this stack, or reads it, now misbehaves.
+  std::memset(stack + sizeof(uint64_t), 0xdd, stack_szb - sizeof(uint64_t));
+#endif
+#ifdef MTP_ASAN
+  // The frames that were abandoned on this stack left it marked.
+  __asan_unpoison_memory_region(stack, stack_szb);
+#endif
+  (void)stack;
+}
 
 /*---------------------------------------------------------------------*/
 /* Joins, tasks, and vertices */
@@ -40,6 +215,9 @@ struct join {
   std::atomic<int> pending{2};
   // The parent, suspended at the join: restoring k makes fork2join return.
   context k;
+#ifdef MTP_FIBERS
+  fiber fb; // the parent's stack
+#endif
 };
 
 // Something that is ready to run and is not running. A worker's deque holds
@@ -103,6 +281,9 @@ template <typename F> struct thunk_vertex : vertex {
 // the vertices it waits on have finished. It lives in the frame of wait.
 struct suspension : vertex {
   context k;
+#ifdef MTP_FIBERS
+  fiber fb; // the suspended stack
+#endif
   void run() override {}
   context *saved() override { return &k; }
 };
@@ -185,8 +366,6 @@ public:
 /*---------------------------------------------------------------------*/
 /* Workers */
 
-static constexpr size_t stack_szb = 512 * 1024;
-
 struct alignas(64) worker {
   // The scheduler loop runs on the worker thread's own stack. Its context is
   // saved here while the worker runs client code on a task stack.
@@ -202,6 +381,11 @@ struct alignas(64) worker {
   vertex *finished = nullptr;
   suspension *suspended = nullptr;
   char *spent = nullptr;
+#ifdef MTP_FIBERS
+  fiber loop_fb;             // the stack of the loop
+  fiber cur;                 // the task stack that this worker is running on
+  void *dead_tsan = nullptr; // the handle of the stack that was just left
+#endif
   uint64_t nb_steal_attempts = 0; // seeds the choice of victim
   // Stacks that no task is using, kept to avoid allocating one per task.
   std::vector<char *> stacks;
@@ -209,8 +393,9 @@ struct alignas(64) worker {
 
   ~worker() {
     for (char *s : stacks) {
-      std::free(s);
+      delete_stack(s);
     }
+    delete_stack(spent); // the root's, left when the loop stopped
   }
 };
 
@@ -277,6 +462,7 @@ inline void vertex::leave(worker &w) { w.finished = this; }
 // One predecessor of v has finished, or v was released. If none remains, v
 // is ready: make it stealable.
 inline void count_down(vertex *v) {
+  perturb();
   if (v->pending.fetch_sub(1, std::memory_order_acq_rel) == 1) {
     me().deque.push(v);
   }
@@ -284,6 +470,7 @@ inline void count_down(vertex *v) {
 
 inline void vertex::notify() {
   // The exchange is our last use of this vertex.
+  perturb();
   edge *e = out.exchange(finished_mark(), std::memory_order_acq_rel);
   while (e != nullptr) {
     edge *next = e->next;
@@ -300,16 +487,24 @@ inline void vertex::notify() {
   char *stack;
   {
     worker &w = me();
+#ifdef MTP_FIBERS
+    fiber_arrive(nullptr, &w.loop_fb);
+#endif
     t = w.starting;
     stack = w.fresh;
   }
   t->run();
+  perturb();
   // run() may return on a different worker than the one that called it.
   // Leave this stack for good and tell the loop, which counts the branch, or
   // notifies the successors of the vertex, only once we are off the stack.
   worker &w = me();
   t->leave(w);
   w.spent = stack;
+#ifdef MTP_FIBERS
+  w.dead_tsan = w.cur.tsan;
+  fiber_leave(nullptr, w.loop_fb);
+#endif
   mtp_context_restore(&w.loop);
 }
 
@@ -317,22 +512,43 @@ inline void vertex::notify() {
 // and otherwise give it a fresh stack.
 inline void start(worker &w, task *t) {
   if (context *k = t->saved()) {
+#ifdef MTP_FIBERS
+    void *save;
+    w.cur = static_cast<suspension *>(t)->fb;
+    fiber_leave(&save, w.cur);
+#endif
     mtp_context_swap(&w.loop, k);
+#ifdef MTP_FIBERS
+    fiber_arrive(save);
+#endif
     return;
   }
   char *stack;
   if (w.stacks.empty()) {
-    stack = static_cast<char *>(std::malloc(stack_szb));
+    stack = new_stack();
   } else {
     stack = w.stacks.back();
     w.stacks.pop_back();
   }
+  stack_taken(stack);
   // The context is read once, by the switch, so it can live in this frame.
   context k;
   context_init(k, stack, stack_szb, &task_entry);
   w.starting = t;
   w.fresh = stack;
+#ifdef MTP_FIBERS
+  void *save;
+  w.cur.bottom = stack;
+  w.cur.szb = stack_szb;
+#ifdef MTP_TSAN
+  w.cur.tsan = __tsan_create_fiber(0);
+#endif
+  fiber_leave(&save, w.cur);
+#endif
   mtp_context_swap(&w.loop, &k);
+#ifdef MTP_FIBERS
+  fiber_arrive(save);
+#endif
 }
 
 // Runs on the worker thread's own stack and never migrates, so w stays
@@ -345,22 +561,39 @@ inline void start(worker &w, task *t) {
 // stack, and the context that the other worker may resume has been saved.
 inline void worker_loop(task *first) {
   worker &w = me();
+#ifdef MTP_TSAN
+  w.loop_fb.tsan = __tsan_get_current_fiber();
+#endif
   task *t = first;
   while (!done.load()) {
     // Messages from the stack that we just left.
     if (char *stack = w.spent) {
       w.spent = nullptr;
+#ifdef MTP_TSAN
+      __tsan_destroy_fiber(w.dead_tsan);
+      w.dead_tsan = nullptr;
+#endif
+      stack_given_back(stack);
       if (w.stacks.size() < max_nb_cached_stacks) {
         w.stacks.push_back(stack);
       } else {
-        std::free(stack);
+        delete_stack(stack);
       }
     }
     if (join *j = w.reached) {
       w.reached = nullptr;
+      perturb();
       if (j->pending.fetch_sub(1, std::memory_order_acq_rel) == 1) {
         // Both branches are done: resume the parent.
+#ifdef MTP_FIBERS
+        void *save;
+        w.cur = j->fb;
+        fiber_leave(&save, w.cur);
+#endif
         mtp_context_swap(&w.loop, &j->k);
+#ifdef MTP_FIBERS
+        fiber_arrive(save);
+#endif
         continue;
       }
     }
@@ -432,6 +665,7 @@ template <typename F1, typename F2> void fork2join(F1 &&f1, F2 &&f2) {
   // (1) Fork: make the second branch stealable, and run the first.
   me().deque.push(&own);
   f1();
+  perturb();
 
   // (2) Try to take the second branch back. f1 may have returned on another
   // worker, so look the worker up again.
@@ -455,7 +689,15 @@ template <typename F1, typename F2> void fork2join(F1 &&f1, F2 &&f2) {
   // which counts this branch. Whichever branch is counted last resumes
   // us here, on its worker.
   w.reached = &j;
+#ifdef MTP_FIBERS
+  void *save;
+  j.fb = w.cur;
+  fiber_leave(&save, w.loop_fb);
+#endif
   mtp_context_swap(&j.k, &w.loop);
+#ifdef MTP_FIBERS
+  fiber_arrive(save, &me().loop_fb);
+#endif
 }
 
 /*---------------------------------------------------------------------*/
@@ -476,6 +718,7 @@ template <typename F> vertex *new_vertex(F f) {
 inline bool new_edge(vertex *src, vertex *dst) {
   // Count the edge before a concurrent notify() of src can see it.
   dst->pending.fetch_add(1, std::memory_order_acq_rel);
+  perturb();
   auto e = new vertex::edge{dst, nullptr};
   vertex::edge *head = src->out.load(std::memory_order_acquire);
   do {
@@ -503,9 +746,18 @@ inline void wait(vertex *v) {
     return; // v has already finished
   }
   // Switch to the scheduler loop, which releases s once this stack is saved.
+  perturb();
   worker &w = me();
   w.suspended = &s;
+#ifdef MTP_FIBERS
+  void *save;
+  s.fb = w.cur;
+  fiber_leave(&save, w.loop_fb);
+#endif
   mtp_context_swap(&s.k, &w.loop);
+#ifdef MTP_FIBERS
+  fiber_arrive(save, &me().loop_fb);
+#endif
 }
 
 } // namespace microtaskparts

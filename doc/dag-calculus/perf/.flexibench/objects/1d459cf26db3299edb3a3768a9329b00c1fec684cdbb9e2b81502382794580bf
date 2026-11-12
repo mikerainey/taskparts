@@ -1,0 +1,1 @@
+{"metrics":[{"joins":{"nat":199999},"migrated":{"nat":144},"round":{"nat":0},"sum":{"text":"ok"}},{"joins":{"nat":199999},"migrated":{"nat":129},"round":{"nat":1},"sum":{"text":"ok"}},{"joins":{"nat":199999},"migrated":{"nat":149},"round":{"nat":2},"sum":{"text":"ok"}}]}
