@@ -6,12 +6,12 @@
 // paper, step for step, and nothing else: no elastic scheduling, no
 // instrumentation, no CPU pinning, and no persistent worker pool.
 //
-// It is fast enough to measure the costs of the technique itself (Appendix D
-// of ../main.tex), but it is not meant for benchmarking applications. Idle
-// workers spin, yielding between steal attempts, instead of sleeping; each
+// It is fast enough to measure the costs of the technique itself (the
+// Performance notes of ../main.tex), but it is not a runtime for applications.
+// Idle workers spin, yielding between steal attempts, instead of sleeping; each
 // top-level call to fork2join starts and stops its own worker threads; and
-// there is no instrumentation and no ParlayLib integration. For benchmarking
-// applications, use TaskPaRTS.
+// there is no instrumentation. ../../parlay-adapter runs ParlayLib programs on
+// it, by running the whole of main in one call to launch.
 
 #include "context.hpp"
 
@@ -24,6 +24,9 @@
 #include <memory>
 #include <thread>
 #include <vector>
+
+#include <sys/mman.h>
+#include <unistd.h>
 
 namespace microtaskparts {
 
@@ -39,6 +42,37 @@ struct join {
   context k;
 };
 
+/*---------------------------------------------------------------------*/
+/* Stacks of stolen tasks */
+
+#ifndef MTP_STACK_SZB
+#define MTP_STACK_SZB (512 * 1024)
+#endif
+static constexpr size_t stack_szb = MTP_STACK_SZB;
+
+inline size_t page_szb() {
+  static const size_t szb = static_cast<size_t>(sysconf(_SC_PAGESIZE));
+  return szb;
+}
+
+// A fresh stack of stack_szb bytes. The page below it is protected, so that a
+// task that overflows its stack crashes instead of overwriting memory.
+inline char *new_stack() {
+  void *p = mmap(nullptr, page_szb() + stack_szb, PROT_READ | PROT_WRITE,
+                 MAP_PRIVATE | MAP_ANON, -1, 0);
+  if ((p == MAP_FAILED) || (mprotect(p, page_szb(), PROT_NONE) != 0)) {
+    std::perror("microtaskparts: cannot allocate a stack");
+    std::abort();
+  }
+  return static_cast<char *>(p) + page_szb();
+}
+
+inline void delete_stack(char *stack) {
+  if (stack != nullptr) {
+    munmap(stack - page_szb(), page_szb() + stack_szb);
+  }
+}
+
 // The second branch of a call to fork2join, which thieves may steal. It
 // lives in the frame of that call too.
 struct task {
@@ -48,7 +82,7 @@ struct task {
 
   explicit task(join *j) : j(j) {}
   virtual void run() = 0;
-  virtual ~task() { std::free(stack); }
+  virtual ~task() { delete_stack(stack); }
 };
 
 template <typename F> struct thunk_task : task {
@@ -197,8 +231,6 @@ inline task *steal(worker &w) {
 /*---------------------------------------------------------------------*/
 /* Scheduler loop */
 
-static constexpr size_t stack_szb = 512 * 1024;
-
 // A branch running on worker w has reached join j (null for the root). Leave
 // the current stack for good and tell the loop, which counts the branch only
 // once we are off the stack.
@@ -238,7 +270,7 @@ inline void worker_loop(task *first) {
       }
     } else if ((t != nullptr) ||
                ((nb_workers > 1) && ((t = steal(w)) != nullptr))) {
-      t->stack = static_cast<char *>(std::malloc(stack_szb));
+      t->stack = new_stack();
       context_init(t->k, t->stack, stack_szb, &task_entry);
       w.starting = t;
       next = &t->k;

@@ -32,6 +32,11 @@
 % workers.
 \input{perf/times}
 \newcommand{\perftime}[2]{\fbval{times}{#1}{P = #2}}
+% Likewise for Table tbl:parlay (perf/parlay/parlay.bib, flexibench-parlay):
+% \parlaytime{PROGRAM}{CONFIG} is the time of PROGRAM with CONFIG, which is
+% serial, or direct or homegrown followed by a number of workers.
+\input{perf/parlay/parlay}
+\newcommand{\parlaytime}[2]{\fbval{parlay}{#1}{#2}}
 
 \newcommand{\fo}{\mathtt{f_1}}
 \newcommand{\ft}{\mathtt{f_2}}
@@ -501,7 +506,11 @@ neither inline nor treat as pure avoids this problem.
 %
 Other consequences follow from the use of task stacks.
 %
-Task stacks have a fixed size, and no guard page by default.
+Task stacks have a fixed size.
+%
+Micro taskparts puts a protected page below each one, so that a task
+that overflows its stack stops the program instead of overwriting
+memory.
 %
 Exceptions must not escape $\fo$ or $\ft$, because unwinding cannot
 cross from a task stack into the scheduler.
@@ -521,9 +530,12 @@ including the assembly for x86-64 and AArch64.
 It is in the directory \path{doc/native-fork-join/microtaskparts} of
 the TaskPaRTS repository~\cite{taskparts}, and numbers the steps of
 \lstinline|fork2join| as in Figure~\ref{fig:fork2join}.
+%
+The directory \path{doc/parlay-adapter} lets programs written with
+ParlayLib~\cite{blelloch20parlaylib} run on it.
 
 \bibliographystyle{abbrv}
-\bibliography{main,perf/times}
+\bibliography{main,perf/times,perf/parlay/parlay}
 
 \clearpage
 \appendix
@@ -697,6 +709,58 @@ than the version without forks (\perftime{serial}{1}\,s).
 %
 A program meant to run fast would stop forking below some problem size;
 this one does not, in order to measure the fork.
+
+\begin{table}
+\small
+\begin{tabular}{@{}lrrrrr@{}}
+\toprule
+ & no & \multicolumn{2}{c}{micro taskparts} & \multicolumn{2}{c}{ParlayLib's} \\
+program & scheduler & 1 & 4 & 1 & 4 \\
+\midrule
+mergesort & \parlaytime{mergesort}{serial} & \parlaytime{mergesort}{direct 1} & \parlaytime{mergesort}{direct 4} & \parlaytime{mergesort}{homegrown 1} & \parlaytime{mergesort}{homegrown 4} \\
+samplesort & \parlaytime{samplesort}{serial} & \parlaytime{samplesort}{direct 1} & \parlaytime{samplesort}{direct 4} & \parlaytime{samplesort}{homegrown 1} & \parlaytime{samplesort}{homegrown 4} \\
+quickhull & \parlaytime{quickhull}{serial} & \parlaytime{quickhull}{direct 1} & \parlaytime{quickhull}{direct 4} & \parlaytime{quickhull}{homegrown 1} & \parlaytime{quickhull}{homegrown 4} \\
+BFS & \parlaytime{BFS}{serial} & \parlaytime{BFS}{direct 1} & \parlaytime{BFS}{direct 4} & \parlaytime{BFS}{homegrown 1} & \parlaytime{BFS}{homegrown 4} \\
+\bottomrule
+\end{tabular}
+\caption{Running time of four ParlayLib programs, in seconds, with no
+  scheduler, and with two schedulers on 1 and 4 workers}
+\label{tbl:parlay}
+\end{table}
+
+\paragraph{Programs that work between forks}
+%
+Table~\ref{tbl:parlay} shows four programs that, unlike
+\lstinline|fib|, do real work between forks.
+%
+They are examples distributed with
+ParlayLib~\cite{blelloch20parlaylib}: two sorts, of 20 and 50 million
+integers, the convex hull of 50 million points, and a breadth-first
+search of a graph with 2 million vertices.
+%
+ParlayLib builds its parallel loops and its other primitives from
+binary fork join, and lets a program choose the scheduler that provides
+it.
+%
+We ran each program, unchanged, with no scheduler, with micro
+taskparts, and with ParlayLib's own work-stealing scheduler.
+%
+A program runs its algorithm several times, and Flexibench recorded
+every run and checked every result~\cite{flexibench-parlay}.
+
+On one worker, micro taskparts takes at most 2\% longer than no
+scheduler on three of the programs.
+%
+The search takes 14\% longer, but it does so with either scheduler, so
+the cost lies in how the program is written for parallelism, not in
+its forks.
+%
+On 4 workers, the two schedulers are within 4\% of each other on every
+program.
+%
+They differ in more than how they join: when a worker of ParlayLib's
+scheduler finds nothing to steal, it sleeps, whereas one of micro
+taskparts keeps trying.
 
 \paragraph{A lock-free deque}
 %
