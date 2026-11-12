@@ -1,0 +1,1003 @@
+\documentclass[sigplan,nonacm]{acmart}
+\makeatletter
+\renewcommand\@formatdoi[1]{\ignorespaces}
+\makeatother
+\settopmatter{printfolios=false,printccs=false,printacmref=false}
+
+\setcopyright{none}
+\acmConference[]{}{}{}
+
+\usepackage{enumitem}
+\usepackage{mathtools}
+\usepackage{amsmath}
+
+\usepackage{listings}
+
+\lstdefinelanguage{pcpp}{%
+  language     = C++,
+  morekeywords = {type,then,of,match,with,null},
+  keywordstyle=\ttfamily\bfseries
+}
+
+\usepackage{natbib}
+\usepackage{url}
+
+\input{local}
+
+\lstset{language=pcpp,numbers=none}
+
+\newcommand{\fo}{\mathtt{f_1}}
+\newcommand{\ft}{\mathtt{f_2}}
+% A step number, flush right in a listing.
+\newcommand{\stepc}[1]{\hfill{\rmfamily\slshape // (#1)}}
+% A timeline: two columns of pseudocode, in the font of listings.
+\newenvironment{timeline}[1]
+  {\par\raggedright\noindent\small\ttfamily\begin{tabular}{@{}#1@{}}}
+  {\end{tabular}\par}
+\newcommand{\tlhead}[1]{{\rmfamily\itshape #1}}
+\newcommand{\ind}{\hphantom{(0)~}}
+
+\title{DAG calculus beside native fork join: one scheduler for counts and contexts}
+% TODO: add co-author, and check affiliation.
+\author{Mike Rainey}
+\affiliation{
+  \institution{Carnegie Mellon University}
+  \city{Pittsburgh}
+  \state{PA}
+  \country{USA}
+}
+\email{me@mike-rainey.site}
+
+\begin{document}
+
+\begin{abstract}
+Native fork join schedules fork-join programs by work stealing and
+context switching, in a library, and makes a fork that is not stolen
+cost little more than two calls.
+%
+But some parallel programs are not fork-join programs.
+%
+In a stencil computation, for example, each block of a grid waits for
+its neighbors, and such dependencies are expressed directly in DAG
+calculus, where a program builds a graph of \emph{vertices} and
+\emph{edges} as it runs.
+%
+The two styles appear to need different schedulers: a fork keeps its
+task in a stack frame and relies on a deque that holds only tasks of
+its own stack, whereas a vertex lives on the heap and becomes ready
+whenever its last predecessor finishes, on whichever worker that is.
+%
+In this short paper, we show that one scheduler serves both.
+%
+A vertex is a task with a count, and a stack that waits for a vertex
+is itself a vertex, whose body is a saved context.
+%
+The scheduler of native fork join needs three changes: its loop takes
+tasks from its own deque, a fork checks that the task it takes back is
+its own, and stacks belong to workers rather than to tasks.
+%
+The fast path of a fork performs the same operations as before.
+%
+A companion implementation extends micro taskparts by about 190 lines
+of C++, and includes two examples: a Gauss-Seidel stencil, and a
+pipeline whose edges are added while it runs.
+\end{abstract}
+
+\maketitle
+
+\section{Challenge: two styles, one scheduler}
+
+Fork join suits computations that divide and conquer.
+%
+It suits others poorly.
+%
+Consider a Gauss-Seidel simulation of heat transfer on a grid, divided
+into blocks.
+%
+At each time step, a block needs the new values of the blocks above it
+and to its left, and the old values of the blocks below it and to its
+right.
+%
+A fork-join program can run in parallel only blocks that it knows to be
+independent, such as those on one diagonal, and must finish each such
+group before it starts the next.
+%
+What the computation requires is weaker: a block may run a time step as
+soon as its four neighbors allow it.
+%
+A pipeline is another example: its items are processed in parallel,
+but each must wait for the one before it to be written out, which may
+happen before, while, or after the item itself is processed.
+
+DAG calculus~\cite{Dag_calculus_16} expresses such dependencies
+directly.
+%
+A program creates \emph{vertices}, each of which holds a piece of code,
+and adds \emph{edges} between them.
+%
+A vertex runs once it has been released and every vertex with an edge
+to it has finished.
+%
+In an implementation, a vertex has an \emph{in-counter}, which counts
+its unfinished predecessors, and an \emph{out-set}, which records its
+successors.
+
+What sets the calculus apart is that the number of edges that enter a
+vertex and the number that leave it may both be decided as the program
+runs.
+%
+Each of the usual styles fixes at least one of them.
+%
+In fork join, two branches enter a join, and each branch leaves for one
+join.
+%
+In async-finish, any number of tasks may enter a finish, even tasks
+spawned while the finish block runs, but each leaves for one finish.
+%
+With futures, any number of readers may leave a future, even readers
+that arrive while the future is being computed, but each reader enters
+with one future.
+%
+All three can be encoded in the calculus, and so can computations that
+are none of them, such as the stencil.
+
+We would like to offer both styles in one library, so that a vertex can
+call \lstinline|fork2join|, and fork-join code can build a graph and
+wait for it.
+%
+Encoding fork join in DAG calculus achieves that, but gives up what
+native fork join~\cite{nativeforkjoin} provides: a fork that is not
+stolen allocates nothing, and runs both branches as ordinary calls.
+%
+The opposite approach, two schedulers side by side, keeps the fast fork,
+but leaves open how work moves between the two, and which of them an
+idle worker should ask for work.
+%
+Our goal is one scheduler on which fork-join code runs as fast as it
+does under native fork join alone.
+
+At first sight, the scheduler of native fork join cannot host vertices,
+because its safety argument relies on three facts that vertices break.
+%
+\begin{itemize}[leftmargin=*]
+\item A worker's deque is empty whenever the worker is in its scheduler
+  loop.
+  But a vertex becomes ready when its last predecessor finishes, on a
+  worker that may be in the middle of something else.
+\item A deque holds only the tasks of forks in progress on one stack.
+  So when a fork pops, it gets its own task or nothing.
+  But a ready vertex belongs to no stack.
+\item A task lives in a frame that outlives it, and owns the stack that
+  it runs on.
+  But a vertex lives on the heap, and may be freed, or run again, as
+  soon as its successors learn that it has finished.
+\end{itemize}
+
+This paper shows that the scheduler needs only small changes to host
+vertices.
+%
+Section~\ref{sec:nfj} recalls native fork join.
+%
+Section~\ref{sec:vertices} adds vertices, and
+Section~\ref{sec:safety} revisits the safety argument.
+%
+Sections~\ref{sec:stencil} and~\ref{sec:pipeline} present two
+examples, a stencil and a pipeline, and Section~\ref{sec:costs}
+discusses costs and limits.
+%
+The appendices relate the design to DAG calculus and its original
+implementation, and say what remains to be measured.
+
+\section{Native fork join, in brief}
+\label{sec:nfj}
+
+We recall what the rest of the paper needs; the first paper of this
+series~\cite{nativeforkjoin} has the details.
+
+A \emph{context} holds the callee-saved registers, the stack pointer,
+and a return address.
+%
+\lstinline|swap($k_1$, $k_2$)| saves the caller's context in $k_1$ and
+resumes $k_2$, and \lstinline|restore($k$)| resumes $k$ without saving.
+%
+Any worker may resume a context, whichever worker saved it.
+
+Each worker runs a scheduler loop on its thread's own stack, and client
+code on separate \emph{task stacks}.
+%
+Each worker has a deque of tasks: the owner pushes and pops at one end,
+and thieves steal the oldest task from the other.
+
+A call to \lstinline|fork2join($\fo$, $\ft$)| keeps a \emph{join} and a
+\emph{task} in its own frame.
+%
+The join holds a count of the branches that have yet to reach it,
+initially 2, and a context.
+%
+The call pushes the task, runs $\fo$, and pops.
+%
+If the pop succeeds, the call runs $\ft$ and returns.
+%
+Otherwise the task was stolen: the call saves its context in the join
+and switches to the scheduler loop.
+%
+A thief runs a stolen task on a fresh stack, and then switches to its
+own loop.
+%
+The loop counts each branch that reaches a join, and the worker whose
+decrement brings the count to zero resumes the context saved in the
+join.
+
+The pattern underneath is \emph{a count and a context}: a stack is
+suspended until a count reaches zero, and a branch is counted only by a
+scheduler loop, after the branch has left its stack.
+%
+Vertices fit the same pattern.
+
+\section{Vertices}
+\label{sec:vertices}
+
+\begin{figure}
+\hrule
+\begin{lstlisting}
+type join = {pending : atomic int, k : context}
+type task =
+  | fork of {body : () -> void, j : join*}
+  | vertex of {body : () -> void,
+      pending : atomic int, out : set of task*}
+  | suspension of {k : context,
+      pending : atomic int}
+type worker = {k : context, dq : deque of task*,
+  starting : task*, reached : join*,
+  finished : task*, suspended : task*}
+
+loop() -> void {  // on the worker's own stack
+  while (!done) {
+    j = me.reached; me.reached = null
+    if (j != null &&
+        fetch_and_add(j.pending, -1) == 1)
+      { swap(me.k, j.k); continue }
+    v = me.finished; me.finished = null
+    if (v != null)
+      for (u in close(v.out)) count_down(u)
+    s = me.suspended; me.suspended = null
+    if (s != null) count_down(s)
+    t = pop()
+    if (t == null) t = steal()
+    if (t == null) continue
+    if (t is suspension) swap(me.k, t.k)
+    else { me.starting = t
+      swap(me.k,
+           new_context(new_stack(), enter)) } } }
+
+count_down(v : task*) -> void {
+  if (fetch_and_add(v.pending, -1) == 1)
+    push(v) }  // v is ready
+
+enter() -> void {  // first frame on a fresh stack
+  t = me.starting; t.body()
+  if (t is fork) {
+    if (t.j == null) done = true  // root
+    me.reached = t.j }
+  else me.finished = t
+  restore(me.k) }  // leave this stack
+\end{lstlisting}
+\hrule
+\caption{The scheduler, with vertices}
+\label{fig:scheduler}
+\end{figure}
+
+\begin{figure}
+\hrule
+\begin{lstlisting}[escapechar=@]
+fork2join($\fo$, $\ft$ : () -> void) -> void {
+  j = join{pending = 2}
+  t = fork{body = $\ft$, j = &j}
+  push(&t)@\stepc{1}@
+  $\fo$()
+  u = pop()@\stepc{2}@
+  if (u == &t) { $\ft$(); return }@\stepc{3}@
+  if (u != null) push(u)@\stepc{4}@
+  me.reached = &j
+  swap(j.k, me.k) }
+
+new_vertex(f : () -> void) -> task* {
+  return new vertex{body = f, pending = 1} }
+
+new_edge(u, v : task*) -> bool {
+  fetch_and_add(v.pending, 1)
+  if (add(u.out, v)) return true
+  fetch_and_add(v.pending, -1)  // u has finished
+  return false }
+
+release(v : task*) -> void { count_down(v) }
+
+wait(v : task*) -> void {
+  s = suspension{pending = 1}
+  if (!new_edge(v, &s)) return
+  me.suspended = &s
+  swap(s.k, me.k) }
+\end{lstlisting}
+\hrule
+\caption{Fork join, and the operations of DAG calculus}
+\label{fig:ops}
+\end{figure}
+
+\paragraph{Three kinds of task}
+%
+A deque now holds three kinds of task
+(Figure~\ref{fig:scheduler}).
+%
+A \emph{fork} is the second branch of a call to
+\lstinline|fork2join|, as before.
+%
+A \emph{vertex} has a body, an in-counter, \lstinline|pending|, and an
+out-set, \lstinline|out|.
+%
+A \emph{suspension} is the rest of a stack: it has a saved context
+where the others have a body, and an in-counter too.
+%
+Whatever its kind, a task in a deque is ready to run and is not
+running, and the worker that takes it out of the deque starts it,
+once.
+%
+A fork or a vertex starts on a fresh stack, and a suspension starts
+when its context is resumed.
+
+\paragraph{The operations}
+%
+Figure~\ref{fig:ops} gives the operations of DAG calculus.
+%
+\lstinline|new_vertex| makes a vertex whose count is 1.
+%
+That one stands for the release that the vertex awaits, so the vertex
+cannot become ready while its creator is still adding edges to it.
+%
+\lstinline|new_edge($u$, $v$)| makes $v$ wait for $u$: it increments
+the count of $v$, and adds $v$ to the out-set of $u$.
+%
+If $u$ has already finished, its out-set is closed, the addition
+fails, and \lstinline|new_edge| takes the increment back.
+%
+The caller must hold the count of $v$ above zero while it adds the
+edge.
+%
+It does if $v$ has not been released, or if the caller is a vertex
+that is running and has an edge to $v$.
+%
+The second case lets a vertex gain in-edges while its predecessors
+run, which is what async-finish needs
+(Appendix~\ref{sec:calculus}).
+%
+\lstinline|release($v$)| counts $v$ down.
+%
+In general, \lstinline|count_down| decrements the count of a task, and
+pushes the task on the caller's deque if the count reaches zero.
+
+\lstinline|wait($v$)| returns once $v$ has finished.
+%
+It makes a suspension in its own frame, adds an edge from $v$ to it,
+saves its context in it, and switches to the scheduler loop.
+%
+The loop then counts the suspension down, which stands for its
+release.
+%
+So a suspension is a vertex in all but its body, and to wait is to
+turn the rest of one's stack into a vertex.
+%
+Any code that runs on a task stack may wait: the root, a branch of a
+fork, or the body of a vertex.
+
+\paragraph{The scheduler}
+%
+The loop treats a join as before.
+%
+It has three new duties.
+%
+When a vertex finishes, the loop closes its out-set and counts down
+each task in it.
+%
+When a stack suspends in \lstinline|wait|, the loop counts down its
+suspension.
+%
+And before it steals, the loop pops its own deque, which now may hold
+tasks that the loop itself has just made ready.
+%
+As with joins, all of this happens in the loop, after the code
+concerned has left its stack.
+
+\paragraph{Fork join}
+%
+\lstinline|fork2join| differs from the original at steps 2 to 4.
+%
+The pop at step 2 may now return a task other than the one pushed at
+step 1: a vertex that $\fo$ released, for instance.
+%
+So step 3 compares the task popped with its own.
+%
+If they differ, step 4 puts the other task back, and then suspends at
+the join as before.
+%
+Section~\ref{sec:safety} explains why that is correct even if the
+fork's own task is still in a deque.
+
+\section{Why it is still safe}
+\label{sec:safety}
+
+The safety of native fork join rests on four
+facts~\cite{nativeforkjoin}.
+%
+We restate each as it holds now.
+
+\paragraph{Nothing is counted until its code has left its stack}
+%
+A join is counted down only by a scheduler loop, as before.
+%
+The same holds for the successors of a vertex: a vertex notifies them
+from the loop, once its body has returned and the worker has left its
+stack.
+%
+So when a successor runs, and frees the vertex or makes it ready
+again, nothing of the vertex's previous run remains.
+%
+The loop reads the out-set with a single atomic exchange, which is its
+last use of the vertex.
+%
+A suspension is released by the loop as well, after
+\lstinline|swap| has saved its context, so no worker can resume a
+context that is not yet saved.
+
+\paragraph{No two workers run on the same stack}
+%
+A suspended stack is reachable only through a join or a suspension.
+%
+A join is resumed by the one worker that brings its count to zero.
+%
+A suspension is pushed on a deque by the one worker that brings its
+count to zero, and resumed by the one worker that takes it out.
+%
+Its count cannot reach zero early, because only the waiting stack adds
+edges to it, and the stack holds its release until it is saved.
+
+\paragraph{A fork runs its own second branch, or leaves it to others}
+%
+The original argument was that the pop at step 2 returns the fork's own
+task or nothing, because the deque held only tasks pushed on the
+current stack.
+%
+That no longer holds, for two reasons.
+%
+A deque may hold ready vertices and suspensions.
+%
+And a stack may now suspend in \lstinline|wait| while tasks of its
+forks are still in the deque, and resume on another worker.
+%
+The new argument is simpler, and does not depend on what the deque
+holds.
+%
+If the pop returns the fork's own task, then no other worker has taken
+it, and none will, so the fork may run $\ft$ itself.
+%
+Otherwise, the task was taken by another worker, or is still in some
+deque.
+%
+In both cases it will run on a fresh stack and then reach the join, so
+it is correct for the fork to suspend at the join, having put back
+whatever it popped.
+%
+Because every scheduler loop now pops its own deque before it steals,
+a task left in a deque is never stranded.
+
+\paragraph{Only tasks that are ready and not running are in a deque}
+%
+A fork is pushed before it starts.
+%
+A vertex or a suspension is pushed when its count reaches zero.
+%
+Exactly one decrement brings a count to zero, and the count of a
+vertex is not set again until the vertex has run and left its stack.
+%
+A join is never in a deque.
+
+\paragraph{Whose stack?}
+%
+In the original, a stolen task records the stack it runs on, and the
+frame that holds the task frees that stack.
+%
+A vertex has no such frame, and may be freed before its stack is.
+%
+So stacks now belong to workers.
+%
+A loop that starts a task takes a stack from its worker's cache, or
+allocates one.
+%
+The first frame on the stack remembers the stack, and hands it to the
+loop of whichever worker the task finishes on, which puts it in its
+own cache.
+%
+The scheduler stores nothing in a task while the task runs, which is
+what allows a vertex to be made ready again before the loop has
+finished with its previous run.
+
+\section{Example: a stencil}
+\label{sec:stencil}
+
+\begin{figure}
+\hrule
+\begin{lstlisting}
+type block = vertex with {i, j, steps_left : int}
+
+body(b : block*) -> void { update block (b.i, b.j) }
+
+notify(b : block*) -> void {  // in the loop
+  b.steps_left = b.steps_left - 1
+  b.pending = number of neighbors of b
+  count_down(below(b)); count_down(right(b))
+  if (b.steps_left > 0)
+    { count_down(above(b)); count_down(left(b)) }
+  else if (b is the last block)
+    for (u in close(b.out)) count_down(u) }
+
+seidel(steps : int) -> void {
+  for each block b {
+    b.steps_left = steps
+    b.pending = number of neighbors above
+                and to the left of b }
+  first.pending = 1; release(first)
+  wait(last) }
+\end{lstlisting}
+\hrule
+\caption{The Gauss-Seidel stencil.  Neighbors that do not exist are
+  skipped.}
+\label{fig:stencil}
+\end{figure}
+
+Our example is the Gauss-Seidel benchmark of the DAG calculus
+paper~\cite{Dag_calculus_16}.
+%
+The grid is divided into square blocks.
+%
+One time step of a block replaces each of its cells, in place and in
+row order, by the average of the cell and its four neighbors.
+%
+So time step $t$ of a block depends on step $t$ of the blocks above and
+to the left, and on step $t-1$ of the blocks below and to the right.
+
+Figure~\ref{fig:stencil} shows the program.
+%
+There is one vertex per block, which runs once per time step, so the
+vertices are allocated once, in an array.
+%
+A block's edges are implicit: they go to its neighbors.
+%
+So a block replaces the out-set by code of its own, which the scheduler
+loop runs in place of closing the out-set.
+%
+After each step, the block sets its count to the number of its
+neighbors, for the next step, and then counts its neighbors down.
+%
+The block does all this in the loop, off its stack, which is why a
+neighbor can make it ready again at once.
+%
+The caller releases the first block, and waits for the last, which
+closes its out-set when it has run its final step.
+
+The original implementation did not make a vertex of each block,
+because starting a vertex was too expensive.
+%
+It kept the ready blocks in a queue inside one vertex, and split the
+queue when another processor asked for work.
+%
+Here, a ready block is a pointer pushed on a deque, and the deque
+already shares work on demand.
+
+For comparison, the companion code has a fork-join version of the same
+computation.
+%
+Block $(i, j)$ at step $t$ depends only on blocks whose
+$i + j + 2t$ is smaller by one, so the blocks with the same
+$i + j + 2t$ are independent.
+%
+The fork-join version runs these groups one after another, each as a
+parallel loop.
+%
+Both versions compute, bit for bit, the grid that the serial program
+computes.
+
+\section{Example: a pipeline}
+\label{sec:pipeline}
+
+\begin{figure}
+\hrule
+\begin{lstlisting}
+pipeline(K : int) -> void {
+  i = 0
+  while (more input) {
+    x = read_chunk()  // stage 0
+    dup = is_duplicate(x)  // stage 1
+    if (i >= K) wait(v[i-K])  // throttle
+    v[i] = new_vertex($\lambda$ () $\Rightarrow$ {
+      if (!dup) y = compress(x)  // stage 2
+      if (i > 0) wait(v[i-1])
+      write(x, y, dup) })  // stage 3
+    release(v[i]); i = i + 1 }
+  if (i > 0) wait(v[i-1]) }
+\end{lstlisting}
+\hrule
+\caption{The pipeline.  Inside the vertex, \lstinline|i|,
+  \lstinline|x|, and \lstinline|dup| have the values they had when the
+  vertex was created.}
+\label{fig:pipeline}
+\end{figure}
+
+In the stencil, every edge is known before the computation starts.
+%
+Our second example needs edges that are not: the out-set of a vertex
+grows after the vertex has started its work.
+%
+That is what a future requires, since a future may be forced at any
+time, by any number of readers, and futures are one way to build
+pipelines~\cite{blelloch1997pipelining}.
+
+The example is a pipeline in the style of Cilk-P~\cite{lee2013piper}.
+%
+There, a loop processes a stream, each iteration passes through a
+series of stages, and a stage of one iteration may wait for the same
+stage of the previous iteration.
+%
+A stage that always waits is \emph{serial}: it runs for one iteration
+at a time, in order.
+%
+A stage that never waits is \emph{parallel}.
+
+Ours is the dedup benchmark, as Lee et al. pipeline it, much
+simplified.
+%
+It compresses a stream of chunks, and replaces a chunk that it has
+seen before by a reference.
+%
+Stage 0 reads a chunk.
+%
+Stage 1 hashes the chunk and looks the hash up in a table.
+%
+Stage 2 compresses the chunk, unless it is a duplicate.
+%
+Stage 3 writes the compressed chunk, or its hash.
+%
+Stage 2 is parallel, and the others are serial.
+%
+In our version, chunks have a fixed size, the hash is not
+cryptographic, and the compressor is run-length encoding.
+
+Figure~\ref{fig:pipeline} shows the program.
+%
+The loop runs the first two stages, which are both serial.
+%
+It makes one vertex per chunk, which runs stage 2, waits for the
+vertex of the previous chunk, and runs stage 3.
+%
+So each vertex is a future that the next vertex forces.
+%
+The edge that this \lstinline|wait| adds is the dynamic one.
+%
+When stage 2 of a chunk ends, the previous vertex may be compressing,
+suspended in its own \lstinline|wait|, writing, or finished.
+%
+In the first three cases, \lstinline|new_edge| adds a suspension to
+the out-set of a vertex that is running, and in the last it finds the
+out-set closed, and \lstinline|wait| returns at once.
+%
+The out-set settles the race between adding the edge and finishing the
+vertex with one compare-and-swap.
+
+The loop also waits.
+%
+Before it starts chunk $i$, it waits for chunk $i-K$, so at most $K$
+chunks are in progress, and a loop that reads faster than the chunks
+are compressed cannot fill memory with them.
+%
+This is the \emph{throttling} of Cilk-P, which likewise holds back
+iteration $i+K$ until iteration $i$ has completed, and which used
+$K = 4P$ for dedup on $P$ processors.
+%
+So a vertex in the middle of the stream may have two suspensions in its
+out-set, that of the next vertex and that of the loop, added in either
+order.
+%
+The loop also frees vertices: once vertex $i-K$ has finished, nothing
+waits any longer for the vertices before it.
+
+Cilk-P builds pipelines into its scheduler, with a construct for the
+loop and one for each kind of stage.
+%
+Here, the pipeline is a client of the operations of
+Figure~\ref{fig:ops}, and uses nothing else.
+%
+Where the stencil used a vertex that runs many times and whose edges
+are implicit, the pipeline uses vertices that run once and whose edges
+are added on the fly.
+%
+Its output is, byte for byte, that of the serial program.
+
+\section{Costs and limits}
+\label{sec:costs}
+
+\paragraph{The cost of a fork}
+%
+A fork that is not stolen performs the same operations as before:
+a push, a pop, and two calls.
+%
+The only difference is that it compares the result of the pop with the
+address of its task, instead of with null.
+%
+A task no longer holds a context or a stack, so the frame of
+\lstinline|fork2join| is smaller.
+%
+% TODO: cite a certified measurement of fib against the first paper's
+% build, here and in Appendix sec:perf.
+
+\paragraph{The cost of a vertex}
+%
+A vertex that is created costs one allocation, and each explicit edge
+another.
+%
+A vertex that becomes ready costs a push, and one that starts costs a
+stack from the worker's cache and two context switches: to the vertex,
+and back to the loop.
+%
+A vertex whose edges are implicit, as in the stencil, allocates
+nothing per run.
+
+\paragraph{Mixing}
+%
+The two styles nest freely.
+%
+The body of a vertex runs on a task stack, so it may call
+\lstinline|fork2join| and \lstinline|wait|.
+%
+If it suspends, its stack is resumed like any other, and the vertex
+finishes when its body returns, on whichever worker that is.
+%
+Likewise, a branch of a fork may create vertices and wait for them.
+%
+A fork whose first branch releases vertices and does not wait for them
+finds them in the deque at step 2.
+%
+It then takes the slow path, even though its task was not stolen: this
+is correct, and costs a stack.
+
+\paragraph{Limits}
+%
+The scheduler never frees a vertex, and the client must keep one alive
+until it has finished and notified its successors, for instance by
+waiting for a vertex downstream of it.
+%
+An edge may be added to a vertex only by code that holds the count of
+the vertex above zero.
+%
+The code that a vertex runs in the scheduler loop, in place of closing
+its out-set, runs on the worker's own stack, and so must neither fork
+nor wait.
+%
+A deque no longer has a small bound: it holds the vertices that its
+worker has made ready, as well as one task per fork in progress.
+%
+The consequences of native fork join for client code remain: code that
+follows a fork or a wait may run on a different thread, and task stacks
+have a fixed size.
+
+\paragraph{High degrees}
+%
+The number of edges that enter or leave a vertex has no bound, and our
+representation is the simplest one: an atomic counter, and a linked
+list with a compare-and-swap at its head.
+%
+Two costs follow when a degree is large.
+%
+Many workers that add edges to one vertex, or count it down, contend
+for one counter and one list head.
+%
+And one worker counts down all the successors of a vertex, one after
+another, so a long out-set delays them.
+%
+Both have known remedies.
+%
+An in-counter can be a tree that grows as edges are added, so that
+each operation costs amortized constant time, contention
+included~\cite{acar2017dynsnzi}.
+%
+An out-set can be a tree as well, and its notification can be shared
+among workers: the loop counts down part of the out-set, and hands the
+rest to fresh vertices.
+%
+The original implementation of the calculus has
+both~\cite{Dag_calculus_16}.
+%
+They would fit behind the two operations that touch the
+representation, \lstinline|new_edge| and the code that notifies.
+%
+We have not built them.
+%
+For the out-set, we know of no program in practice whose out-degrees
+are large enough to need one.
+%
+The in-counter is another matter.
+%
+Acar et al.~\cite{acar2017dynsnzi} measure a loop of asyncs with empty
+bodies that all enter one finish, which is the pattern of a parallel
+loop.
+%
+With a single atomic counter, such as ours, that loop ran fastest on
+one core, and on every larger number of cores, up to forty, it ran
+slower than with each of the tree counters they compared.
+%
+We expect our counter to behave likewise when many small vertices
+enter one vertex, as in the async-finish of
+Appendix~\ref{sec:calculus}, and we have not measured it.
+
+\paragraph{Implementation}
+%
+The companion code is under \path{doc/dag-calculus} in the TaskPaRTS
+repository~\cite{taskparts}.
+%
+It starts from the micro taskparts of the first
+paper~\cite{nativeforkjoin}, and grows its scheduler from about 320
+lines to about 510.
+%
+It includes the stencil in three versions (serial, fork join, and DAG
+calculus), the pipeline in two (serial and DAG calculus), and a test
+that mixes the two styles in both directions and includes an
+async-finish.
+
+\bibliographystyle{abbrv}
+\bibliography{main}
+
+\clearpage
+\appendix
+
+\section{Relation to DAG calculus}
+\label{sec:calculus}
+
+\paragraph{The calculus}
+%
+DAG calculus~\cite{Dag_calculus_16} has five operations.
+%
+\lstinline|newTd| creates a thread, which is our vertex.
+%
+\lstinline|newEdge| and \lstinline|release| are our
+\lstinline|new_edge| and \lstinline|release|.
+%
+\lstinline|self| returns the running thread, and \lstinline|yield|
+suspends it until the threads with edges to it have finished.
+%
+A thread typically creates threads, adds edges from them to itself,
+releases them, and yields.
+
+We have no \lstinline|self| and no \lstinline|yield|.
+%
+\lstinline|wait| covers that pattern, which is how the calculus
+encodes fork join and the forcing of a future: the suspension that
+\lstinline|wait| makes is the calculus's view of a thread that has
+yielded, a vertex with edges entering it and the rest of the thread as
+its body.
+%
+The encoding of async-finish needs one more vertex.
+%
+There, the threads spawned inside a finish block add edges to the
+thread that will wait for them, and they do so while that thread is
+still running the block.
+%
+A suspension cannot play that part, since it exists only once its
+stack is about to be saved.
+%
+Instead, a finish block creates a vertex with an empty body to stand
+for its end.
+%
+Each async creates a vertex, adds an edge from it to the end vertex,
+and releases it.
+%
+The finish block then releases the end vertex and waits for it.
+%
+The end vertex gains in-edges while its predecessors run, and their
+number is known only when the last of them has finished.
+%
+That is safe by the rule of Section~\ref{sec:vertices}: an async is
+called by the finish block, which has yet to release the end vertex, or
+by a vertex that has an edge to it.
+%
+A thread that yields in the calculus keeps its identity, and its
+out-edges, across the yield.
+%
+Ours does too, in effect: a vertex finishes, and notifies its
+out-set, only when its body returns, however many times its stack was
+suspended in between.
+
+\lstinline|fork2join| is the calculus's encoding of fork join,
+specialized.
+%
+The encoding creates two threads, adds an edge from each to the
+caller, releases them, and yields.
+%
+Native fork join creates one task, with no in-counter, because the
+task is ready at once.
+%
+It runs the other branch in place.
+%
+And its join is an in-counter that can only be 2, 1, or 0, with the
+caller's context beside it.
+
+\paragraph{The original implementation}
+%
+The implementation that accompanies the calculus also switches
+contexts: each vertex records a continuation, and the scheduler and
+the vertices switch to each other as coroutines.
+%
+Three of its mechanisms have counterparts here.
+%
+It gives every new or running vertex an artificial in-edge, so that the
+vertex cannot be scheduled while it is being set up, or while it is
+still running.
+%
+Our release count is the first half of that edge.
+%
+We do not need the second half, because no edge enters a vertex once
+its count has reached zero, and a vertex that runs again, as a block
+of the stencil does, sets its count only after it has left its stack.
+%
+It adds an edge by incrementing the in-counter of the target first and
+the out-set of the source second, and rolls back if the source has
+finished, as \lstinline|new_edge| does.
+%
+And it notifies the out-set of a vertex from the scheduler, after the
+vertex has finished.
+
+It also lets each vertex choose a representation of its in-counter and
+its out-set, from a single counter and a single pointer up to
+concurrent trees for vertices of high degree.
+%
+Our vertex has one representation of each, which a vertex can replace,
+as the blocks of the stencil do; Section~\ref{sec:costs} discusses
+high degrees.
+
+\section{What remains to be measured}
+\label{sec:perf}
+
+% TODO: this appendix is a plan. Replace it with certified Flexibench
+% rounds, cited through \fbval, as in the first paper.
+
+This draft cites no timings.
+%
+Five measurements are planned, each as a certified round.
+%
+\begin{itemize}[leftmargin=*]
+\item \emph{The fork.}
+  The running time of \lstinline|fib|, which does nothing but fork,
+  with this paper's micro taskparts and with the first paper's, on one
+  worker and on several.
+  It shows whether hosting vertices costs anything on the fast path.
+\item \emph{The stencil.}
+  The three versions of the stencil, for a small grid with many time
+  steps and a large grid with few, as in the DAG calculus paper, over
+  a range of block sizes and numbers of workers.
+  It shows what the weaker dependencies of the DAG version buy over
+  the fork-join version.
+\item \emph{The pipeline.}
+  The two versions of the pipeline, over a range of chunk sizes,
+  throttling limits, and numbers of workers.
+  It shows what an edge added on the fly, and a suspension, cost when
+  there is one of each per item.
+\item \emph{The vertex.}
+  The cost of creating, releasing, and waiting for a vertex whose body
+  is empty, and of running a block of the stencil whose body is empty,
+  beside the cost of a fork.
+  It shows the overhead per vertex, and how far a vertex is from the
+  goal of costing what a fork costs.
+\item \emph{The in-counter.}
+  The cost per async of an async-finish whose asyncs have empty or
+  small bodies and all enter one finish, over a range of body sizes
+  and numbers of workers.
+  It shows whether a single atomic counter suffers from contention on
+  this machine, as Section~\ref{sec:costs} expects.
+\end{itemize}
+
+\end{document}
