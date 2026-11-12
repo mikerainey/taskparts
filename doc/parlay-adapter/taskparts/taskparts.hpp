@@ -23,10 +23,15 @@ using microtaskparts::get_nb_workers;
 
 int mtp_user_main(int argc, char *argv[]);
 
+// The value mtp_user_main returns is not used. A main may end without a
+// return statement, but only under the name main; once renamed, such a
+// function returns no particular value. (It must also be compiled with
+// -fno-strict-return, which taskpartsConfig.cmake passes, so that the compiler
+// does not treat its end as unreachable.) So this main reports success
+// whenever the program's main returns at all.
 int main(int argc, char *argv[]) {
-  int result = 0;
-  microtaskparts::launch([&] { result = mtp_user_main(argc, argv); });
-  return result;
+  microtaskparts::launch([&] { (void)mtp_user_main(argc, argv); });
+  return 0;
 }
 
 // From here on, a definition of main defines mtp_user_main. It must have the
