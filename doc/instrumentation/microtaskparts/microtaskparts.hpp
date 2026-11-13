@@ -4,15 +4,17 @@
 //
 // A teaching companion to ../main.tex. It is the micro taskparts of
 // ../../native-fork-join, plus the instrumentation that ../main.tex
-// describes, and nothing else: no elastic scheduling, no CPU pinning, and no
-// persistent worker pool. Idle workers spin, yielding between steal
-// attempts, instead of sleeping, and each top-level call to fork2join starts
-// and stops its own worker threads.
+// describes, and nothing else: no elastic scheduling and no CPU pinning.
+//
+// The worker threads start at the first outermost call to fork2join, or the
+// first snapshot, and run until the program exits. The thread that makes the
+// outermost calls is worker 0. Idle workers spin, yielding between steal
+// attempts, whether or not a computation is in progress.
 //
 // The instrumentation is off unless a build turns it on:
 //
 //   -DMTP_STATS        time each worker spends working, scheduling and
-//                      idle, and count steals (see stats, below)
+//                      idle, and count steals
 //   -DMTP_LOG          MTP_STATS, plus a log of every change of state and
 //                      every steal, which write_trace writes for Perfetto
 //   -DMTP_COUNT_FORKS  MTP_STATS, plus a count of forks, the one item that
@@ -21,6 +23,9 @@
 // One more flag, -DMTP_SERIAL, makes fork2join two ordinary calls. That is
 // the sequential program, whose running time is the baseline of a speedup
 // (Appendix A of ../main.tex).
+//
+// A program measures a region of its execution by taking a snapshot before
+// it and another after it (take_snapshot, stats_between, write_trace).
 
 #include "context.hpp"
 
@@ -30,6 +35,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
+#include <deque>
 #include <memory>
 #include <chrono>
 #include <sys/mman.h>
@@ -91,7 +97,7 @@ inline void delete_stack(char *stack) {
 // The second branch of a call to fork2join, which thieves may steal. It
 // lives in the frame of that call too.
 struct task {
-  join *j;               // the join to report to; null for the root
+  join *j;               // the join to report to
   char *stack = nullptr; // the fresh stack it runs on, if it is stolen
   context k;             // where it starts on that stack
 
@@ -218,15 +224,19 @@ struct event {
   uint32_t arg;
 };
 
-// What one worker records. Only that worker writes it, and nobody else
-// reads it until the workers have stopped, so none of it is atomic.
+// What one worker records, from the start of its thread on: nothing here is
+// ever reset. Only that worker writes it. Another thread reads it only when
+// it has seen the worker idle with no computation in progress (quiesce,
+// below): an idle worker writes nothing here until it steals, and then there
+// is nothing to steal. So only current, through which the worker says that
+// it is idle, is atomic.
 struct recorder {
-  state current = scheduling;
+  std::atomic<state> current{scheduling};
   uint64_t since = 0;              // when the worker entered current
   uint64_t ticks_in[nb_states] = {}; // total time in each state so far
   uint64_t nb_steals = 0;
   uint64_t nb_forks = 0;
-  std::vector<event> log;
+  std::deque<event> log; // grows in chunks, so appending moves no entry
 };
 
 /*---------------------------------------------------------------------*/
@@ -253,9 +263,25 @@ struct alignas(64) worker {
 #endif
 };
 
+// The number of workers, fixed for the process, and known before any thread
+// starts, because programs size their tables by it.
+inline size_t read_nb_workers() {
+  const char *s = std::getenv("TASKPARTS_NUM_WORKERS");
+  return (s != nullptr)
+             ? (size_t)std::max(1, std::atoi(s))
+             : (size_t)std::max(1u, std::thread::hardware_concurrency());
+}
+
 inline std::unique_ptr<worker[]> workers;
-inline size_t nb_workers = 1;
-inline std::atomic<bool> done{false};
+inline size_t nb_workers = read_nb_workers();
+// Whether the root task of the current outermost call has finished. Worker
+// 0, which makes the call, leaves its loop when it has.
+inline std::atomic<bool> root_done{true};
+// Whether the program is exiting. The other workers leave their loops then.
+inline std::atomic<bool> stopping{false};
+// The join that the root task reports to. Nothing waits at it: it only
+// tells the loop that the task which has just left its stack is the root.
+inline join root_join;
 inline bool in_scheduler = false;
 inline thread_local size_t tls_id = 0;
 
@@ -314,16 +340,18 @@ inline task *steal(worker &w) {
 inline void mark([[maybe_unused]] worker &w, [[maybe_unused]] state s) {
 #if defined(MTP_STATS)
   recorder &r = w.rec;
-  if (r.current == s) {
+  state was = r.current.load(std::memory_order_relaxed);
+  if (was == s) {
     return; // e.g. still idle, after one more failed steal
   }
   uint64_t now = ticks();
-  r.ticks_in[r.current] += now - r.since;
-  r.current = s;
+  r.ticks_in[was] += now - r.since;
   r.since = now;
 #if defined(MTP_LOG)
   r.log.push_back(event{now, s, 0});
 #endif
+  // Last, so that whoever sees the new state sees the writes above.
+  r.current.store(s, std::memory_order_release);
 #endif
 }
 
@@ -340,13 +368,10 @@ inline void mark([[maybe_unused]] worker &w, [[maybe_unused]] state s) {
 /*---------------------------------------------------------------------*/
 /* Scheduler loop */
 
-// A branch running on worker w has reached join j (null for the root). Leave
-// the current stack for good and tell the loop, which counts the branch only
-// once we are off the stack.
+// A branch running on worker w has reached join j (root_join, for the root).
+// Leave the current stack for good and tell the loop, which counts the
+// branch only once we are off the stack.
 [[noreturn]] inline void finish(worker &w, join *j) {
-  if (j == nullptr) {
-    done.store(true);
-  }
   w.reached = j;
   mtp_context_restore(&w.loop);
 }
@@ -366,21 +391,30 @@ inline void mark([[maybe_unused]] worker &w, [[maybe_unused]] state s) {
 // reaches a join first switches here, so by the time another worker can see
 // the count reach zero and resume the parent, the branch is off its stack:
 // the parent's own stack, for the first branch, and a stack that the parent
-// frees when fork2join returns, for the second.
+// frees when fork2join returns, for the second. The root is announced as
+// finished here too, for the same reason: launch reuses its stack.
+//
+// Worker 0 runs this loop once per outermost call, until the root of that
+// call has finished. The other workers run it until the program exits.
 inline void worker_loop(task *first) {
   worker &w = me();
+  const std::atomic<bool> &over = (&w == &workers[0]) ? root_done : stopping;
   task *t = first;
-  while (!done.load()) {
+  while (!over.load()) {
     context *next = nullptr;
     if (join *j = w.reached) {
       w.reached = nullptr;
-      if (j->pending.fetch_sub(1, std::memory_order_acq_rel) == 1) {
+      if (j == &root_join) {
+        root_done.store(true);
+      } else if (j->pending.fetch_sub(1, std::memory_order_acq_rel) == 1) {
         next = &j->k; // both branches are done: resume the parent
       }
     } else if ((t != nullptr) ||
                ((nb_workers > 1) && ((t = steal(w)) != nullptr))) {
       mark(w, scheduling);
-      t->stack = new_stack();
+      if (t->stack == nullptr) {
+        t->stack = new_stack();
+      }
       context_init(t->k, t->stack, stack_szb, &task_entry);
       w.starting = t;
       next = &t->k;
@@ -396,19 +430,125 @@ inline void worker_loop(task *first) {
       mark(w, scheduling);
     }
   }
-  mark(w, stopped);
 }
 
 /*---------------------------------------------------------------------*/
-/* Instrumentation: what a launch reports */
+/* The worker threads */
 
-// The totals of the most recent launch, with times in seconds. The three
-// times are summed over the workers, and together they account for
-// nb_workers * exectime, less the moment between a worker's stopping and
-// the end of the launch. The counts are zero unless the build records them.
+// Starts the threads of workers 1 and up, once, and stops them when the
+// program exits. Defined after workers, so that it is destroyed first.
+struct pool {
+  bool started = false;
+  std::vector<std::thread> threads;
+  char *root_stack = nullptr; // one stack serves every root in turn
+  uint64_t start_ticks = 0;
+
+  __attribute__((noinline)) void start() {
+    if (started) {
+      return;
+    }
+    started = true;
+    workers.reset(new worker[nb_workers]);
+    root_stack = new_stack();
+    start_ticks = ticks();
+#if defined(MTP_STATS)
+    // Worker 0 is the calling thread, which is working whenever it is
+    // outside its loop. The others start out scheduling, so the time it
+    // takes to start a thread counts as scheduling.
+    for (size_t i = 0; i < nb_workers; i++) {
+      recorder &r = workers[i].rec;
+      state s = (i == 0) ? working : scheduling;
+      r.since = start_ticks;
+      r.current.store(s);
+#if defined(MTP_LOG)
+      r.log.push_back(event{start_ticks, s, 0});
+#endif
+    }
+#endif
+    for (size_t i = 1; i < nb_workers; i++) {
+      threads.emplace_back([i] {
+        tls_id = i;
+        worker_loop(nullptr);
+        mark(me(), stopped);
+      });
+    }
+  }
+
+  ~pool() {
+    stopping.store(true);
+    for (auto &t : threads) {
+      t.join();
+    }
+    delete_stack(root_stack);
+  }
+};
+
+inline pool the_pool;
+
+/*---------------------------------------------------------------------*/
+/* Instrumentation: measuring a region */
+
+// A program measures a region of its execution by taking a snapshot before
+// it and another after it. A snapshot is taken by the thread that makes the
+// outermost calls to fork2join, between such calls. The recorders are never
+// reset: what a region cost is the difference of two snapshots.
+
+// Wait until every other worker is idle. No computation is in progress, so
+// nothing can be stolen, and a worker that is idle stays idle and writes
+// nothing to its recorder until the next outermost call.
+inline void quiesce() {
+#if defined(MTP_STATS)
+  for (size_t i = 1; i < nb_workers; i++) {
+    while (workers[i].rec.current.load(std::memory_order_acquire) != idle) {
+      std::this_thread::yield();
+    }
+  }
+#endif
+}
+
+// The totals of all workers, from the start of their threads up to one
+// instant, in ticks. The counts are zero unless the build records them.
+struct snapshot {
+  std::chrono::steady_clock::time_point wall;
+  uint64_t at = 0; // the instant, in ticks
+  uint64_t ticks_in[nb_states] = {};
+  uint64_t nb_steals = 0;
+  uint64_t nb_forks = 0;
+};
+
+inline snapshot take_snapshot() {
+  if (in_scheduler) {
+    std::fprintf(stderr, "microtaskparts: snapshot inside fork2join\n");
+    std::abort();
+  }
+  snapshot s;
+#if !defined(MTP_SERIAL)
+  the_pool.start();
+  quiesce();
+#endif
+  s.wall = std::chrono::steady_clock::now();
+  s.at = ticks();
+#if defined(MTP_STATS)
+  for (size_t i = 0; i < nb_workers; i++) {
+    const recorder &r = workers[i].rec;
+    for (int k = 0; k < nb_states; k++) {
+      s.ticks_in[k] += r.ticks_in[k];
+    }
+    // The stay that the worker is in the middle of: worker 0 is working,
+    // here, and the others are idle.
+    s.ticks_in[r.current.load()] += s.at - r.since;
+    s.nb_steals += r.nb_steals;
+    s.nb_forks += r.nb_forks;
+  }
+#endif
+  return s;
+}
+
+// What happened between two snapshots, with times in seconds. The three
+// times are summed over the workers, and add up to nb_workers * exectime.
 struct stats {
   size_t nb_workers = 0;
-  double exectime = 0.0; // wall-clock time of the launch
+  double exectime = 0.0; // wall-clock time
   double work = 0.0;
   double sched = 0.0;
   double idle = 0.0;
@@ -416,12 +556,27 @@ struct stats {
   uint64_t nb_forks = 0;
 };
 
-inline stats last_stats;
-inline uint64_t launch_ticks = 0;     // when the most recent launch began
-inline double seconds_per_tick = 0.0; // as measured over that launch
+// How long a tick lasted, on average, between two snapshots.
+inline double seconds_per_tick(const snapshot &a, const snapshot &b) {
+  std::chrono::duration<double> elapsed = b.wall - a.wall;
+  return (b.at == a.at) ? 0.0 : elapsed.count() / (double)(b.at - a.at);
+}
 
-inline void print_stats(FILE *f) {
-  const stats &s = last_stats;
+inline stats stats_between(const snapshot &a, const snapshot &b) {
+  double spt = seconds_per_tick(a, b);
+  std::chrono::duration<double> elapsed = b.wall - a.wall;
+  stats s;
+  s.nb_workers = nb_workers;
+  s.exectime = elapsed.count();
+  s.work = (double)(b.ticks_in[working] - a.ticks_in[working]) * spt;
+  s.sched = (double)(b.ticks_in[scheduling] - a.ticks_in[scheduling]) * spt;
+  s.idle = (double)(b.ticks_in[idle] - a.ticks_in[idle]) * spt;
+  s.nb_steals = b.nb_steals - a.nb_steals;
+  s.nb_forks = b.nb_forks - a.nb_forks;
+  return s;
+}
+
+inline void print_stats(FILE *f, const stats &s) {
   std::fprintf(f,
                "{\"nb_workers\": %zu, \"exectime\": %.6f, \"work\": %.6f, "
                "\"sched\": %.6f, \"idle\": %.6f, \"nb_steals\": %llu, "
@@ -430,65 +585,60 @@ inline void print_stats(FILE *f) {
                (unsigned long long)s.nb_steals, (unsigned long long)s.nb_forks);
 }
 
-#if defined(MTP_STATS)
-inline void collect_stats(double exectime, uint64_t end_ticks) {
-  seconds_per_tick = exectime / (double)(end_ticks - launch_ticks);
-  stats s;
-  s.nb_workers = nb_workers;
-  s.exectime = exectime;
-  uint64_t in[nb_states] = {};
-  for (size_t i = 0; i < nb_workers; i++) {
-    const recorder &r = workers[i].rec;
-    for (int k = 0; k < nb_states; k++) {
-      in[k] += r.ticks_in[k];
-    }
-    s.nb_steals += r.nb_steals;
-    s.nb_forks += r.nb_forks;
-  }
-  s.work = (double)in[working] * seconds_per_tick;
-  s.sched = (double)in[scheduling] * seconds_per_tick;
-  s.idle = (double)in[idle] * seconds_per_tick;
-  last_stats = s;
-}
-#endif
-
 #if defined(MTP_LOG)
-// Write the log of the most recent launch in the JSON trace format that
-// Perfetto (ui.perfetto.dev) reads: one track per worker, one slice per
-// stay in a state, and one instant per steal. Times are in microseconds.
-inline void write_trace(const char *path) {
+// Write the part of the log between two snapshots in the JSON trace format
+// that Perfetto (ui.perfetto.dev) reads: one track per worker, one slice per
+// stay in a state, and one instant per steal. Times are in microseconds from
+// the first snapshot. Called where a snapshot may be taken.
+inline void write_trace(const char *path, const snapshot &a,
+                        const snapshot &b) {
+  quiesce();
   FILE *f = std::fopen(path, "w");
   if (f == nullptr) {
     std::perror(path);
     return;
   }
-  auto us = [](uint64_t t) {
-    return (double)(t - launch_ticks) * seconds_per_tick * 1e6;
-  };
+  double spt = seconds_per_tick(a, b);
+  auto us = [&](uint64_t t) { return (double)(t - a.at) * spt * 1e6; };
   std::fprintf(f, "{\"displayTimeUnit\": \"ns\", \"traceEvents\": [\n");
   for (size_t i = 0; i < nb_workers; i++) {
     std::fprintf(f,
                  "%s{\"name\": \"thread_name\", \"ph\": \"M\", \"pid\": 0, "
                  "\"tid\": %zu, \"args\": {\"name\": \"worker %zu\"}}",
                  (i == 0) ? "" : ",\n", i, i);
-    const event *open = nullptr; // the state the worker is in
-    for (const event &e : workers[i].rec.log) {
-      if (e.what == event::steal) {
-        std::fprintf(f,
-                     ",\n{\"name\": \"steal\", \"ph\": \"i\", \"s\": \"t\", "
-                     "\"pid\": 0, \"tid\": %zu, \"ts\": %.3f, "
-                     "\"args\": {\"victim\": %u}}",
-                     i, us(e.ticks), e.arg);
-        continue;
-      }
-      if (open != nullptr) {
+    // A stay in a state, from one entry to the next, cut to the region.
+    auto slice = [&](const event &from, uint64_t until) {
+      uint64_t lo = std::max(from.ticks, a.at);
+      uint64_t hi = std::min(until, b.at);
+      if (lo < hi) {
         std::fprintf(f,
                      ",\n{\"name\": \"%s\", \"ph\": \"X\", \"pid\": 0, "
                      "\"tid\": %zu, \"ts\": %.3f, \"dur\": %.3f}",
-                     state_names[open->what], i, us(open->ticks),
-                     us(e.ticks) - us(open->ticks));
+                     state_names[from.what], i, us(lo), us(hi) - us(lo));
+      }
+    };
+    const event *open = nullptr; // the state the worker is in
+    for (const event &e : workers[i].rec.log) {
+      if (e.ticks > b.at) {
+        break;
+      }
+      if (e.what == event::steal) {
+        if (e.ticks >= a.at) {
+          std::fprintf(f,
+                       ",\n{\"name\": \"steal\", \"ph\": \"i\", \"s\": \"t\", "
+                       "\"pid\": 0, \"tid\": %zu, \"ts\": %.3f, "
+                       "\"args\": {\"victim\": %u}}",
+                       i, us(e.ticks), e.arg);
+        }
+        continue;
+      }
+      if (open != nullptr) {
+        slice(*open, e.ticks);
       }
       open = &e;
+    }
+    if (open != nullptr) {
+      slice(*open, b.at);
     }
   }
   std::fprintf(f, "\n]}\n");
@@ -496,56 +646,24 @@ inline void write_trace(const char *path) {
 }
 #endif
 
-// Run f as the root task, on nb_workers threads; the caller is worker 0.
+// Run f as the root task; the caller is worker 0, and runs its loop until
+// the root has finished.
 //
 // Not inlined, because fork2join is: it becomes part of each client function
-// that forks, and whatever launch needs, such as the floating-point
-// registers that its instrumentation uses, that function would save and
+// that forks, and whatever launch needs, that function would save and
 // restore on every call.
 template <typename F> __attribute__((noinline)) void launch(F &&f) {
-  thunk_task root(f, nullptr);
-  const char *s = std::getenv("TASKPARTS_NUM_WORKERS");
-  nb_workers = (s != nullptr)
-                   ? std::max(1, std::atoi(s))
-                   : std::max(1u, std::thread::hardware_concurrency());
-#if defined(MTP_STATS)
-  auto start = std::chrono::steady_clock::now();
-  launch_ticks = ticks();
-#endif
-  workers.reset(new worker[nb_workers]);
-#if defined(MTP_STATS)
-  // Every worker starts out scheduling, at the start of the launch, so the
-  // time it takes to start its thread counts as scheduling.
-  for (size_t i = 0; i < nb_workers; i++) {
-    workers[i].rec.since = launch_ticks;
-#if defined(MTP_LOG)
-    workers[i].rec.log.reserve(1 << 12);
-    workers[i].rec.log.push_back(event{launch_ticks, scheduling, 0});
-#endif
-  }
-#endif
-  done.store(false);
+  the_pool.start();
+  thunk_task root(f, &root_join);
+  root.stack = the_pool.root_stack;
+  worker &w = workers[0];
+  mark(w, scheduling);
+  root_done.store(false);
   in_scheduler = true;
-  tls_id = 0;
-  std::vector<std::thread> threads;
-  for (size_t i = 1; i < nb_workers; i++) {
-    threads.emplace_back([i] {
-      tls_id = i;
-      worker_loop(nullptr);
-    });
-  }
   worker_loop(&root);
-  for (auto &t : threads) {
-    t.join();
-  }
-  delete_stack(root.stack);
-#if defined(MTP_STATS)
-  uint64_t end_ticks = ticks();
-  std::chrono::duration<double> elapsed =
-      std::chrono::steady_clock::now() - start;
-  collect_stats(elapsed.count(), end_ticks);
-#endif
   in_scheduler = false;
+  // Outside its loop, worker 0 runs the program's sequential code.
+  mark(w, working);
 }
 
 /*---------------------------------------------------------------------*/

@@ -1,6 +1,7 @@
-// fib, the worst case for the cost of a fork. With an instrumented build,
-// it prints the stats of the run, and, given a second argument, writes the
-// trace there.
+// fib, the worst case for the cost of a fork. It measures the call of fib
+// as a region, between two snapshots. With an instrumented build, it prints
+// the stats of the region, and, given a second argument, writes the trace
+// there.
 //
 // Two more builds count forks the wrong way, to show what that costs:
 // -DCOUNT_FORKS_ATOMIC counts in one counter shared by all workers, and
@@ -18,7 +19,6 @@ inline unsigned long packed_nb_forks[64];
 
 #include "microtaskparts.hpp"
 
-#include <chrono>
 #include <cstdio>
 #include <cstdlib>
 
@@ -35,13 +35,13 @@ auto fib(long n) -> long {
 
 int main(int argc, char **argv) {
   long n = (argc > 1) ? std::atol(argv[1]) : 30;
-  auto start = std::chrono::steady_clock::now();
+  snapshot before = take_snapshot();
   long r = fib(n);
-  std::chrono::duration<double> elapsed =
-      std::chrono::steady_clock::now() - start;
+  snapshot after = take_snapshot();
+  stats s = stats_between(before, after);
   std::printf("fib(%ld) = %ld\n", n, r);
   std::printf("workers   %zu\n", get_nb_workers());
-  std::printf("exectime  %.3f s\n", elapsed.count());
+  std::printf("exectime  %.3f s\n", s.exectime);
 #if defined(COUNT_FORKS_ATOMIC)
   std::printf("nb_forks  %lu\n", shared_nb_forks.load());
 #elif defined(COUNT_FORKS_PACKED)
@@ -52,11 +52,11 @@ int main(int argc, char **argv) {
   std::printf("nb_forks  %lu\n", nb_forks);
 #endif
 #if defined(MTP_STATS)
-  print_stats(stdout);
+  print_stats(stdout, s);
 #endif
 #if defined(MTP_LOG)
   if (argc > 2) {
-    write_trace(argv[2]);
+    write_trace(argv[2], before, after);
   }
 #endif
   return 0;
