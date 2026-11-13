@@ -224,9 +224,10 @@ struct join {
 // tasks, and whichever worker takes a task out of a deque starts it, once.
 struct task {
   virtual void run() = 0;
-  // Called on the task's stack after run() returns: leave a message for the
-  // scheduler loop of w, which the caller is about to switch to.
-  virtual void leave(worker &w) = 0;
+  // Called on the task's stack after run() returns, just before the stack is
+  // left for good: do what finishing this task requires. It may return on a
+  // different worker than the one that called it.
+  virtual void leave() = 0;
   // The context to resume, for a task that is a suspended stack; null for a
   // task that starts on a fresh stack.
   virtual context *saved() { return nullptr; }
@@ -240,7 +241,7 @@ template <typename F> struct fork_task : task {
   join *j; // the join to report to; null for the root
   fork_task(F &body, join *j) : body(body), j(j) {}
   void run() override { body(); }
-  void leave(worker &w) override;
+  void leave() override;
 };
 
 // A vertex of a DAG: a task that becomes ready when its count of unfinished
@@ -263,11 +264,17 @@ struct vertex : task {
 
   static edge *finished_mark() { return reinterpret_cast<edge *>(1); }
 
-  void leave(worker &w) override;
-  // Called by the scheduler loop, on its own stack, after the vertex has
-  // finished and left its stack: count down the targets of the out-edges.
-  // A vertex may override it to represent its out-edges some other way. It
-  // must not call fork2join or wait.
+  void leave() override { notify(); }
+  // Called on the vertex's stack once its body has returned: count down the
+  // targets of the out-edges. A vertex may override it to represent its
+  // out-edges some other way. It may call fork2join and wait. Whatever it
+  // does, its last call to count_down is its last use of the vertex: the
+  // target may free the vertex, or make it ready again, at once.
+  //
+  // Nothing requires the vertex to have left its stack first. A join and a
+  // suspension guard a saved context, which no worker may resume while the
+  // stack it points into is in use. A vertex's count guards only its body,
+  // and the scheduler keeps nothing in a vertex while it runs.
   virtual void notify();
 };
 
@@ -372,13 +379,11 @@ struct alignas(64) worker {
   context loop;
   // Messages to the loop from the code that switches to it. On the way out:
   // the task to start, and its fresh stack. On the way back: the join that a
-  // branch has just reached, the vertex that has just finished, the
-  // suspension whose stack has just been saved, and the stack that has just
-  // been left for good.
+  // branch has just reached, the suspension whose stack has just been saved,
+  // and the stack that has just been left for good.
   task *starting = nullptr;
   char *fresh = nullptr;
   join *reached = nullptr;
-  vertex *finished = nullptr;
   suspension *suspended = nullptr;
   char *spent = nullptr;
 #ifdef MTP_FIBERS
@@ -450,14 +455,14 @@ inline task *steal(worker &w) {
 
 static constexpr size_t max_nb_cached_stacks = 64;
 
-template <typename F> void fork_task<F>::leave(worker &w) {
+// A branch has reached its join: tell the loop, which counts it once we are
+// off this stack.
+template <typename F> void fork_task<F>::leave() {
   if (j == nullptr) {
     done.store(true);
   }
-  w.reached = j;
+  me().reached = j;
 }
-
-inline void vertex::leave(worker &w) { w.finished = this; }
 
 // One predecessor of v has finished, or v was released. If none remains, v
 // is ready: make it stealable.
@@ -495,11 +500,12 @@ inline void vertex::notify() {
   }
   t->run();
   perturb();
-  // run() may return on a different worker than the one that called it.
-  // Leave this stack for good and tell the loop, which counts the branch, or
-  // notifies the successors of the vertex, only once we are off the stack.
+  // A fork tells the loop which join it has reached, and a vertex counts down
+  // its successors. After that, t may be gone.
+  t->leave();
+  // run() and leave() may each return on a different worker than the one
+  // that called them. Leave this stack for good, and give it to the loop.
   worker &w = me();
-  t->leave(w);
   w.spent = stack;
 #ifdef MTP_FIBERS
   w.dead_tsan = w.cur.tsan;
@@ -554,9 +560,8 @@ inline void start(worker &w, task *t) {
 // Runs on the worker thread's own stack and never migrates, so w stays
 // valid. first, if not null, is a task to start with.
 //
-// The loop is the only place where a join is counted down, where the
-// successors of a finished vertex are counted down, and where a suspension
-// is released. The code concerned first switches here, so by the time
+// The loop is the only place where a join is counted down and where a
+// suspension is released. The code concerned first switches here, so by the time
 // another worker can act on a count that reached zero, that code is off its
 // stack, and the context that the other worker may resume has been saved.
 inline void worker_loop(task *first) {
@@ -596,10 +601,6 @@ inline void worker_loop(task *first) {
 #endif
         continue;
       }
-    }
-    if (vertex *v = w.finished) {
-      w.finished = nullptr;
-      v->notify();
     }
     if (suspension *s = w.suspended) {
       w.suspended = nullptr;

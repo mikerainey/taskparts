@@ -154,7 +154,7 @@ static bool test_wait_races(uint64_t seed) {
   }
   // The same, with a vertex that also has ordinary successors. The waiter
   // frees the vertex the moment its wait returns, which may be while the
-  // scheduler loop is still counting the other successors down.
+  // vertex is still counting its other successors down.
   for (int i = 0; i < 300; i++) {
     long nb_targets = rnd(seed, i, 2) % 8;
     std::atomic<long> nb_ran{0};
@@ -222,14 +222,15 @@ static bool test_many_stacks(uint64_t seed) {
 /*---------------------------------------------------------------------*/
 /* Test 4: a vertex that runs many times */
 
-// Claim: a vertex may be made ready again as soon as it has left its stack,
-// before the scheduler loop has finished with its previous run.
+// Claim: a vertex may be made ready again by its own notification, while the
+// stack of its previous run is still in use, and that notification may fork.
 //
 // A ring of vertices passes a token around: each vertex, when it has run,
 // re-arms its own count and counts the next one down, as the blocks of the
 // stencil do. With a ring of one, a vertex makes itself ready from its own
-// notification. Each run checks that it is the only run in progress on its
-// vertex, and that the token arrived in order.
+// notification. Before it passes the token, a vertex forks, so that the
+// notification may move to another worker. Each run checks that it is the
+// only run in progress on its vertex, and that the token arrived in order.
 struct ring_vertex : vertex {
   ring_vertex *next = nullptr;
   vertex *end = nullptr;
@@ -250,6 +251,9 @@ struct ring_vertex : vertex {
   }
 
   void notify() override {
+    if ((index % 2 == 0) && (fib_fork(6) != 8)) {
+      ok->store(false);
+    }
     pending.store(1, std::memory_order_release); // re-arm before passing on
     bool last = (index + 1 == ring_size) && (--laps_left == 0);
     if (last) {

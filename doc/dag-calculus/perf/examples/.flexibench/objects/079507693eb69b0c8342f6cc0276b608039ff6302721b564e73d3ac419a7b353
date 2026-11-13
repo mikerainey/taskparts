@@ -1,0 +1,5 @@
+pipeline dag chunks=40000 bytes=16384 throttle=8
+output    193837335 bytes, 17320 distinct chunks
+workers   2
+exectime  0.379 s
+check     ok

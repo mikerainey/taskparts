@@ -1,0 +1,5 @@
+seidel planes n=8192 block=64 steps=10
+checksum  999.999998937
+workers   1
+exectime  1.163 s
+check     ok

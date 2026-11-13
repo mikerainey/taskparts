@@ -35,6 +35,13 @@
 \newcommand{\fibtime}[2]{\fbval{times}{#1}{P = #2}}
 \input{perf/parlay/parlay}
 \newcommand{\parlaytime}[2]{\fbval{parlay}{#1}{#2}}
+% Likewise for Table tbl:examples (perf/examples/examples.bib):
+% \pipetime{CONFIG} and \stenciltime{GRID}{CONFIG}, where CONFIG is serial,
+% or a version (planes, dag) followed by a number of workers.
+\input{perf/examples/pipeline}
+\newcommand{\pipetime}[1]{\fbval{pipeline}{pipeline}{#1}}
+\input{perf/examples/stencil}
+\newcommand{\stenciltime}[2]{\fbval{stencil}{#1}{#2}}
 
 \newcommand{\fo}{\mathtt{f_1}}
 \newcommand{\ft}{\mathtt{f_2}}
@@ -196,7 +203,7 @@ examples, a pipeline and a stencil, and Section~\ref{sec:costs}
 discusses costs and limits.
 %
 The appendices relate the design to DAG calculus and its original
-implementation, and measure what vertices cost fork join.
+implementation, and measure fork join and the two examples.
 
 \section{Native fork join, in brief}
 \label{sec:nfj}
@@ -207,8 +214,13 @@ series~\cite{nativeforkjoin} has the details.
 A \emph{context} holds the callee-saved registers, the stack pointer,
 and a return address.
 %
+There are two operations on contexts.
+%
 \lstinline|swap($k_1$, $k_2$)| saves the caller's context in $k_1$ and
-resumes $k_2$, and \lstinline|restore($k$)| resumes $k$ without saving.
+resumes $k_2$.
+%
+\lstinline|restore($k$)| resumes $k$ without saving anything, so the
+caller's stack is left for good.
 %
 Any worker may resume a context, whichever worker saved it.
 
@@ -259,7 +271,7 @@ type task =
       pending : atomic int}
 type worker = {k : context, dq : deque of task*,
   starting : task*, reached : join*,
-  finished : task*, suspended : task*}
+  suspended : task*}
 
 loop() -> void {  // on the worker's own stack
   while (!done) {
@@ -267,9 +279,6 @@ loop() -> void {  // on the worker's own stack
     if (j != null &&
         fetch_and_add(j.pending, -1) == 1)
       { swap(me.k, j.k); continue }
-    v = me.finished; me.finished = null
-    if (v != null)
-      for (u in close(v.out)) count_down(u)
     s = me.suspended; me.suspended = null
     if (s != null) count_down(s)
     t = pop()
@@ -289,11 +298,14 @@ enter() -> void {  // first frame on a fresh stack
   if (t is fork) {
     if (t.j == null) done = true  // root
     me.reached = t.j }
-  else me.finished = t
+  else for (u in close(t.out)) count_down(u)
   restore(me.k) }  // leave this stack
 \end{lstlisting}
 \hrule
-\caption{The scheduler, with vertices.  Here and in
+\caption{The scheduler, with vertices.
+  \lstinline|swap| and \lstinline|restore| switch contexts
+  (Section~\ref{sec:nfj}), and \lstinline|new_context($s$, $f$)| makes
+  a context that calls $f$ on the stack $s$.  Here and in
   Figure~\ref{fig:ops}, \lstinline|t| names a task of any kind,
   \lstinline|u| and \lstinline|v| name tasks that have a count
   (vertices and suspensions), and \lstinline|s| names a suspension.}
@@ -407,19 +419,21 @@ fork, or the body of a vertex.
 %
 The loop treats a join as before.
 %
-It has three new duties.
-%
-When a vertex finishes, the loop closes its out-set and counts down
-each task in it.
+It has two new duties.
 %
 When a stack suspends in \lstinline|wait|, the loop counts down its
 suspension.
 %
-And before it steals, the loop pops its own deque, which now may hold
-tasks that the loop itself has just made ready.
+As with a join, this happens in the loop, after the code concerned has
+left its stack.
 %
-As with joins, all of this happens in the loop, after the code
-concerned has left its stack.
+And before it steals, the loop pops its own deque, which now may hold
+tasks that became ready on its worker.
+
+A vertex that finishes needs nothing from the loop.
+%
+When its body returns, the first frame on its stack closes its out-set
+and counts down each task in it, and then leaves the stack.
 
 \paragraph{Fork join}
 %
@@ -444,29 +458,35 @@ facts~\cite{nativeforkjoin}.
 %
 We restate each as it holds now.
 
-\paragraph{Nothing is counted until its code has left its stack}
+\paragraph{A count that guards a context is touched only off its stack}
 %
-A join is counted down only by a scheduler loop, as before.
-%
-The successors of a vertex are counted down in the same place: a
-vertex notifies them from the loop, once its body has returned and the
-worker has left its stack.
-%
-So when a successor runs, and frees the vertex or makes it ready
-again, nothing of the vertex's previous run remains.
-%
-For a join, the rule is what keeps two workers off one stack.
-%
-For a vertex, it is a simplification more than a necessity: the stack
-that a vertex leaves is not one that a successor can reach, and the
-scheduler keeps nothing in a vertex while it runs.
-%
-The loop reads the out-set with a single atomic exchange, which is its
-last use of the vertex.
+A join is counted down only by a scheduler loop, as before, once the
+branch has left its stack.
 %
 A suspension is released by the loop as well, after
-\lstinline|swap| has saved its context, so no worker can resume a
-context that is not yet saved.
+\lstinline|swap| has saved its context.
+%
+So no worker can resume a context that is not yet saved, or one that
+points into a stack still in use.
+
+The rule does not extend to vertices, and need not.
+%
+The count of a vertex guards a body, which starts on a fresh stack,
+and not a context.
+%
+So a vertex counts down its successors from its own stack, before it
+leaves.
+%
+A successor may then run while that stack is still in use, and may
+free the vertex or make it ready again.
+%
+That is safe for two reasons.
+%
+The vertex reads its out-set with a single atomic exchange, which is
+its last use of itself.
+%
+And the scheduler keeps nothing in a vertex while it runs, so a second
+run of the vertex shares nothing with the end of the first.
 
 \paragraph{No two workers run on the same stack}
 %
@@ -551,8 +571,8 @@ So a stack is given back as soon as its task leaves it, a little
 earlier than before, and is reused instead of freed.
 %
 The scheduler stores nothing in a task while the task runs, which is
-what allows a vertex to be made ready again before the loop has
-finished with its previous run.
+what allows a vertex to be made ready again before its previous run
+has left its stack.
 
 \section{Example: a pipeline}
 \label{sec:pipeline}
@@ -618,7 +638,10 @@ Stage 3 writes the compressed chunk, or its hash.
 Stage 2 is parallel, and the others are serial.
 %
 In our version, chunks have a fixed size, the hash is not
-cryptographic, and the compressor is run-length encoding.
+cryptographic, and the compressor is a small one of the LZ77 family.
+%
+As in dedup, compressing a chunk costs several times what hashing it
+does, so most of the work is in the parallel stage.
 
 Figure~\ref{fig:pipeline} shows the program.
 %
@@ -634,9 +657,15 @@ The edge that this \lstinline|wait| adds is the dynamic one.
 When stage 2 of a chunk ends, the previous vertex may be compressing,
 suspended in its own \lstinline|wait|, writing, or finished.
 %
-In the first three cases, \lstinline|new_edge| adds a suspension to
-the out-set of a vertex that is running, and in the last it finds the
-out-set closed, and \lstinline|wait| returns at once.
+The program never calls \lstinline|new_edge| itself:
+\lstinline|wait| does, to add an edge from the previous vertex to the
+suspension it has just made (Figure~\ref{fig:ops}).
+%
+In the first three cases, that call adds the suspension to the out-set
+of a vertex that is running.
+%
+In the last, it finds the out-set closed, and \lstinline|wait|
+returns at once.
 %
 The out-set settles the race between adding the edge and finishing the
 vertex with one compare-and-swap.
@@ -676,7 +705,7 @@ type block = vertex with {i, j, steps_left : int}
 
 body(b : block*) -> void { update block (b.i, b.j) }
 
-notify(b : block*) -> void {  // in the loop
+notify(b : block*) -> void {  // after body(b)
   b.steps_left = b.steps_left - 1
   b.pending = number of neighbors of b
   count_down(below(b)); count_down(right(b))
@@ -735,8 +764,8 @@ two-dimensional array.
 A block's edges are implicit: they go to its neighbors, which are
 found by their position in the array.
 %
-So a block replaces the out-set by code of its own, which the scheduler
-loop runs in place of closing the out-set.
+So a block replaces the out-set by code of its own, which runs after
+the body in place of closing the out-set.
 %
 After each step, the block sets its count to the number of its
 neighbors, for the next step, and then counts its neighbors down, by
@@ -744,8 +773,8 @@ calling \lstinline|count_down|, which the scheduler itself uses.
 %
 A run of a block allocates nothing.
 %
-The block does all this in the loop, off its stack, which is why a
-neighbor can make it ready again at once.
+A neighbor may make the block ready again at once, and the next step
+may then start on another stack before this one is left.
 %
 The caller releases the first block, and waits for the last, which
 closes its out-set when it has run its final step.
@@ -861,9 +890,9 @@ waiting for a vertex downstream of it.
 An edge may be added to a vertex only by code that holds the count of
 the vertex above zero.
 %
-The code that a vertex runs in the scheduler loop, in place of closing
-its out-set, runs on the worker's own stack, and so must neither fork
-nor wait.
+The code that a vertex runs in place of closing its out-set may fork
+and wait, but must not use the vertex after its last count-down: by
+then, some successor may regard the vertex as finished.
 %
 A deque no longer has a small bound: it holds the vertices that its
 worker has made ready, as well as one task per fork in progress.
@@ -893,8 +922,7 @@ each operation costs amortized constant time, contention
 included~\cite{acar2017dynsnzi}.
 %
 An out-set can be a tree as well, and its notification can be shared
-among workers: the loop counts down part of the out-set, and hands the
-rest to fresh vertices.
+among workers by forking, since a vertex notifies from a task stack.
 %
 The original implementation of the calculus has
 both~\cite{Dag_calculus_16}.
@@ -949,14 +977,14 @@ which the scheduler tells about every switch between stacks.
 To see whether the tests can detect the errors they aim at, we put
 fourteen such errors into the scheduler, one at a time.
 %
-The tests detect thirteen.
+The tests detect all fourteen.
 %
-The fourteenth notifies the successors of a vertex before the vertex
-has left its stack, which, as Section~\ref{sec:safety} says, breaks
-nothing.
+An earlier scheduler notified the successors of a vertex from the
+loop, and the same check found that notifying from the vertex's own
+stack was no error, which is how the scheduler came to do so.
 
 \bibliographystyle{abbrv}
-\bibliography{main,perf/times,perf/parlay/parlay}
+\bibliography{main,perf/times,perf/parlay/parlay,perf/examples/examples}
 
 \clearpage
 \appendix
@@ -1038,7 +1066,8 @@ The implementation that accompanies the calculus also switches
 contexts: each vertex records a continuation, and the scheduler and
 the vertices switch to each other as coroutines.
 %
-Three of its mechanisms have counterparts here.
+Three of its mechanisms have counterparts here, the third with a
+difference.
 %
 It gives every new or running vertex an artificial in-edge, so that the
 vertex cannot be scheduled while it is being set up, or while it is
@@ -1048,14 +1077,15 @@ Our release count is the first half of that edge.
 %
 We do not need the second half, because no edge enters a vertex once
 its count has reached zero, and a vertex that runs again, as a block
-of the stencil does, sets its count only after it has left its stack.
+of the stencil does, sets its count only after its body has returned.
 %
 It adds an edge by incrementing the in-counter of the target first and
 the out-set of the source second, and rolls back if the source has
 finished, as \lstinline|new_edge| does.
 %
-And it notifies the out-set of a vertex from the scheduler, after the
-vertex has finished.
+It notifies the out-set of a vertex from the scheduler, after the
+vertex has finished, where ours is notified by the vertex itself, as
+the last thing it does on its stack.
 
 It also lets each vertex choose a representation of its in-counter and
 its out-set, from a single counter and a single pointer up to
@@ -1103,8 +1133,8 @@ ParlayLib~\cite{blelloch20parlaylib}, which builds its parallel loops
 from binary fork join: two sorts, a convex hull, and a breadth-first
 search.
 %
-On these, the two micro taskparts are within 3\% of each other, in
-either direction.
+On these, the two are within 5\% of each other, in either
+direction.
 
 On \lstinline|fib|, ours is the faster.
 %
@@ -1124,29 +1154,77 @@ removed, so that it leaks stacks: it recovers most of the difference.
 %
 The row ``two calls'' is \lstinline|fib| with no scheduler.
 
+\begin{table}
+\begin{tabular}{@{}lrrrrr@{}}
+ & & \multicolumn{4}{c}{workers} \\
+ & serial & 1 & 2 & 3 & 4 \\
+\hline
+pipeline & \pipetime{serial} & \pipetime{dag 1} & \pipetime{dag 2} & \pipetime{dag 3} & \pipetime{dag 4} \\
+stencil, large grid & \stenciltime{large}{serial} \\
+\quad fork join & & \stenciltime{large}{planes 1} & \stenciltime{large}{planes 2} & \stenciltime{large}{planes 3} & \stenciltime{large}{planes 4} \\
+\quad DAG calculus & & \stenciltime{large}{dag 1} & \stenciltime{large}{dag 2} & \stenciltime{large}{dag 3} & \stenciltime{large}{dag 4} \\
+stencil, small grid & \stenciltime{small}{serial} \\
+\quad fork join & & \stenciltime{small}{planes 1} & \stenciltime{small}{planes 2} & \stenciltime{small}{planes 3} & \stenciltime{small}{planes 4} \\
+\quad DAG calculus & & \stenciltime{small}{dag 1} & \stenciltime{small}{dag 2} & \stenciltime{small}{dag 3} & \stenciltime{small}{dag 4} \\
+\end{tabular}
+\caption{Running time of the two examples, in seconds}
+\label{tbl:examples}
+\end{table}
+
+\paragraph{The examples speed up}
+%
+Table~\ref{tbl:examples} shows the two examples on the same machine,
+on up to its 4 performance cores.
+%
+Each time is a median of five runs, and every run checked its result
+against the serial
+program's~\cite{flexibench-dag-pipeline,flexibench-dag-stencil}.
+
+The pipeline processes 40000 chunks of 16 kilobytes, more than half
+of them duplicates.
+%
+On one worker it takes about as long as the serial program, although
+it creates a vertex and suspends a stack for every chunk.
+%
+On four it is about three times faster.
+
+The stencil uses blocks of 64 by 64 cells, in the two regimes of the
+DAG calculus paper~\cite{Dag_calculus_16}: a large grid for few time
+steps (8192 by 8192 cells, 10 steps), and a small one for many (1024
+by 1024, 400 steps).
+%
+On four workers, the DAG version is more than three times faster than
+the serial program on both grids, and faster than the fork-join
+version, by a wider margin on the large grid.
+%
+The fork-join version finishes each diagonal before it starts the
+next, where the DAG version runs a block as soon as its neighbors
+allow.
+%
+On one worker and the large grid, both parallel versions are slower
+than the serial program.
+%
+Pilot runs point to the order in which they visit blocks, which does
+not follow the rows of the grid as the serial program's does.
+
 \paragraph{What remains}
 %
-% TODO: certified rounds for the three items below, on a machine whose
-% cores are all alike.
+% TODO: certified rounds for the three items below, the first on a
+% machine with more cores, all alike.
 %
-These measurements say nothing yet about vertices.
-%
-Three more are planned.
+Three more measurements are planned.
 %
 \begin{itemize}[leftmargin=*]
-\item \emph{The pipeline and the stencil.}
-  Each against its serial version, and the stencil against its
-  fork-join version too, over a range of numbers of workers.
-  They show whether the examples speed up.
+\item \emph{More workers.}
+  The examples on a machine with more than four cores of one kind.
 \item \emph{The vertex.}
   The cost of creating, releasing, and waiting for a vertex whose body
   is empty, and of running a block of the stencil whose body is empty,
   beside the cost of a fork.
 \item \emph{The in-counter.}
   The cost per async of an async-finish whose asyncs have empty or
-  small bodies and all enter one finish.
-  It shows whether a single atomic counter suffers from contention, as
-  Section~\ref{sec:costs} expects.
+  small bodies and all enter one finish, to see whether one atomic
+  counter suffers from contention (Section~\ref{sec:costs}).
 \end{itemize}
 
 \end{document}

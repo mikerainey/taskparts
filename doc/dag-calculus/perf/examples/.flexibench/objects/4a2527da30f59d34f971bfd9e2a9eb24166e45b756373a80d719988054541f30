@@ -1,0 +1,5 @@
+seidel dag n=8192 block=64 steps=10
+checksum  999.999998937
+workers   3
+exectime  0.374 s
+check     ok

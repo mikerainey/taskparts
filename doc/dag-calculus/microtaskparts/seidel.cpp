@@ -29,7 +29,12 @@ static int N, bs, B;
 static double *grid;
 
 // Update, in place, the block whose top-left interior cell is a[N + 1].
-static void seidel_block(double *a) {
+//
+// Not inlined, so that the three versions below run the same machine code.
+// Inlined into the serial loop, this kernel was compiled into code about 20%
+// faster than where it was inlined elsewhere, which made the other versions
+// look slower on one worker than their scheduling makes them.
+__attribute__((noinline)) static void seidel_block(double *a) {
   for (int i = 1; i <= bs; i++) {
     for (int j = 1; j <= bs; j++) {
       a[i * N + j] = 0.2 * (a[i * N + j] + a[(i - 1) * N + j] +
@@ -111,7 +116,8 @@ struct block : vertex {
     return (i > 0) + (j > 0) + (i + 1 < B) + (j + 1 < B);
   }
 
-  // Runs in the scheduler loop, after the block has left its stack.
+  // Runs on the block's stack, after its body. The block may be made ready
+  // again, and run on another stack, as soon as a neighbor is counted down.
   void notify() override {
     bool last_step = (--steps_left == 0);
     // Our next time step waits for every neighbor: for the blocks above and

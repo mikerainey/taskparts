@@ -34,10 +34,12 @@ RUNS = [
 
 # name, what the error is, text to replace, replacement
 MUTANTS = [
-    ("notify-on-stack",
-     "a vertex notifies its successors before it has left its stack",
-     "inline void vertex::leave(worker &w) { w.finished = this; }",
-     "inline void vertex::leave(worker &w) { (void)w; notify(); }"),
+    ("stale-worker",
+     "a finished task gives its stack to the worker it started to finish on",
+     "  t->leave();\n  // run() and leave() may each return on a different worker than the one\n"
+     "  // that called them. Leave this stack for good, and give it to the loop.\n"
+     "  worker &w = me();\n",
+     "  worker &w = me();\n  t->leave();\n"),
     ("no-own-pop",
      "the scheduler loop steals without first popping its own deque",
      "      t = w.deque.pop();\n    }\n    if ((t == nullptr) && (nb_workers > 1)) {",
@@ -92,13 +94,8 @@ MUTANTS = [
      "      if (j->pending.fetch_sub(1, std::memory_order_acq_rel) <= 2) {\n        // Both"),
 ]
 
-# Mutants that no test can kill, because they are not errors. They stay in the
-# list so that a change which makes one of them matter is noticed.
-HARMLESS = {
-    "notify-on-stack":
-        "the scheduler keeps nothing in a vertex while it runs, so successors "
-        "may be counted down before the vertex's stack is left",
-}
+# Mutants that no test can kill, because they are not errors. None at present.
+HARMLESS = {}
 
 
 def build(directory, name):
@@ -172,6 +169,10 @@ def main():
             survived += 1
             continue
         failure = check(original.replace(old, new), name)
+        if failure is not None and failure.startswith("does not compile"):
+            print("%-22s BROKEN: %s" % (name, failure))
+            survived += 1
+            continue
         if failure is None and name in HARMLESS:
             print("%-22s survived, as expected: %s" % (name, HARMLESS[name]))
         elif failure is None:
