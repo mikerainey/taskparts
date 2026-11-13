@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><title>mtpinstrcurves: cserial</title><style>
+body { font-family: system-ui, sans-serif; margin: 2rem; }
+table.flexibench-view { border-collapse: collapse; }
+table.flexibench-view th, table.flexibench-view td { border: 1px solid #999; padding: 0.3rem 0.7rem; }
+table.flexibench-view td { text-align: right; cursor: pointer; font-variant-numeric: tabular-nums; }
+#flexibench-probe { margin-top: 1.5rem; max-width: 50rem; }
+.provenance { color: #555; font-size: 0.9rem; }</style></head>
+<body>
+<h1>mtpinstrcurves: cserial</h1>
+<table class="flexibench-view" data-certificate="9ddc39179f6b92a09faad1d0e8b077c2648cba6f20c25ffb4adfb26af9d0436c" data-log="49ed562f754add1cdfc276076a345e58570997fbb4fc571d1540e9628ee7427f" data-analysis="serial" data-key-fields="[&quot;algorithm&quot;,&quot;config&quot;]" data-renderings="[[&quot;time&quot;,{&quot;decimal&quot;:3}]]">
+<tr><th data-parts="[{&quot;name&quot;:&quot;time&quot;}]">time</th><th data-parts="[{&quot;text&quot;:&quot;&quot;},{&quot;key&quot;:&quot;config&quot;,&quot;rendering&quot;:&quot;text&quot;,&quot;value&quot;:{&quot;text&quot;:&quot;serial&quot;}}]">serial</th></tr>
+<tr><th data-parts="[{&quot;key&quot;:&quot;algorithm&quot;,&quot;rendering&quot;:&quot;text&quot;,&quot;value&quot;:{&quot;text&quot;:&quot;mergesort&quot;}}]">mergesort</th><td data-cell="0,0" data-record="{&quot;algorithm&quot;:&quot;mergesort&quot;,&quot;config&quot;:&quot;serial&quot;}" data-field="time">0.911</td></tr>
+<tr><th data-parts="[{&quot;key&quot;:&quot;algorithm&quot;,&quot;rendering&quot;:&quot;text&quot;,&quot;value&quot;:{&quot;text&quot;:&quot;samplesort&quot;}}]">samplesort</th><td data-cell="1,0" data-record="{&quot;algorithm&quot;:&quot;samplesort&quot;,&quot;config&quot;:&quot;serial&quot;}" data-field="time">0.920</td></tr>
+<tr><th data-parts="[{&quot;key&quot;:&quot;algorithm&quot;,&quot;rendering&quot;:&quot;text&quot;,&quot;value&quot;:{&quot;text&quot;:&quot;quickhull&quot;}}]">quickhull</th><td data-cell="2,0" data-record="{&quot;algorithm&quot;:&quot;quickhull&quot;,&quot;config&quot;:&quot;serial&quot;}" data-field="time">0.328</td></tr>
+<tr><th data-parts="[{&quot;key&quot;:&quot;algorithm&quot;,&quot;rendering&quot;:&quot;text&quot;,&quot;value&quot;:{&quot;text&quot;:&quot;BFS&quot;}}]">BFS</th><td data-cell="3,0" data-record="{&quot;algorithm&quot;:&quot;BFS&quot;,&quot;config&quot;:&quot;serial&quot;}" data-field="time">0.207</td></tr>
+</table>
+<p class="provenance">A view of certificate <code>9ddc39179f6b92a09faad1d0e8b077c2648cba6f20c25ffb4adfb26af9d0436c</code> (serial), over the log ending at <code>49ed562f754add1cdfc276076a345e58570997fbb4fc571d1540e9628ee7427f</code>, level 0. Select a cell to see where it comes from. Check this page with <code>flexibench check-view</code>.</p>
+<div id="flexibench-probe"></div>
+<script type="application/json" id="flexibench-explain">{"0,0":{"attempts":[{"attempt":"0","params":"algorithm=mergesort n=20000000 rep=1 variant=serial","samples":5},{"attempt":"44","params":"algorithm=mergesort n=20000000 rep=2 variant=serial","samples":5},{"attempt":"88","params":"algorithm=mergesort n=20000000 rep=3 variant=serial","samples":5},{"attempt":"132","params":"algorithm=mergesort n=20000000 rep=4 variant=serial","samples":5},{"attempt":"176","params":"algorithm=mergesort n=20000000 rep=5 variant=serial","samples":5}],"steps":[{"name":"round","value":"<1 members>"},{"name":"runs","value":"<20 members>"}],"value":"0.911418"},"1,0":{"attempts":[{"attempt":"11","params":"algorithm=samplesort n=50000000 rep=1 variant=serial","samples":5},{"attempt":"55","params":"algorithm=samplesort n=50000000 rep=2 variant=serial","samples":5},{"attempt":"99","params":"algorithm=samplesort n=50000000 rep=3 variant=serial","samples":5},{"attempt":"143","params":"algorithm=samplesort n=50000000 rep=4 variant=serial","samples":5},{"attempt":"187","params":"algorithm=samplesort n=50000000 rep=5 variant=serial","samples":5}],"steps":[{"name":"round","value":"<1 members>"},{"name":"runs","value":"<20 members>"}],"value":"0.920259"},"2,0":{"attempts":[{"attempt":"22","params":"algorithm=quickhull n=50000000 rep=1 variant=serial","samples":5},{"attempt":"66","params":"algorithm=quickhull n=50000000 rep=2 variant=serial","samples":5},{"attempt":"110","params":"algorithm=quickhull n=50000000 rep=3 variant=serial","samples":5},{"attempt":"154","params":"algorithm=quickhull n=50000000 rep=4 variant=serial","samples":5},{"attempt":"198","params":"algorithm=quickhull n=50000000 rep=5 variant=serial","samples":5}],"steps":[{"name":"round","value":"<1 members>"},{"name":"runs","value":"<20 members>"}],"value":"0.327598"},"3,0":{"attempts":[{"attempt":"33","params":"algorithm=BFS n=2000000 rep=1 variant=serial","samples":5},{"attempt":"77","params":"algorithm=BFS n=2000000 rep=2 variant=serial","samples":5},{"attempt":"121","params":"algorithm=BFS n=2000000 rep=3 variant=serial","samples":5},{"attempt":"165","params":"algorithm=BFS n=2000000 rep=4 variant=serial","samples":5},{"attempt":"209","params":"algorithm=BFS n=2000000 rep=5 variant=serial","samples":5}],"steps":[{"name":"round","value":"<1 members>"},{"name":"runs","value":"<20 members>"}],"value":"0.206722"}}</script>
+<script>
+function esc(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+document.querySelectorAll('td[data-field]').forEach(function (td) {
+  td.addEventListener('click', function () {
+    var all = JSON.parse(document.getElementById('flexibench-explain').textContent);
+    var e = all[td.dataset.cell];
+    var html = '<h2>' + esc(td.textContent) + '</h2><p>field <code>' + esc(td.dataset.field) +
+      '</code> of the result row <code>' + esc(td.dataset.record) + '</code>: ' + esc(e.value) + '</p>';
+    html += '<h3>Calculation</h3><ul>' + e.steps.map(function (s) {
+      return '<li><code>' + esc(s.name) + '</code> = ' + esc(s.value) + '</li>'; }).join('') + '</ul>';
+    html += '<h3>Runs whose samples contribute</h3><ul>' + e.attempts.map(function (a) {
+      return '<li>' + esc(a.attempt) + ': ' + esc(a.params) + ', ' + esc(a.samples) + ' samples</li>'; }).join('') + '</ul>';
+    document.getElementById('flexibench-probe').innerHTML = html;
+  });
+});</script>
+</body></html>

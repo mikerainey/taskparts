@@ -1,0 +1,105 @@
+% Factored speedup plots, drawn from the certified values of perf/curves.
+% Nothing here is a number typed by hand: every coordinate is computed from
+% \fbval cells, as Appendix sec:collect prescribes.
+%
+% For a program g and a number of workers p, with Ts the time of a region of
+% the sequential build, W1 the work on one worker, and Tp, Wp, Ip the time,
+% the work and the idle time on p workers, the curves are, from the top:
+%
+%   ideal             p
+%   after the forks   p * Ts / W1
+%   after inflation   p * Ts / Wp
+%   after idle time   p * Ts / (Wp + Ip)
+%   speedup           Ts / Tp
+%
+% and each band between two neighbors is the speedup lost to one cause.
+
+\definecolor{bandforks}{HTML}{2A78D6}
+\definecolor{bandinflation}{HTML}{EB6834}
+\definecolor{bandidle}{HTML}{1BAF7A}
+\definecolor{bandsched}{HTML}{EDA100}
+
+% \curvecell{VIEW}{PROGRAM}{P}{\macro}: \macro becomes the value of a cell.
+\newcommand{\curvecell}[4]{%
+  \edef\curvecelltmp{\noexpand\fbval{#1}{#2}{P = #3}}%
+  \edef#4{\curvecelltmp}}
+
+% \curvecoords{PROGRAM}: defines \coordsforks, \coordsinflation, \coordsidle
+% and \coordsspeedup, the coordinates of the four measured curves.
+\newcommand{\curvecoords}[1]{%
+  \gdef\coordsforks{}\gdef\coordsinflation{}%
+  \gdef\coordsidle{}\gdef\coordsspeedup{}%
+  \edef\curveTs{\fbval{cserial}{#1}{serial}}%
+  \curvecell{cwork}{#1}{1}{\curveWone}%
+  \foreach \p in {1,...,10} {%
+    \curvecell{ctime}{#1}{\p}{\curveT}%
+    \curvecell{cwork}{#1}{\p}{\curveW}%
+    \curvecell{cidle}{#1}{\p}{\curveI}%
+    \pgfmathparse{\p*\curveTs/\curveWone}%
+    \xdef\coordsforks{\coordsforks (\p,\pgfmathresult)}%
+    \pgfmathparse{\p*\curveTs/\curveW}%
+    \xdef\coordsinflation{\coordsinflation (\p,\pgfmathresult)}%
+    \pgfmathparse{\p*\curveTs/(\curveW+\curveI)}%
+    \xdef\coordsidle{\coordsidle (\p,\pgfmathresult)}%
+    \pgfmathparse{\curveTs/\curveT}%
+    \xdef\coordsspeedup{\coordsspeedup (\p,\pgfmathresult)}}}
+
+\pgfplotsset{
+  factored/.style={
+    width=4.75cm, height=4.75cm,
+    xmin=1, xmax=10, ymin=0, ymax=10,
+    xtick={1,2,4,6,8,10}, ytick={0,2,4,6,8,10},
+    tick label style={font=\scriptsize},
+    label style={font=\scriptsize},
+    title style={font=\footnotesize, yshift=-1ex},
+    xlabel={workers},
+    grid=major, grid style={black!8, line width=0.3pt},
+    axis line style={black!40}, tick style={black!40},
+    axis on top=false, clip=true,
+  },
+  band edge/.style={draw=white, line width=0.4pt},
+}
+
+% \factoredplot{PROGRAM}{extra axis options}
+\newcommand{\factoredplot}[2]{%
+  \curvecoords{#1}%
+  \begin{tikzpicture}
+  \begin{axis}[factored, title={#1}, #2]
+    \addplot[name path=ideal, draw=none, forget plot]
+      coordinates {(1,1) (10,10)};
+    \addplot[name path=forks, draw=none, forget plot]
+      coordinates {\coordsforks};
+    \addplot[name path=inflation, draw=none, forget plot]
+      coordinates {\coordsinflation};
+    \addplot[name path=idle, draw=none, forget plot]
+      coordinates {\coordsidle};
+    \addplot[name path=speedup, draw=none, forget plot]
+      coordinates {\coordsspeedup};
+    \addplot[bandforks, band edge, forget plot]
+      fill between[of=ideal and forks];
+    \addplot[bandinflation, band edge, forget plot]
+      fill between[of=forks and inflation];
+    \addplot[bandidle, band edge, forget plot]
+      fill between[of=inflation and idle];
+    \addplot[bandsched, band edge, forget plot]
+      fill between[of=idle and speedup];
+    \addplot[black!55, densely dashed, line width=0.5pt, forget plot]
+      coordinates {(1,1) (10,10)};
+    \addplot[black, line width=0.9pt, mark=*, mark size=1.1pt, forget plot]
+      coordinates {\coordsspeedup};
+  \end{axis}
+  \end{tikzpicture}}
+
+% The legend, shared by the panels, in the order of the bands from the top.
+\newcommand{\factoredlegendswatch}[1]{%
+  \tikz[baseline=-0.6ex]{\fill[#1] (0,-0.9ex) rectangle (1.6ex,0.9ex);}}
+\newcommand{\factoredlegend}{%
+  \footnotesize
+  \tikz[baseline=-0.6ex]{\draw[black!55, densely dashed, line width=0.5pt]
+    (0,0) -- (3ex,0);}~ideal\quad
+  \factoredlegendswatch{bandforks}~lost to the forks\quad
+  \factoredlegendswatch{bandinflation}~lost to work inflation\quad
+  \factoredlegendswatch{bandidle}~lost to idle time\quad
+  \factoredlegendswatch{bandsched}~lost to scheduling\quad
+  \tikz[baseline=-0.6ex]{\draw[black, line width=0.9pt] (0,0) -- (3ex,0);
+    \fill (1.5ex,0) circle (1.1pt);}~speedup}

@@ -1,0 +1,1 @@
+{"args":["50000000"],"env":{"TASKPARTS_BENCHMARK_NUM_REPEAT":"5"},"program":"/Users/rainey/Work/taskparts-bench-paper/builds/5b6a1f7cfdc661d7c84fbfd9ddabdec85ae0fb14.instr-bench-80bf19db490f/serial/quickhull"}

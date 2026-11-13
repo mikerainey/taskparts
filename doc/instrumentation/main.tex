@@ -21,6 +21,9 @@
 
 \usepackage{natbib}
 \usepackage{url}
+\usepackage{pgfplots}
+\usepgfplotslibrary{fillbetween}
+\pgfplotsset{compat=1.18}
 
 \input{local}
 
@@ -33,16 +36,42 @@
 \input{perf/times}
 \newcommand{\perftime}[2]{\fbval{times}{#1}{P = #2}}
 % The totals that the build with totals reported in the same round:
-% \perftotal{work}{P}, and likewise sched, idle and steals.
+% \perftotal{work}{P}, and likewise sched, idle and steals. Before
+% perf/sched, the same view of an earlier round, in which each outermost
+% call started its own threads (perf/README.md): its scheduling time on 8
+% workers is kept as \relaunchsched.
 \input{perf/work}
+\input{perf/relaunch/sched}
+\edef\relaunchsched{\fbval{sched}{stats}{P = 8}}
 \input{perf/sched}
 \input{perf/idle}
 \input{perf/steals}
 \newcommand{\perftotal}[2]{\fbval{#1}{stats}{P = #2}}
-% The measurements of Table tbl:parlay, cited as flexibench-parlay
-% (perf/parlay/parlay.bib). \parlaytime{PROGRAM BUILD}{P}.
-\input{perf/parlay/parlay}
-\newcommand{\parlaytime}[2]{\fbval{parlay}{#1}{P = #2}}
+% The measurements of Tables tbl:bench and tbl:factors, cited as
+% flexibench-bench (perf/bench/bench.bib). \benchtime{PROGRAM BUILD}{P} is
+% a time of Table tbl:bench. \region{WHAT}{PROGRAM}{P} is what a region
+% of the build with totals took (WHAT = rtime) or what the build
+% reported of it (rwork, rsched, ridle, rsteals), and \serialtime{PROGRAM}
+% the time of a region of the sequential build.
+\input{perf/bench/bench}
+\input{perf/bench/serial}
+\input{perf/bench/rtime}
+\input{perf/bench/rwork}
+\input{perf/bench/rsched}
+\input{perf/bench/ridle}
+\input{perf/bench/rsteals}
+\newcommand{\benchtime}[2]{\fbval{bench}{#1}{P = #2}}
+\newcommand{\region}[3]{\fbval{#1}{#2}{P = #3}}
+\newcommand{\serialtime}[1]{\fbval{serial}{#1}{serial}}
+
+% The measurements behind Figure fig:factored, cited as flexibench-curves
+% (perf/curves/curves.bib), and the plots drawn from them.
+\input{perf/curves/cserial}
+\input{perf/curves/ctime}
+\input{perf/curves/cwork}
+\input{perf/curves/cidle}
+\input{perf/curves/csched}
+\input{plots}
 
 \newcommand{\fo}{\mathtt{f_1}}
 \newcommand{\ft}{\mathtt{f_2}}
@@ -85,6 +114,11 @@ loop, which a fork enters only if its second branch is stolen.
 %
 So the instrumentation costs a few clock readings per steal, and
 nothing per fork.
+%
+The same property lets a program measure any region of its execution,
+such as an algorithm without the loading of its input: it subtracts
+two snapshots of the workers' records, and no worker is stopped and
+nothing is reset.
 %
 We describe what to record, where to record it, and what to avoid, and
 we extend micro taskparts, a minimal implementation of native fork
@@ -158,20 +192,51 @@ So everything above can be recorded in the loop, at a cost
 proportional to the number of steals, which is far smaller than the
 number of forks~\cite{blumofele99,arora98}.
 
+A benchmark rarely wants these records for a whole process.
+%
+It wants them for the algorithm, without the loading of its input, and
+usually several times over.
+%
+Here the same observation helps again.
+%
+A worker that finds nothing to steal changes nothing in its record, so
+between two computations the records of all the workers stand still,
+and the program can read them without stopping anyone.
+%
+A region of the program is then measured as the difference of two such
+readings.
+
 Section~\ref{sec:what} defines what is recorded and what it tells us,
 Section~\ref{sec:where} shows where the scheduler records it,
-Section~\ref{sec:cost} discusses its cost, and
+Section~\ref{sec:region} shows how a program measures a region,
+Section~\ref{sec:cost} discusses the cost, and
 Section~\ref{sec:techniques} describes how to keep that cost from
 leaking onto the fork.
 %
 The appendices cover how to collect a factored speedup, the trace
-format, the clock, and measurements.
+format, the clock, measurements, and the worker threads.
 %
 This paper builds on the algorithm and the notation of the native fork
 join paper~\cite{nativeforkjoin}; Section~\ref{sec:where} recalls what
 it needs.
 %
 An extended micro taskparts accompanies this paper.
+
+\begin{figure*}
+\centering
+\factoredplot{mergesort}{ylabel={speedup}}\hfill
+\factoredplot{samplesort}{}\hfill
+\factoredplot{quickhull}{}\hfill
+\factoredplot{BFS}{}
+
+\smallskip
+\factoredlegend
+\caption{Factored speedup plots of four programs, on a machine with 4
+  fast and 6 slower cores.
+  The top of each colored band is the speedup the program would have
+  without that loss and those below it.}
+\label{fig:factored}
+\end{figure*}
 
 \section{What is recorded, and what it tells us}
 \label{sec:what}
@@ -226,8 +291,37 @@ below 1 for one of the causes of Section~1.
 This is the idea behind the factored speedup plots of Acar et
 al.~\cite{acar2017inflation}, adapted to the three states above.
 %
-Computing it takes two instrumented runs, on 1 and on $P$ workers, and
-one run of the sequential program.
+\paragraph{Factored speedup plots}
+%
+Plotted against the number of workers, the factors show at a glance
+where a speedup goes (Figure~\ref{fig:factored}).
+%
+The dashed line is the ideal, $P$, and the black curve is the speedup
+that was measured.
+%
+The space between them is divided into bands, one per cause of loss,
+by the curves $P \cdot T_s/W_1$, which only the price of the forks
+holds below the ideal, then $P \cdot T_s/W_P$, which work inflation
+lowers further, then $P \cdot T_s/(W_P + I_P)$, which idle time lowers
+further still.
+%
+What separates that last curve from the speedup is scheduling.
+%
+For the four programs of the figure, which sort, compute a convex
+hull, and search a graph, nearly all of the loss is work inflation.
+%
+The scheduler's own share, the two bands at the bottom, is barely
+visible, and so is the price of the forks, except for BFS.
+%
+Two of the programs bend at 5 workers, where the slower cores come
+into use, and two lose ground from the second worker on, before any
+slower core is involved.
+%
+A plain speedup curve would show the same black line for all of these
+causes.
+
+Computing a factored speedup takes two instrumented runs, on 1 and on
+$P$ workers, and one run of the sequential program.
 %
 Appendix~\ref{sec:collect} gives the recipe: which builds to run, and
 which of the values that the scheduler reports stands for each symbol.
@@ -373,6 +467,131 @@ either becomes idle or starts something else.
 %
 A fork whose second branch is not stolen causes none.
 
+\section{Measuring a region}
+\label{sec:region}
+
+A benchmark seldom wants totals for a whole process.
+%
+A typical one loads or generates its input, and only then runs the
+algorithm to be measured.
+%
+It may first run the algorithm a few times unmeasured, to warm up the
+machine.
+%
+And it may then take several samples in one process.
+%
+So the totals and the log must be able to cover a \emph{region} of
+the program's execution, and to do so again and again.
+
+\paragraph{Every thread is always in a state}
+%
+The workers' threads start once, and run until the program exits.
+%
+The thread that calls \lstinline|fork2join| from outside any task is a
+worker too.
+%
+For the duration of such an \emph{outermost call}, it runs its
+scheduler loop, starting with the task that makes the call, and it
+returns to the program when that task has finished.
+%
+Between outermost calls, it runs the program's sequential code, so it
+is recorded as working, and the other workers, with nothing to steal,
+are idle.
+%
+So the three states cover every worker at every moment of the process,
+and $P \cdot T = W + S + I$ holds for any stretch of time $T$, not
+only for a whole computation.
+%
+In particular, a region that alternates sequential code with parallel
+loops is accounted for in full: its sequential code shows up as one
+worker's work and the others' idle time.
+
+\paragraph{Snapshots, not resets}
+%
+A recorder is never reset: its totals only grow.
+%
+A recorder also says which state its worker is in and since when, so
+its totals as of any instant can be worked out from it, by adding the
+time since the last change to the current state.
+%
+A \emph{snapshot} is the sum of these over the workers, at one instant
+(Figure~\ref{fig:snapshot}).
+%
+A program measures a region by taking a snapshot before it and another
+after it: the totals of the region are the difference, and its log is
+the entries between the two instants.
+%
+Regions can follow one another or nest, and a region costs the rest of
+the program nothing.
+
+\begin{figure}
+\hrule
+\begin{lstlisting}
+snapshot() -> snap {  // between outermost calls
+  for (w in workers, w != me)
+    while (w.rec.cur != idle) yield()
+  now = clock(); s = snap{at = now}
+  for (w in workers) {
+    r = w.rec
+    s.total += r.total
+    s.total[r.cur] += now - r.since
+    s.steals += r.steals }
+  return s }
+
+launch(root : task*) -> void {  // outermost call
+  mark(scheduling)
+  me.starting = root; loop()  // until root is done
+  mark(working) }
+\end{lstlisting}
+\hrule
+\caption{Taking a snapshot, and what an outermost call records}
+\label{fig:snapshot}
+\end{figure}
+
+\paragraph{Reading a recorder without stopping its worker}
+%
+Only its owner writes a recorder, but a snapshot reads all of them.
+%
+That needs no lock, and no help from the workers, provided the
+snapshot is taken where a benchmark wants it anyway: between outermost
+calls, by the thread that makes them.
+%
+There, no task exists, so nothing can be stolen.
+%
+A worker that is idle only tries to steal, and
+\lstinline|mark(idle)|, called by a worker that is already idle,
+writes nothing.
+%
+So once a worker is idle, its recorder and its log stand still until
+the next outermost call, which only the thread taking the snapshot can
+make.
+%
+The snapshot therefore waits until every other worker shows itself
+idle, and then reads.
+%
+The wait is short: when an outermost call returns, each worker is one
+failed steal away from idle.
+%
+The state is the only field that is read while its owner may be
+writing it, so it is the only atomic one, and \lstinline|mark| writes
+it last, so that whoever sees a worker idle also sees the totals that
+the worker has just brought up to date.
+
+The price is that a snapshot cannot be taken inside a computation.
+%
+The alternative that we know, in which every worker is made to reset
+its own recorder at the start of each region, is harder to get right
+and costs more (Appendix~\ref{sec:pool}).
+
+\paragraph{A harness}
+%
+A benchmark seldom calls \lstinline|snapshot| itself.
+%
+It hands its algorithm to a harness, which runs the program's setup,
+optionally runs the algorithm unmeasured for a while, and then runs it
+a number of times, each between two snapshots, and writes one record
+per run (Appendix~\ref{sec:collect}).
+
 \section{What it costs}
 \label{sec:cost}
 
@@ -401,6 +620,18 @@ log, up to seven entries of 16 bytes.
 %
 This is small beside what a steal already costs: one stack allocation
 and four context switches~\cite{nativeforkjoin}.
+
+\paragraph{Per region, and per outermost call}
+%
+A snapshot reads $P$ recorders, after a wait that is usually over
+before it starts.
+%
+An outermost call adds two readings of the clock, on the calling
+thread.
+%
+Neither is on the path of a fork.
+% TODO: certify the cost of an outermost call that does nothing. An
+% informal test gave about 50 ns.
 
 \paragraph{The count of forks}
 %
@@ -453,13 +684,17 @@ on the fork, or on other workers.
 %
 Each worker has its own recorder, and writes to no other.
 %
-Nobody reads a recorder until the workers have stopped, when one
-thread adds up the totals and writes out the logs.
+Another thread reads a recorder only when it has seen the worker idle
+between outermost calls, when the recorder stands still
+(Section~\ref{sec:region}).
 %
-So no field of a recorder is atomic, and no log is locked.
+So no log is locked, and a single field of a recorder is atomic: the
+state, through which the worker says that it is idle.
 %
-The price is that totals are not available while the computation
-runs.
+\lstinline|mark| writes that field once per change of state, in the
+loop.
+%
+The price is that totals are not available while a computation runs.
 %
 \lstinline|mark| needs no lookup of the current worker either: only
 the loop calls it, and a loop always runs on its own worker.
@@ -536,11 +771,14 @@ Micro taskparts with instrumentation is in the directory
 \path{doc/instrumentation/microtaskparts} of the TaskPaRTS
 repository~\cite{taskparts}.
 %
-It adds about 250 lines of C++ to the micro taskparts of the native
-fork join paper, most of them for writing the totals and the trace.
+It adds about 400 lines of C++ to the micro taskparts of the native
+fork join paper: the recorder, the snapshots, the writing of the trace,
+and worker threads that persist (Appendix~\ref{sec:pool}).
+%
+The harness is in \path{doc/instrumentation/benchmark}.
 
 \bibliographystyle{abbrv}
-\bibliography{main,perf/times,perf/parlay/parlay}
+\bibliography{main,perf/times,perf/bench/bench,perf/curves/curves}
 
 \clearpage
 \appendix
@@ -551,13 +789,13 @@ fork join paper, most of them for writing the totals and the trace.
 This appendix says how a client of micro taskparts obtains each
 quantity of Section~\ref{sec:what}.
 
-\paragraph{What the scheduler reports}
+\paragraph{Snapshots}
 %
-A build with totals is one compiled with \lstinline|-DMTP_STATS|.
+The function \lstinline|take_snapshot| returns a snapshot
+(Section~\ref{sec:region}).
 %
-In such a build, each outermost call to \lstinline|fork2join| leaves
-a record of itself in the variable \lstinline|last_stats|, with times
-in seconds:
+Given two snapshots, \lstinline|stats_between| returns the record of
+the region between them, with times in seconds:
 %
 \begin{center}
 \small
@@ -566,7 +804,7 @@ in seconds:
 field & meaning \\
 \midrule
 \lstinline|nb_workers| & $P$ \\
-\lstinline|exectime| & $T_P$: wall-clock time of the call \\
+\lstinline|exectime| & $T_P$: wall-clock time of the region \\
 \lstinline|work| & $W_P$: time working, summed over workers \\
 \lstinline|sched| & $S_P$: time scheduling, likewise \\
 \lstinline|idle| & $I_P$: time idle, likewise \\
@@ -576,7 +814,37 @@ field & meaning \\
 \end{tabular}
 \end{center}
 %
-\lstinline|print_stats| writes the record as one line of JSON.
+In a build without totals, only \lstinline|exectime| is filled in.
+%
+\lstinline|print_stats| writes a record as one line of JSON.
+
+\paragraph{The harness}
+%
+A program with a setup phase calls the harness:
+%
+\begin{lstlisting}
+benchmark(body, setup, teardown, reset)
+\end{lstlisting}
+%
+\begin{sloppypar}
+The harness calls \lstinline|setup|, then \lstinline|body| a number
+of times, with \lstinline|reset| in between, and measures each call
+of \lstinline|body| as a region of its own.
+%
+It writes the records as a JSON list.
+%
+Two environment variables, whose names begin with
+\lstinline|TASKPARTS_BENCHMARK_|, control it: \lstinline|NUM_REPEAT|
+is the number of regions, and \lstinline|WARMUP_SECS| a time for which
+the harness first calls \lstinline|body| unmeasured.
+%
+Whatever the program does before it calls the harness, such as
+generating its input, is outside every region.
+%
+The interface is that of the benchmark harness of
+TaskPaRTS~\cite{taskparts}, so programs written for that harness
+compile against this one unchanged.
+\end{sloppypar}
 
 \paragraph{Three runs}
 %
@@ -592,18 +860,24 @@ number of workers.
 \toprule
 build & workers & read & as \\
 \midrule
-\lstinline|-DMTP_SERIAL| & & the program's own timing & $T_s$ \\
-\lstinline|-DMTP_STATS| & 1 & \lstinline|work| & $W_1$ \\
-\lstinline|-DMTP_STATS| & $P$ & \lstinline|exectime|, \lstinline|work|,
+sequential & & \lstinline|exectime| & $T_s$ \\
+with totals & 1 & \lstinline|work| & $W_1$ \\
+with totals & $P$ & \lstinline|exectime|, \lstinline|work|,
   & $T_P$, $W_P$, \\
  & & \lstinline|sched|, \lstinline|idle| & $S_P$, $I_P$ \\
 \bottomrule
 \end{tabular}
 \end{center}
 %
-In the first build, \lstinline|fork2join| is two ordinary calls, so
-the program is the sequential one, and there is no scheduler to
-report anything: the program times the outermost call itself.
+A build with totals is one compiled with \lstinline|-DMTP_STATS|.
+%
+The sequential build is the program with its forks replaced by calls:
+\lstinline|-DMTP_SERIAL| makes \lstinline|fork2join| two ordinary
+calls, and a program written over ParlayLib uses ParlayLib's
+sequential mode.
+%
+Either way there is no scheduler, and the record of a region holds its
+time only.
 %
 The second run is needed even though the third reports its own work,
 because work inflation compares the work on $P$ workers with the work
@@ -630,6 +904,9 @@ share lost to scheduling & $S_P / (P \cdot T_P)$ \\
 The speedup is $P$ times the price of the forks, times the
 utilization, divided by the work inflation.
 %
+The utilization and the two shares add up to 1, because the three
+totals of a region add up to $P \cdot T_P$.
+%
 Running the third build at each number of workers of interest gives
 the curves of a factored speedup plot.
 
@@ -651,35 +928,25 @@ The work inflation is about 1.4: of the 8 workers, 4 run on slower
 cores, so the same work takes more processor time.
 %
 On 4 workers, all on the faster cores, the work is
-\perftotal{work}{4}\,s, and there is no inflation at all.
+\perftotal{work}{4}\,s, an inflation of only about 1.05.
 %
 The utilization is above 0.99: scheduling and idle time together come
-to a few milliseconds, over \perftotal{steals}{8} steals.
+to less than a millisecond, over \perftotal{steals}{8} steals.
+%
+Table~\ref{tbl:factors} gives the same numbers for four programs that
+do real work.
 %
 So this run loses nothing to the scheduler, and its remedies are to
 fork less often and to expect less of the slower cores.
 
 \paragraph{Cautions}
 %
-The utilization above divides by $P \cdot T_P$ rather than by
-$W_P + S_P + I_P$, as Section~\ref{sec:what} does.
+$T_s$ must time the same region of the program as $T_P$ does, which
+the harness ensures when the same program is built both ways.
 %
-The two differ slightly in practice: a worker stops its clock when it
-leaves its loop, a moment before the outermost call returns.
+A snapshot is taken between outermost calls, by the thread that makes
+them, so a region begins and ends there.
 %
-Dividing by $P \cdot T_P$ keeps the product of the factors exactly
-equal to the speedup, and leaves that moment as a small remainder
-beside the idle and scheduling shares.
-
-The record covers one outermost call to \lstinline|fork2join|.
-%
-A program that makes several must add up the records, and whatever it
-does between those calls is sequential time that no record covers.
-%
-Appendix~\ref{sec:region} discusses measuring a part of a program.
-%
-$T_s$ must time the same region of the program as $T_P$ does.
-
 Each of the three runs is one sample.
 %
 As with any timing, each should be repeated, and the factors computed
@@ -688,8 +955,11 @@ from medians.
 \section{The trace}
 \label{sec:trace}
 
-After a run, micro taskparts writes the logs as one file in the JSON
-trace-event format, which Perfetto~\cite{perfetto} opens directly.
+\lstinline|write_trace| writes the part of the logs between two
+snapshots as one file in the JSON trace-event format, which
+Perfetto~\cite{perfetto} opens directly.
+%
+Like a snapshot, it is called between outermost calls.
 %
 Each worker becomes a thread of the trace, named by a metadata event.
 %
@@ -733,9 +1003,9 @@ The scheduler keeps times in ticks of this counter, and never converts
 them while workers run.
 %
 To convert them afterward, it needs the length of a tick, which it
-measures rather than looks up: it reads both the counter and the
-system's monotonic clock when the workers start and when they have
-stopped, and divides.
+measures rather than looks up: each snapshot reads both the counter
+and the system's monotonic clock, and the differences between two
+snapshots give the length of a tick over that region.
 
 The counter can be coarse.
 %
@@ -763,6 +1033,9 @@ Apple M5 with 4 performance and 6 efficiency cores
 %
 The program makes 63 million forks and does almost nothing else, so it
 shows the cost of anything on the path of a fork at its worst.
+%
+Each run measures the call of \lstinline|fib| as a region, between two
+snapshots, so the starting of the workers' threads is outside it.
 %
 The first build is the sequential program, in which
 \lstinline|fork2join| is two calls.
@@ -811,7 +1084,7 @@ count of forks, packed counters & \perftime{packed}{1} & \perftime{packed}{4} & 
 %
 With totals, and with totals and the log, \lstinline|fib(38)| takes
 \perftime{stats}{1}\,s and \perftime{log}{1}\,s on one worker, against
-\perftime{plain}{1}\,s with no instrumentation: 3 to 4\% more.
+\perftime{plain}{1}\,s with no instrumentation: about 5\% more.
 %
 On 4 and 8 workers the three builds are within two milliseconds of
 each other.
@@ -839,9 +1112,9 @@ The two careless counts are cheap on one worker, where no other
 worker contends for the cache line.
 %
 On 4 workers they take \perftime{atomic}{4}\,s and
-\perftime{packed}{4}\,s, more than 20 times as long as the build with
-no instrumentation, and on 8 workers \perftime{atomic}{8}\,s and
-\perftime{packed}{8}\,s, about 70 and 45 times as long.
+\perftime{packed}{4}\,s, about 20 times as long as the build with no
+instrumentation, and on 8 workers \perftime{atomic}{8}\,s and
+\perftime{packed}{8}\,s, about 70 and 36 times as long.
 %
 So with either of them, adding workers makes the program slower.
 
@@ -852,123 +1125,204 @@ So with either of them, adding workers makes the program slower.
  & & \multicolumn{3}{c}{workers} \\
 program & build & 1 & 4 & 8 \\
 \midrule
-mergesort & none & \parlaytime{mergesort plain}{1} & \parlaytime{mergesort plain}{4} & \parlaytime{mergesort plain}{8} \\
- & totals & \parlaytime{mergesort stats}{1} & \parlaytime{mergesort stats}{4} & \parlaytime{mergesort stats}{8} \\
- & totals and log & \parlaytime{mergesort log}{1} & \parlaytime{mergesort log}{4} & \parlaytime{mergesort log}{8} \\
- & totals and count of forks & \parlaytime{mergesort forks}{1} & \parlaytime{mergesort forks}{4} & \parlaytime{mergesort forks}{8} \\
+mergesort & none & \benchtime{mergesort plain}{1} & \benchtime{mergesort plain}{4} & \benchtime{mergesort plain}{8} \\
+ & totals & \benchtime{mergesort stats}{1} & \benchtime{mergesort stats}{4} & \benchtime{mergesort stats}{8} \\
+ & totals and log & \benchtime{mergesort log}{1} & \benchtime{mergesort log}{4} & \benchtime{mergesort log}{8} \\
+ & totals and count of forks & \benchtime{mergesort forks}{1} & \benchtime{mergesort forks}{4} & \benchtime{mergesort forks}{8} \\
 \addlinespace
-samplesort & none & \parlaytime{samplesort plain}{1} & \parlaytime{samplesort plain}{4} & \parlaytime{samplesort plain}{8} \\
- & totals & \parlaytime{samplesort stats}{1} & \parlaytime{samplesort stats}{4} & \parlaytime{samplesort stats}{8} \\
- & totals and log & \parlaytime{samplesort log}{1} & \parlaytime{samplesort log}{4} & \parlaytime{samplesort log}{8} \\
- & totals and count of forks & \parlaytime{samplesort forks}{1} & \parlaytime{samplesort forks}{4} & \parlaytime{samplesort forks}{8} \\
+samplesort & none & \benchtime{samplesort plain}{1} & \benchtime{samplesort plain}{4} & \benchtime{samplesort plain}{8} \\
+ & totals & \benchtime{samplesort stats}{1} & \benchtime{samplesort stats}{4} & \benchtime{samplesort stats}{8} \\
+ & totals and log & \benchtime{samplesort log}{1} & \benchtime{samplesort log}{4} & \benchtime{samplesort log}{8} \\
+ & totals and count of forks & \benchtime{samplesort forks}{1} & \benchtime{samplesort forks}{4} & \benchtime{samplesort forks}{8} \\
 \addlinespace
-quickhull & none & \parlaytime{quickhull plain}{1} & \parlaytime{quickhull plain}{4} & \parlaytime{quickhull plain}{8} \\
- & totals & \parlaytime{quickhull stats}{1} & \parlaytime{quickhull stats}{4} & \parlaytime{quickhull stats}{8} \\
- & totals and log & \parlaytime{quickhull log}{1} & \parlaytime{quickhull log}{4} & \parlaytime{quickhull log}{8} \\
- & totals and count of forks & \parlaytime{quickhull forks}{1} & \parlaytime{quickhull forks}{4} & \parlaytime{quickhull forks}{8} \\
+quickhull & none & \benchtime{quickhull plain}{1} & \benchtime{quickhull plain}{4} & \benchtime{quickhull plain}{8} \\
+ & totals & \benchtime{quickhull stats}{1} & \benchtime{quickhull stats}{4} & \benchtime{quickhull stats}{8} \\
+ & totals and log & \benchtime{quickhull log}{1} & \benchtime{quickhull log}{4} & \benchtime{quickhull log}{8} \\
+ & totals and count of forks & \benchtime{quickhull forks}{1} & \benchtime{quickhull forks}{4} & \benchtime{quickhull forks}{8} \\
 \addlinespace
-BFS & none & \parlaytime{BFS plain}{1} & \parlaytime{BFS plain}{4} & \parlaytime{BFS plain}{8} \\
- & totals & \parlaytime{BFS stats}{1} & \parlaytime{BFS stats}{4} & \parlaytime{BFS stats}{8} \\
- & totals and log & \parlaytime{BFS log}{1} & \parlaytime{BFS log}{4} & \parlaytime{BFS log}{8} \\
- & totals and count of forks & \parlaytime{BFS forks}{1} & \parlaytime{BFS forks}{4} & \parlaytime{BFS forks}{8} \\
+BFS & none & \benchtime{BFS plain}{1} & \benchtime{BFS plain}{4} & \benchtime{BFS plain}{8} \\
+ & totals & \benchtime{BFS stats}{1} & \benchtime{BFS stats}{4} & \benchtime{BFS stats}{8} \\
+ & totals and log & \benchtime{BFS log}{1} & \benchtime{BFS log}{4} & \benchtime{BFS log}{8} \\
+ & totals and count of forks & \benchtime{BFS forks}{1} & \benchtime{BFS forks}{4} & \benchtime{BFS forks}{8} \\
 \bottomrule
 \end{tabular}
-\caption{Running time, in seconds, of four ParlayLib programs on micro
-  taskparts with each level of instrumentation: the median of five
-  runs}
-\label{tbl:parlay}
+\caption{Running time, in seconds, of the algorithm of four programs
+  on micro taskparts with each level of instrumentation: the median of
+  five runs}
+\label{tbl:bench}
 \end{table}
 
 \paragraph{Programs that do real work}
 %
 \lstinline|fib| is the worst case.
 %
-Table~\ref{tbl:parlay} shows four example programs of
-ParlayLib~\cite{blelloch20parlaylib}, unmodified, which sort, compute
-a convex hull, and search a graph, and so do real work between forks.
+Table~\ref{tbl:bench} shows four programs that sort, compute a convex
+hull, and search a graph, and so do real work between forks.
 %
-They run on micro taskparts through an adapter, in the directory
-\path{doc/parlay-adapter} of the TaskPaRTS
-repository~\cite{taskparts}.
+Their algorithms are example programs of
+ParlayLib~\cite{blelloch20parlaylib}, unmodified, and their drivers
+are those of the benchmark suite of TaskPaRTS~\cite{taskparts}, also
+unmodified.
 %
-Each program generates its input and then runs its algorithm several
-times in one process, and the table gives the time of one run of the
-algorithm.
+A driver generates its input, and then hands the algorithm to the
+harness (Appendix~\ref{sec:collect}), which here runs it five times,
+each as a region.
 %
 Flexibench recorded and certified these runs
-too~\cite{flexibench-parlay}, and checked the result that every run
+too~\cite{flexibench-bench}, and checked the result that every run
 printed.
 %
 No level of instrumentation costs anything that we can see: for each
-program and number of workers, the four builds are within 3\% of
-each other, in no consistent order.
-%
-The one exception is BFS on 4 and 8 workers, whose runs last well
-under a tenth of a second, and differ by up to 6\%.
+program and number of workers, the four builds are within about 3\%
+of each other, in no consistent order.
 
-Under the adapter, a whole program is one outermost call, so its
-recorders and its log cover the process from its first line to its
-last, input generation included.
+\begin{table*}
+\small
+\begin{tabular}{@{}lrrrrrrrrrrrr@{}}
+\toprule
+ & & & \multicolumn{5}{c}{4 workers} & \multicolumn{5}{c}{8 workers} \\
+\cmidrule(lr){4-8}\cmidrule(l){9-13}
+program & $T_s$ & $W_1$ & $T_4$ & $W_4$ & $S_4$ & $I_4$ & steals
+  & $T_8$ & $W_8$ & $S_8$ & $I_8$ & steals \\
+\midrule
+mergesort & \serialtime{mergesort} & \region{rwork}{mergesort}{1} & \region{rtime}{mergesort}{4} & \region{rwork}{mergesort}{4} & \region{rsched}{mergesort}{4} & \region{ridle}{mergesort}{4} & \region{rsteals}{mergesort}{4} & \region{rtime}{mergesort}{8} & \region{rwork}{mergesort}{8} & \region{rsched}{mergesort}{8} & \region{ridle}{mergesort}{8} & \region{rsteals}{mergesort}{8} \\
+samplesort & \serialtime{samplesort} & \region{rwork}{samplesort}{1} & \region{rtime}{samplesort}{4} & \region{rwork}{samplesort}{4} & \region{rsched}{samplesort}{4} & \region{ridle}{samplesort}{4} & \region{rsteals}{samplesort}{4} & \region{rtime}{samplesort}{8} & \region{rwork}{samplesort}{8} & \region{rsched}{samplesort}{8} & \region{ridle}{samplesort}{8} & \region{rsteals}{samplesort}{8} \\
+quickhull & \serialtime{quickhull} & \region{rwork}{quickhull}{1} & \region{rtime}{quickhull}{4} & \region{rwork}{quickhull}{4} & \region{rsched}{quickhull}{4} & \region{ridle}{quickhull}{4} & \region{rsteals}{quickhull}{4} & \region{rtime}{quickhull}{8} & \region{rwork}{quickhull}{8} & \region{rsched}{quickhull}{8} & \region{ridle}{quickhull}{8} & \region{rsteals}{quickhull}{8} \\
+BFS & \serialtime{BFS} & \region{rwork}{BFS}{1} & \region{rtime}{BFS}{4} & \region{rwork}{BFS}{4} & \region{rsched}{BFS}{4} & \region{ridle}{BFS}{4} & \region{rsteals}{BFS}{4} & \region{rtime}{BFS}{8} & \region{rwork}{BFS}{8} & \region{rsched}{BFS}{8} & \region{ridle}{BFS}{8} & \region{rsteals}{BFS}{8} \\
+\bottomrule
+\end{tabular}
+\caption{What a factored speedup is computed from, for the algorithm
+  of each program: the time of a region with the sequential build, and
+  the time and the totals of a region with the build that keeps
+  totals, in seconds, with the steals}
+\label{tbl:factors}
+\end{table*}
+
+\paragraph{Where the speedup goes}
 %
-These runs therefore measure what recording costs, and not yet what
-it reports: for that, the program needs a way to measure a region
-(Appendix~\ref{sec:region}).
+Table~\ref{tbl:factors} gives, for the same four programs, what
+Appendix~\ref{sec:collect} asks for.
+%
+On 8 workers, mergesort is about 6.4 times faster than its sequential
+build, samplesort 5.1 times, quickhull 3.6 times, and BFS 3.4 times.
+%
+The factors say that the scheduler has little to do with what is
+missing.
+%
+The price of the forks is small: $T_s/W_1$ is 0.98 or more for three
+of the programs, and 0.90 for BFS.
+%
+The utilization is 0.98 or more, except for BFS, at 0.95: BFS spends
+about 3\% of its workers' time idle and 1.5\% scheduling.
+%
+What remains is work inflation: on 8 workers, the same work takes
+about 1.2 times as long for mergesort, 1.5 times for samplesort, and
+more than twice as long for quickhull and BFS.
+%
+Half of the 8 workers run on slower cores, but that is not the whole
+story: on 4 workers, all on the faster cores, the work of quickhull is
+already 1.7 times what it is on one.
+%
+Figure~\ref{fig:factored} shows the same at every number of workers
+from 1 to 10, from a round of its own~\cite{flexibench-curves}.
+%
+A likely cause is that these programs stream through large arrays,
+and the cores share the memory system.
+
+Without regions, none of this could be read off: each driver also
+generates its input, and totals for the whole process would describe
+that as well.
+
+\paragraph{Scheduling time, and the starting of threads}
+%
+An earlier version of micro taskparts started its threads at each
+outermost call (Appendix~\ref{sec:pool}).
+%
+There, the scheduling time of \lstinline|fib(38)| on 8 workers was
+\relaunchsched\,s.
+%
+With threads that persist, it is \perftotal{sched}{8}\,s, for about
+as many steals.
+%
+So nine tenths of what the earlier version reported as scheduling was
+the starting of threads.
 
 % TODO:
-% - the factored speedup of a ParlayLib program, once a region can be
-%   measured.
+% - certify the cost of an outermost call that does nothing, and the
+%   totals of short regions.
 
-\section{Measuring part of a program}
-\label{sec:region}
+\section{The worker threads, and two alternatives}
+\label{sec:pool}
 
-A benchmark seldom wants totals for a whole process.
+Section~\ref{sec:region} relies on worker threads that outlive an
+outermost call.
 %
-A typical one loads or generates its input, and only then runs the
-algorithm to be measured.
-%
-It may first run the algorithm a few times unmeasured, to warm up the
-machine and to get the operating system to schedule the workers'
-threads.
-%
-And it may then take several samples in one process.
-%
-So the totals and the log must be able to cover a \emph{region} of
-the program's execution, and to do so again and again.
-%
-We know three ways to arrange this.
+This appendix describes them, and then two other ways to measure a
+region that we know of, and why we set them aside.
 
-\paragraph{One launch per region}
+\paragraph{The threads}
 %
-This is what micro taskparts does.
+Micro taskparts starts the threads of all workers but one at the first
+outermost call or the first snapshot, and stops them when the program
+exits.
 %
-Each outermost call to \lstinline|fork2join| starts the workers,
-stops them when it returns, and reports on itself alone.
+The number of workers is read from the environment before any thread
+starts, because programs size their tables by it.
 %
-Nothing needs to be reset, because every recorder is new, and nothing
-is read while a worker runs.
+The remaining worker is the thread that makes the outermost calls.
 %
-A program measures a region by making it one outermost call, and
-samples it by repeating the call.
+For each call, that thread runs its scheduler loop, starting with the
+root task on a task stack, until the root has finished.
 %
-The price is that every region starts its threads afresh.
+An idle worker yields its processor between attempts to steal, whether
+or not a computation is in progress.
 %
-That time is not hidden: it is charged to scheduling.
+So between computations, all workers but one spin.
 %
-But it is the same whether the region lasts a second or a
-millisecond, so it distorts a short region, and a region never runs on
-threads that are already warm.
-% TODO: measure this. In an informal test, starting the threads cost
-% about a millisecond of scheduling time, summed over 8 workers, and a
-% few times that in the first launches of a process.
+We accept that here: putting idle workers to sleep without losing
+speedup is a subject of its own.
 
-\paragraph{A rendezvous}
+\paragraph{The root leaves its stack before it is announced}
 %
-A scheduler that keeps its workers from one region to the next must
-do something at the boundaries of a region.
+Under native fork join, a branch is counted at its join only after it
+has left its stack~\cite{nativeforkjoin}.
 %
-If only its owner may touch a recorder, as in
-Section~\ref{sec:techniques}, then at each boundary every worker must
-be made to act on its own recorder: to zero it at the start, and to
+The root task needs the same care once threads persist.
+%
+The thread that made the outermost call returns to the program as soon
+as it learns that the root has finished, and the next outermost call
+reuses the root's stack.
+%
+But the root may finish on another worker, which is then still running
+on that stack.
+%
+So a root that finishes switches to its worker's loop first, and the
+loop announces it.
+
+\paragraph{Alternative: one launch per region}
+%
+An earlier version of this micro taskparts started its threads at each
+outermost call, and stopped them when the call returned.
+%
+Then nothing needs to be reset, because every recorder is new, and
+nothing is read while a worker runs.
+%
+But every region starts its threads afresh, and that time is charged
+to scheduling, whether the region lasts a second or a millisecond.
+%
+And a program that makes many outermost calls, as a program written
+over a library of parallel loops does, cannot be measured at all,
+except by turning the whole program into one call, which puts the
+loading of its input back into the region.
+%
+The first cost is large in proportion
+(Appendix~\ref{sec:perf}).
+
+\paragraph{Alternative: a rendezvous}
+%
+A scheduler that keeps its workers, and whose recorders say nothing
+about the stay in progress, must make every worker act at the
+boundaries of a region: to zero its recorder at the start, and to
 bring it up to date at the end.
 %
 TaskPaRTS has done this with a rendezvous built from
@@ -992,44 +1346,10 @@ It costs $P$ steals at each boundary, just outside the region.
 And the order of the shared action and the workers' own actions
 matters: if the totals are added up before each worker has closed the
 interval it is in, that interval is lost.
-
-\paragraph{Snapshots}
 %
-The rendezvous exists to make each worker restart its own clock at
-one instant.
-%
-But a recorder already says which state its worker is in and since
-when, so anyone who can read it can work out the worker's totals as of
-any instant, without the worker's help.
-%
-Then a region needs no reset at all.
-%
-The program takes a \emph{snapshot} of every recorder when the region
-starts and another when it ends, and the totals of the region are the
-difference.
-%
-The log of the region is the entries between the two times.
-%
-Regions may then follow one another, nest, or overlap, and no worker
-stops for any of them.
-
-What this asks of the recorder is that another thread can read it
-while its owner writes it.
-%
-Under native fork join that is nearly free, for the reason that runs
-through this paper: the owner writes its recorder only in its loop.
-%
-There, the owner can afford to mark each update with a sequence
-number, which a reader checks before and after reading, and reads
-again if it changed.
-%
-The count of forks is the exception once more, since it is written at
-each fork, but a single counter can be read without a sequence number.
-
-Micro taskparts does not implement snapshots, because it does not yet
-keep its workers between outermost calls.
-%
-We expect to add both together.
+Snapshots need none of this, because a recorder keeps the start of
+the stay in progress, and because an idle worker leaves its recorder
+alone.
 
 \section{What is left out}
 \label{sec:limits}
@@ -1044,6 +1364,17 @@ path of every fork, which is the cost this paper avoids.
 %
 We leave it to a separate build for debugging.
 
+\paragraph{Snapshots during a computation}
+%
+A snapshot is taken between outermost calls.
+%
+Reading the recorders while tasks run would need each worker to guard
+its updates, for instance with a sequence number that a reader checks
+before and after.
+%
+The updates happen in the loop, so this too would cost a fork
+nothing, but we have not needed it.
+
 \paragraph{Sleeping workers}
 %
 In micro taskparts, an idle worker spins, yielding its processor
@@ -1052,6 +1383,9 @@ between attempts to steal.
 A scheduler that puts idle workers to sleep has a fourth state, which
 it enters and leaves in its loop, so \lstinline|mark| records it in
 the same way.
+%
+A sleeping worker writes nothing either, so a snapshot can treat it as
+it treats an idle one.
 
 % TODO: debugging modes. One is in place: each task stack has a
 % protected page below it, so an overflow crashes. A candidate that stays
