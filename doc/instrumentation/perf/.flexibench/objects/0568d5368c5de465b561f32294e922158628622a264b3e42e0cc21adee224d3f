@@ -1,0 +1,4 @@
+fib(38) = 39088169
+workers   8
+exectime  2.464 s
+nb_forks  63245985

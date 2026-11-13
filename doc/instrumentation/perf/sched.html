@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><title>mtpinstr: sched</title><style>
+body { font-family: system-ui, sans-serif; margin: 2rem; }
+table.flexibench-view { border-collapse: collapse; }
+table.flexibench-view th, table.flexibench-view td { border: 1px solid #999; padding: 0.3rem 0.7rem; }
+table.flexibench-view td { text-align: right; cursor: pointer; font-variant-numeric: tabular-nums; }
+#flexibench-probe { margin-top: 1.5rem; max-width: 50rem; }
+.provenance { color: #555; font-size: 0.9rem; }</style></head>
+<body>
+<h1>mtpinstr: sched</h1>
+<table class="flexibench-view" data-certificate="20782fa87bd0845407e137edabf167ba845d564b71aef6833005bbb6f7317804" data-log="02372319adfc60b9a89a69b57cb726ef835facf83c5c91e0ca191ba5edc4d25d" data-analysis="totals" data-key-fields="[&quot;variant&quot;,&quot;workers&quot;]" data-renderings="[[&quot;sched&quot;,{&quot;decimal&quot;:4}]]">
+<tr><th data-parts="[{&quot;name&quot;:&quot;sched&quot;}]">sched</th><th data-parts="[{&quot;text&quot;:&quot;P = &quot;},{&quot;key&quot;:&quot;workers&quot;,&quot;rendering&quot;:{&quot;decimal&quot;:0},&quot;value&quot;:{&quot;num&quot;:[1,1]}}]">P = 1</th><th data-parts="[{&quot;text&quot;:&quot;P = &quot;},{&quot;key&quot;:&quot;workers&quot;,&quot;rendering&quot;:{&quot;decimal&quot;:0},&quot;value&quot;:{&quot;num&quot;:[4,1]}}]">P = 4</th><th data-parts="[{&quot;text&quot;:&quot;P = &quot;},{&quot;key&quot;:&quot;workers&quot;,&quot;rendering&quot;:{&quot;decimal&quot;:0},&quot;value&quot;:{&quot;num&quot;:[8,1]}}]">P = 8</th></tr>
+<tr><th data-parts="[{&quot;key&quot;:&quot;variant&quot;,&quot;rendering&quot;:&quot;text&quot;,&quot;value&quot;:{&quot;text&quot;:&quot;stats&quot;}}]">stats</th><td data-cell="0,0" data-record="{&quot;variant&quot;:&quot;stats&quot;,&quot;workers&quot;:&quot;1&quot;}" data-field="sched">0.0000</td><td data-cell="0,1" data-record="{&quot;variant&quot;:&quot;stats&quot;,&quot;workers&quot;:&quot;4&quot;}" data-field="sched">0.0008</td><td data-cell="0,2" data-record="{&quot;variant&quot;:&quot;stats&quot;,&quot;workers&quot;:&quot;8&quot;}" data-field="sched">0.0033</td></tr>
+</table>
+<p class="provenance">A view of certificate <code>20782fa87bd0845407e137edabf167ba845d564b71aef6833005bbb6f7317804</code> (totals), over the log ending at <code>02372319adfc60b9a89a69b57cb726ef835facf83c5c91e0ca191ba5edc4d25d</code>, level 0. Select a cell to see where it comes from. Check this page with <code>flexibench check-view</code>.</p>
+<div id="flexibench-probe"></div>
+<script type="application/json" id="flexibench-explain">{"0,0":{"attempts":[{"attempt":"2","params":"n=38 program=fib rep=1 variant=stats workers=1","samples":1},{"attempt":"23","params":"n=38 program=fib rep=2 variant=stats workers=1","samples":1},{"attempt":"44","params":"n=38 program=fib rep=3 variant=stats workers=1","samples":1},{"attempt":"65","params":"n=38 program=fib rep=4 variant=stats workers=1","samples":1},{"attempt":"86","params":"n=38 program=fib rep=5 variant=stats workers=1","samples":1}],"steps":[{"name":"round","value":"<1 members>"},{"name":"runs","value":"<177 members>"}],"value":"0.000045"},"0,1":{"attempts":[{"attempt":"9","params":"n=38 program=fib rep=1 variant=stats workers=4","samples":1},{"attempt":"30","params":"n=38 program=fib rep=2 variant=stats workers=4","samples":1},{"attempt":"51","params":"n=38 program=fib rep=3 variant=stats workers=4","samples":1},{"attempt":"72","params":"n=38 program=fib rep=4 variant=stats workers=4","samples":1},{"attempt":"93","params":"n=38 program=fib rep=5 variant=stats workers=4","samples":1}],"steps":[{"name":"round","value":"<1 members>"},{"name":"runs","value":"<177 members>"}],"value":"0.000779"},"0,2":{"attempts":[{"attempt":"16","params":"n=38 program=fib rep=1 variant=stats workers=8","samples":1},{"attempt":"37","params":"n=38 program=fib rep=2 variant=stats workers=8","samples":1},{"attempt":"58","params":"n=38 program=fib rep=3 variant=stats workers=8","samples":1},{"attempt":"79","params":"n=38 program=fib rep=4 variant=stats workers=8","samples":1},{"attempt":"100","params":"n=38 program=fib rep=5 variant=stats workers=8","samples":1}],"steps":[{"name":"round","value":"<1 members>"},{"name":"runs","value":"<177 members>"}],"value":"0.003331"}}</script>
+<script>
+function esc(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+document.querySelectorAll('td[data-field]').forEach(function (td) {
+  td.addEventListener('click', function () {
+    var all = JSON.parse(document.getElementById('flexibench-explain').textContent);
+    var e = all[td.dataset.cell];
+    var html = '<h2>' + esc(td.textContent) + '</h2><p>field <code>' + esc(td.dataset.field) +
+      '</code> of the result row <code>' + esc(td.dataset.record) + '</code>: ' + esc(e.value) + '</p>';
+    html += '<h3>Calculation</h3><ul>' + e.steps.map(function (s) {
+      return '<li><code>' + esc(s.name) + '</code> = ' + esc(s.value) + '</li>'; }).join('') + '</ul>';
+    html += '<h3>Runs whose samples contribute</h3><ul>' + e.attempts.map(function (a) {
+      return '<li>' + esc(a.attempt) + ': ' + esc(a.params) + ', ' + esc(a.samples) + ' samples</li>'; }).join('') + '</ul>';
+    document.getElementById('flexibench-probe').innerHTML = html;
+  });
+});</script>
+</body></html>

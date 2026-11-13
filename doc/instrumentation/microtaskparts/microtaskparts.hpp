@@ -32,7 +32,9 @@
 #include <cstdlib>
 #include <memory>
 #include <chrono>
+#include <sys/mman.h>
 #include <thread>
+#include <unistd.h>
 #include <vector>
 
 #if defined(MTP_LOG) || defined(MTP_COUNT_FORKS)
@@ -55,6 +57,37 @@ struct join {
   context k;
 };
 
+/*---------------------------------------------------------------------*/
+/* Stacks of stolen tasks */
+
+#ifndef MTP_STACK_SZB
+#define MTP_STACK_SZB (512 * 1024)
+#endif
+static constexpr size_t stack_szb = MTP_STACK_SZB;
+
+inline size_t page_szb() {
+  static const size_t szb = static_cast<size_t>(sysconf(_SC_PAGESIZE));
+  return szb;
+}
+
+// A fresh stack of stack_szb bytes. The page below it is protected, so that a
+// task that overflows its stack crashes instead of overwriting memory.
+inline char *new_stack() {
+  void *p = mmap(nullptr, page_szb() + stack_szb, PROT_READ | PROT_WRITE,
+                 MAP_PRIVATE | MAP_ANON, -1, 0);
+  if ((p == MAP_FAILED) || (mprotect(p, page_szb(), PROT_NONE) != 0)) {
+    std::perror("microtaskparts: cannot allocate a stack");
+    std::abort();
+  }
+  return static_cast<char *>(p) + page_szb();
+}
+
+inline void delete_stack(char *stack) {
+  if (stack != nullptr) {
+    munmap(stack - page_szb(), page_szb() + stack_szb);
+  }
+}
+
 // The second branch of a call to fork2join, which thieves may steal. It
 // lives in the frame of that call too.
 struct task {
@@ -62,9 +95,10 @@ struct task {
   char *stack = nullptr; // the fresh stack it runs on, if it is stolen
   context k;             // where it starts on that stack
 
+  // No destructor: one would run at every return from fork2join, stolen or
+  // not. Whoever waits for a stolen task frees its stack.
   explicit task(join *j) : j(j) {}
   virtual void run() = 0;
-  virtual ~task() { std::free(stack); }
 };
 
 template <typename F> struct thunk_task : task {
@@ -306,8 +340,6 @@ inline void mark([[maybe_unused]] worker &w, [[maybe_unused]] state s) {
 /*---------------------------------------------------------------------*/
 /* Scheduler loop */
 
-static constexpr size_t stack_szb = 512 * 1024;
-
 // A branch running on worker w has reached join j (null for the root). Leave
 // the current stack for good and tell the loop, which counts the branch only
 // once we are off the stack.
@@ -348,7 +380,7 @@ inline void worker_loop(task *first) {
     } else if ((t != nullptr) ||
                ((nb_workers > 1) && ((t = steal(w)) != nullptr))) {
       mark(w, scheduling);
-      t->stack = static_cast<char *>(std::malloc(stack_szb));
+      t->stack = new_stack();
       context_init(t->k, t->stack, stack_szb, &task_entry);
       w.starting = t;
       next = &t->k;
@@ -506,6 +538,7 @@ template <typename F> __attribute__((noinline)) void launch(F &&f) {
   for (auto &t : threads) {
     t.join();
   }
+  delete_stack(root.stack);
 #if defined(MTP_STATS)
   uint64_t end_ticks = ticks();
   std::chrono::duration<double> elapsed =
@@ -558,6 +591,9 @@ template <typename F1, typename F2> void fork2join(F1 &&f1, F2 &&f2) {
   // us here, on its worker.
   w.reached = &j;
   mtp_context_swap(&j.k, &w.loop);
+
+  // Both branches are done, and the second has left the stack it ran on.
+  delete_stack(t.stack);
 }
 
 } // namespace microtaskparts

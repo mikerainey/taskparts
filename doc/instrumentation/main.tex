@@ -32,6 +32,17 @@
 % workers.
 \input{perf/times}
 \newcommand{\perftime}[2]{\fbval{times}{#1}{P = #2}}
+% The totals that the build with totals reported in the same round:
+% \perftotal{work}{P}, and likewise sched, idle and steals.
+\input{perf/work}
+\input{perf/sched}
+\input{perf/idle}
+\input{perf/steals}
+\newcommand{\perftotal}[2]{\fbval{#1}{stats}{P = #2}}
+% The measurements of Table tbl:parlay, cited as flexibench-parlay
+% (perf/parlay/parlay.bib). \parlaytime{PROGRAM BUILD}{P}.
+\input{perf/parlay/parlay}
+\newcommand{\parlaytime}[2]{\fbval{parlay}{#1}{P = #2}}
 
 \newcommand{\fo}{\mathtt{f_1}}
 \newcommand{\ft}{\mathtt{f_2}}
@@ -377,6 +388,10 @@ is the same in the three builds, apart from the addresses of other
 functions and one constant, the size of a worker.
 %
 Section~\ref{sec:techniques} explains what it took to make this true.
+%
+The running times agree to within a few percent
+(Appendix~\ref{sec:perf}), and what difference remains comes from the
+size of a worker, not from any instruction of a fork.
 
 \paragraph{Per steal, a little}
 %
@@ -402,7 +417,7 @@ count: in a counter private to each worker, in one atomic counter that
 all workers share, and in private counters packed side by side in one
 array.
 %
-On one worker, the three cost about the same.
+On one worker, all three are cheap.
 %
 On several, the last two make a program that does little but fork
 far slower than it is with no counting at all, and slower than it is
@@ -525,7 +540,7 @@ It adds about 250 lines of C++ to the micro taskparts of the native
 fork join paper, most of them for writing the totals and the trace.
 
 \bibliographystyle{abbrv}
-\bibliography{main,perf/times}
+\bibliography{main,perf/times,perf/parlay/parlay}
 
 \clearpage
 \appendix
@@ -617,6 +632,32 @@ utilization, divided by the work inflation.
 %
 Running the third build at each number of workers of interest gives
 the curves of a factored speedup plot.
+
+\paragraph{An example}
+%
+For \lstinline|fib(38)| on 8 workers, the runs of
+Appendix~\ref{sec:perf} give $T_s = \perftime{serial}{1}$,
+$W_1 = \perftotal{work}{1}$, $T_8 = \perftime{stats}{8}$,
+$W_8 = \perftotal{work}{8}$, $S_8 = \perftotal{sched}{8}$, and
+$I_8 = \perftotal{idle}{8}$, all in seconds.
+%
+The speedup is about 2.4, far from 8, and the factors say why.
+%
+The price of the forks is about 0.4: this program does nothing but
+fork, so the parallel code is two and a half times slower than the
+sequential code before any other worker joins in.
+%
+The work inflation is about 1.4: of the 8 workers, 4 run on slower
+cores, so the same work takes more processor time.
+%
+On 4 workers, all on the faster cores, the work is
+\perftotal{work}{4}\,s, and there is no inflation at all.
+%
+The utilization is above 0.99: scheduling and idle time together come
+to a few milliseconds, over \perftotal{steals}{8} steals.
+%
+So this run loses nothing to the scheduler, and its remedies are to
+fork less often and to expect less of the slower cores.
 
 \paragraph{Cautions}
 %
@@ -716,20 +757,23 @@ than it should be.
 \label{sec:perf}
 
 We ran \lstinline|fib(38)|, as in the native fork join
-paper~\cite{nativeforkjoin}, with six builds of micro taskparts, on an
+paper~\cite{nativeforkjoin}, with seven builds of micro taskparts, on an
 Apple M5 with 4 performance and 6 efficiency cores
 (Table~\ref{tbl:cost}).
 %
 The program makes 63 million forks and does almost nothing else, so it
 shows the cost of anything on the path of a fork at its worst.
 %
-The first four builds are the levels of Section~\ref{sec:cost}.
+The first build is the sequential program, in which
+\lstinline|fork2join| is two calls.
+%
+The next four are the levels of Section~\ref{sec:cost}.
 %
 The last two have no other instrumentation, and count forks in the two
 careless ways described there.
 %
 Each time in the table is the median of five runs, and the runs of the
-six builds were interleaved.
+seven builds were interleaved.
 %
 Every build aligns its functions to a cache line
 (Section~\ref{sec:techniques}).
@@ -748,6 +792,7 @@ TaskPaRTS repository~\cite{taskparts}.
  & \multicolumn{3}{c}{workers} \\
 build & 1 & 4 & 8 \\
 \midrule
+two calls in place of each fork & \perftime{serial}{1} & & \\
 no instrumentation & \perftime{plain}{1} & \perftime{plain}{4} & \perftime{plain}{8} \\
 totals & \perftime{stats}{1} & \perftime{stats}{4} & \perftime{stats}{8} \\
 totals and log & \perftime{log}{1} & \perftime{log}{4} & \perftime{log}{8} \\
@@ -764,32 +809,114 @@ count of forks, packed counters & \perftime{packed}{1} & \perftime{packed}{4} & 
 
 \paragraph{Totals and the log}
 %
-The first three builds take the same time, to within a few
-milliseconds, at every number of workers.
+With totals, and with totals and the log, \lstinline|fib(38)| takes
+\perftime{stats}{1}\,s and \perftime{log}{1}\,s on one worker, against
+\perftime{plain}{1}\,s with no instrumentation: 3 to 4\% more.
 %
-A fork runs the same instructions in all three, and \lstinline|fib(38)|
-steals too rarely for the cost per steal to show.
+On 4 and 8 workers the three builds are within two milliseconds of
+each other.
+%
+A fork runs the same instructions in all three
+(Section~\ref{sec:cost}), and \lstinline|fib(38)| steals too rarely
+for the cost per steal to show: \perftotal{steals}{8} times on 8
+workers.
+%
+What differs is the size of a worker, which the recorder increases,
+and with it where each worker's deque lies in memory.
+% TODO: certify this. In an informal test, a build with no
+% instrumentation whose workers were padded to the size of an
+% instrumented worker took the same time as the build with totals. A
+% round with such a build would settle it, and a worker whose size does
+% not depend on the build would remove the difference.
 
 \paragraph{The count of forks}
 %
-Counting forks in each worker's recorder costs at most a few
-milliseconds over 63 million forks.
+Counting forks in each worker's recorder takes
+\perftime{forks}{1}\,s on one worker, a few milliseconds more than the
+totals alone, over 63 million forks.
 %
-The two careless counts cost nothing extra on one worker, where no
-other worker contends for the cache line.
+The two careless counts are cheap on one worker, where no other
+worker contends for the cache line.
 %
 On 4 workers they take \perftime{atomic}{4}\,s and
-\perftime{packed}{4}\,s, about 20 times as long as the build with no
-instrumentation, and on 8 workers \perftime{atomic}{8}\,s and
-\perftime{packed}{8}\,s, roughly 40 to 50 times as long.
+\perftime{packed}{4}\,s, more than 20 times as long as the build with
+no instrumentation, and on 8 workers \perftime{atomic}{8}\,s and
+\perftime{packed}{8}\,s, about 70 and 45 times as long.
 %
 So with either of them, adding workers makes the program slower.
 
+\begin{table}
+\small
+\begin{tabular}{@{}llrrr@{}}
+\toprule
+ & & \multicolumn{3}{c}{workers} \\
+program & build & 1 & 4 & 8 \\
+\midrule
+mergesort & none & \parlaytime{mergesort plain}{1} & \parlaytime{mergesort plain}{4} & \parlaytime{mergesort plain}{8} \\
+ & totals & \parlaytime{mergesort stats}{1} & \parlaytime{mergesort stats}{4} & \parlaytime{mergesort stats}{8} \\
+ & totals and log & \parlaytime{mergesort log}{1} & \parlaytime{mergesort log}{4} & \parlaytime{mergesort log}{8} \\
+ & totals and count of forks & \parlaytime{mergesort forks}{1} & \parlaytime{mergesort forks}{4} & \parlaytime{mergesort forks}{8} \\
+\addlinespace
+samplesort & none & \parlaytime{samplesort plain}{1} & \parlaytime{samplesort plain}{4} & \parlaytime{samplesort plain}{8} \\
+ & totals & \parlaytime{samplesort stats}{1} & \parlaytime{samplesort stats}{4} & \parlaytime{samplesort stats}{8} \\
+ & totals and log & \parlaytime{samplesort log}{1} & \parlaytime{samplesort log}{4} & \parlaytime{samplesort log}{8} \\
+ & totals and count of forks & \parlaytime{samplesort forks}{1} & \parlaytime{samplesort forks}{4} & \parlaytime{samplesort forks}{8} \\
+\addlinespace
+quickhull & none & \parlaytime{quickhull plain}{1} & \parlaytime{quickhull plain}{4} & \parlaytime{quickhull plain}{8} \\
+ & totals & \parlaytime{quickhull stats}{1} & \parlaytime{quickhull stats}{4} & \parlaytime{quickhull stats}{8} \\
+ & totals and log & \parlaytime{quickhull log}{1} & \parlaytime{quickhull log}{4} & \parlaytime{quickhull log}{8} \\
+ & totals and count of forks & \parlaytime{quickhull forks}{1} & \parlaytime{quickhull forks}{4} & \parlaytime{quickhull forks}{8} \\
+\addlinespace
+BFS & none & \parlaytime{BFS plain}{1} & \parlaytime{BFS plain}{4} & \parlaytime{BFS plain}{8} \\
+ & totals & \parlaytime{BFS stats}{1} & \parlaytime{BFS stats}{4} & \parlaytime{BFS stats}{8} \\
+ & totals and log & \parlaytime{BFS log}{1} & \parlaytime{BFS log}{4} & \parlaytime{BFS log}{8} \\
+ & totals and count of forks & \parlaytime{BFS forks}{1} & \parlaytime{BFS forks}{4} & \parlaytime{BFS forks}{8} \\
+\bottomrule
+\end{tabular}
+\caption{Running time, in seconds, of four ParlayLib programs on micro
+  taskparts with each level of instrumentation: the median of five
+  runs}
+\label{tbl:parlay}
+\end{table}
+
+\paragraph{Programs that do real work}
+%
+\lstinline|fib| is the worst case.
+%
+Table~\ref{tbl:parlay} shows four example programs of
+ParlayLib~\cite{blelloch20parlaylib}, unmodified, which sort, compute
+a convex hull, and search a graph, and so do real work between forks.
+%
+They run on micro taskparts through an adapter, in the directory
+\path{doc/parlay-adapter} of the TaskPaRTS
+repository~\cite{taskparts}.
+%
+Each program generates its input and then runs its algorithm several
+times in one process, and the table gives the time of one run of the
+algorithm.
+%
+Flexibench recorded and certified these runs
+too~\cite{flexibench-parlay}, and checked the result that every run
+printed.
+%
+No level of instrumentation costs anything that we can see: for each
+program and number of workers, the four builds are within 3\% of
+each other, in no consistent order.
+%
+The one exception is BFS on 4 and 8 workers, whose runs last well
+under a tenth of a second, and differ by up to 6\%.
+
+Under the adapter, a whole program is one outermost call, so its
+recorders and its log cover the process from its first line to its
+last, input generation included.
+%
+These runs therefore measure what recording costs, and not yet what
+it reports: for that, the program needs a way to measure a region
+(Appendix~\ref{sec:region}).
+
 % TODO:
-% - the factored speedup of fib(38) on 4 and 8 workers, from the totals,
-%   as a worked example of Section sec:what. The round recorded each run's
-%   totals; they need an analysis and a view of their own.
-% - the same for a second program that does real work between forks.
+% - the factored speedup of a ParlayLib program, once a region can be
+%   measured.
 
 \section{Measuring part of a program}
 \label{sec:region}
@@ -926,8 +1053,9 @@ A scheduler that puts idle workers to sleep has a fourth state, which
 it enters and leaves in its loop, so \lstinline|mark| records it in
 the same way.
 
-% TODO: debugging modes. Candidates that stay off the path of a fork: a
-% check, in the loop, that the deque is empty on entry; a canary at the
-% low end of each task stack, checked when the stack is freed.
+% TODO: debugging modes. One is in place: each task stack has a
+% protected page below it, so an overflow crashes. A candidate that stays
+% off the path of a fork: a check, in the loop, that the deque is empty
+% on entry.
 
 \end{document}

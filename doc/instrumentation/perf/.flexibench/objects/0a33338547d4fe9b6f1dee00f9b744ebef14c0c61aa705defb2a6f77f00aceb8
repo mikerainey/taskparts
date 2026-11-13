@@ -1,0 +1,3 @@
+round 0: sum ok, 130 of 199999 joins resumed on another worker
+round 1: sum ok, 126 of 199999 joins resumed on another worker
+round 2: sum ok, 124 of 199999 joins resumed on another worker
