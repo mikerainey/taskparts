@@ -81,9 +81,10 @@ struct task {
   char *stack = nullptr; // the fresh stack it runs on, if it is stolen
   context k;             // where it starts on that stack
 
+  // No destructor: one would run at every return from fork2join, stolen or
+  // not. Whoever waits for a stolen task frees its stack.
   explicit task(join *j) : j(j) {}
   virtual void run() = 0;
-  virtual ~task() { delete_stack(stack); }
 };
 
 template <typename F> struct thunk_task : task {
@@ -273,6 +274,7 @@ template <typename F> __attribute__((noinline)) void launch(F &&f) {
   for (auto &t : threads) {
     t.join();
   }
+  delete_stack(root.stack);
   in_scheduler = false;
 }
 
@@ -311,6 +313,9 @@ template <typename F1, typename F2> void fork2join(F1 &&f1, F2 &&f2) {
   // us here, on its worker.
   w.reached = &j;
   mtp_context_swap(&j.k, &w.loop);
+
+  // Both branches are done, and the second has left the stack it ran on.
+  delete_stack(t.stack);
 }
 
 } // namespace microtaskparts
