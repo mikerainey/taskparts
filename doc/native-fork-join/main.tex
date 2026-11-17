@@ -472,7 +472,7 @@ It switches contexts not at all, allocates nothing, because the join
 and the task live in the frame of \lstinline|fork2join|, and performs
 no atomic operation beyond those of the deque.
 %
-With micro taskparts, such a fork takes about 4.5\,ns on an Apple M5
+With micro taskparts, such a fork takes about 4.4\,ns on an Apple M5
 (Appendix~\ref{sec:perf}).
 %
 A fork whose second branch is stolen uses one fresh stack, of a
@@ -690,14 +690,14 @@ Ryzen & AMD Ryzen 9 3950X & 16 & 32 & 32\,GB & Linux 6.12 \\
 
 \begin{table}
 \small
-\begin{tabular}{@{}lrrr@{}}
+\begin{tabular}{@{}lrrrr@{}}
 \toprule
- & \multicolumn{3}{c}{workers} \\
-version & 1 & 4 & 8 \\
+ & \multicolumn{4}{c}{workers} \\
+version & 1 & 4 & 8 & 10 \\
 \midrule
-two calls in place of each fork & \perftime{serial}{1} & & \\
-fork join, deque protected by a lock & \perftime{locked}{1} & \perftime{locked}{4} & \perftime{locked}{8} \\
-fork join, lock-free deque & \perftime{direct}{1} & \perftime{direct}{4} & \perftime{direct}{8} \\
+two calls in place of each fork & \perftime{serial}{1} & & & \\
+fork join, deque protected by a lock & \perftime{locked}{1} & \perftime{locked}{4} & \perftime{locked}{8} & \perftime{locked}{10} \\
+fork join, lock-free deque & \perftime{direct}{1} & \perftime{direct}{4} & \perftime{direct}{8} & \perftime{direct}{10} \\
 \bottomrule
 \end{tabular}
 \caption{Running time of \lstinline|fib(38)| on the M5, in seconds,
@@ -714,7 +714,7 @@ The last version is micro taskparts as it is.
 %
 On one worker of the M5, it takes \perftime{direct}{1}\,s instead of
 \perftime{serial}{1}\,s, so a fork that is not stolen costs about
-2.5\,ns more than two calls.
+2.4\,ns more than two calls.
 %
 That is the cost of initializing the join and the task, pushing,
 popping, and looking up the worker twice.
@@ -722,8 +722,9 @@ popping, and looking up the worker twice.
 \paragraph{Speedup}
 %
 With the lock-free deque, \lstinline|fib(38)| is about 4 times faster
-on 4 workers than on one, and more than 5 times faster on 8, of which
-only 4 run on performance cores.
+on 4 workers than on one, more than 5 times faster on 8, of which
+only 4 run on performance cores, and more than 6 times faster on 10,
+one for each core.
 %
 But a fork costs more than the work between forks does, so the program
 on 4 workers (\perftime{direct}{4}\,s) is only about 1.7 times faster
@@ -734,19 +735,20 @@ this one does not, in order to measure the fork.
 
 \begin{table}
 \small
-\begin{tabular}{@{}lrrrrr@{}}
+\setlength{\tabcolsep}{3.7pt}
+\begin{tabular}{@{}lrrrrrrr@{}}
 \toprule
- & no & \multicolumn{2}{c}{micro taskparts} & \multicolumn{2}{c}{ParlayLib's} \\
-program & scheduler & 1 & 4 & 1 & 4 \\
+ & no & \multicolumn{3}{c}{micro taskparts} & \multicolumn{3}{c}{ParlayLib's} \\
+program & scheduler & 1 & 4 & 10 & 1 & 4 & 10 \\
 \midrule
-mergesort & \parlaytime{mergesort}{serial} & \parlaytime{mergesort}{direct 1} & \parlaytime{mergesort}{direct 4} & \parlaytime{mergesort}{homegrown 1} & \parlaytime{mergesort}{homegrown 4} \\
-samplesort & \parlaytime{samplesort}{serial} & \parlaytime{samplesort}{direct 1} & \parlaytime{samplesort}{direct 4} & \parlaytime{samplesort}{homegrown 1} & \parlaytime{samplesort}{homegrown 4} \\
-quickhull & \parlaytime{quickhull}{serial} & \parlaytime{quickhull}{direct 1} & \parlaytime{quickhull}{direct 4} & \parlaytime{quickhull}{homegrown 1} & \parlaytime{quickhull}{homegrown 4} \\
-BFS & \parlaytime{BFS}{serial} & \parlaytime{BFS}{direct 1} & \parlaytime{BFS}{direct 4} & \parlaytime{BFS}{homegrown 1} & \parlaytime{BFS}{homegrown 4} \\
+mergesort & \parlaytime{mergesort}{serial} & \parlaytime{mergesort}{direct 1} & \parlaytime{mergesort}{direct 4} & \parlaytime{mergesort}{direct 10} & \parlaytime{mergesort}{homegrown 1} & \parlaytime{mergesort}{homegrown 4} & \parlaytime{mergesort}{homegrown 10} \\
+samplesort & \parlaytime{samplesort}{serial} & \parlaytime{samplesort}{direct 1} & \parlaytime{samplesort}{direct 4} & \parlaytime{samplesort}{direct 10} & \parlaytime{samplesort}{homegrown 1} & \parlaytime{samplesort}{homegrown 4} & \parlaytime{samplesort}{homegrown 10} \\
+quickhull & \parlaytime{quickhull}{serial} & \parlaytime{quickhull}{direct 1} & \parlaytime{quickhull}{direct 4} & \parlaytime{quickhull}{direct 10} & \parlaytime{quickhull}{homegrown 1} & \parlaytime{quickhull}{homegrown 4} & \parlaytime{quickhull}{homegrown 10} \\
+BFS & \parlaytime{BFS}{serial} & \parlaytime{BFS}{direct 1} & \parlaytime{BFS}{direct 4} & \parlaytime{BFS}{direct 10} & \parlaytime{BFS}{homegrown 1} & \parlaytime{BFS}{homegrown 4} & \parlaytime{BFS}{homegrown 10} \\
 \bottomrule
 \end{tabular}
 \caption{Running time of four ParlayLib programs on the M5, in
-  seconds, with no scheduler, and with two schedulers on 1 and 4
+  seconds, with no scheduler, and with two schedulers on 1, 4 and 10
   workers}
 \label{tbl:parlay}
 \end{table}
@@ -774,12 +776,12 @@ every run and checked every result~\cite{flexibench-parlay}.
 On one worker, micro taskparts takes at most 2\% longer than no
 scheduler on three of the programs.
 %
-The search takes about 10\% longer, but it does so with either scheduler, so
-the cost lies in how the program is written for parallelism, not in
-its forks.
+The search takes about 18\% longer, and 14\% longer with ParlayLib's
+scheduler, so most of the cost lies in how the program is written for
+parallelism, not in its forks.
 %
-On 4 workers, the two schedulers are within 3\% of each other on every
-program.
+On 4 workers and on 10, the two schedulers are within 2\% of each other
+on every program.
 %
 They differ in more than how they join: when a worker of ParlayLib's
 scheduler finds nothing to steal, it sleeps, whereas one of micro
@@ -813,12 +815,12 @@ There, \lstinline|fib(38)| takes \secondtime{direct}{1}\,s on one
 worker, instead of \secondtime{serial}{1}\,s without its forks, so a
 fork that is not stolen costs about 5\,ns more than two calls.
 %
-On 16 workers the program is more than 13 times faster than on one.
+On 16 workers the program is more than 14 times faster than on one.
 
-On one worker, the four ParlayLib programs take at most 10\% longer
-with either scheduler than with none.
+On one worker, the four ParlayLib programs take at most about 10\%
+longer with either scheduler than with none.
 %
-On 16 workers, micro taskparts takes at most 3\% longer than
+On 16 workers, micro taskparts takes at most 4\% longer than
 ParlayLib's scheduler on three of the programs, and 9\% less on
 mergesort.
 
@@ -956,7 +958,7 @@ support from the operating system.
 
 \begin{table}
 \small
-\setlength{\tabcolsep}{4pt}
+\setlength{\tabcolsep}{3.7pt}
 \begin{tabular}{@{}llll@{}}
 \toprule
 strategy & recip. & time & space \\
