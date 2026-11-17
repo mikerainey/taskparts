@@ -421,7 +421,7 @@ The correctness of the algorithm rests on four facts.
 As soon as the count of a join reaches zero, another worker may resume
 the parent on stack S, and the parent may return from
 \lstinline|fork2join|, which pops the frame that holds the join and the
-task, and frees the stack of the stolen task.
+task, and releases the stack of the stolen task for reuse.
 %
 So the first branch must be off S, and the second off its stack, T,
 before either is counted.
@@ -475,9 +475,13 @@ no atomic operation beyond those of the deque.
 With micro taskparts, such a fork takes about 4.5\,ns on an Apple M5
 (Appendix~\ref{sec:perf}).
 %
-A fork whose second branch is stolen allocates one fresh stack, of a
+A fork whose second branch is stolen uses one fresh stack, of a
 fixed size, which is touched only as deep as $\ft$ recurses, and is
-freed when the parent returns from \lstinline|fork2join|.
+released when the parent returns from \lstinline|fork2join|.
+%
+Micro taskparts keeps released stacks in a pool that the workers
+share, and maps a new stack only when the pool is empty
+(Appendix~\ref{sec:perf}).
 %
 It also makes four context switches: to the stolen task and back to
 the thief's loop, and from the parent to a loop and back to the parent.
@@ -750,11 +754,11 @@ every run and checked every result~\cite{flexibench-parlay}.
 On one worker, micro taskparts takes at most 2\% longer than no
 scheduler on three of the programs.
 %
-The search takes 12\% longer, but it does so with either scheduler, so
+The search takes about 10\% longer, but it does so with either scheduler, so
 the cost lies in how the program is written for parallelism, not in
 its forks.
 %
-On 4 workers, the two schedulers are within 7\% of each other on every
+On 4 workers, the two schedulers are within 3\% of each other on every
 program.
 %
 They differ in more than how they join: when a worker of ParlayLib's
@@ -790,24 +794,36 @@ There, \lstinline|fib(38)| takes \secondtime{direct}{1}\,s on one
 worker, instead of \secondtime{serial}{1}\,s without its forks, so a
 fork that is not stolen costs about 5\,ns more than two calls.
 %
-On 16 workers the program is more than 12 times faster than on one.
+On 16 workers the program is more than 13 times faster than on one.
 
 On one worker, the four ParlayLib programs take at most 10\% longer
 with either scheduler than with none.
 %
-On 16 workers, the two sorts take the same time with both schedulers,
-to within 9\%.
+On 16 workers, micro taskparts takes at most 3\% longer than
+ParlayLib's scheduler on three of the programs, and 9\% less on
+mergesort.
+
+\paragraph{Reusing stacks}
 %
-But the convex hull takes 21\% longer with micro taskparts than with
-ParlayLib's scheduler, and the search 74\% longer.
+An earlier version of micro taskparts mapped a fresh stack for every
+stolen task, and unmapped it when the parent returned from
+\lstinline|fork2join|.
 %
-Both programs have stretches with little parallelism.
+On the second machine, on 16 workers, the convex hull then took 21\%
+longer with micro taskparts than with ParlayLib's scheduler, and the
+search 74\% longer; the record of that round is in the history of the
+directory cited above.
 %
-During those, the idle workers of micro taskparts keep trying to
-steal, whereas those of ParlayLib's scheduler sleep.
+Mapping and unmapping change the address space of the whole process,
+and operating systems make such changes one at a
+time~\cite{yang2016fibril}, so a steal on one worker delays the
+others.
 %
-We believe that this is what slows the two programs down, but we have
-not measured it.
+So micro taskparts now keeps released stacks in a pool that the
+workers share, and unmaps them when its workers stop.
+%
+A lock protects the pool: only a steal and the join of a stolen task
+take it.
 
 \paragraph{A lock-free deque}
 %
@@ -824,8 +840,7 @@ With the lock, a fork takes two uncontended locks, one to push and one
 to pop, and \lstinline|fib(38)| takes \perftime{locked}{1}\,s on one
 worker.
 %
-So the two locks cost about two and a half times as much as the rest
-of the fork.
+So the two locks cost more than twice as much as the rest of the fork.
 
 \paragraph{Code that runs once}
 %
@@ -958,7 +973,8 @@ A worker that reaches a join whose second branch is still running
 leaves its stack suspended and returns to its scheduler, so whatever it
 steals next runs on another fresh stack.
 %
-And a stack is freed only once it holds no frame that can still run.
+And a stack is released only once it holds no frame that can still
+run.
 %
 What is new is how native fork join gets there: by stealing children
 rather than continuations, and by switching contexts, which needs no
@@ -1085,7 +1101,8 @@ the page is first touched, so a generous $Z$ costs address space rather
 than memory.
 %
 But a page of a stack, once touched, stays in memory at least until the
-stack is freed.
+stack is unmapped, and micro taskparts unmaps the stacks in its pool
+only when its workers stop.
 
 \paragraph{Refinements}
 %
