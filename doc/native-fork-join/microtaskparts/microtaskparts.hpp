@@ -57,7 +57,10 @@ inline size_t page_szb() {
 }
 
 // A fresh stack of stack_szb bytes. The page below it is protected, so that a
-// task that overflows its stack crashes instead of overwriting memory.
+// task that overflows its stack crashes instead of overwriting memory. Mapping
+// and unmapping a stack are system calls that slow down every thread of the
+// process, so the stacks of finished tasks are kept for reuse (take_stack and
+// put_stack, below).
 inline char *new_stack() {
   void *p = mmap(nullptr, page_szb() + stack_szb, PROT_READ | PROT_WRITE,
                  MAP_PRIVATE | MAP_ANON, -1, 0);
@@ -74,6 +77,33 @@ inline void delete_stack(char *stack) {
   }
 }
 
+// The stacks of stolen tasks that have finished, kept for the next stolen
+// tasks. All workers share them, so that no more stacks are mapped than were
+// ever in use at once. A lock suffices: only a steal and the join of a stolen
+// task come here.
+inline std::mutex stack_pool_lock;
+inline std::vector<char *> stack_pool;
+
+// A stack for a stolen task: one from the pool, or a fresh one.
+inline char *take_stack() {
+  {
+    std::lock_guard<std::mutex> guard(stack_pool_lock);
+    if (!stack_pool.empty()) {
+      char *stack = stack_pool.back();
+      stack_pool.pop_back();
+      return stack;
+    }
+  }
+  return new_stack();
+}
+
+// Return the stack of a finished stolen task to the pool. Kept out of line,
+// like launch: it runs only after a steal.
+__attribute__((noinline)) inline void put_stack(char *stack) {
+  std::lock_guard<std::mutex> guard(stack_pool_lock);
+  stack_pool.push_back(stack);
+}
+
 // The second branch of a call to fork2join, which thieves may steal. It
 // lives in the frame of that call too.
 struct task {
@@ -82,7 +112,7 @@ struct task {
   context k;             // where it starts on that stack
 
   // No destructor: one would run at every return from fork2join, stolen or
-  // not. Whoever waits for a stolen task frees its stack.
+  // not. Whoever waits for a stolen task releases its stack.
   explicit task(join *j) : j(j) {}
   virtual void run() = 0;
 };
@@ -222,7 +252,7 @@ inline task *steal(worker &w) {
 // reaches a join first switches here, so by the time another worker can see
 // the count reach zero and resume the parent, the branch is off its stack:
 // the parent's own stack, for the first branch, and a stack that the parent
-// frees when fork2join returns, for the second.
+// releases for reuse before fork2join returns, for the second.
 inline void worker_loop(task *first) {
   worker &w = me();
   task *t = first;
@@ -235,7 +265,7 @@ inline void worker_loop(task *first) {
       }
     } else if ((t != nullptr) ||
                ((nb_workers > 1) && ((t = steal(w)) != nullptr))) {
-      t->stack = new_stack();
+      t->stack = take_stack();
       context_init(t->k, t->stack, stack_szb, &task_entry);
       w.starting = t;
       next = &t->k;
@@ -275,6 +305,10 @@ template <typename F> __attribute__((noinline)) void launch(F &&f) {
     t.join();
   }
   delete_stack(root.stack);
+  for (char *stack : stack_pool) {
+    delete_stack(stack);
+  }
+  stack_pool.clear();
   in_scheduler = false;
 }
 
@@ -315,7 +349,7 @@ template <typename F1, typename F2> void fork2join(F1 &&f1, F2 &&f2) {
   mtp_context_swap(&j.k, &w.loop);
 
   // Both branches are done, and the second has left the stack it ran on.
-  delete_stack(t.stack);
+  put_stack(t.stack);
 }
 
 } // namespace microtaskparts
