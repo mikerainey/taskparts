@@ -36,13 +36,8 @@
 \input{perf/times}
 \newcommand{\perftime}[2]{\fbval{times}{#1}{P = #2}}
 % The totals that the build with totals reported in the same round:
-% \perftotal{work}{P}, and likewise sched, idle and steals. Before
-% perf/sched, the same view of an earlier round, in which each outermost
-% call started its own threads (perf/README.md): its scheduling time on 8
-% workers is kept as \relaunchsched.
+% \perftotal{work}{P}, and likewise sched, idle and steals.
 \input{perf/work}
-\input{perf/relaunch/sched}
-\edef\relaunchsched{\fbval{sched}{stats}{P = 8}}
 \input{perf/sched}
 \input{perf/idle}
 \input{perf/steals}
@@ -71,6 +66,30 @@
 \input{perf/curves/cwork}
 \input{perf/curves/cidle}
 \input{perf/curves/csched}
+% The same three rounds on the Ryzen (perf/gamora), cited as
+% flexibench-gamora (perf/gamora/gamora.bib). \gperftime, \gperftotal,
+% \gregion and \gserialtime are as their namesakes above.
+\input{perf/gamora/timesgamora}
+\input{perf/gamora/workgamora}
+\input{perf/gamora/schedgamora}
+\input{perf/gamora/idlegamora}
+\input{perf/gamora/stealsgamora}
+\input{perf/gamora/bench/benchgamora}
+\input{perf/gamora/bench/serialgamora}
+\input{perf/gamora/bench/rtimegamora}
+\input{perf/gamora/bench/rworkgamora}
+\input{perf/gamora/bench/rschedgamora}
+\input{perf/gamora/bench/ridlegamora}
+\input{perf/gamora/bench/rstealsgamora}
+\input{perf/gamora/curves/cserialgamora}
+\input{perf/gamora/curves/ctimegamora}
+\input{perf/gamora/curves/cworkgamora}
+\input{perf/gamora/curves/cidlegamora}
+\input{perf/gamora/curves/cschedgamora}
+\newcommand{\gperftime}[2]{\fbval{timesgamora}{#1}{P = #2}}
+\newcommand{\gperftotal}[2]{\fbval{#1gamora}{stats}{P = #2}}
+\newcommand{\gregion}[3]{\fbval{#1gamora}{#2}{P = #3}}
+\newcommand{\gserialtime}[1]{\fbval{serialgamora}{#1}{serial}}
 \input{plots}
 
 \newcommand{\fo}{\mathtt{f_1}}
@@ -79,14 +98,8 @@
 \newcommand{\added}{\hfill{\rmfamily\slshape // new}}
 
 \title{Instrumenting a work stealer off the fast path}
-% TODO: add co-author, and check affiliation.
+% TODO: add co-author.
 \author{Mike Rainey}
-\affiliation{
-  \institution{Carnegie Mellon University}
-  \city{Pittsburgh}
-  \state{PA}
-  \country{USA}
-}
 \email{me@mike-rainey.site}
 
 \begin{document}
@@ -231,8 +244,8 @@ An extended micro taskparts accompanies this paper.
 
 \smallskip
 \factoredlegend
-\caption{Factored speedup plots of four programs, on a machine with 4
-  fast and 6 slower cores.
+\caption{Factored speedup plots of four programs on an Apple M5, which
+  has 4 fast and 6 slower cores.
   The top of each colored band is the speedup the program would have
   without that loss and those below it.}
 \label{fig:factored}
@@ -608,9 +621,8 @@ functions and one constant, the size of a worker.
 %
 Section~\ref{sec:techniques} explains what it took to make this true.
 %
-The running times agree to within a few percent
-(Appendix~\ref{sec:perf}), and what difference remains comes from the
-size of a worker, not from any instruction of a fork.
+The running times agree to within about 1\%, on both of the machines
+we measured (Appendix~\ref{sec:perf}).
 
 \paragraph{Per steal, a little}
 %
@@ -618,8 +630,8 @@ Each steal adds a few readings of the clock, each a single
 instruction (Appendix~\ref{sec:clock}), a few additions, and, with the
 log, up to seven entries of 16 bytes.
 %
-This is small beside what a steal already costs: one stack allocation
-and four context switches~\cite{nativeforkjoin}.
+This is small beside what a steal already costs: a stack taken from a
+pool and four context switches~\cite{nativeforkjoin}.
 
 \paragraph{Per region, and per outermost call}
 %
@@ -778,7 +790,7 @@ and worker threads that persist (Appendix~\ref{sec:pool}).
 The harness is in \path{doc/instrumentation/benchmark}.
 
 \bibliographystyle{abbrv}
-\bibliography{main,perf/times,perf/bench/bench,perf/curves/curves}
+\bibliography{main,perf/times,perf/bench/bench,perf/curves/curves,perf/gamora/gamora}
 
 \clearpage
 \appendix
@@ -928,7 +940,7 @@ The work inflation is about 1.4: of the 8 workers, 4 run on slower
 cores, so the same work takes more processor time.
 %
 On 4 workers, all on the faster cores, the work is
-\perftotal{work}{4}\,s, an inflation of only about 1.05.
+\perftotal{work}{4}\,s, an inflation of about 1.08.
 %
 The utilization is above 0.99: scheduling and idle time together come
 to less than a millisecond, over \perftotal{steals}{8} steals.
@@ -1026,10 +1038,12 @@ than it should be.
 \section{Performance notes}
 \label{sec:perf}
 
+We measured on two machines, which we call the M5 and the Ryzen
+(Table~\ref{tbl:machines}).
+%
 We ran \lstinline|fib(38)|, as in the native fork join
-paper~\cite{nativeforkjoin}, with seven builds of micro taskparts, on an
-Apple M5 with 4 performance and 6 efficiency cores
-(Table~\ref{tbl:cost}).
+paper~\cite{nativeforkjoin}, with seven builds of micro taskparts, on
+the M5 (Table~\ref{tbl:cost}).
 %
 The program makes 63 million forks and does almost nothing else, so it
 shows the cost of anything on the path of a fork at its worst.
@@ -1060,23 +1074,41 @@ TaskPaRTS repository~\cite{taskparts}.
 
 \begin{table}
 \small
-\begin{tabular}{@{}lrrr@{}}
+\setlength{\tabcolsep}{2.5pt}
+\begin{tabular}{@{}llrrrl@{}}
 \toprule
- & \multicolumn{3}{c}{workers} \\
-build & 1 & 4 & 8 \\
+name & processor & cores & threads & memory & system \\
 \midrule
-two calls in place of each fork & \perftime{serial}{1} & & \\
-no instrumentation & \perftime{plain}{1} & \perftime{plain}{4} & \perftime{plain}{8} \\
-totals & \perftime{stats}{1} & \perftime{stats}{4} & \perftime{stats}{8} \\
-totals and log & \perftime{log}{1} & \perftime{log}{4} & \perftime{log}{8} \\
-totals and count of forks & \perftime{forks}{1} & \perftime{forks}{4} & \perftime{forks}{8} \\
-\midrule
-count of forks, shared atomic counter & \perftime{atomic}{1} & \perftime{atomic}{4} & \perftime{atomic}{8} \\
-count of forks, packed counters & \perftime{packed}{1} & \perftime{packed}{4} & \perftime{packed}{8} \\
+M5 & Apple M5 & 4 + 6 & 10 & 32\,GB & macOS 27 \\
+Ryzen & AMD Ryzen 9 3950X & 16 & 32 & 32\,GB & Linux 6.12 \\
 \bottomrule
 \end{tabular}
-\caption{Running time of \lstinline|fib(38)|, in seconds, with micro
-  taskparts and each kind of instrumentation: the median of five runs}
+\caption{The machines.  The M5 has 4 performance and 6 efficiency
+  cores; the cores of the Ryzen are all alike, with two hardware
+  threads each.}
+\label{tbl:machines}
+\end{table}
+
+\begin{table}
+\small
+\setlength{\tabcolsep}{2.5pt}
+\begin{tabular}{@{}lrrrrrr@{}}
+\toprule
+ & \multicolumn{6}{c}{workers} \\
+build & 1 & 2 & 4 & 6 & 8 & 10 \\
+\midrule
+two calls per fork & \perftime{serial}{1} & & & & & \\
+no instrumentation & \perftime{plain}{1} & \perftime{plain}{2} & \perftime{plain}{4} & \perftime{plain}{6} & \perftime{plain}{8} & \perftime{plain}{10} \\
+totals & \perftime{stats}{1} & \perftime{stats}{2} & \perftime{stats}{4} & \perftime{stats}{6} & \perftime{stats}{8} & \perftime{stats}{10} \\
+totals and log & \perftime{log}{1} & \perftime{log}{2} & \perftime{log}{4} & \perftime{log}{6} & \perftime{log}{8} & \perftime{log}{10} \\
+totals and count of forks & \perftime{forks}{1} & \perftime{forks}{2} & \perftime{forks}{4} & \perftime{forks}{6} & \perftime{forks}{8} & \perftime{forks}{10} \\
+\midrule
+shared atomic counter & \perftime{atomic}{1} & \perftime{atomic}{2} & \perftime{atomic}{4} & \perftime{atomic}{6} & \perftime{atomic}{8} & \perftime{atomic}{10} \\
+packed counters & \perftime{packed}{1} & \perftime{packed}{2} & \perftime{packed}{4} & \perftime{packed}{6} & \perftime{packed}{8} & \perftime{packed}{10} \\
+\bottomrule
+\end{tabular}
+\caption{Running time of \lstinline|fib(38)| on the M5, in seconds,
+  with micro taskparts and each kind of instrumentation: the median of five runs}
 \label{tbl:cost}
 \end{table}
 
@@ -1084,70 +1116,75 @@ count of forks, packed counters & \perftime{packed}{1} & \perftime{packed}{4} & 
 %
 With totals, and with totals and the log, \lstinline|fib(38)| takes
 \perftime{stats}{1}\,s and \perftime{log}{1}\,s on one worker, against
-\perftime{plain}{1}\,s with no instrumentation: about 5\% more.
+\perftime{plain}{1}\,s with no instrumentation.
 %
-On 4 and 8 workers the three builds are within two milliseconds of
-each other.
+At every other number of workers, up to the 10 that use all the
+cores, the three builds are within two milliseconds of each other.
 %
 A fork runs the same instructions in all three
 (Section~\ref{sec:cost}), and \lstinline|fib(38)| steals too rarely
 for the cost per steal to show: \perftotal{steals}{8} times on 8
 workers.
 %
-What differs is the size of a worker, which the recorder increases,
-and with it where each worker's deque lies in memory.
-% TODO: certify this. In an informal test, a build with no
-% instrumentation whose workers were padded to the size of an
-% instrumented worker took the same time as the build with totals. A
-% round with such a build would settle it, and a worker whose size does
-% not depend on the build would remove the difference.
+An earlier version of micro taskparts showed a difference of about
+5\% on one worker, which is gone in this one; we did not find its
+cause.
 
 \paragraph{The count of forks}
 %
 Counting forks in each worker's recorder takes
-\perftime{forks}{1}\,s on one worker, a few milliseconds more than the
-totals alone, over 63 million forks.
+\perftime{forks}{1}\,s on one worker, about ten milliseconds more than
+the totals alone, over 63 million forks.
 %
 The two careless counts are cheap on one worker, where no other
 worker contends for the cache line.
 %
 On 4 workers they take \perftime{atomic}{4}\,s and
-\perftime{packed}{4}\,s, about 20 times as long as the build with no
-instrumentation, and on 8 workers \perftime{atomic}{8}\,s and
-\perftime{packed}{8}\,s, about 70 and 36 times as long.
+\perftime{packed}{4}\,s, about 22 and 19 times as long as the build
+with no instrumentation, and on 10 workers \perftime{atomic}{10}\,s and
+\perftime{packed}{10}\,s, about 70 and 43 times as long.
 %
 So with either of them, adding workers makes the program slower.
+%
+What the packed counters cost depends on which of them share a cache
+line, and so on where the array lies.
+%
+We align the array, so that the counters of the first 8 workers share
+one line; left where the linker put it, the array once straddled two
+lines, with the counter of worker 0 alone on the first, and the same
+program ran several times faster.
 
 \begin{table}
 \small
-\begin{tabular}{@{}llrrr@{}}
+\setlength{\tabcolsep}{2pt}
+\begin{tabular}{@{}llrrrrrr@{}}
 \toprule
- & & \multicolumn{3}{c}{workers} \\
-program & build & 1 & 4 & 8 \\
+ & & \multicolumn{6}{c}{workers} \\
+program & build & 1 & 2 & 4 & 6 & 8 & 10 \\
 \midrule
-mergesort & none & \benchtime{mergesort plain}{1} & \benchtime{mergesort plain}{4} & \benchtime{mergesort plain}{8} \\
- & totals & \benchtime{mergesort stats}{1} & \benchtime{mergesort stats}{4} & \benchtime{mergesort stats}{8} \\
- & totals and log & \benchtime{mergesort log}{1} & \benchtime{mergesort log}{4} & \benchtime{mergesort log}{8} \\
- & totals and count of forks & \benchtime{mergesort forks}{1} & \benchtime{mergesort forks}{4} & \benchtime{mergesort forks}{8} \\
+mergesort & none & \benchtime{mergesort plain}{1} & \benchtime{mergesort plain}{2} & \benchtime{mergesort plain}{4} & \benchtime{mergesort plain}{6} & \benchtime{mergesort plain}{8} & \benchtime{mergesort plain}{10} \\
+ & totals & \benchtime{mergesort stats}{1} & \benchtime{mergesort stats}{2} & \benchtime{mergesort stats}{4} & \benchtime{mergesort stats}{6} & \benchtime{mergesort stats}{8} & \benchtime{mergesort stats}{10} \\
+ & totals and log & \benchtime{mergesort log}{1} & \benchtime{mergesort log}{2} & \benchtime{mergesort log}{4} & \benchtime{mergesort log}{6} & \benchtime{mergesort log}{8} & \benchtime{mergesort log}{10} \\
+ & totals and forks & \benchtime{mergesort forks}{1} & \benchtime{mergesort forks}{2} & \benchtime{mergesort forks}{4} & \benchtime{mergesort forks}{6} & \benchtime{mergesort forks}{8} & \benchtime{mergesort forks}{10} \\
 \addlinespace
-samplesort & none & \benchtime{samplesort plain}{1} & \benchtime{samplesort plain}{4} & \benchtime{samplesort plain}{8} \\
- & totals & \benchtime{samplesort stats}{1} & \benchtime{samplesort stats}{4} & \benchtime{samplesort stats}{8} \\
- & totals and log & \benchtime{samplesort log}{1} & \benchtime{samplesort log}{4} & \benchtime{samplesort log}{8} \\
- & totals and count of forks & \benchtime{samplesort forks}{1} & \benchtime{samplesort forks}{4} & \benchtime{samplesort forks}{8} \\
+samplesort & none & \benchtime{samplesort plain}{1} & \benchtime{samplesort plain}{2} & \benchtime{samplesort plain}{4} & \benchtime{samplesort plain}{6} & \benchtime{samplesort plain}{8} & \benchtime{samplesort plain}{10} \\
+ & totals & \benchtime{samplesort stats}{1} & \benchtime{samplesort stats}{2} & \benchtime{samplesort stats}{4} & \benchtime{samplesort stats}{6} & \benchtime{samplesort stats}{8} & \benchtime{samplesort stats}{10} \\
+ & totals and log & \benchtime{samplesort log}{1} & \benchtime{samplesort log}{2} & \benchtime{samplesort log}{4} & \benchtime{samplesort log}{6} & \benchtime{samplesort log}{8} & \benchtime{samplesort log}{10} \\
+ & totals and forks & \benchtime{samplesort forks}{1} & \benchtime{samplesort forks}{2} & \benchtime{samplesort forks}{4} & \benchtime{samplesort forks}{6} & \benchtime{samplesort forks}{8} & \benchtime{samplesort forks}{10} \\
 \addlinespace
-quickhull & none & \benchtime{quickhull plain}{1} & \benchtime{quickhull plain}{4} & \benchtime{quickhull plain}{8} \\
- & totals & \benchtime{quickhull stats}{1} & \benchtime{quickhull stats}{4} & \benchtime{quickhull stats}{8} \\
- & totals and log & \benchtime{quickhull log}{1} & \benchtime{quickhull log}{4} & \benchtime{quickhull log}{8} \\
- & totals and count of forks & \benchtime{quickhull forks}{1} & \benchtime{quickhull forks}{4} & \benchtime{quickhull forks}{8} \\
+quickhull & none & \benchtime{quickhull plain}{1} & \benchtime{quickhull plain}{2} & \benchtime{quickhull plain}{4} & \benchtime{quickhull plain}{6} & \benchtime{quickhull plain}{8} & \benchtime{quickhull plain}{10} \\
+ & totals & \benchtime{quickhull stats}{1} & \benchtime{quickhull stats}{2} & \benchtime{quickhull stats}{4} & \benchtime{quickhull stats}{6} & \benchtime{quickhull stats}{8} & \benchtime{quickhull stats}{10} \\
+ & totals and log & \benchtime{quickhull log}{1} & \benchtime{quickhull log}{2} & \benchtime{quickhull log}{4} & \benchtime{quickhull log}{6} & \benchtime{quickhull log}{8} & \benchtime{quickhull log}{10} \\
+ & totals and forks & \benchtime{quickhull forks}{1} & \benchtime{quickhull forks}{2} & \benchtime{quickhull forks}{4} & \benchtime{quickhull forks}{6} & \benchtime{quickhull forks}{8} & \benchtime{quickhull forks}{10} \\
 \addlinespace
-BFS & none & \benchtime{BFS plain}{1} & \benchtime{BFS plain}{4} & \benchtime{BFS plain}{8} \\
- & totals & \benchtime{BFS stats}{1} & \benchtime{BFS stats}{4} & \benchtime{BFS stats}{8} \\
- & totals and log & \benchtime{BFS log}{1} & \benchtime{BFS log}{4} & \benchtime{BFS log}{8} \\
- & totals and count of forks & \benchtime{BFS forks}{1} & \benchtime{BFS forks}{4} & \benchtime{BFS forks}{8} \\
+BFS & none & \benchtime{BFS plain}{1} & \benchtime{BFS plain}{2} & \benchtime{BFS plain}{4} & \benchtime{BFS plain}{6} & \benchtime{BFS plain}{8} & \benchtime{BFS plain}{10} \\
+ & totals & \benchtime{BFS stats}{1} & \benchtime{BFS stats}{2} & \benchtime{BFS stats}{4} & \benchtime{BFS stats}{6} & \benchtime{BFS stats}{8} & \benchtime{BFS stats}{10} \\
+ & totals and log & \benchtime{BFS log}{1} & \benchtime{BFS log}{2} & \benchtime{BFS log}{4} & \benchtime{BFS log}{6} & \benchtime{BFS log}{8} & \benchtime{BFS log}{10} \\
+ & totals and forks & \benchtime{BFS forks}{1} & \benchtime{BFS forks}{2} & \benchtime{BFS forks}{4} & \benchtime{BFS forks}{6} & \benchtime{BFS forks}{8} & \benchtime{BFS forks}{10} \\
 \bottomrule
 \end{tabular}
-\caption{Running time, in seconds, of the algorithm of four programs
-  on micro taskparts with each level of instrumentation: the median of
+\caption{Running time on the M5, in seconds, of the algorithm of four
+  programs on micro taskparts with each level of instrumentation: the median of
   five runs}
 \label{tbl:bench}
 \end{table}
@@ -1173,30 +1210,48 @@ too~\cite{flexibench-bench}, and checked the result that every run
 printed.
 %
 No level of instrumentation costs anything that we can see: for each
-program and number of workers, the four builds are within about 3\%
+program and number of workers, the four builds are within about 4\%
 of each other, in no consistent order.
 
-\begin{table*}
+\begin{table}
 \small
-\begin{tabular}{@{}lrrrrrrrrrrrr@{}}
+\setlength{\tabcolsep}{2.2pt}
+\begin{tabular}{@{}llrrrrrr@{}}
 \toprule
- & & & \multicolumn{5}{c}{4 workers} & \multicolumn{5}{c}{8 workers} \\
-\cmidrule(lr){4-8}\cmidrule(l){9-13}
-program & $T_s$ & $W_1$ & $T_4$ & $W_4$ & $S_4$ & $I_4$ & steals
-  & $T_8$ & $W_8$ & $S_8$ & $I_8$ & steals \\
+ & & \multicolumn{6}{c}{workers $P$} \\
+program & & 1 & 2 & 4 & 6 & 8 & 10 \\
 \midrule
-mergesort & \serialtime{mergesort} & \region{rwork}{mergesort}{1} & \region{rtime}{mergesort}{4} & \region{rwork}{mergesort}{4} & \region{rsched}{mergesort}{4} & \region{ridle}{mergesort}{4} & \region{rsteals}{mergesort}{4} & \region{rtime}{mergesort}{8} & \region{rwork}{mergesort}{8} & \region{rsched}{mergesort}{8} & \region{ridle}{mergesort}{8} & \region{rsteals}{mergesort}{8} \\
-samplesort & \serialtime{samplesort} & \region{rwork}{samplesort}{1} & \region{rtime}{samplesort}{4} & \region{rwork}{samplesort}{4} & \region{rsched}{samplesort}{4} & \region{ridle}{samplesort}{4} & \region{rsteals}{samplesort}{4} & \region{rtime}{samplesort}{8} & \region{rwork}{samplesort}{8} & \region{rsched}{samplesort}{8} & \region{ridle}{samplesort}{8} & \region{rsteals}{samplesort}{8} \\
-quickhull & \serialtime{quickhull} & \region{rwork}{quickhull}{1} & \region{rtime}{quickhull}{4} & \region{rwork}{quickhull}{4} & \region{rsched}{quickhull}{4} & \region{ridle}{quickhull}{4} & \region{rsteals}{quickhull}{4} & \region{rtime}{quickhull}{8} & \region{rwork}{quickhull}{8} & \region{rsched}{quickhull}{8} & \region{ridle}{quickhull}{8} & \region{rsteals}{quickhull}{8} \\
-BFS & \serialtime{BFS} & \region{rwork}{BFS}{1} & \region{rtime}{BFS}{4} & \region{rwork}{BFS}{4} & \region{rsched}{BFS}{4} & \region{ridle}{BFS}{4} & \region{rsteals}{BFS}{4} & \region{rtime}{BFS}{8} & \region{rwork}{BFS}{8} & \region{rsched}{BFS}{8} & \region{ridle}{BFS}{8} & \region{rsteals}{BFS}{8} \\
+mergesort & time $T_P$ & \region{rtime}{mergesort}{1} & \region{rtime}{mergesort}{2} & \region{rtime}{mergesort}{4} & \region{rtime}{mergesort}{6} & \region{rtime}{mergesort}{8} & \region{rtime}{mergesort}{10} \\
+$T_s = \serialtime{mergesort}$ & work $W_P$ & \region{rwork}{mergesort}{1} & \region{rwork}{mergesort}{2} & \region{rwork}{mergesort}{4} & \region{rwork}{mergesort}{6} & \region{rwork}{mergesort}{8} & \region{rwork}{mergesort}{10} \\
+ & scheduling $S_P$ & \region{rsched}{mergesort}{1} & \region{rsched}{mergesort}{2} & \region{rsched}{mergesort}{4} & \region{rsched}{mergesort}{6} & \region{rsched}{mergesort}{8} & \region{rsched}{mergesort}{10} \\
+ & idle $I_P$ & \region{ridle}{mergesort}{1} & \region{ridle}{mergesort}{2} & \region{ridle}{mergesort}{4} & \region{ridle}{mergesort}{6} & \region{ridle}{mergesort}{8} & \region{ridle}{mergesort}{10} \\
+ & steals & \region{rsteals}{mergesort}{1} & \region{rsteals}{mergesort}{2} & \region{rsteals}{mergesort}{4} & \region{rsteals}{mergesort}{6} & \region{rsteals}{mergesort}{8} & \region{rsteals}{mergesort}{10} \\
+\addlinespace
+samplesort & time $T_P$ & \region{rtime}{samplesort}{1} & \region{rtime}{samplesort}{2} & \region{rtime}{samplesort}{4} & \region{rtime}{samplesort}{6} & \region{rtime}{samplesort}{8} & \region{rtime}{samplesort}{10} \\
+$T_s = \serialtime{samplesort}$ & work $W_P$ & \region{rwork}{samplesort}{1} & \region{rwork}{samplesort}{2} & \region{rwork}{samplesort}{4} & \region{rwork}{samplesort}{6} & \region{rwork}{samplesort}{8} & \region{rwork}{samplesort}{10} \\
+ & scheduling $S_P$ & \region{rsched}{samplesort}{1} & \region{rsched}{samplesort}{2} & \region{rsched}{samplesort}{4} & \region{rsched}{samplesort}{6} & \region{rsched}{samplesort}{8} & \region{rsched}{samplesort}{10} \\
+ & idle $I_P$ & \region{ridle}{samplesort}{1} & \region{ridle}{samplesort}{2} & \region{ridle}{samplesort}{4} & \region{ridle}{samplesort}{6} & \region{ridle}{samplesort}{8} & \region{ridle}{samplesort}{10} \\
+ & steals & \region{rsteals}{samplesort}{1} & \region{rsteals}{samplesort}{2} & \region{rsteals}{samplesort}{4} & \region{rsteals}{samplesort}{6} & \region{rsteals}{samplesort}{8} & \region{rsteals}{samplesort}{10} \\
+\addlinespace
+quickhull & time $T_P$ & \region{rtime}{quickhull}{1} & \region{rtime}{quickhull}{2} & \region{rtime}{quickhull}{4} & \region{rtime}{quickhull}{6} & \region{rtime}{quickhull}{8} & \region{rtime}{quickhull}{10} \\
+$T_s = \serialtime{quickhull}$ & work $W_P$ & \region{rwork}{quickhull}{1} & \region{rwork}{quickhull}{2} & \region{rwork}{quickhull}{4} & \region{rwork}{quickhull}{6} & \region{rwork}{quickhull}{8} & \region{rwork}{quickhull}{10} \\
+ & scheduling $S_P$ & \region{rsched}{quickhull}{1} & \region{rsched}{quickhull}{2} & \region{rsched}{quickhull}{4} & \region{rsched}{quickhull}{6} & \region{rsched}{quickhull}{8} & \region{rsched}{quickhull}{10} \\
+ & idle $I_P$ & \region{ridle}{quickhull}{1} & \region{ridle}{quickhull}{2} & \region{ridle}{quickhull}{4} & \region{ridle}{quickhull}{6} & \region{ridle}{quickhull}{8} & \region{ridle}{quickhull}{10} \\
+ & steals & \region{rsteals}{quickhull}{1} & \region{rsteals}{quickhull}{2} & \region{rsteals}{quickhull}{4} & \region{rsteals}{quickhull}{6} & \region{rsteals}{quickhull}{8} & \region{rsteals}{quickhull}{10} \\
+\addlinespace
+BFS & time $T_P$ & \region{rtime}{BFS}{1} & \region{rtime}{BFS}{2} & \region{rtime}{BFS}{4} & \region{rtime}{BFS}{6} & \region{rtime}{BFS}{8} & \region{rtime}{BFS}{10} \\
+$T_s = \serialtime{BFS}$ & work $W_P$ & \region{rwork}{BFS}{1} & \region{rwork}{BFS}{2} & \region{rwork}{BFS}{4} & \region{rwork}{BFS}{6} & \region{rwork}{BFS}{8} & \region{rwork}{BFS}{10} \\
+ & scheduling $S_P$ & \region{rsched}{BFS}{1} & \region{rsched}{BFS}{2} & \region{rsched}{BFS}{4} & \region{rsched}{BFS}{6} & \region{rsched}{BFS}{8} & \region{rsched}{BFS}{10} \\
+ & idle $I_P$ & \region{ridle}{BFS}{1} & \region{ridle}{BFS}{2} & \region{ridle}{BFS}{4} & \region{ridle}{BFS}{6} & \region{ridle}{BFS}{8} & \region{ridle}{BFS}{10} \\
+ & steals & \region{rsteals}{BFS}{1} & \region{rsteals}{BFS}{2} & \region{rsteals}{BFS}{4} & \region{rsteals}{BFS}{6} & \region{rsteals}{BFS}{8} & \region{rsteals}{BFS}{10} \\
 \bottomrule
 \end{tabular}
-\caption{What a factored speedup is computed from, for the algorithm
-  of each program: the time of a region with the sequential build, and
+\caption{What a factored speedup is computed from on the M5, for the
+  algorithm of each program: the time of a region with the sequential build, and
   the time and the totals of a region with the build that keeps
   totals, in seconds, with the steals}
 \label{tbl:factors}
-\end{table*}
+\end{table}
 
 \paragraph{Where the speedup goes}
 %
@@ -1204,20 +1259,27 @@ Table~\ref{tbl:factors} gives, for the same four programs, what
 Appendix~\ref{sec:collect} asks for.
 %
 On 8 workers, mergesort is about 6.4 times faster than its sequential
-build, samplesort 5.1 times, quickhull 3.6 times, and BFS 3.4 times.
+build, samplesort 5.0 times, quickhull 3.7 times, and BFS 3.5 times.
+%
+On 10 workers, which use all the cores, they are 7.5, 5.7, 3.9 and 3.8
+times faster.
 %
 The factors say that the scheduler has little to do with what is
 missing.
 %
-The price of the forks is small: $T_s/W_1$ is 0.98 or more for three
-of the programs, and 0.90 for BFS.
+The price of the forks is small: $T_s/W_1$ is 0.97 or more for three
+of the programs, and 0.88 for BFS.
 %
-The utilization is 0.98 or more, except for BFS, at 0.95: BFS spends
-about 3\% of its workers' time idle and 1.5\% scheduling.
+The utilization on 8 workers is 0.98 or more: BFS, the lowest, spends
+about 1.7\% of its workers' time idle and 0.2\% scheduling.
+%
+On 10 workers it is 0.97 or more.
 %
 What remains is work inflation: on 8 workers, the same work takes
-about 1.2 times as long for mergesort, 1.5 times for samplesort, and
-more than twice as long for quickhull and BFS.
+about 1.2 times as long for mergesort, between 1.5 and 1.6 times for
+samplesort, and about twice as long for quickhull and BFS.
+%
+On 10 workers these factors are 1.3, 1.7, 2.5 and 2.2.
 %
 Half of the 8 workers run on slower cores, but that is not the whole
 story: on 4 workers, all on the faster cores, the work of quickhull is
@@ -1233,19 +1295,146 @@ Without regions, none of this could be read off: each driver also
 generates its input, and totals for the whole process would describe
 that as well.
 
-\paragraph{Scheduling time, and the starting of threads}
+\paragraph{More cores, all alike}
 %
-An earlier version of micro taskparts started its threads at each
-outermost call (Appendix~\ref{sec:pool}).
+We repeated all three rounds on the Ryzen, whose 16 cores are all
+alike and have two hardware threads each, with the programs compiled
+by Clang~21~\cite{flexibench-gamora}.
 %
-There, the scheduling time of \lstinline|fib(38)| on 8 workers was
-\relaunchsched\,s.
+Table~\ref{tbl:costgamora} is Table~\ref{tbl:cost} there, on up to
+16 workers, one for each core, and on 32, one for each hardware
+thread.
 %
-With threads that persist, it is \perftotal{sched}{8}\,s, for about
-as many steals.
+With totals, and with totals and the log, \lstinline|fib(38)| takes
+\gperftime{stats}{1}\,s and \gperftime{log}{1}\,s on one worker,
+against \gperftime{plain}{1}\,s with no instrumentation, and at every
+other number of workers the three builds are within a millisecond of
+each other.
 %
-So nine tenths of what the earlier version reported as scheduling was
-the starting of threads.
+The count of forks in each worker's recorder adds about 2\% on one
+worker.
+%
+The shared atomic counter costs more here even on one worker,
+\gperftime{atomic}{1}\,s, since each increment is a locked
+instruction, and on 4, 16 and 32 workers the program takes a little
+over a second, 7, 29 and 33 times as long as with no instrumentation.
+%
+The packed counters, of which 8 share a cache line on the Ryzen,
+take \gperftime{packed}{4}\,s on 4 workers and
+\gperftime{packed}{16}\,s on 16, about 4.6 and 12 times as long.
+%
+They take less time on 10 workers than on 8, where the counters in
+use begin to occupy a second line.
+
+\begin{table*}
+\small
+\setlength{\tabcolsep}{6pt}
+\begin{tabular}{@{}lrrrrrrrrrr@{}}
+\toprule
+ & \multicolumn{10}{c}{workers} \\
+build & 1 & 2 & 4 & 6 & 8 & 10 & 12 & 14 & 16 & 32 \\
+\midrule
+two calls per fork & \gperftime{serial}{1} & & & & & & & & & \\
+no instrumentation & \gperftime{plain}{1} & \gperftime{plain}{2} & \gperftime{plain}{4} & \gperftime{plain}{6} & \gperftime{plain}{8} & \gperftime{plain}{10} & \gperftime{plain}{12} & \gperftime{plain}{14} & \gperftime{plain}{16} & \gperftime{plain}{32} \\
+totals & \gperftime{stats}{1} & \gperftime{stats}{2} & \gperftime{stats}{4} & \gperftime{stats}{6} & \gperftime{stats}{8} & \gperftime{stats}{10} & \gperftime{stats}{12} & \gperftime{stats}{14} & \gperftime{stats}{16} & \gperftime{stats}{32} \\
+totals and log & \gperftime{log}{1} & \gperftime{log}{2} & \gperftime{log}{4} & \gperftime{log}{6} & \gperftime{log}{8} & \gperftime{log}{10} & \gperftime{log}{12} & \gperftime{log}{14} & \gperftime{log}{16} & \gperftime{log}{32} \\
+totals and count of forks & \gperftime{forks}{1} & \gperftime{forks}{2} & \gperftime{forks}{4} & \gperftime{forks}{6} & \gperftime{forks}{8} & \gperftime{forks}{10} & \gperftime{forks}{12} & \gperftime{forks}{14} & \gperftime{forks}{16} & \gperftime{forks}{32} \\
+\midrule
+shared atomic counter & \gperftime{atomic}{1} & \gperftime{atomic}{2} & \gperftime{atomic}{4} & \gperftime{atomic}{6} & \gperftime{atomic}{8} & \gperftime{atomic}{10} & \gperftime{atomic}{12} & \gperftime{atomic}{14} & \gperftime{atomic}{16} & \gperftime{atomic}{32} \\
+packed counters & \gperftime{packed}{1} & \gperftime{packed}{2} & \gperftime{packed}{4} & \gperftime{packed}{6} & \gperftime{packed}{8} & \gperftime{packed}{10} & \gperftime{packed}{12} & \gperftime{packed}{14} & \gperftime{packed}{16} & \gperftime{packed}{32} \\
+\bottomrule
+\end{tabular}
+\caption{Table~\ref{tbl:cost} on the Ryzen: running time of
+  \lstinline|fib(38)|, in seconds, the median of five runs}
+\label{tbl:costgamora}
+\end{table*}
+
+\begin{table*}
+\small
+\setlength{\tabcolsep}{6pt}
+\begin{tabular}{@{}llrrrrrrrrrr@{}}
+\toprule
+ & & \multicolumn{10}{c}{workers $P$} \\
+program & & 1 & 2 & 4 & 6 & 8 & 10 & 12 & 14 & 16 & 32 \\
+\midrule
+mergesort & time $T_P$ & \gregion{rtime}{mergesort}{1} & \gregion{rtime}{mergesort}{2} & \gregion{rtime}{mergesort}{4} & \gregion{rtime}{mergesort}{6} & \gregion{rtime}{mergesort}{8} & \gregion{rtime}{mergesort}{10} & \gregion{rtime}{mergesort}{12} & \gregion{rtime}{mergesort}{14} & \gregion{rtime}{mergesort}{16} & \gregion{rtime}{mergesort}{32} \\
+$T_s = \gserialtime{mergesort}$ & work $W_P$ & \gregion{rwork}{mergesort}{1} & \gregion{rwork}{mergesort}{2} & \gregion{rwork}{mergesort}{4} & \gregion{rwork}{mergesort}{6} & \gregion{rwork}{mergesort}{8} & \gregion{rwork}{mergesort}{10} & \gregion{rwork}{mergesort}{12} & \gregion{rwork}{mergesort}{14} & \gregion{rwork}{mergesort}{16} & \gregion{rwork}{mergesort}{32} \\
+ & scheduling $S_P$ & \gregion{rsched}{mergesort}{1} & \gregion{rsched}{mergesort}{2} & \gregion{rsched}{mergesort}{4} & \gregion{rsched}{mergesort}{6} & \gregion{rsched}{mergesort}{8} & \gregion{rsched}{mergesort}{10} & \gregion{rsched}{mergesort}{12} & \gregion{rsched}{mergesort}{14} & \gregion{rsched}{mergesort}{16} & \gregion{rsched}{mergesort}{32} \\
+ & idle $I_P$ & \gregion{ridle}{mergesort}{1} & \gregion{ridle}{mergesort}{2} & \gregion{ridle}{mergesort}{4} & \gregion{ridle}{mergesort}{6} & \gregion{ridle}{mergesort}{8} & \gregion{ridle}{mergesort}{10} & \gregion{ridle}{mergesort}{12} & \gregion{ridle}{mergesort}{14} & \gregion{ridle}{mergesort}{16} & \gregion{ridle}{mergesort}{32} \\
+ & steals & \gregion{rsteals}{mergesort}{1} & \gregion{rsteals}{mergesort}{2} & \gregion{rsteals}{mergesort}{4} & \gregion{rsteals}{mergesort}{6} & \gregion{rsteals}{mergesort}{8} & \gregion{rsteals}{mergesort}{10} & \gregion{rsteals}{mergesort}{12} & \gregion{rsteals}{mergesort}{14} & \gregion{rsteals}{mergesort}{16} & \gregion{rsteals}{mergesort}{32} \\
+\addlinespace
+samplesort & time $T_P$ & \gregion{rtime}{samplesort}{1} & \gregion{rtime}{samplesort}{2} & \gregion{rtime}{samplesort}{4} & \gregion{rtime}{samplesort}{6} & \gregion{rtime}{samplesort}{8} & \gregion{rtime}{samplesort}{10} & \gregion{rtime}{samplesort}{12} & \gregion{rtime}{samplesort}{14} & \gregion{rtime}{samplesort}{16} & \gregion{rtime}{samplesort}{32} \\
+$T_s = \gserialtime{samplesort}$ & work $W_P$ & \gregion{rwork}{samplesort}{1} & \gregion{rwork}{samplesort}{2} & \gregion{rwork}{samplesort}{4} & \gregion{rwork}{samplesort}{6} & \gregion{rwork}{samplesort}{8} & \gregion{rwork}{samplesort}{10} & \gregion{rwork}{samplesort}{12} & \gregion{rwork}{samplesort}{14} & \gregion{rwork}{samplesort}{16} & \gregion{rwork}{samplesort}{32} \\
+ & scheduling $S_P$ & \gregion{rsched}{samplesort}{1} & \gregion{rsched}{samplesort}{2} & \gregion{rsched}{samplesort}{4} & \gregion{rsched}{samplesort}{6} & \gregion{rsched}{samplesort}{8} & \gregion{rsched}{samplesort}{10} & \gregion{rsched}{samplesort}{12} & \gregion{rsched}{samplesort}{14} & \gregion{rsched}{samplesort}{16} & \gregion{rsched}{samplesort}{32} \\
+ & idle $I_P$ & \gregion{ridle}{samplesort}{1} & \gregion{ridle}{samplesort}{2} & \gregion{ridle}{samplesort}{4} & \gregion{ridle}{samplesort}{6} & \gregion{ridle}{samplesort}{8} & \gregion{ridle}{samplesort}{10} & \gregion{ridle}{samplesort}{12} & \gregion{ridle}{samplesort}{14} & \gregion{ridle}{samplesort}{16} & \gregion{ridle}{samplesort}{32} \\
+ & steals & \gregion{rsteals}{samplesort}{1} & \gregion{rsteals}{samplesort}{2} & \gregion{rsteals}{samplesort}{4} & \gregion{rsteals}{samplesort}{6} & \gregion{rsteals}{samplesort}{8} & \gregion{rsteals}{samplesort}{10} & \gregion{rsteals}{samplesort}{12} & \gregion{rsteals}{samplesort}{14} & \gregion{rsteals}{samplesort}{16} & \gregion{rsteals}{samplesort}{32} \\
+\addlinespace
+quickhull & time $T_P$ & \gregion{rtime}{quickhull}{1} & \gregion{rtime}{quickhull}{2} & \gregion{rtime}{quickhull}{4} & \gregion{rtime}{quickhull}{6} & \gregion{rtime}{quickhull}{8} & \gregion{rtime}{quickhull}{10} & \gregion{rtime}{quickhull}{12} & \gregion{rtime}{quickhull}{14} & \gregion{rtime}{quickhull}{16} & \gregion{rtime}{quickhull}{32} \\
+$T_s = \gserialtime{quickhull}$ & work $W_P$ & \gregion{rwork}{quickhull}{1} & \gregion{rwork}{quickhull}{2} & \gregion{rwork}{quickhull}{4} & \gregion{rwork}{quickhull}{6} & \gregion{rwork}{quickhull}{8} & \gregion{rwork}{quickhull}{10} & \gregion{rwork}{quickhull}{12} & \gregion{rwork}{quickhull}{14} & \gregion{rwork}{quickhull}{16} & \gregion{rwork}{quickhull}{32} \\
+ & scheduling $S_P$ & \gregion{rsched}{quickhull}{1} & \gregion{rsched}{quickhull}{2} & \gregion{rsched}{quickhull}{4} & \gregion{rsched}{quickhull}{6} & \gregion{rsched}{quickhull}{8} & \gregion{rsched}{quickhull}{10} & \gregion{rsched}{quickhull}{12} & \gregion{rsched}{quickhull}{14} & \gregion{rsched}{quickhull}{16} & \gregion{rsched}{quickhull}{32} \\
+ & idle $I_P$ & \gregion{ridle}{quickhull}{1} & \gregion{ridle}{quickhull}{2} & \gregion{ridle}{quickhull}{4} & \gregion{ridle}{quickhull}{6} & \gregion{ridle}{quickhull}{8} & \gregion{ridle}{quickhull}{10} & \gregion{ridle}{quickhull}{12} & \gregion{ridle}{quickhull}{14} & \gregion{ridle}{quickhull}{16} & \gregion{ridle}{quickhull}{32} \\
+ & steals & \gregion{rsteals}{quickhull}{1} & \gregion{rsteals}{quickhull}{2} & \gregion{rsteals}{quickhull}{4} & \gregion{rsteals}{quickhull}{6} & \gregion{rsteals}{quickhull}{8} & \gregion{rsteals}{quickhull}{10} & \gregion{rsteals}{quickhull}{12} & \gregion{rsteals}{quickhull}{14} & \gregion{rsteals}{quickhull}{16} & \gregion{rsteals}{quickhull}{32} \\
+\addlinespace
+BFS & time $T_P$ & \gregion{rtime}{BFS}{1} & \gregion{rtime}{BFS}{2} & \gregion{rtime}{BFS}{4} & \gregion{rtime}{BFS}{6} & \gregion{rtime}{BFS}{8} & \gregion{rtime}{BFS}{10} & \gregion{rtime}{BFS}{12} & \gregion{rtime}{BFS}{14} & \gregion{rtime}{BFS}{16} & \gregion{rtime}{BFS}{32} \\
+$T_s = \gserialtime{BFS}$ & work $W_P$ & \gregion{rwork}{BFS}{1} & \gregion{rwork}{BFS}{2} & \gregion{rwork}{BFS}{4} & \gregion{rwork}{BFS}{6} & \gregion{rwork}{BFS}{8} & \gregion{rwork}{BFS}{10} & \gregion{rwork}{BFS}{12} & \gregion{rwork}{BFS}{14} & \gregion{rwork}{BFS}{16} & \gregion{rwork}{BFS}{32} \\
+ & scheduling $S_P$ & \gregion{rsched}{BFS}{1} & \gregion{rsched}{BFS}{2} & \gregion{rsched}{BFS}{4} & \gregion{rsched}{BFS}{6} & \gregion{rsched}{BFS}{8} & \gregion{rsched}{BFS}{10} & \gregion{rsched}{BFS}{12} & \gregion{rsched}{BFS}{14} & \gregion{rsched}{BFS}{16} & \gregion{rsched}{BFS}{32} \\
+ & idle $I_P$ & \gregion{ridle}{BFS}{1} & \gregion{ridle}{BFS}{2} & \gregion{ridle}{BFS}{4} & \gregion{ridle}{BFS}{6} & \gregion{ridle}{BFS}{8} & \gregion{ridle}{BFS}{10} & \gregion{ridle}{BFS}{12} & \gregion{ridle}{BFS}{14} & \gregion{ridle}{BFS}{16} & \gregion{ridle}{BFS}{32} \\
+ & steals & \gregion{rsteals}{BFS}{1} & \gregion{rsteals}{BFS}{2} & \gregion{rsteals}{BFS}{4} & \gregion{rsteals}{BFS}{6} & \gregion{rsteals}{BFS}{8} & \gregion{rsteals}{BFS}{10} & \gregion{rsteals}{BFS}{12} & \gregion{rsteals}{BFS}{14} & \gregion{rsteals}{BFS}{16} & \gregion{rsteals}{BFS}{32} \\
+\bottomrule
+\end{tabular}
+\caption{Table~\ref{tbl:factors} on the Ryzen, on up to 16 workers,
+  one for each core, and on 32, one for each hardware thread}
+\label{tbl:factorsgamora}
+\end{table*}
+
+\begin{figure*}
+\centering
+\factoredplotgamora{mergesort}{ylabel={speedup}}\hfill
+\factoredplotgamora{samplesort}{}\hfill
+\factoredplotgamora{quickhull}{}\hfill
+\factoredplotgamora{BFS}{}
+
+\smallskip
+\factoredlegend
+\caption{Factored speedup plots of the four programs on the Ryzen,
+  which has 16 cores, all alike, and 32 hardware threads.
+  Beyond 16 workers, two workers share a core.}
+\label{fig:factoredgamora}
+\end{figure*}
+
+For the four programs, the picture on the Ryzen is the one on the M5,
+only sharper (Table~\ref{tbl:factorsgamora} and
+Figure~\ref{fig:factoredgamora}).
+%
+Again no level of instrumentation costs anything that we can see: for
+each program and number of workers, the four builds are within 3\% of
+each other, at every number of workers in
+Table~\ref{tbl:costgamora}.
+%
+On 16 workers, one for each core, mergesort is about 8.7 times faster
+than its sequential build, samplesort 10.3 times, BFS 5.2 times, and
+quickhull 3.3 times.
+%
+The price of the forks is again small, with $T_s/W_1$ at 0.96 or more
+for three of the programs and 0.91 for BFS, and the utilization on 16
+workers is about 0.98 or more.
+%
+So here too nearly all of the loss is work inflation: on 16 workers,
+the same work takes about 1.5 times as long for samplesort, 1.8 times
+for mergesort, 2.7 times for BFS, and 4.7 times for quickhull.
+%
+The work grows at every step of two workers
+(Table~\ref{tbl:factorsgamora}), and quickhull stops getting faster
+early: on 16 workers it is only 1.3 times faster than on 4, and
+barely faster than on 12.
+%
+On the Ryzen, slower cores cannot be the cause, since it has none.
+%
+From 16 workers to 32, where two workers share each core, the work of
+each program grows by a factor of 1.6 to 2.
+%
+Only samplesort gains much from the extra workers: it is about 1.3
+times faster on 32 than on 16.
 
 % TODO:
 % - certify the cost of an outermost call that does nothing, and the
@@ -1299,6 +1488,18 @@ on that stack.
 So a root that finishes switches to its worker's loop first, and the
 loop announces it.
 
+\paragraph{The stacks of stolen tasks persist too}
+%
+The native fork join paper keeps the stacks that stolen tasks release
+in a pool that the workers share, since mapping a stack at every steal
+is costly on many workers~\cite{nativeforkjoin}.
+%
+There, the pool is emptied at the end of each outermost call.
+%
+Here it lives as long as the workers, and its stacks are unmapped when
+the program exits, so a later region finds the stacks of an earlier
+one.
+
 \paragraph{Alternative: one launch per region}
 %
 An earlier version of this micro taskparts started its threads at each
@@ -1314,9 +1515,6 @@ And a program that makes many outermost calls, as a program written
 over a library of parallel loops does, cannot be measured at all,
 except by turning the whole program into one call, which puts the
 loading of its input back into the region.
-%
-The first cost is large in proportion
-(Appendix~\ref{sec:perf}).
 
 \paragraph{Alternative: a rendezvous}
 %

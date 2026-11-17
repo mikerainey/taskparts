@@ -1,4 +1,5 @@
-% Factored speedup plots, drawn from the certified values of perf/curves.
+% Factored speedup plots, drawn from the certified values of perf/curves and
+% perf/gamora/curves.
 % Nothing here is a number typed by hand: every coordinate is computed from
 % \fbval cells, as Appendix sec:collect prescribes.
 %
@@ -24,17 +25,19 @@
   \edef\curvecelltmp{\noexpand\fbval{#1}{#2}{P = #3}}%
   \edef#4{\curvecelltmp}}
 
-% \curvecoords{PROGRAM}: defines \coordsforks, \coordsinflation, \coordsidle
-% and \coordsspeedup, the coordinates of the four measured curves.
-\newcommand{\curvecoords}[1]{%
+% \curvecoords{SUFFIX}{WORKERS}{PROGRAM}: defines \coordsforks,
+% \coordsinflation, \coordsidle and \coordsspeedup, the coordinates of the four
+% measured curves, from the views cserialSUFFIX, ctimeSUFFIX, cworkSUFFIX and
+% cidleSUFFIX, at each number of workers of the list WORKERS.
+\newcommand{\curvecoords}[3]{%
   \gdef\coordsforks{}\gdef\coordsinflation{}%
   \gdef\coordsidle{}\gdef\coordsspeedup{}%
-  \edef\curveTs{\fbval{cserial}{#1}{serial}}%
-  \curvecell{cwork}{#1}{1}{\curveWone}%
-  \foreach \p in {1,...,10} {%
-    \curvecell{ctime}{#1}{\p}{\curveT}%
-    \curvecell{cwork}{#1}{\p}{\curveW}%
-    \curvecell{cidle}{#1}{\p}{\curveI}%
+  \edef\curveTs{\fbval{cserial#1}{#3}{serial}}%
+  \curvecell{cwork#1}{#3}{1}{\curveWone}%
+  \foreach \p in {#2} {%
+    \curvecell{ctime#1}{#3}{\p}{\curveT}%
+    \curvecell{cwork#1}{#3}{\p}{\curveW}%
+    \curvecell{cidle#1}{#3}{\p}{\curveI}%
     \pgfmathparse{\p*\curveTs/\curveWone}%
     \xdef\coordsforks{\coordsforks (\p,\pgfmathresult)}%
     \pgfmathparse{\p*\curveTs/\curveW}%
@@ -58,15 +61,21 @@
     axis on top=false, clip=true,
   },
   band edge/.style={draw=white, line width=0.4pt},
+  % The second machine: 16 cores, each with two hardware threads.
+  factored gamora/.style={
+    factored, xmax=32, ymax=32,
+    xtick={1,8,16,24,32}, ytick={0,8,16,24,32},
+  },
 }
 
-% \factoredplot{PROGRAM}{extra axis options}
-\newcommand{\factoredplot}[2]{%
-  \curvecoords{#1}%
+% \factoredplotof{SUFFIX}{WORKERS}{MAX}{STYLE}{PROGRAM}{extra axis options}:
+% a plot from the views of SUFFIX, on up to MAX workers.
+\newcommand{\factoredplotof}[6]{%
+  \curvecoords{#1}{#2}{#5}%
   \begin{tikzpicture}
-  \begin{axis}[factored, title={#1}, #2]
+  \begin{axis}[#4, title={#5}, #6]
     \addplot[name path=ideal, draw=none, forget plot]
-      coordinates {(1,1) (10,10)};
+      coordinates {(1,1) (#3,#3)};
     \addplot[name path=forks, draw=none, forget plot]
       coordinates {\coordsforks};
     \addplot[name path=inflation, draw=none, forget plot]
@@ -84,11 +93,19 @@
     \addplot[bandsched, band edge, forget plot]
       fill between[of=idle and speedup];
     \addplot[black!55, densely dashed, line width=0.5pt, forget plot]
-      coordinates {(1,1) (10,10)};
+      coordinates {(1,1) (#3,#3)};
     \addplot[black, line width=0.9pt, mark=*, mark size=1.1pt, forget plot]
       coordinates {\coordsspeedup};
   \end{axis}
   \end{tikzpicture}}
+
+% \factoredplot{PROGRAM}{extra axis options}: the laptop, 1 to 10 workers.
+\newcommand{\factoredplot}[2]{%
+  \factoredplotof{}{1,...,10}{10}{factored}{#1}{#2}}
+
+% \factoredplotgamora{PROGRAM}{extra axis options}: the second machine.
+\newcommand{\factoredplotgamora}[2]{%
+  \factoredplotof{gamora}{1,2,4,6,8,10,12,14,16,24,32}{32}{factored gamora}{#1}{#2}}
 
 % The legend, shared by the panels, in the order of the bands from the top.
 \newcommand{\factoredlegendswatch}[1]{%

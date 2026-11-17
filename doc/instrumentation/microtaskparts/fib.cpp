@@ -13,7 +13,9 @@ inline std::atomic<unsigned long> shared_nb_forks{0};
 #define MTP_ON_FORK(w)                                                         \
   ((void)(w), shared_nb_forks.fetch_add(1, std::memory_order_relaxed))
 #elif defined(COUNT_FORKS_PACKED)
-inline unsigned long packed_nb_forks[64];
+// Aligned, so that which counters share a cache line does not depend on where
+// the array happens to land: the counters of workers 0 to 7 share one.
+alignas(128) inline unsigned long packed_nb_forks[64];
 #define MTP_ON_FORK(w) (packed_nb_forks[&(w) - &workers[0]]++)
 #endif
 
