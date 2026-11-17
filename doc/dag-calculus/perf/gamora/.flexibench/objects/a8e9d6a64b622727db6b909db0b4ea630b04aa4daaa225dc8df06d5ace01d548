@@ -1,0 +1,3 @@
+fib(38) = 39088169
+workers   12
+exectime  0.051 s

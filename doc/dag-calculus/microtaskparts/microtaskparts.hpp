@@ -30,6 +30,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <memory>
+#include <mutex>
 #include <thread>
 #include <utility>
 #include <vector>
@@ -155,7 +156,11 @@ inline size_t page_szb() {
 }
 
 // A fresh stack of stack_szb bytes. The page below it is protected, so that a
-// task that overflows its stack crashes instead of overwriting memory.
+// task that overflows its stack crashes instead of overwriting memory. Mapping
+// and unmapping a stack are system calls that slow down every thread of the
+// process, so a stack that a task has left is kept for reuse: by the worker
+// that it was left on, and beyond a few, in a pool that the workers share
+// (take_stack and put_stack, below).
 inline char *new_stack() {
   void *p = mmap(nullptr, page_szb() + stack_szb, PROT_READ | PROT_WRITE,
                  MAP_PRIVATE | MAP_ANON, -1, 0);
@@ -170,6 +175,30 @@ inline void delete_stack(char *stack) {
   if (stack != nullptr) {
     munmap(stack - page_szb(), page_szb() + stack_szb);
   }
+}
+
+// The stacks that no worker keeps. All workers share them, so that no more
+// stacks are mapped than were ever in use at once, plus the few that each
+// worker keeps. A lock suffices: a worker comes here only when its own stacks
+// run out or pile up.
+inline std::mutex stack_pool_lock;
+inline std::vector<char *> stack_pool;
+
+__attribute__((noinline)) inline char *take_stack() {
+  {
+    std::lock_guard<std::mutex> guard(stack_pool_lock);
+    if (!stack_pool.empty()) {
+      char *stack = stack_pool.back();
+      stack_pool.pop_back();
+      return stack;
+    }
+  }
+  return new_stack();
+}
+
+__attribute__((noinline)) inline void put_stack(char *stack) {
+  std::lock_guard<std::mutex> guard(stack_pool_lock);
+  stack_pool.push_back(stack);
 }
 
 // With MTP_CHECK_STACKS, the lowest word of a stack says whether a task is
@@ -327,7 +356,10 @@ public:
       std::abort();
     }
     slots[b].t.store(t, std::memory_order_release);
-    bot.store(b + 1, std::memory_order_seq_cst);
+    // Release is enough: the store only publishes slot b to thieves. A thief
+    // may miss a task pushed just now, and try again. On x86-64, a stronger
+    // store would cost a locked instruction at every fork.
+    bot.store(b + 1, std::memory_order_release);
   }
 
   task *pop() {
@@ -392,7 +424,8 @@ struct alignas(64) worker {
   void *dead_tsan = nullptr; // the handle of the stack that was just left
 #endif
   uint64_t nb_steal_attempts = 0; // seeds the choice of victim
-  // Stacks that no task is using, kept to avoid allocating one per task.
+  // A few stacks that no task is using, so that starting a task seldom
+  // takes the lock of the shared pool.
   std::vector<char *> stacks;
   abp deque;
 
@@ -453,7 +486,7 @@ inline task *steal(worker &w) {
 /*---------------------------------------------------------------------*/
 /* Scheduler loop */
 
-static constexpr size_t max_nb_cached_stacks = 64;
+static constexpr size_t max_nb_cached_stacks = 16;
 
 // A branch has reached its join: tell the loop, which counts it once we are
 // off this stack.
@@ -531,7 +564,7 @@ inline void start(worker &w, task *t) {
   }
   char *stack;
   if (w.stacks.empty()) {
-    stack = new_stack();
+    stack = take_stack();
   } else {
     stack = w.stacks.back();
     w.stacks.pop_back();
@@ -582,7 +615,7 @@ inline void worker_loop(task *first) {
       if (w.stacks.size() < max_nb_cached_stacks) {
         w.stacks.push_back(stack);
       } else {
-        delete_stack(stack);
+        put_stack(stack);
       }
     }
     if (join *j = w.reached) {
@@ -647,6 +680,10 @@ template <typename F> __attribute__((noinline)) void launch(F &&f) {
   for (auto &t : threads) {
     t.join();
   }
+  for (char *stack : stack_pool) {
+    delete_stack(stack);
+  }
+  stack_pool.clear();
   in_scheduler = false;
 }
 

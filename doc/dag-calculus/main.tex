@@ -42,6 +42,16 @@
 \newcommand{\pipetime}[1]{\fbval{pipeline}{pipeline}{#1}}
 \input{perf/examples/stencil}
 \newcommand{\stenciltime}[2]{\fbval{stencil}{#1}{#2}}
+% The same measurements on the Ryzen (perf/gamora), for Tables
+% tbl:fork16 and tbl:examples16.
+\input{perf/gamora/timesgamora}
+\newcommand{\fibtimeg}[2]{\fbval{timesgamora}{#1}{P = #2}}
+\input{perf/gamora/parlay/parlaygamora}
+\newcommand{\parlaytimeg}[2]{\fbval{parlaygamora}{#1}{#2}}
+\input{perf/gamora/examples/pipelinegamora}
+\newcommand{\pipetimeg}[1]{\fbval{pipelinegamora}{pipeline}{#1}}
+\input{perf/gamora/examples/stencilgamora}
+\newcommand{\stenciltimeg}[2]{\fbval{stencilgamora}{#1}{#2}}
 
 \newcommand{\fo}{\mathtt{f_1}}
 \newcommand{\ft}{\mathtt{f_2}}
@@ -57,12 +67,6 @@
 \title{DAG calculus beside native fork join: one scheduler for counts and contexts}
 % TODO: add co-author, and check affiliation.
 \author{Mike Rainey}
-\affiliation{
-  \institution{Carnegie Mellon University}
-  \city{Pittsburgh}
-  \state{PA}
-  \country{USA}
-}
 \email{me@mike-rainey.site}
 
 \begin{document}
@@ -551,24 +555,25 @@ same as in the original.
 %
 What changes is who gets a stack and who gives it back.
 %
-In the original, the loop allocates a stack for each stolen task and
-records it in the task, and the stack is freed when the call to
-\lstinline|fork2join| that holds the task returns.
+In the original, the loop takes a stack for each stolen task and
+records it in the task, and the call to \lstinline|fork2join| that
+holds the task gives the stack back before it returns.
 %
 A vertex has no such call, and may be freed before its stack is.
 %
 So a stack now passes from worker to worker, and a task never holds
 one.
 %
-A loop that starts a task takes a stack from its worker's cache, or
-allocates one.
+A loop that starts a task takes a stack from the few that its worker
+keeps, or else from a pool that all workers share, as in the
+original, and maps a new one only when both are empty.
 %
 The first frame on the stack remembers the stack, and when the task
 finishes, it hands the stack to the loop of the worker it finishes on,
-which puts it in its own cache.
+which keeps it, or puts it in the pool if it keeps enough already.
 %
 So a stack is given back as soon as its task leaves it, a little
-earlier than before, and is reused instead of freed.
+earlier than before.
 %
 The scheduler stores nothing in a task while the task runs, which is
 what allows a vertex to be made ready again before its previous run
@@ -844,12 +849,10 @@ The only difference is that it compares the result of the pop with the
 address of its task, instead of with null.
 %
 A task no longer holds a context or a stack, so the frame of
-\lstinline|fork2join| is smaller, and has no stack to look for when
-the call returns.
+\lstinline|fork2join| is smaller.
 %
 Appendix~\ref{sec:perf} measures the result: fork-join programs run
-as fast as on the micro taskparts of the first paper, and
-\lstinline|fib|, which does nothing but fork, runs faster.
+as fast as on the micro taskparts of the first paper.
 
 \paragraph{The cost of a vertex}
 %
@@ -857,7 +860,7 @@ A vertex that is created costs one allocation, and each explicit edge
 another.
 %
 A vertex that becomes ready costs a push, and one that starts costs a
-stack from the worker's cache and two context switches: to the vertex,
+stack that its worker keeps and two context switches: to the vertex,
 and back to the loop.
 %
 A vertex whose edges are implicit, as in the stencil, allocates
@@ -955,8 +958,8 @@ The companion code is under \path{doc/dag-calculus} in the TaskPaRTS
 repository~\cite{taskparts}.
 %
 It starts from the micro taskparts of the first
-paper~\cite{nativeforkjoin}, and grows its scheduler from about 320
-lines to about 510.
+paper~\cite{nativeforkjoin}, and grows its scheduler from about 350
+lines to about 540.
 %
 It includes the stencil in three versions (serial, fork join, and DAG
 calculus), the pipeline in two (serial and DAG calculus), and a test
@@ -984,7 +987,7 @@ loop, and the same check found that notifying from the vertex's own
 stack was no error, which is how the scheduler came to do so.
 
 \bibliographystyle{abbrv}
-\bibliography{main,perf/times,perf/parlay/parlay,perf/examples/examples}
+\bibliography{main,perf/times,perf/parlay/parlay,perf/examples/examples,perf/gamora/timesgamora,perf/gamora/parlay/parlaygamora,perf/gamora/examples/examplesgamora}
 
 \clearpage
 \appendix
@@ -1098,87 +1101,150 @@ high degrees.
 \section{Measurements}
 \label{sec:perf}
 
+We measured on two machines, which we call the M5 and the Ryzen
+(Table~\ref{tbl:machines}).
+
 \begin{table}
-\begin{tabular}{@{}lrrrr@{}}
- & \multicolumn{2}{c}{1 worker} & \multicolumn{2}{c}{4 workers} \\
- & first & this & first & this \\
+\small
+\setlength{\tabcolsep}{2.5pt}
+\begin{tabular}{@{}llrrrl@{}}
+name & processor & cores & threads & memory & system \\
 \hline
-\lstinline|fib(38)| & \fibtime{nfj}{1} & \fibtime{dag}{1} & \fibtime{nfj}{4} & \fibtime{dag}{4} \\
-\quad no destructor & \fibtime{nodtor}{1} & & \fibtime{nodtor}{4} & \\
-\quad two calls & \fibtime{serial}{1} & & & \\
-mergesort & \parlaytime{mergesort}{nfj 1} & \parlaytime{mergesort}{dag 1} & \parlaytime{mergesort}{nfj 4} & \parlaytime{mergesort}{dag 4} \\
-samplesort & \parlaytime{samplesort}{nfj 1} & \parlaytime{samplesort}{dag 1} & \parlaytime{samplesort}{nfj 4} & \parlaytime{samplesort}{dag 4} \\
-quickhull & \parlaytime{quickhull}{nfj 1} & \parlaytime{quickhull}{dag 1} & \parlaytime{quickhull}{nfj 4} & \parlaytime{quickhull}{dag 4} \\
-BFS & \parlaytime{BFS}{nfj 1} & \parlaytime{BFS}{dag 1} & \parlaytime{BFS}{nfj 4} & \parlaytime{BFS}{dag 4} \\
+M5 & Apple M5 & 4 + 6 & 10 & 32\,GB & macOS 27 \\
+Ryzen & AMD Ryzen 9 3950X & 16 & 32 & 32\,GB & Linux 6.12 \\
 \end{tabular}
-\caption{Running time of fork-join programs, in seconds, with the
-  micro taskparts of the first paper and of this one}
+\caption{The machines.  The M5 has 4 performance and 6 efficiency
+  cores; the cores of the Ryzen are all alike, with two hardware
+  threads each.}
+\label{tbl:machines}
+\end{table}
+
+\begin{table}
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}lrrrrrr@{}}
+ & \multicolumn{6}{c}{workers} \\
+ & 1 & 2 & 4 & 6 & 8 & 10 \\
+\hline
+\lstinline|fib(38)| \\
+\quad first & \fibtime{nfj}{1} & \fibtime{nfj}{2} & \fibtime{nfj}{4} & \fibtime{nfj}{6} & \fibtime{nfj}{8} & \fibtime{nfj}{10} \\
+\quad this & \fibtime{dag}{1} & \fibtime{dag}{2} & \fibtime{dag}{4} & \fibtime{dag}{6} & \fibtime{dag}{8} & \fibtime{dag}{10} \\
+mergesort \\
+\quad first & \parlaytime{mergesort}{nfj 1} & \parlaytime{mergesort}{nfj 2} & \parlaytime{mergesort}{nfj 4} & \parlaytime{mergesort}{nfj 6} & \parlaytime{mergesort}{nfj 8} & \parlaytime{mergesort}{nfj 10} \\
+\quad this & \parlaytime{mergesort}{dag 1} & \parlaytime{mergesort}{dag 2} & \parlaytime{mergesort}{dag 4} & \parlaytime{mergesort}{dag 6} & \parlaytime{mergesort}{dag 8} & \parlaytime{mergesort}{dag 10} \\
+samplesort \\
+\quad first & \parlaytime{samplesort}{nfj 1} & \parlaytime{samplesort}{nfj 2} & \parlaytime{samplesort}{nfj 4} & \parlaytime{samplesort}{nfj 6} & \parlaytime{samplesort}{nfj 8} & \parlaytime{samplesort}{nfj 10} \\
+\quad this & \parlaytime{samplesort}{dag 1} & \parlaytime{samplesort}{dag 2} & \parlaytime{samplesort}{dag 4} & \parlaytime{samplesort}{dag 6} & \parlaytime{samplesort}{dag 8} & \parlaytime{samplesort}{dag 10} \\
+quickhull \\
+\quad first & \parlaytime{quickhull}{nfj 1} & \parlaytime{quickhull}{nfj 2} & \parlaytime{quickhull}{nfj 4} & \parlaytime{quickhull}{nfj 6} & \parlaytime{quickhull}{nfj 8} & \parlaytime{quickhull}{nfj 10} \\
+\quad this & \parlaytime{quickhull}{dag 1} & \parlaytime{quickhull}{dag 2} & \parlaytime{quickhull}{dag 4} & \parlaytime{quickhull}{dag 6} & \parlaytime{quickhull}{dag 8} & \parlaytime{quickhull}{dag 10} \\
+BFS \\
+\quad first & \parlaytime{BFS}{nfj 1} & \parlaytime{BFS}{nfj 2} & \parlaytime{BFS}{nfj 4} & \parlaytime{BFS}{nfj 6} & \parlaytime{BFS}{nfj 8} & \parlaytime{BFS}{nfj 10} \\
+\quad this & \parlaytime{BFS}{dag 1} & \parlaytime{BFS}{dag 2} & \parlaytime{BFS}{dag 4} & \parlaytime{BFS}{dag 6} & \parlaytime{BFS}{dag 8} & \parlaytime{BFS}{dag 10} \\
+\end{tabular}
+\caption{Running time of fork-join programs on the M5, in seconds,
+  with the micro taskparts of the first paper and of this one.  With
+  two calls in place of each fork, \lstinline|fib(38)| takes
+  \fibtime{serial}{1}}
 \label{tbl:fork}
 \end{table}
 
+\begin{table*}
+\begin{tabular}{@{}lrrrrrrrrrr@{}}
+ & \multicolumn{10}{c}{workers} \\
+ & 1 & 2 & 4 & 6 & 8 & 10 & 12 & 14 & 16 & 32 \\
+\hline
+\lstinline|fib(38)| \\
+\quad first & \fibtimeg{nfj}{1} & \fibtimeg{nfj}{2} & \fibtimeg{nfj}{4} & \fibtimeg{nfj}{6} & \fibtimeg{nfj}{8} & \fibtimeg{nfj}{10} & \fibtimeg{nfj}{12} & \fibtimeg{nfj}{14} & \fibtimeg{nfj}{16} & \fibtimeg{nfj}{32} \\
+\quad this & \fibtimeg{dag}{1} & \fibtimeg{dag}{2} & \fibtimeg{dag}{4} & \fibtimeg{dag}{6} & \fibtimeg{dag}{8} & \fibtimeg{dag}{10} & \fibtimeg{dag}{12} & \fibtimeg{dag}{14} & \fibtimeg{dag}{16} & \fibtimeg{dag}{32} \\
+mergesort \\
+\quad first & \parlaytimeg{mergesort}{nfj 1} & \parlaytimeg{mergesort}{nfj 2} & \parlaytimeg{mergesort}{nfj 4} & \parlaytimeg{mergesort}{nfj 6} & \parlaytimeg{mergesort}{nfj 8} & \parlaytimeg{mergesort}{nfj 10} & \parlaytimeg{mergesort}{nfj 12} & \parlaytimeg{mergesort}{nfj 14} & \parlaytimeg{mergesort}{nfj 16} & \parlaytimeg{mergesort}{nfj 32} \\
+\quad this & \parlaytimeg{mergesort}{dag 1} & \parlaytimeg{mergesort}{dag 2} & \parlaytimeg{mergesort}{dag 4} & \parlaytimeg{mergesort}{dag 6} & \parlaytimeg{mergesort}{dag 8} & \parlaytimeg{mergesort}{dag 10} & \parlaytimeg{mergesort}{dag 12} & \parlaytimeg{mergesort}{dag 14} & \parlaytimeg{mergesort}{dag 16} & \parlaytimeg{mergesort}{dag 32} \\
+samplesort \\
+\quad first & \parlaytimeg{samplesort}{nfj 1} & \parlaytimeg{samplesort}{nfj 2} & \parlaytimeg{samplesort}{nfj 4} & \parlaytimeg{samplesort}{nfj 6} & \parlaytimeg{samplesort}{nfj 8} & \parlaytimeg{samplesort}{nfj 10} & \parlaytimeg{samplesort}{nfj 12} & \parlaytimeg{samplesort}{nfj 14} & \parlaytimeg{samplesort}{nfj 16} & \parlaytimeg{samplesort}{nfj 32} \\
+\quad this & \parlaytimeg{samplesort}{dag 1} & \parlaytimeg{samplesort}{dag 2} & \parlaytimeg{samplesort}{dag 4} & \parlaytimeg{samplesort}{dag 6} & \parlaytimeg{samplesort}{dag 8} & \parlaytimeg{samplesort}{dag 10} & \parlaytimeg{samplesort}{dag 12} & \parlaytimeg{samplesort}{dag 14} & \parlaytimeg{samplesort}{dag 16} & \parlaytimeg{samplesort}{dag 32} \\
+quickhull \\
+\quad first & \parlaytimeg{quickhull}{nfj 1} & \parlaytimeg{quickhull}{nfj 2} & \parlaytimeg{quickhull}{nfj 4} & \parlaytimeg{quickhull}{nfj 6} & \parlaytimeg{quickhull}{nfj 8} & \parlaytimeg{quickhull}{nfj 10} & \parlaytimeg{quickhull}{nfj 12} & \parlaytimeg{quickhull}{nfj 14} & \parlaytimeg{quickhull}{nfj 16} & \parlaytimeg{quickhull}{nfj 32} \\
+\quad this & \parlaytimeg{quickhull}{dag 1} & \parlaytimeg{quickhull}{dag 2} & \parlaytimeg{quickhull}{dag 4} & \parlaytimeg{quickhull}{dag 6} & \parlaytimeg{quickhull}{dag 8} & \parlaytimeg{quickhull}{dag 10} & \parlaytimeg{quickhull}{dag 12} & \parlaytimeg{quickhull}{dag 14} & \parlaytimeg{quickhull}{dag 16} & \parlaytimeg{quickhull}{dag 32} \\
+BFS \\
+\quad first & \parlaytimeg{BFS}{nfj 1} & \parlaytimeg{BFS}{nfj 2} & \parlaytimeg{BFS}{nfj 4} & \parlaytimeg{BFS}{nfj 6} & \parlaytimeg{BFS}{nfj 8} & \parlaytimeg{BFS}{nfj 10} & \parlaytimeg{BFS}{nfj 12} & \parlaytimeg{BFS}{nfj 14} & \parlaytimeg{BFS}{nfj 16} & \parlaytimeg{BFS}{nfj 32} \\
+\quad this & \parlaytimeg{BFS}{dag 1} & \parlaytimeg{BFS}{dag 2} & \parlaytimeg{BFS}{dag 4} & \parlaytimeg{BFS}{dag 6} & \parlaytimeg{BFS}{dag 8} & \parlaytimeg{BFS}{dag 10} & \parlaytimeg{BFS}{dag 12} & \parlaytimeg{BFS}{dag 14} & \parlaytimeg{BFS}{dag 16} & \parlaytimeg{BFS}{dag 32} \\
+\end{tabular}
+\caption{The programs of Table~\ref{tbl:fork} on the Ryzen, in seconds.
+  With two calls in place of each fork, \lstinline|fib(38)| takes
+  \fibtimeg{serial}{1}}
+\label{tbl:fork16}
+\end{table*}
+
 \paragraph{Fork join is preserved}
 %
-Table~\ref{tbl:fork} compares two versions of micro taskparts, that
-of the first paper~\cite{nativeforkjoin} and ours, on programs that
-use only fork join.
+Tables~\ref{tbl:fork} and~\ref{tbl:fork16} compare two versions of
+micro taskparts, that of the first paper~\cite{nativeforkjoin} and
+ours, on programs that use only fork join.
 %
-The machine is an Apple M5 with 4 performance cores.
+The numbers of workers go by twos up to the number of cores: 10 on
+the M5, of which the first 4 can run on performance cores, and 16 on
+the Ryzen, where we also show 32, one for each hardware thread.
 %
 Each time is a median: of ten runs for
-\lstinline|fib|~\cite{flexibench-dag-times}, and of five for the
-other programs~\cite{flexibench-dag-parlay}.
+\lstinline|fib|~\cite{flexibench-dag-times,flexibench-dag-times-gamora},
+and of five for the other
+programs~\cite{flexibench-dag-parlay,flexibench-dag-parlay-gamora}.
 %
 The last four programs are examples distributed with
 ParlayLib~\cite{blelloch20parlaylib}, which builds its parallel loops
 from binary fork join: two sorts, a convex hull, and a breadth-first
 search.
-%
-On these, the two are within 5\% of each other, in either
-direction.
 
-On \lstinline|fib|, ours is the faster.
-%
-The cause is not the vertices.
-%
-In the first paper's code, a task records the stack that it runs on
-if it is stolen.
-%
-So every call to \lstinline|fork2join| ends by checking whether
-there is such a stack to free.
-%
-Ours has no such check, because a task holds no stack
-(Section~\ref{sec:safety}).
-%
-The row ``no destructor'' is the first paper's code with that check
-removed, so that it leaks stacks: it recovers most of the difference.
-%
-The row ``two calls'' is \lstinline|fib| with no scheduler.
+On both machines, the two versions are within 5\% of each other on
+every program and at every number of workers, in either direction.
 
 \begin{table}
-\begin{tabular}{@{}lrrrrr@{}}
- & & \multicolumn{4}{c}{workers} \\
- & serial & 1 & 2 & 3 & 4 \\
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}lrrrrrrr@{}}
+ & & \multicolumn{6}{c}{workers} \\
+ & serial & 1 & 2 & 4 & 6 & 8 & 10 \\
 \hline
-pipeline & \pipetime{serial} & \pipetime{dag 1} & \pipetime{dag 2} & \pipetime{dag 3} & \pipetime{dag 4} \\
-stencil, large grid & \stenciltime{large}{serial} \\
-\quad fork join & & \stenciltime{large}{planes 1} & \stenciltime{large}{planes 2} & \stenciltime{large}{planes 3} & \stenciltime{large}{planes 4} \\
-\quad DAG calculus & & \stenciltime{large}{dag 1} & \stenciltime{large}{dag 2} & \stenciltime{large}{dag 3} & \stenciltime{large}{dag 4} \\
-stencil, small grid & \stenciltime{small}{serial} \\
-\quad fork join & & \stenciltime{small}{planes 1} & \stenciltime{small}{planes 2} & \stenciltime{small}{planes 3} & \stenciltime{small}{planes 4} \\
-\quad DAG calculus & & \stenciltime{small}{dag 1} & \stenciltime{small}{dag 2} & \stenciltime{small}{dag 3} & \stenciltime{small}{dag 4} \\
+pipeline & \pipetime{serial} & \pipetime{dag 1} & \pipetime{dag 2} & \pipetime{dag 4} & \pipetime{dag 6} & \pipetime{dag 8} & \pipetime{dag 10} \\
+stencil, large & \stenciltime{large}{serial} \\
+\quad fork join & & \stenciltime{large}{planes 1} & \stenciltime{large}{planes 2} & \stenciltime{large}{planes 4} & \stenciltime{large}{planes 6} & \stenciltime{large}{planes 8} & \stenciltime{large}{planes 10} \\
+\quad DAG & & \stenciltime{large}{dag 1} & \stenciltime{large}{dag 2} & \stenciltime{large}{dag 4} & \stenciltime{large}{dag 6} & \stenciltime{large}{dag 8} & \stenciltime{large}{dag 10} \\
+stencil, small & \stenciltime{small}{serial} \\
+\quad fork join & & \stenciltime{small}{planes 1} & \stenciltime{small}{planes 2} & \stenciltime{small}{planes 4} & \stenciltime{small}{planes 6} & \stenciltime{small}{planes 8} & \stenciltime{small}{planes 10} \\
+\quad DAG & & \stenciltime{small}{dag 1} & \stenciltime{small}{dag 2} & \stenciltime{small}{dag 4} & \stenciltime{small}{dag 6} & \stenciltime{small}{dag 8} & \stenciltime{small}{dag 10} \\
 \end{tabular}
-\caption{Running time of the two examples, in seconds}
+\caption{Running time of the two examples on the M5, in seconds}
 \label{tbl:examples}
 \end{table}
 
+\begin{table*}
+\begin{tabular}{@{}lrrrrrrrrrrr@{}}
+ & & \multicolumn{10}{c}{workers} \\
+ & serial & 1 & 2 & 4 & 6 & 8 & 10 & 12 & 14 & 16 & 32 \\
+\hline
+pipeline & \pipetimeg{serial} & \pipetimeg{dag 1} & \pipetimeg{dag 2} & \pipetimeg{dag 4} & \pipetimeg{dag 6} & \pipetimeg{dag 8} & \pipetimeg{dag 10} & \pipetimeg{dag 12} & \pipetimeg{dag 14} & \pipetimeg{dag 16} & \pipetimeg{dag 32} \\
+stencil, large grid & \stenciltimeg{large}{serial} \\
+\quad fork join & & \stenciltimeg{large}{planes 1} & \stenciltimeg{large}{planes 2} & \stenciltimeg{large}{planes 4} & \stenciltimeg{large}{planes 6} & \stenciltimeg{large}{planes 8} & \stenciltimeg{large}{planes 10} & \stenciltimeg{large}{planes 12} & \stenciltimeg{large}{planes 14} & \stenciltimeg{large}{planes 16} & \stenciltimeg{large}{planes 32} \\
+\quad DAG & & \stenciltimeg{large}{dag 1} & \stenciltimeg{large}{dag 2} & \stenciltimeg{large}{dag 4} & \stenciltimeg{large}{dag 6} & \stenciltimeg{large}{dag 8} & \stenciltimeg{large}{dag 10} & \stenciltimeg{large}{dag 12} & \stenciltimeg{large}{dag 14} & \stenciltimeg{large}{dag 16} & \stenciltimeg{large}{dag 32} \\
+stencil, small grid & \stenciltimeg{small}{serial} \\
+\quad fork join & & \stenciltimeg{small}{planes 1} & \stenciltimeg{small}{planes 2} & \stenciltimeg{small}{planes 4} & \stenciltimeg{small}{planes 6} & \stenciltimeg{small}{planes 8} & \stenciltimeg{small}{planes 10} & \stenciltimeg{small}{planes 12} & \stenciltimeg{small}{planes 14} & \stenciltimeg{small}{planes 16} & \stenciltimeg{small}{planes 32} \\
+\quad DAG & & \stenciltimeg{small}{dag 1} & \stenciltimeg{small}{dag 2} & \stenciltimeg{small}{dag 4} & \stenciltimeg{small}{dag 6} & \stenciltimeg{small}{dag 8} & \stenciltimeg{small}{dag 10} & \stenciltimeg{small}{dag 12} & \stenciltimeg{small}{dag 14} & \stenciltimeg{small}{dag 16} & \stenciltimeg{small}{dag 32} \\
+\end{tabular}
+\caption{The examples of Table~\ref{tbl:examples} on the Ryzen, in
+  seconds}
+\label{tbl:examples16}
+\end{table*}
+
 \paragraph{The examples speed up}
 %
-Table~\ref{tbl:examples} shows the two examples on the same machine,
-on up to its 4 performance cores.
+Tables~\ref{tbl:examples} and~\ref{tbl:examples16} show the two
+examples, on the M5 and on the Ryzen.
 %
 Each time is a median of five runs, and every run checked its result
-against the serial
-program's~\cite{flexibench-dag-pipeline,flexibench-dag-stencil}.
+against the serial program's.
+%
+The records are certified, for the
+M5~\cite{flexibench-dag-pipeline,flexibench-dag-stencil} and for the
+Ryzen~\cite{flexibench-dag-pipeline-gamora,flexibench-dag-stencil-gamora}.
 
 The pipeline processes 40000 chunks of 16 kilobytes, more than half
 of them duplicates.
@@ -1186,37 +1252,56 @@ of them duplicates.
 On one worker it takes about as long as the serial program, although
 it creates a vertex and suspends a stack for every chunk.
 %
-On four it is about three times faster.
+On the M5 it is about three times faster than the serial program on
+4 workers and four times faster on 10.
+%
+On the Ryzen it is close to four times faster from 12 workers on, and
+32 workers are slower than 16.
+%
+The loop that reads and hashes the chunks is serial, which bounds the
+speedup.
 
 The stencil uses blocks of 64 by 64 cells, in the two regimes of the
 DAG calculus paper~\cite{Dag_calculus_16}: a large grid for few time
 steps (8192 by 8192 cells, 10 steps), and a small one for many (1024
 by 1024, 400 steps).
 %
-On four workers, the DAG version is more than three times faster than
-the serial program on both grids, and faster than the fork-join
-version, by a wider margin on the large grid.
+On the M5, the DAG version is more than three times faster than the
+serial program on 4 workers and about six times faster on 10, on both
+grids.
+%
+It is faster than the fork-join version at every number of workers,
+by a wider margin on the large grid.
+%
+On the Ryzen it is about seven times faster than the serial program
+on 14 and 16 workers, on both grids, and the fork-join version is at
+most between four and five times faster, at any number of workers.
 %
 The fork-join version finishes each diagonal before it starts the
 next, where the DAG version runs a block as soon as its neighbors
 allow.
 %
-On one worker and the large grid, both parallel versions are slower
-than the serial program.
+On the M5, the workers beyond the fourth add less than the first
+four, since they run on efficiency cores.
 %
-Pilot runs point to the order in which they visit blocks, which does
-not follow the rows of the grid as the serial program's does.
+On the Ryzen, neither version gains from the second hardware thread
+of each core.
+
+On one worker and the large grid, the fork-join version is slower
+than the serial program on both machines, by more than half on the
+Ryzen, and the DAG version is slower on the M5 only.
+%
+Pilot runs on the M5 point to the order in which the
+versions visit blocks, which does not follow the rows of the grid as
+the serial program's does.
 
 \paragraph{What remains}
 %
-% TODO: certified rounds for the three items below, the first on a
-% machine with more cores, all alike.
+% TODO: certified rounds for the two items below.
 %
-Three more measurements are planned.
+Two more measurements are planned.
 %
 \begin{itemize}[leftmargin=*]
-\item \emph{More workers.}
-  The examples on a machine with more than four cores of one kind.
 \item \emph{The vertex.}
   The cost of creating, releasing, and waiting for a vertex whose body
   is empty, and of running a block of the stencil whose body is empty,
