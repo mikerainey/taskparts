@@ -37,7 +37,7 @@
 % serial, or direct or homegrown followed by a number of workers.
 \input{perf/parlay/parlay}
 \newcommand{\parlaytime}[2]{\fbval{parlay}{#1}{#2}}
-% The same two views, measured on the second machine (Table tbl:second).
+% The same two views, measured on the Ryzen (Table tbl:second).
 \input{perf/gamora/timesgamora}
 \input{perf/gamora/parlay/parlaygamora}
 \newcommand{\secondtime}[2]{\fbval{timesgamora}{#1}{P = #2}}
@@ -652,9 +652,11 @@ capacity suffices.
 This appendix measures what a fork costs when its second branch is
 rarely stolen.
 %
-We ran \lstinline|fib(38)|, from Section~1, with micro taskparts, on an
-Apple M5 with 4 performance and 6 efficiency cores
-(Table~\ref{tbl:perf}).
+We measured on two machines, which we call the M5 and the Ryzen
+(Table~\ref{tbl:machines}).
+%
+We ran \lstinline|fib(38)|, from Section~1, with micro taskparts, on
+the M5 (Table~\ref{tbl:perf}).
 %
 The program makes 63 million forks, and does almost nothing else, so
 it shows the cost of a fork at its worst.
@@ -671,6 +673,23 @@ TaskPaRTS repository~\cite{taskparts}.
 
 \begin{table}
 \small
+\setlength{\tabcolsep}{2.5pt}
+\begin{tabular}{@{}llrrrl@{}}
+\toprule
+name & processor & cores & threads & memory & system \\
+\midrule
+M5 & Apple M5 & 4 + 6 & 10 & 32\,GB & macOS 27 \\
+Ryzen & AMD Ryzen 9 3950X & 16 & 32 & 32\,GB & Linux 6.12 \\
+\bottomrule
+\end{tabular}
+\caption{The machines.  The M5 has 4 performance and 6 efficiency
+  cores; the cores of the Ryzen are all alike, with two hardware
+  threads each.}
+\label{tbl:machines}
+\end{table}
+
+\begin{table}
+\small
 \begin{tabular}{@{}lrrr@{}}
 \toprule
  & \multicolumn{3}{c}{workers} \\
@@ -681,8 +700,8 @@ fork join, deque protected by a lock & \perftime{locked}{1} & \perftime{locked}{
 fork join, lock-free deque & \perftime{direct}{1} & \perftime{direct}{4} & \perftime{direct}{8} \\
 \bottomrule
 \end{tabular}
-\caption{Running time of \lstinline|fib(38)|, in seconds, with micro
-  taskparts: the median of five runs}
+\caption{Running time of \lstinline|fib(38)| on the M5, in seconds,
+  with micro taskparts: the median of five runs}
 \label{tbl:perf}
 \end{table}
 
@@ -693,7 +712,7 @@ call to \lstinline|fork2join| just calls $\fo$ and then $\ft$.
 %
 The last version is micro taskparts as it is.
 %
-On one worker, it takes \perftime{direct}{1}\,s instead of
+On one worker of the M5, it takes \perftime{direct}{1}\,s instead of
 \perftime{serial}{1}\,s, so a fork that is not stolen costs about
 2.5\,ns more than two calls.
 %
@@ -726,8 +745,9 @@ quickhull & \parlaytime{quickhull}{serial} & \parlaytime{quickhull}{direct 1} & 
 BFS & \parlaytime{BFS}{serial} & \parlaytime{BFS}{direct 1} & \parlaytime{BFS}{direct 4} & \parlaytime{BFS}{homegrown 1} & \parlaytime{BFS}{homegrown 4} \\
 \bottomrule
 \end{tabular}
-\caption{Running time of four ParlayLib programs, in seconds, with no
-  scheduler, and with two schedulers on 1 and 4 workers}
+\caption{Running time of four ParlayLib programs on the M5, in
+  seconds, with no scheduler, and with two schedulers on 1 and 4
+  workers}
 \label{tbl:parlay}
 \end{table}
 
@@ -745,8 +765,8 @@ ParlayLib builds its parallel loops and its other primitives from
 binary fork join, and lets a program choose the scheduler that provides
 it.
 %
-We ran each program, unchanged, with no scheduler, with micro
-taskparts, and with ParlayLib's own work-stealing scheduler.
+We ran each program on the M5, unchanged, with no scheduler, with
+micro taskparts, and with ParlayLib's own work-stealing scheduler.
 %
 A program runs its algorithm several times, and Flexibench recorded
 every run and checked every result~\cite{flexibench-parlay}.
@@ -779,15 +799,14 @@ quickhull & \secondparlay{quickhull}{serial} & \secondparlay{quickhull}{direct 1
 BFS & \secondparlay{BFS}{serial} & \secondparlay{BFS}{direct 1} & \secondparlay{BFS}{direct 16} & \secondparlay{BFS}{homegrown 1} & \secondparlay{BFS}{homegrown 16} \\
 \bottomrule
 \end{tabular}
-\caption{Running times on the second machine, in seconds, with no
-  scheduler, and with two schedulers on 1 and 16 workers}
+\caption{Running times on the Ryzen, in seconds, with no scheduler,
+  and with two schedulers on 1 and 16 workers}
 \label{tbl:second}
 \end{table}
 
-\paragraph{A second machine}
+\paragraph{More cores}
 %
-We repeated both experiments on a machine with more cores: an AMD
-Ryzen 9 3950X, with 16 cores, running Linux
+We repeated both experiments on the Ryzen, which has 16 cores
 (Table~\ref{tbl:second})~\cite{flexibench-timesgamora,flexibench-parlaygamora}.
 %
 There, \lstinline|fib(38)| takes \secondtime{direct}{1}\,s on one
@@ -809,7 +828,7 @@ An earlier version of micro taskparts mapped a fresh stack for every
 stolen task, and unmapped it when the parent returned from
 \lstinline|fork2join|.
 %
-On the second machine, on 16 workers, the convex hull then took 21\%
+On the Ryzen, on 16 workers, the convex hull then took 21\%
 longer with micro taskparts than with ParlayLib's scheduler, and the
 search 74\% longer; the record of that round is in the history of the
 directory cited above.
@@ -833,8 +852,8 @@ This is the simplest correct design, but a naive one: it has long been
 known that the owner of a deque need not, and should not, take a lock
 in the common case~\cite{frigo98cilk5,arora98,chasele05}.
 %
-We include it to show what synchronizing on the deque costs on this
-machine.
+We include it to show what synchronizing on the deque costs on the
+M5.
 %
 With the lock, a fork takes two uncontended locks, one to push and one
 to pop, and \lstinline|fib(38)| takes \perftime{locked}{1}\,s on one

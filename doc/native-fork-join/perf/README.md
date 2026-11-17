@@ -5,6 +5,9 @@ recorded here. There are four rounds, each in a store of its own. Two were measu
 2026-11-17 on the Apple M5 described in the paper, and two on the same day on a second
 machine (below).
 
+The paper names the machines by their processors (its Table `tbl:machines`): the M5 is
+the laptop, and the Ryzen is the machine called gamora here and in the file names.
+
 | Table | Store | Values | Citation | Certificate |
 |---|---|---|---|---|
 | `tbl:perf` | `.flexibench/` | `times.tex`, `times.html` | `times.bib` | `33fbf12d7b407676a388445b9dd21651c2591cb9e3e8e7460d0f3b3422e41798` |
