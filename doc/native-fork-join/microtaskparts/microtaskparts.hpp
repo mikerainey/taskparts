@@ -124,7 +124,10 @@ public:
       std::abort();
     }
     slots[b].v.store(v, std::memory_order_release);
-    bot.store(b + 1, std::memory_order_seq_cst);
+    // Release is enough: the store only publishes slot b to thieves. A thief
+    // may miss a task pushed just now, and try again. On x86-64, a stronger
+    // store would cost a locked instruction at every fork.
+    bot.store(b + 1, std::memory_order_release);
   }
 
   task *pop() {
