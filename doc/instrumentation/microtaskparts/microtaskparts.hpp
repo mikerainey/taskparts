@@ -159,7 +159,10 @@ class alignas(64) abp {
     uint32_t top;
   };
   struct alignas(64) slot { // one per cache line, to avoid false sharing
-    std::atomic<task *> v{nullptr};
+    // Not initialized: a slot is read only below bot, after a push has
+    // written it, and writing every slot would make the creation of the
+    // workers touch the whole deque of every worker.
+    std::atomic<task *> v;
   };
   // The deque holds at most one task per call to fork2join in progress on
   // the current task stack, far fewer than this.
