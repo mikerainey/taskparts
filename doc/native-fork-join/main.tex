@@ -37,6 +37,11 @@
 % serial, or direct or homegrown followed by a number of workers.
 \input{perf/parlay/parlay}
 \newcommand{\parlaytime}[2]{\fbval{parlay}{#1}{#2}}
+% The same two views, measured on the second machine (Table tbl:second).
+\input{perf/gamora/timesgamora}
+\input{perf/gamora/parlay/parlaygamora}
+\newcommand{\secondtime}[2]{\fbval{timesgamora}{#1}{P = #2}}
+\newcommand{\secondparlay}[2]{\fbval{parlaygamora}{#1}{#2}}
 
 \newcommand{\fo}{\mathtt{f_1}}
 \newcommand{\ft}{\mathtt{f_2}}
@@ -50,14 +55,8 @@
 \newcommand{\ind}{\hphantom{(0)~}}
 
 \title{Native fork join: work stealing by context switching}
-% TODO: add co-author, and check affiliation.
+% TODO: add co-author.
 \author{Mike Rainey}
-\affiliation{
-  \institution{Carnegie Mellon University}
-  \city{Pittsburgh}
-  \state{PA}
-  \country{USA}
-}
 \email{me@mike-rainey.site}
 
 \begin{document}
@@ -535,7 +534,7 @@ The directory \path{doc/parlay-adapter} lets programs written with
 ParlayLib~\cite{blelloch20parlaylib} run on it.
 
 \bibliographystyle{abbrv}
-\bibliography{main,perf/times,perf/parlay/parlay}
+\bibliography{main,perf/times,perf/parlay/parlay,perf/gamora/timesgamora,perf/gamora/parlay/parlaygamora}
 
 \clearpage
 \appendix
@@ -761,6 +760,54 @@ program.
 They differ in more than how they join: when a worker of ParlayLib's
 scheduler finds nothing to steal, it sleeps, whereas one of micro
 taskparts keeps trying.
+
+\begin{table}
+\small
+\begin{tabular}{@{}lrrrrr@{}}
+\toprule
+ & no & \multicolumn{2}{c}{micro taskparts} & \multicolumn{2}{c}{ParlayLib's} \\
+program & scheduler & 1 & 16 & 1 & 16 \\
+\midrule
+\lstinline|fib(38)| & \secondtime{serial}{1} & \secondtime{direct}{1} & \secondtime{direct}{16} & & \\
+mergesort & \secondparlay{mergesort}{serial} & \secondparlay{mergesort}{direct 1} & \secondparlay{mergesort}{direct 16} & \secondparlay{mergesort}{homegrown 1} & \secondparlay{mergesort}{homegrown 16} \\
+samplesort & \secondparlay{samplesort}{serial} & \secondparlay{samplesort}{direct 1} & \secondparlay{samplesort}{direct 16} & \secondparlay{samplesort}{homegrown 1} & \secondparlay{samplesort}{homegrown 16} \\
+quickhull & \secondparlay{quickhull}{serial} & \secondparlay{quickhull}{direct 1} & \secondparlay{quickhull}{direct 16} & \secondparlay{quickhull}{homegrown 1} & \secondparlay{quickhull}{homegrown 16} \\
+BFS & \secondparlay{BFS}{serial} & \secondparlay{BFS}{direct 1} & \secondparlay{BFS}{direct 16} & \secondparlay{BFS}{homegrown 1} & \secondparlay{BFS}{homegrown 16} \\
+\bottomrule
+\end{tabular}
+\caption{Running times on the second machine, in seconds, with no
+  scheduler, and with two schedulers on 1 and 16 workers}
+\label{tbl:second}
+\end{table}
+
+\paragraph{A second machine}
+%
+We repeated both experiments on a machine with more cores: an AMD
+Ryzen 9 3950X, with 16 cores, running Linux
+(Table~\ref{tbl:second})~\cite{flexibench-timesgamora,flexibench-parlaygamora}.
+%
+There, \lstinline|fib(38)| takes \secondtime{direct}{1}\,s on one
+worker, instead of \secondtime{serial}{1}\,s without its forks, so a
+fork that is not stolen costs about 5\,ns more than two calls.
+%
+On 16 workers the program is more than 12 times faster than on one.
+
+On one worker, the four ParlayLib programs take at most 10\% longer
+with either scheduler than with none.
+%
+On 16 workers, the two sorts take the same time with both schedulers,
+to within 9\%.
+%
+But the convex hull takes 21\% longer with micro taskparts than with
+ParlayLib's scheduler, and the search 74\% longer.
+%
+Both programs have stretches with little parallelism.
+%
+During those, the idle workers of micro taskparts keep trying to
+steal, whereas those of ParlayLib's scheduler sleep.
+%
+We believe that this is what slows the two programs down, but we have
+not measured it.
 
 \paragraph{A lock-free deque}
 %
