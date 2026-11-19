@@ -1,6 +1,7 @@
 #!/bin/sh
-# Runs every test program in the three builds for testing (see Makefile), on
-# several numbers of workers. Prints one line per failure, and a count.
+# Runs every test program in the three builds for testing (see Makefile), and
+# in three more with all of the instrumentation on, on several numbers of
+# workers. Prints one line per failure, and a count.
 #
 #   ./test.sh          about a minute
 #   ./test.sh long     more rounds and seeds
@@ -16,8 +17,8 @@ if [ "$1" = "long" ]; then
   seeds="1 2 3 4 5"
 fi
 
-programs="fib migrate mixed stress seidel pipeline"
-for b in perturb asan tsan; do
+programs="fib migrate mixed stress seidel pipeline instr"
+for b in perturb asan tsan iperturb itsan ievery; do
   for p in $programs; do
     make -s "bin/$p.$b" || exit 1
   done
@@ -43,11 +44,12 @@ check() {
   fi
 }
 
-for b in perturb asan tsan; do
+for b in perturb asan tsan iperturb itsan ievery; do
   for workers in 1 2 3 4 10 16; do
     export TASKPARTS_NUM_WORKERS=$workers
     check "fib(24) = 46368" "bin/fib.$b" 24
     check "ok" "bin/migrate.$b"
+    check "^ok" "bin/instr.$b" "$rounds"
     check "round $((rounds - 1)): ok" "bin/mixed.$b" 22 "$rounds"
     for seed in $seeds; do
       check "^ok" "bin/stress.$b" "$rounds" "$seed"
@@ -67,6 +69,19 @@ for b in perturb asan tsan; do
     done
   done
 done
+
+# The trace of a build that logs is JSON, with a slice for some stay in a state.
+make -s bin/instr.log || exit 1
+trace=$(mktemp "${TMPDIR:-/tmp}/mtp-trace.XXXXXX")
+export TASKPARTS_NUM_WORKERS=4
+check "^ok" env MTP_TRACE="$trace" bin/instr.log 1
+check "slices" python3 -c "
+import json, sys
+events = json.load(open(sys.argv[1]))['traceEvents']
+slices = [e for e in events if e['ph'] == 'X']
+assert slices and all(e['dur'] > 0 for e in slices)
+print(len(slices), 'slices')" "$trace"
+rm -f "$trace"
 
 echo "$nb_runs runs, $nb_failed failed"
 [ "$nb_failed" -eq 0 ]

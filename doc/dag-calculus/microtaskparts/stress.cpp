@@ -11,6 +11,7 @@
 
 #include "microtaskparts.hpp"
 
+#include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <cstdio>
@@ -175,6 +176,73 @@ static bool test_wait_races(uint64_t seed) {
     ok = ok && (nb_ran.load() == nb_targets);
   }
   return ok;
+}
+
+/*---------------------------------------------------------------------*/
+/* Test 2b: adding an edge from a vertex as it finishes */
+
+// Claim: an edge is counted at its target before its source can see it, so a
+// source that finishes while the edge is being added cannot bring the
+// target's count to zero.
+//
+// A few vertices spin, each on its own worker, until they are all told to
+// return at once. At that moment the root adds an edge from each of them to
+// one target that it has not released yet. So every edge is added while its
+// source finishes, and the target must not run before its release.
+static bool test_edge_races(uint64_t seed) {
+  const size_t nb_sources = std::min<size_t>(get_nb_workers() - 1, 6);
+  if (nb_sources == 0) {
+    return true; // one worker: nothing runs while the root adds an edge
+  }
+  for (int i = 0; i < 2000; i++) {
+    std::atomic<size_t> nb_spinning{0};
+    std::atomic<bool> go{false};
+    std::atomic<bool> released{false};
+    std::atomic<bool> early{false};
+    std::atomic<long> nb_runs{0};
+    vertex *target = new_vertex([&] {
+      if (!released.load()) {
+        early.store(true);
+      }
+      nb_runs.fetch_add(1);
+    });
+    vertex *sources[6];
+    for (size_t k = 0; k < nb_sources; k++) {
+      sources[k] = new_vertex([&] {
+        nb_spinning.fetch_add(1);
+        while (!go.load()) {
+        }
+      });
+      release(sources[k]);
+    }
+    // Each source is stolen by another worker, and spins there.
+    while (nb_spinning.load() < nb_sources) {
+      std::this_thread::yield();
+    }
+    // Let the sources reach the end of their bodies a little before, at, or
+    // a little after the first edge.
+    go.store(true);
+    for (volatile uint64_t d = rnd(seed, i) % 200; d > 0; d = d - 1) {
+    }
+    for (size_t k = 0; k < nb_sources; k++) {
+      new_edge(sources[k], target);
+    }
+    if (early.load() || (nb_runs.load() != 0)) {
+      return false; // the target ran before its release
+    }
+    released.store(true);
+    release(target);
+    wait(target);
+    bool ok = !early.load() && (nb_runs.load() == 1);
+    for (size_t k = 0; k < nb_sources; k++) {
+      delete sources[k];
+    }
+    delete target;
+    if (!ok) {
+      return false;
+    }
+  }
+  return true;
 }
 
 /*---------------------------------------------------------------------*/
@@ -482,6 +550,7 @@ int main(int argc, char **argv) {
     bool (*run)(uint64_t);
   } tests[] = {{"waiting_forks", test_waiting_forks},
                {"wait_races", test_wait_races},
+               {"edge_races", test_edge_races},
                {"many_stacks", test_many_stacks},
                {"rerun", test_rerun},
                {"random_dags", test_random_dags}};

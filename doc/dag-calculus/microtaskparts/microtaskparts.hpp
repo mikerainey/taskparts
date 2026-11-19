@@ -3,8 +3,8 @@
 // microtaskparts: native fork join and DAG calculus on one scheduler.
 //
 // A teaching companion to ../main.tex. It implements the algorithm of that
-// paper, step for step, and nothing else: no elastic scheduling, no
-// instrumentation, no CPU pinning, and no persistent worker pool.
+// paper, step for step, and nothing else: no elastic scheduling, no CPU
+// pinning, and no persistent worker pool.
 //
 // It starts from the micro taskparts of the native fork join paper
 // (../../native-fork-join/microtaskparts), and adds vertices: tasks that run
@@ -12,6 +12,25 @@
 //
 // Idle workers spin, yielding between steal attempts, instead of sleeping,
 // and each call to launch starts and stops its own worker threads.
+//
+// Instrumentation is off unless a build turns it on, and then it adds lines
+// to the scheduler without changing what the scheduler does:
+//
+//   -DMTP_STATS        time each worker spends working, scheduling and
+//                      idle, and count steals and resumed stacks
+//   -DMTP_LOG          MTP_STATS, plus a log of every change of state and
+//                      every steal, which write_trace writes for Perfetto
+//   -DMTP_COUNT_FORKS  MTP_STATS, plus a count of forks
+//   -DMTP_COUNT_DAG    MTP_STATS, plus counts of vertices and of the
+//                      operations of DAG calculus: edges, waits, and what
+//                      became of them
+//
+// What is measured is one call to launch, from before its threads start
+// until they have stopped (launch_stats, write_trace). A worker stays
+// recorded as working while it runs the tasks of its own deque one after
+// another, and reads the clock only when that deque is empty.
+// -DMTP_MARK_EVERY_SWITCH makes it record every return to its loop as
+// scheduling instead, at two readings of the clock per task.
 //
 // For testing, three things can be switched on, and cost nothing otherwise:
 // - built with -fsanitize=address or -fsanitize=thread, the scheduler tells
@@ -28,7 +47,9 @@
 #include <cassert>
 #include <cstdint>
 #include <cstdio>
+#include <chrono>
 #include <cstdlib>
+#include <deque>
 #include <memory>
 #include <mutex>
 #include <thread>
@@ -62,8 +83,11 @@
 #ifdef MTP_TSAN
 #include <sanitizer/tsan_interface.h>
 #endif
-#ifdef MTP_PERTURB
-#include <chrono>
+#if defined(MTP_LOG) || defined(MTP_COUNT_FORKS) || defined(MTP_COUNT_DAG) || \
+    defined(MTP_MARK_EVERY_SWITCH)
+#if !defined(MTP_STATS)
+#define MTP_STATS
+#endif
 #endif
 #ifdef MTP_CHECK_STACKS
 #include <cstring>
@@ -161,7 +185,17 @@ inline size_t page_szb() {
 // process, so a stack that a task has left is kept for reuse: by the worker
 // that it was left on, and beyond a few, in a pool that the workers share
 // (take_stack and put_stack, below).
+#if defined(MTP_STATS)
+// How many stacks have been mapped since the program started. None is
+// unmapped before the workers stop, so within one call to launch it bounds
+// the number of stacks that were in use at once.
+inline std::atomic<uint64_t> nb_stacks_mapped{0};
+#endif
+
 inline char *new_stack() {
+#if defined(MTP_STATS)
+  nb_stacks_mapped.fetch_add(1, std::memory_order_relaxed);
+#endif
   void *p = mmap(nullptr, page_szb() + stack_szb, PROT_READ | PROT_WRITE,
                  MAP_PRIVATE | MAP_ANON, -1, 0);
   if ((p == MAP_FAILED) || (mprotect(p, page_szb(), PROT_NONE) != 0)) {
@@ -260,6 +294,9 @@ struct task {
   // The context to resume, for a task that is a suspended stack; null for a
   // task that starts on a fresh stack.
   virtual context *saved() { return nullptr; }
+#if defined(MTP_STATS)
+  virtual bool is_vertex() const { return false; }
+#endif
   virtual ~task() {}
 };
 
@@ -267,7 +304,7 @@ struct task {
 // lives in the frame of that call too.
 template <typename F> struct fork_task : task {
   F &body;
-  join *j; // the join to report to; null for the root
+  join *j; // the join to report to
   fork_task(F &body, join *j) : body(body), j(j) {}
   void run() override { body(); }
   void leave() override;
@@ -294,6 +331,9 @@ struct vertex : task {
   static edge *finished_mark() { return reinterpret_cast<edge *>(1); }
 
   void leave() override { notify(); }
+#if defined(MTP_STATS)
+  bool is_vertex() const override { return true; }
+#endif
   // Called on the vertex's stack once its body has returned: count down the
   // targets of the out-edges. A vertex may override it to represent its
   // out-edges some other way. It may call fork2join and wait. Whatever it
@@ -319,6 +359,9 @@ struct suspension : vertex {
   context k;
 #ifdef MTP_FIBERS
   fiber fb; // the suspended stack
+#endif
+#if defined(MTP_COUNT_DAG)
+  size_t from = 0; // the worker that suspended the stack
 #endif
   void run() override {}
   context *saved() override { return &k; }
@@ -403,6 +446,86 @@ public:
 };
 
 /*---------------------------------------------------------------------*/
+/* Instrumentation: what each worker records */
+
+// At any time, a worker is in one of these states.
+enum state : uint32_t {
+  working = 0, // running client code, or the tasks of its own deque
+  scheduling,  // in its scheduler loop, preparing a task that it stole
+  idle,        // in its scheduler loop, failing to steal
+  stopped,
+  nb_states
+};
+
+static constexpr const char *state_names[nb_states] = {"work", "sched",
+                                                       "idle", "stopped"};
+
+// The processor's cycle counter, or the nearest thing to it: one
+// instruction, and no call. launch measures how long a tick lasts.
+inline uint64_t ticks() {
+#if defined(__aarch64__)
+  uint64_t t;
+  asm volatile("mrs %0, cntvct_el0" : "=r"(t));
+  return t;
+#else
+  return __builtin_ia32_rdtsc();
+#endif
+}
+
+// A log entry: at time ticks, the worker entered a state, or stole a task
+// from the worker numbered arg.
+struct event {
+  static constexpr uint32_t steal = nb_states;
+  uint64_t ticks;
+  uint32_t what;
+  uint32_t arg;
+};
+
+// What one worker records during one call to launch. Only that worker
+// writes it, and launch reads it once the worker's thread has stopped, so
+// nothing here needs synchronization.
+struct recorder {
+  state current = scheduling;
+  uint64_t since = 0;                // when the worker entered current
+  uint64_t ticks_in[nb_states] = {}; // total time in each state so far
+  // Counted in the loop.
+  uint64_t nb_steals = 0;            // tasks stolen, of any kind
+  uint64_t nb_stolen_vertices = 0;   // those that were vertices
+  uint64_t nb_stolen_stacks = 0;     // those that were suspended stacks
+  uint64_t nb_resumes = 0;           // suspended stacks resumed
+  uint64_t nb_stacks_from_pool = 0;  // tasks started when w.stacks was empty
+  // Counted in fork2join, with MTP_COUNT_FORKS.
+  uint64_t nb_forks = 0;
+  // Counted with MTP_COUNT_DAG, in the loop and in client code.
+  uint64_t nb_vertices = 0;       // vertices started
+  uint64_t nb_fork_switches = 0;  // forks that switched to the loop
+  uint64_t nb_fork_foreign = 0;   // those whose pop found some other task
+  uint64_t nb_edges = 0;          // edges added
+  uint64_t nb_edges_late = 0;     // edges not added: the source had finished
+  uint64_t nb_edge_retries = 0;   // failed compare-and-swaps on an out-set
+  uint64_t nb_waits = 0;          // calls to wait
+  uint64_t nb_suspends = 0;       // those that suspended their stack
+  uint64_t nb_migrations = 0;     // stacks resumed by another worker
+  std::deque<event> log; // grows in chunks, so appending moves no entry
+};
+
+// MTP_COUNT(w, c) adds one to count c of worker w, with MTP_COUNT_DAG, and
+// otherwise evaluates nothing.
+#if defined(MTP_COUNT_DAG)
+#define MTP_COUNT(w, c) ((w).rec.c++)
+#else
+#define MTP_COUNT(w, c) ((void)0)
+#endif
+
+// MTP_COUNT_RETRY(w) is true, and counts a failed compare-and-swap of worker
+// w with MTP_COUNT_DAG.
+#if defined(MTP_COUNT_DAG)
+#define MTP_COUNT_RETRY(w) (((w).rec.nb_edge_retries++), true)
+#else
+#define MTP_COUNT_RETRY(w) (true)
+#endif
+
+/*---------------------------------------------------------------------*/
 /* Workers */
 
 struct alignas(64) worker {
@@ -428,12 +551,20 @@ struct alignas(64) worker {
   // takes the lock of the shared pool.
   std::vector<char *> stacks;
   abp deque;
+#if defined(MTP_STATS)
+  // After the deque, so that the fields above sit where they do in a build
+  // with no instrumentation, and fork2join compiles to the same code. The
+  // deque ends at a cache-line boundary, and so does the worker, so the
+  // recorder shares no line with a deque, which thieves write to, nor with
+  // another worker's recorder.
+  recorder rec;
+#endif
 
   ~worker() {
     for (char *s : stacks) {
       delete_stack(s);
     }
-    delete_stack(spent); // the root's, left when the loop stopped
+    delete_stack(spent); // left when the loop stopped
   }
 };
 
@@ -480,8 +611,52 @@ inline task *steal(worker &w) {
   uint64_t r = hash(my_id) + hash(w.nb_steal_attempts++);
   size_t victim = r % (nb_workers - 1);
   victim += (victim >= my_id) ? 1 : 0;
-  return workers[victim].deque.steal();
+  task *t = workers[victim].deque.steal();
+#if defined(MTP_STATS)
+  if (t != nullptr) {
+    w.rec.nb_steals++;
+    if (t->saved() != nullptr) {
+      w.rec.nb_stolen_stacks++;
+    } else if (t->is_vertex()) {
+      w.rec.nb_stolen_vertices++;
+    }
+#if defined(MTP_LOG)
+    w.rec.log.push_back(event{ticks(), event::steal, (uint32_t)victim});
+#endif
+  }
+#endif
+  return t;
 }
+
+// Record that worker w is now in state s. This is the only place where a
+// worker reads the clock, and only the scheduler loop calls it: w is the
+// worker whose loop is running, and client code never comes here. In a
+// build with no instrumentation, it does nothing.
+inline void mark([[maybe_unused]] worker &w, [[maybe_unused]] state s) {
+#if defined(MTP_STATS)
+  recorder &r = w.rec;
+  if (r.current == s) {
+    return; // e.g. still idle, after one more failed steal
+  }
+  uint64_t now = ticks();
+  r.ticks_in[r.current] += now - r.since;
+  r.since = now;
+  r.current = s;
+#if defined(MTP_LOG)
+  r.log.push_back(event{now, s, 0});
+#endif
+#endif
+}
+
+// The hook that fork2join runs on each fork, on the worker w that makes the
+// fork. A program may define its own before including this file.
+#if !defined(MTP_ON_FORK)
+#if defined(MTP_COUNT_FORKS)
+#define MTP_ON_FORK(w) ((w).rec.nb_forks++)
+#else
+#define MTP_ON_FORK(w) ((void)(w))
+#endif
+#endif
 
 /*---------------------------------------------------------------------*/
 /* Scheduler loop */
@@ -491,9 +666,6 @@ static constexpr size_t max_nb_cached_stacks = 16;
 // A branch has reached its join: tell the loop, which counts it once we are
 // off this stack.
 template <typename F> void fork_task<F>::leave() {
-  if (j == nullptr) {
-    done.store(true);
-  }
   me().reached = j;
 }
 
@@ -551,11 +723,15 @@ inline void vertex::notify() {
 // and otherwise give it a fresh stack.
 inline void start(worker &w, task *t) {
   if (context *k = t->saved()) {
+#if defined(MTP_STATS)
+    w.rec.nb_resumes++;
+#endif
 #ifdef MTP_FIBERS
     void *save;
     w.cur = static_cast<suspension *>(t)->fb;
     fiber_leave(&save, w.cur);
 #endif
+    mark(w, working);
     mtp_context_swap(&w.loop, k);
 #ifdef MTP_FIBERS
     fiber_arrive(save);
@@ -563,6 +739,18 @@ inline void start(worker &w, task *t) {
     return;
   }
   char *stack;
+#if defined(MTP_COUNT_DAG)
+  // Asking a task for its kind costs more than the rest of the totals put
+  // together, so it is done only in a build that counts.
+  if (t->is_vertex()) {
+    w.rec.nb_vertices++;
+  }
+#endif
+#if defined(MTP_STATS)
+  if (w.stacks.empty()) {
+    w.rec.nb_stacks_from_pool++;
+  }
+#endif
   if (w.stacks.empty()) {
     stack = take_stack();
   } else {
@@ -584,6 +772,7 @@ inline void start(worker &w, task *t) {
 #endif
   fiber_leave(&save, w.cur);
 #endif
+  mark(w, working);
   mtp_context_swap(&w.loop, &k);
 #ifdef MTP_FIBERS
   fiber_arrive(save);
@@ -597,6 +786,10 @@ inline void start(worker &w, task *t) {
 // suspension is released. The code concerned first switches here, so by the time
 // another worker can act on a count that reached zero, that code is off its
 // stack, and the context that the other worker may resume has been saved.
+//
+// With MTP_STATS, the loop records a change of state only when the worker's
+// own deque is empty. While it finds tasks there, the worker stays recorded
+// as working, and reads no clock.
 inline void worker_loop(task *first) {
   worker &w = me();
 #ifdef MTP_TSAN
@@ -604,6 +797,11 @@ inline void worker_loop(task *first) {
 #endif
   task *t = first;
   while (!done.load()) {
+#if defined(MTP_MARK_EVERY_SWITCH)
+    if (w.rec.current == working) {
+      mark(w, scheduling);
+    }
+#endif
     // Messages from the stack that we just left.
     if (char *stack = w.spent) {
       w.spent = nullptr;
@@ -628,6 +826,7 @@ inline void worker_loop(task *first) {
         w.cur = j->fb;
         fiber_leave(&save, w.cur);
 #endif
+        mark(w, working);
         mtp_context_swap(&w.loop, &j->k);
 #ifdef MTP_FIBERS
         fiber_arrive(save);
@@ -645,8 +844,14 @@ inline void worker_loop(task *first) {
     }
     if ((t == nullptr) && (nb_workers > 1)) {
       t = steal(w);
+#if defined(MTP_STATS)
+      if (t != nullptr) {
+        mark(w, scheduling);
+      }
+#endif
     }
     if (t == nullptr) {
+      mark(w, idle);
       std::this_thread::yield();
       continue;
     }
@@ -654,21 +859,197 @@ inline void worker_loop(task *first) {
     // Back on our own stack.
     t = nullptr;
   }
+  mark(w, stopped);
 }
 
-// Run f as the root task, on nb_workers threads; the caller is worker 0.
-// Kept out of line: it runs once, and inlined into a caller of fork2join it would
-// make every call of that caller save the registers it uses.
+/*---------------------------------------------------------------------*/
+/* Instrumentation: what a call to launch cost */
+
+// When the last call to launch started and ended. It starts before the
+// worker threads do, and ends once they have all stopped.
+struct launch_times {
+  std::chrono::steady_clock::time_point wall_start, wall_end;
+  uint64_t start = 0;
+  uint64_t end = 0;
+};
+inline launch_times last_launch;
+
+// The counts that launch_stats sums over the recorders.
+#define MTP_FOR_EACH_COUNT(X)                                                 \
+  X(nb_steals) X(nb_stolen_vertices) X(nb_stolen_stacks) X(nb_vertices)       \
+  X(nb_resumes) X(nb_stacks_from_pool) X(nb_forks) X(nb_fork_switches)        \
+  X(nb_fork_foreign) X(nb_edges) X(nb_edges_late) X(nb_edge_retries)          \
+  X(nb_waits) X(nb_suspends) X(nb_migrations)
+
+// What the last call to launch cost, with times in seconds. The three times
+// are summed over the workers, and add up to nb_workers * exectime. All is
+// zero in a build with no instrumentation.
+struct stats {
+  size_t nb_workers = 0;
+  double exectime = 0.0; // wall-clock time
+  double work = 0.0;
+  double sched = 0.0;
+  double idle = 0.0;
+  uint64_t nb_stacks_mapped = 0; // since the program started
+#define MTP_X(c) uint64_t c = 0;
+  MTP_FOR_EACH_COUNT(MTP_X)
+#undef MTP_X
+};
+
+// How long a tick lasted, on average, during the last call to launch.
+inline double seconds_per_tick() {
+  const launch_times &l = last_launch;
+  std::chrono::duration<double> elapsed = l.wall_end - l.wall_start;
+  return (l.end == l.start) ? 0.0 : elapsed.count() / (double)(l.end - l.start);
+}
+
+// Called after launch has returned, and before the next call to it.
+inline stats launch_stats() {
+  stats s;
+#if defined(MTP_STATS)
+  const launch_times &l = last_launch;
+  double spt = seconds_per_tick();
+  uint64_t in[nb_states] = {};
+  for (size_t i = 0; i < nb_workers; i++) {
+    const recorder &r = workers[i].rec;
+    for (int k = 0; k < nb_states; k++) {
+      in[k] += r.ticks_in[k];
+    }
+    // From the moment the worker stopped until every thread had: it had
+    // nothing to do.
+    in[idle] += l.end - r.since;
+#define MTP_X(c) s.c += r.c;
+    MTP_FOR_EACH_COUNT(MTP_X)
+#undef MTP_X
+  }
+  s.nb_workers = nb_workers;
+  s.exectime = std::chrono::duration<double>(l.wall_end - l.wall_start).count();
+  s.work = (double)in[working] * spt;
+  s.sched = (double)in[scheduling] * spt;
+  s.idle = (double)in[idle] * spt;
+  s.nb_stacks_mapped = nb_stacks_mapped.load();
+#endif
+  return s;
+}
+
+// One line per group of values, each a name and a number. A build prints
+// only what it records.
+inline void print_stats(FILE *f, [[maybe_unused]] const stats &s) {
+#if defined(MTP_STATS)
+  auto n = [](uint64_t x) { return (unsigned long long)x; };
+  std::fprintf(f, "states    work %.6f sched %.6f idle %.6f s\n", s.work,
+               s.sched, s.idle);
+  std::fprintf(f,
+               "tasks     steals %llu stolen_vertices %llu "
+               "stolen_stacks %llu resumes %llu\n",
+               n(s.nb_steals), n(s.nb_stolen_vertices),
+               n(s.nb_stolen_stacks), n(s.nb_resumes));
+  std::fprintf(f, "stacks    mapped %llu from_pool %llu\n",
+               n(s.nb_stacks_mapped), n(s.nb_stacks_from_pool));
+#if defined(MTP_COUNT_FORKS)
+  std::fprintf(f, "forks     %llu\n", n(s.nb_forks));
+#endif
+#if defined(MTP_COUNT_DAG)
+  std::fprintf(f,
+               "dag       vertices %llu edges %llu late %llu retries %llu "
+               "waits %llu suspends %llu migrations %llu fork_switches %llu "
+               "fork_foreign %llu\n",
+               n(s.nb_vertices), n(s.nb_edges), n(s.nb_edges_late), n(s.nb_edge_retries),
+               n(s.nb_waits), n(s.nb_suspends), n(s.nb_migrations),
+               n(s.nb_fork_switches), n(s.nb_fork_foreign));
+#endif
+#endif
+}
+
+#if defined(MTP_LOG)
+// Write the log of the last call to launch in the JSON trace format that
+// Perfetto (ui.perfetto.dev) reads: one track per worker, one slice per stay
+// in a state, and one instant per steal. Times are in microseconds from the
+// start of the call. Called where launch_stats may be.
+inline void write_trace(const char *path) {
+  FILE *f = std::fopen(path, "w");
+  if (f == nullptr) {
+    std::perror(path);
+    return;
+  }
+  const launch_times &l = last_launch;
+  double spt = seconds_per_tick();
+  auto us = [&](uint64_t t) { return (double)(t - l.start) * spt * 1e6; };
+  std::fprintf(f, "{\"displayTimeUnit\": \"ns\", \"traceEvents\": [\n");
+  for (size_t i = 0; i < nb_workers; i++) {
+    std::fprintf(f,
+                 "%s{\"name\": \"thread_name\", \"ph\": \"M\", \"pid\": 0, "
+                 "\"tid\": %zu, \"args\": {\"name\": \"worker %zu\"}}",
+                 (i == 0) ? "" : ",\n", i, i);
+    // A stay in a state, from one entry to the next.
+    auto slice = [&](const event &from, uint64_t until) {
+      if (from.ticks < until) {
+        std::fprintf(f,
+                     ",\n{\"name\": \"%s\", \"ph\": \"X\", \"pid\": 0, "
+                     "\"tid\": %zu, \"ts\": %.3f, \"dur\": %.3f}",
+                     state_names[from.what], i, us(from.ticks),
+                     us(until) - us(from.ticks));
+      }
+    };
+    const event *open = nullptr; // the state the worker is in
+    for (const event &e : workers[i].rec.log) {
+      if (e.what == event::steal) {
+        std::fprintf(f,
+                     ",\n{\"name\": \"steal\", \"ph\": \"i\", \"s\": \"t\", "
+                     "\"pid\": 0, \"tid\": %zu, \"ts\": %.3f, "
+                     "\"args\": {\"victim\": %u}}",
+                     i, us(e.ticks), e.arg);
+        continue;
+      }
+      if (open != nullptr) {
+        slice(*open, e.ticks);
+      }
+      open = &e;
+    }
+    if (open != nullptr) {
+      slice(*open, l.end);
+    }
+  }
+  std::fprintf(f, "\n]}\n");
+  std::fclose(f);
+}
+#endif
+
+// Run f, on nb_workers threads; the caller is worker 0. f is the body of a
+// vertex, the root, and the computation ends when a second vertex runs, the
+// sink, which waits for the root and stops the workers. So launch needs no
+// case of its own in the scheduler: it ends the way any vertex follows
+// another. A vertex that the root releases and nothing waits for may not
+// have run by then, and is dropped.
 template <typename F> __attribute__((noinline)) void launch(F &&f) {
-  fork_task<F> root(f, nullptr);
   const char *s = std::getenv("TASKPARTS_NUM_WORKERS");
   nb_workers = (s != nullptr)
                    ? std::max(1, std::atoi(s))
                    : std::max(1u, std::thread::hardware_concurrency());
   workers.reset(new worker[nb_workers]);
+#if defined(MTP_STATS)
+  // Every worker starts out scheduling, so the time it takes to start a
+  // thread counts as scheduling.
+  last_launch.wall_start = std::chrono::steady_clock::now();
+  last_launch.start = ticks();
+  for (size_t i = 0; i < nb_workers; i++) {
+    recorder &r = workers[i].rec;
+    r.since = last_launch.start;
+#if defined(MTP_LOG)
+    r.log.push_back(event{r.since, scheduling, 0});
+#endif
+  }
+#endif
   done.store(false);
   in_scheduler = true;
   tls_id = 0;
+  auto run_root = [&] { f(); };
+  auto stop = [] { done.store(true); };
+  thunk_vertex<decltype(run_root)> root(run_root);
+  thunk_vertex<decltype(stop)> sink(stop);
+  new_edge(&root, &sink);
+  release(&sink);
+  release(&root); // now in worker 0's deque
   std::vector<std::thread> threads;
   for (size_t i = 1; i < nb_workers; i++) {
     threads.emplace_back([i] {
@@ -676,10 +1057,14 @@ template <typename F> __attribute__((noinline)) void launch(F &&f) {
       worker_loop(nullptr);
     });
   }
-  worker_loop(&root);
+  worker_loop(nullptr);
   for (auto &t : threads) {
     t.join();
   }
+#if defined(MTP_STATS)
+  last_launch.end = ticks();
+  last_launch.wall_end = std::chrono::steady_clock::now();
+#endif
   for (char *stack : stack_pool) {
     delete_stack(stack);
   }
@@ -701,7 +1086,9 @@ template <typename F1, typename F2> void fork2join(F1 &&f1, F2 &&f2) {
   fork_task<F2> own(f2, &j);
 
   // (1) Fork: make the second branch stealable, and run the first.
-  me().deque.push(&own);
+  worker &w1 = me();
+  MTP_ON_FORK(w1);
+  w1.deque.push(&own);
   f1();
   perturb();
 
@@ -719,7 +1106,9 @@ template <typename F1, typename F2> void fork2join(F1 &&f1, F2 &&f2) {
   // Put it back. Either way, own is not ours to run: a thief has it, or it
   // is still in a deque, and whichever worker takes it out will start it on
   // a fresh stack.
+  MTP_COUNT(w, nb_fork_switches);
   if (t != nullptr) {
+    MTP_COUNT(w, nb_fork_foreign);
     w.deque.push(t);
   }
 
@@ -764,10 +1153,13 @@ inline bool new_edge(vertex *src, vertex *dst) {
       delete e;
       // Cannot reach zero: the caller holds the count of dst above zero.
       dst->pending.fetch_sub(1, std::memory_order_acq_rel);
+      MTP_COUNT(me(), nb_edges_late);
       return false;
     }
     e->next = head;
-  } while (!src->out.compare_exchange_weak(head, e, std::memory_order_acq_rel));
+  } while (!src->out.compare_exchange_weak(head, e, std::memory_order_acq_rel) &&
+           MTP_COUNT_RETRY(me()));
+  MTP_COUNT(me(), nb_edges);
   return true;
 }
 
@@ -780,12 +1172,17 @@ inline void release(vertex *v) { count_down(v); }
 inline void wait(vertex *v) {
   assert(in_scheduler);
   suspension s;
+  MTP_COUNT(me(), nb_waits);
   if (!new_edge(v, &s)) {
     return; // v has already finished
   }
   // Switch to the scheduler loop, which releases s once this stack is saved.
   perturb();
   worker &w = me();
+  MTP_COUNT(w, nb_suspends);
+#if defined(MTP_COUNT_DAG)
+  s.from = &w - &workers[0];
+#endif
   w.suspended = &s;
 #ifdef MTP_FIBERS
   void *save;
@@ -795,6 +1192,14 @@ inline void wait(vertex *v) {
   mtp_context_swap(&s.k, &w.loop);
 #ifdef MTP_FIBERS
   fiber_arrive(save, &me().loop_fb);
+#endif
+#if defined(MTP_COUNT_DAG)
+  {
+    worker &w2 = me();
+    if ((size_t)(&w2 - &workers[0]) != s.from) {
+      w2.rec.nb_migrations++;
+    }
+  }
 #endif
 }
 

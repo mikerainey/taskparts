@@ -50,7 +50,7 @@ MUTANTS = [
      "  if (t != nullptr) {"),
     ("drop-foreign-task",
      "a fork does not put back the task of another that it popped",
-     "  if (t != nullptr) {\n    w.deque.push(t);\n  }",
+     "  if (t != nullptr) {\n    MTP_COUNT(w, nb_fork_foreign);\n    w.deque.push(t);\n  }",
      "  (void)t;"),
     ("release-before-save",
      "wait releases its suspension before the stack is saved",
@@ -62,7 +62,8 @@ MUTANTS = [
      "  if (j.pending.fetch_sub(1) == 1) {\n    return;\n  }\n  perturb();"),
     ("no-rollback",
      "new_edge keeps the count of an edge whose source has finished",
-     "      dst->pending.fetch_sub(1, std::memory_order_acq_rel);\n      return false;",
+     "      dst->pending.fetch_sub(1, std::memory_order_acq_rel);\n"
+     "      MTP_COUNT(me(), nb_edges_late);\n      return false;",
      "      return false;"),
     ("edge-before-count",
      "new_edge adds the edge to the out-set before it counts it",
@@ -92,6 +93,10 @@ MUTANTS = [
      "the join resumes its parent when either branch arrives",
      "      if (j->pending.fetch_sub(1, std::memory_order_acq_rel) == 1) {\n        // Both",
      "      if (j->pending.fetch_sub(1, std::memory_order_acq_rel) <= 2) {\n        // Both"),
+    ("sink-without-root",
+     "the vertex that stops the workers does not wait for the root",
+     "  new_edge(&root, &sink);\n",
+     ""),
 ]
 
 # Mutants that no test can kill, because they are not errors. None at present.

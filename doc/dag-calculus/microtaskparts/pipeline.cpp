@@ -261,6 +261,11 @@ int main(int argc, char **argv) {
               dd.seen.size());
   std::printf("workers   %zu\n", get_nb_workers());
   std::printf("exectime  %.3f s\n", elapsed.count());
+#if defined(MTP_STATS)
+  if (std::strcmp(version, "serial") != 0) {
+    print_stats(stdout, launch_stats());
+  }
+#endif
   if (check) {
     deduplicator reference_dd;
     writer reference;

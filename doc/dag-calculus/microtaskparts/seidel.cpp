@@ -118,31 +118,38 @@ struct block : vertex {
 
   // Runs on the block's stack, after its body. The block may be made ready
   // again, and run on another stack, as soon as a neighbor is counted down.
+  // And on the last step, the last count_down below may let the whole
+  // computation finish, and the blocks be freed. So this function reads the
+  // block's fields before it counts anything down, and not after.
   void notify() override {
-    bool last_step = (--steps_left == 0);
+    const bool below = (i + 1 < B);
+    const bool right = (j + 1 < B);
+    const bool above = (i > 0);
+    const bool left = (j > 0);
+    const bool last_step = (--steps_left == 0);
     // Our next time step waits for every neighbor: for the blocks above and
     // to the left to run that step, and for the blocks below and to the
     // right to run this one. Set the count before any of them can finish.
-    int n = nb_neighbors();
+    const int n = nb_neighbors();
     pending.store((n == 0) ? 1 : n, std::memory_order_release);
     // The blocks below and to the right wait for us to run this step.
-    if (i + 1 < B) {
+    if (below) {
       count_down(this + B);
     }
-    if (j + 1 < B) {
+    if (right) {
       count_down(this + 1);
     }
     if (last_step) {
-      if ((i + 1 == B) && (j + 1 == B)) {
+      if (!below && !right) {
         vertex::notify(); // the whole computation is done
       }
       return;
     }
     // The blocks above and to the left wait for us before their next step.
-    if (i > 0) {
+    if (above) {
       count_down(this - B);
     }
-    if (j > 0) {
+    if (left) {
       count_down(this - 1);
     }
     if (n == 0) {
@@ -208,6 +215,11 @@ int main(int argc, char **argv) {
   std::printf("checksum  %.9f\n", sum);
   std::printf("workers   %zu\n", get_nb_workers());
   std::printf("exectime  %.3f s\n", elapsed.count());
+#if defined(MTP_STATS)
+  if (std::strcmp(version, "serial") != 0) {
+    print_stats(stdout, launch_stats());
+  }
+#endif
   if (check) {
     std::vector<double> reference((size_t)N * N);
     grid = reference.data();

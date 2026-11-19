@@ -1,1 +1,0 @@
-{"args":["planes","1024","64","400","check"],"env":{"TASKPARTS_NUM_WORKERS":"6"},"program":"/home/rainey/Work/taskparts-bench-paper/builds/mtp-2a3f9db44b41-doc_dag-calculus_microtaskparts-pipeline+seidel/seidel"}

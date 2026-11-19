@@ -24,5 +24,8 @@ int main(int argc, char **argv) {
   std::printf("fib(%ld) = %ld\n", n, r);
   std::printf("workers   %zu\n", get_nb_workers());
   std::printf("exectime  %.3f s\n", elapsed.count());
+#if defined(MTP_STATS)
+  print_stats(stdout, launch_stats());
+#endif
   return 0;
 }

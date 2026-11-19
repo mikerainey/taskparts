@@ -53,6 +53,34 @@
 \input{perf/gamora/examples/stencilgamora}
 \newcommand{\stenciltimeg}[2]{\fbval{stencilgamora}{#1}{#2}}
 
+% The values of Appendix sec:instr, from the rounds in perf/cost and
+% perf/factors (and perf/gamora/cost, perf/gamora/factors), cited as
+% flexibench-dag-cost and flexibench-dag-factors. The views of a machine
+% share row and column names; those of the Ryzen end in gamora.
+\input{perf/cost/costfib}\input{perf/cost/costloops}\input{perf/cost/costeach}
+\input{perf/cost/cntswitches}
+\input{perf/gamora/cost/costfibgamora}\input{perf/gamora/cost/costloopsgamora}
+\input{perf/gamora/cost/costeachgamora}\input{perf/gamora/cost/cntswitchesgamora}
+\input{perf/factors/ptime}\input{perf/factors/stime}\input{perf/factors/pwork}
+\input{perf/factors/swork}\input{perf/factors/psched}\input{perf/factors/ssched}
+\input{perf/factors/pidle}\input{perf/factors/sidle}
+\input{perf/gamora/factors/ptimegamora}\input{perf/gamora/factors/stimegamora}
+\input{perf/gamora/factors/pworkgamora}\input{perf/gamora/factors/sworkgamora}
+\input{perf/gamora/factors/pschedgamora}\input{perf/gamora/factors/sschedgamora}
+\input{perf/gamora/factors/pidlegamora}\input{perf/gamora/factors/sidlegamora}
+% \cfib{BUILD}{P}: fib(38) with BUILD (plain, sta, log, cnt) on P workers.
+\newcommand{\cfib}[2]{\fbval{costfib}{fib}{#1 #2}}
+\newcommand{\cfibg}[2]{\fbval{costfibgamora}{fib}{#1 #2}}
+% \cloop{MODE}{CONFIG} and \ceach{CONFIG}: nanoseconds per iteration of vertices.
+\newcommand{\cloop}[2]{\fbval{costloops}{#1}{#2}}
+\newcommand{\cloopg}[2]{\fbval{costloopsgamora}{#1}{#2}}
+\newcommand{\ceach}[1]{\fbval{costeach}{each}{#1}}
+\newcommand{\ceachg}[1]{\fbval{costeachgamora}{each}{#1}}
+% A row of a table of factors: \facrow{SUFFIX}{p or s}{WORKLOAD}{VERSION}{P}.
+\newcommand{\facrow}[5]{\fbval{#2time#1}{#3}{serial} & \fbval{#2time#1}{#3}{#4 #5}
+  & \fbval{#2work#1}{#3}{#4 1} & \fbval{#2work#1}{#3}{#4 #5}
+  & \fbval{#2sched#1}{#3}{#4 #5} & \fbval{#2idle#1}{#3}{#4 #5}}
+
 \newcommand{\fo}{\mathtt{f_1}}
 \newcommand{\ft}{\mathtt{f_2}}
 % A step number, flush right in a listing.
@@ -299,9 +327,7 @@ count_down(v : task*) -> void {
 
 enter() -> void {  // first frame on a fresh stack
   t = me.starting; t.body()
-  if (t is fork) {
-    if (t.j == null) done = true  // root
-    me.reached = t.j }
+  if (t is fork) me.reached = t.j
   else for (u in close(t.out)) count_down(u)
   restore(me.k) }  // leave this stack
 \end{lstlisting}
@@ -346,9 +372,18 @@ wait(v : task*) -> void {
   if (!new_edge(v, &s)) return
   me.suspended = &s
   swap(s.k, me.k) }
+
+launch(f : () -> void) -> void {
+  root = vertex{body = f, pending = 1}
+  sink = vertex{body = () -> { done = true },
+    pending = 1}
+  new_edge(&root, &sink)
+  release(&sink); release(&root)
+  start the workers, and run loop() }
 \end{lstlisting}
 \hrule
-\caption{Fork join, and the operations of DAG calculus}
+\caption{Fork join, the operations of DAG calculus, and the start of a
+  computation}
 \label{fig:ops}
 \end{figure}
 
@@ -418,6 +453,19 @@ turn the rest of one's stack into a vertex.
 %
 Any code that runs on a task stack may wait: the root, a branch of a
 fork, or the body of a vertex.
+
+\lstinline|launch($f$)| runs a whole computation.
+%
+It makes two vertices: the \emph{root}, whose body is $f$, and the
+\emph{sink}, whose body tells the workers to stop, with an edge from
+the root to the sink.
+%
+So a computation ends the way any vertex follows another, and the
+scheduler has no case for the root, as in
+TaskPaRTS~\cite{taskparts}.
+%
+The workers stop once the sink has run, whether or not other vertices
+remain: a vertex that nothing waits for may never run.
 
 \paragraph{The scheduler}
 %
@@ -712,9 +760,10 @@ body(b : block*) -> void { update block (b.i, b.j) }
 
 notify(b : block*) -> void {  // after body(b)
   b.steps_left = b.steps_left - 1
+  more = b.steps_left > 0
   b.pending = number of neighbors of b
   count_down(below(b)); count_down(right(b))
-  if (b.steps_left > 0)
+  if (more)
     { count_down(above(b)); count_down(left(b)) }
   else if (b is the last block)
     for (u in close(b.out)) count_down(u) }
@@ -775,6 +824,10 @@ the body in place of closing the out-set.
 After each step, the block sets its count to the number of its
 neighbors, for the next step, and then counts its neighbors down, by
 calling \lstinline|count_down|, which the scheduler itself uses.
+%
+It reads its own fields before it counts any neighbor down, and not
+after: on the last step, that neighbor may be the last block, and
+once the last block has finished, the program frees the array.
 %
 A run of a block allocates nothing.
 %
@@ -961,6 +1014,9 @@ It starts from the micro taskparts of the first
 paper~\cite{nativeforkjoin}, and grows its scheduler from about 350
 lines to about 540.
 %
+The instrumentation of Appendix~\ref{sec:instr} adds about 400 more,
+which are compiled only on request.
+%
 It includes the stencil in three versions (serial, fork join, and DAG
 calculus), the pipeline in two (serial and DAG calculus), and a test
 that mixes the two styles in both directions and includes an
@@ -978,16 +1034,12 @@ where races are decided, and under the address and thread sanitizers,
 which the scheduler tells about every switch between stacks.
 %
 To see whether the tests can detect the errors they aim at, we put
-fourteen such errors into the scheduler, one at a time.
+fifteen such errors into the scheduler, one at a time.
 %
-The tests detect all fourteen.
-%
-An earlier scheduler notified the successors of a vertex from the
-loop, and the same check found that notifying from the vertex's own
-stack was no error, which is how the scheduler came to do so.
+The tests detect all fifteen.
 
 \bibliographystyle{abbrv}
-\bibliography{main,perf/times,perf/parlay/parlay,perf/examples/examples,perf/gamora/timesgamora,perf/gamora/parlay/parlaygamora,perf/gamora/examples/examplesgamora}
+\bibliography{main,perf/times,perf/parlay/parlay,perf/examples/examples,perf/gamora/timesgamora,perf/gamora/parlay/parlaygamora,perf/gamora/examples/examplesgamora,perf/cost/cost,perf/factors/factors,perf/gamora/cost/costgamora,perf/gamora/factors/factorsgamora}
 
 \clearpage
 \appendix
@@ -1195,8 +1247,9 @@ ParlayLib~\cite{blelloch20parlaylib}, which builds its parallel loops
 from binary fork join: two sorts, a convex hull, and a breadth-first
 search.
 
-On both machines, the two versions are within 5\% of each other on
-every program and at every number of workers, in either direction.
+On both machines, the two versions are within 7\% of each other on
+every program and at every number of workers, in either direction,
+and within 3\% in all but four of the 80 comparisons.
 
 \begin{table}
 \setlength{\tabcolsep}{3pt}
@@ -1253,7 +1306,7 @@ On one worker it takes about as long as the serial program, although
 it creates a vertex and suspends a stack for every chunk.
 %
 On the M5 it is about three times faster than the serial program on
-4 workers and four times faster on 10.
+4 workers and about four times faster on 10.
 %
 On the Ryzen it is close to four times faster from 12 workers on, and
 32 workers are slower than 16.
@@ -1267,19 +1320,19 @@ steps (8192 by 8192 cells, 10 steps), and a small one for many (1024
 by 1024, 400 steps).
 %
 On the M5, the DAG version is more than three times faster than the
-serial program on 4 workers and about six times faster on 10, on both
-grids.
+serial program on 4 workers and between five and six times faster on
+10, on both grids.
 %
 It is faster than the fork-join version at every number of workers,
 by a wider margin on the large grid.
 %
-On the Ryzen it is about seven times faster than the serial program
-on 14 and 16 workers, on both grids, and the fork-join version is at
-most between four and five times faster, at any number of workers.
+On the Ryzen it is between seven and eight times faster than the
+serial program on 14 and 16 workers, on both grids, and the fork-join
+version is at most between four and five times faster, at any number
+of workers.
 %
-The fork-join version finishes each diagonal before it starts the
-next, where the DAG version runs a block as soon as its neighbors
-allow.
+Appendix~\ref{sec:instr} looks at where the time of each version
+goes.
 %
 On the M5, the workers beyond the fourth add less than the first
 four, since they run on efficiency cores.
@@ -1295,21 +1348,295 @@ Pilot runs on the M5 point to the order in which the
 versions visit blocks, which does not follow the rows of the grid as
 the serial program's does.
 
-\paragraph{What remains}
+\section{Instrumentation}
+\label{sec:instr}
+
+The second paper of this series instruments native fork
+join~\cite{instrumentation}.
 %
-% TODO: certified rounds for the two items below.
+Each worker records how long it spends in each of three states:
+\emph{working}, in client code; \emph{scheduling}, in its loop with
+something to do; and \emph{idle}, failing to steal.
 %
-Two more measurements are planned.
+The scheduler loop does all the recording, so a fork that is not
+stolen runs the same instructions with and without it.
 %
-\begin{itemize}[leftmargin=*]
-\item \emph{The vertex.}
-  The cost of creating, releasing, and waiting for a vertex whose body
-  is empty, and of running a block of the stencil whose body is empty,
-  beside the cost of a fork.
-\item \emph{The in-counter.}
-  The cost per async of an async-finish whose asyncs have empty or
-  small bodies and all enter one finish, to see whether one atomic
-  counter suffers from contention (Section~\ref{sec:costs}).
-\end{itemize}
+This appendix says what of that carries over to our scheduler, what
+vertices change, and what the records say about our examples.
+
+The instrumentation is compiled only on request.
+%
+Without it, the scheduler is the one of the main text: for
+\lstinline|fib| and for both examples, the compiled code is the same
+instruction for instruction, apart from line numbers in an assertion.
+
+\paragraph{What carries over}
+%
+Every switch between client code and the loop still arrives just
+after a \lstinline|swap| in the loop, so the loop can still do all the
+recording, and \lstinline|fork2join| needs none.
+%
+Table~\ref{tbl:instrfib} confirms it for \lstinline|fib|, with the
+totals alone and with a log of every change of state.
+%
+A count of forks is the exception, as in that paper: it puts an
+increment on every fork.
+%
+The identity $P \cdot T_P = W_P + S_P + I_P$ holds, where the three
+terms are the working, scheduling, and idle time summed over $P$
+workers, and so does the factoring of a speedup that rests on it.
+
+\begin{table}
+\begin{tabular}{@{}lrrrr@{}}
+ & \multicolumn{2}{c}{M5} & \multicolumn{2}{c}{Ryzen} \\
+workers & 1 & 10 & 1 & 16 \\
+\hline
+no instrumentation & \cfib{plain}{1} & \cfib{plain}{10} & \cfibg{plain}{1} & \cfibg{plain}{16} \\
+totals & \cfib{sta}{1} & \cfib{sta}{10} & \cfibg{sta}{1} & \cfibg{sta}{16} \\
+totals and log & \cfib{log}{1} & \cfib{log}{10} & \cfibg{log}{1} & \cfibg{log}{16} \\
+totals and counts & \cfib{cnt}{1} & \cfib{cnt}{10} & \cfibg{cnt}{1} & \cfibg{cnt}{16} \\
+\end{tabular}
+\caption{Running time of \lstinline|fib(38)| on the M5 and on the
+  Ryzen, in seconds, with each level of instrumentation: the median of
+  ten runs}
+\label{tbl:instrfib}
+\end{table}
+
+\paragraph{The loop runs for every task}
+%
+Under native fork join alone, a worker enters its loop only after a
+steal, so recording there costs a few readings of the clock per
+steal.
+%
+Here every vertex starts from the loop and returns to it, and so does
+every \lstinline|wait| that suspends.
+%
+Recording each of these would cost two readings of the clock per
+vertex.
+%
+So a worker stays recorded as working for as long as it finds tasks
+in its own deque, and records a change of state only when that deque
+is empty and it turns to stealing.
+%
+The cost is per steal again.
+%
+The price is in what the states mean: starting a vertex from one's
+own deque counts as work, as the push and the pop of a fork do.
+
+\paragraph{Scheduling in client code}
+%
+A finished vertex counts its successors down from its own stack, and
+\lstinline|new_edge|, \lstinline|release|, and \lstinline|wait| run
+in client code too.
+%
+All of this is recorded as work.
+%
+So scheduling time, here, is the time spent preparing stolen tasks,
+and what vertices and edges cost shows up where the cost of forks
+does: in the work of a run on one worker, beside the time of the
+serial program.
+
+\paragraph{A region is one computation}
+%
+What is measured is one call to \lstinline|launch|, from before its
+threads start until they have stopped.
+%
+The recorders are made with the workers and read once the threads
+have stopped, so nothing is read while it is written.
+%
+The other paper measures any region of a program, between two
+snapshots, which takes worker threads that outlive a computation.
+%
+With vertices, that would change when a computation ends, and we did
+not want to change the scheduler in order to measure it.
+%
+The price is that the start and the stop of the threads fall inside
+the region, and that a region cannot span two computations.
+%
+Each of our examples is one computation.
+
+\paragraph{Counts}
+%
+A separate build counts what fork join does not have: vertices,
+edges, and the edges whose source had already finished; waits, those
+that suspended, and the stacks that another worker resumed; the tasks
+stolen, by kind; the stacks mapped, which bounds the stacks in use at
+once; the failed compare-and-swaps on an out-set; and the forks that
+left their fast path, with those among them whose pop found a task
+other than their own (step 4 of Figure~\ref{fig:ops}).
+%
+The root and the sink of \lstinline|launch| are counted as vertices.
+
+\begin{table}
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{@{}lrrrrrr@{}}
+ & \multicolumn{3}{c}{M5} & \multicolumn{3}{c}{Ryzen} \\
+ & none & totals & every & none & totals & every \\
+\hline
+forks & \cloop{forks}{plain 1} & \cloop{forks}{sta 1} & \cloop{forks}{every 1} & \cloopg{forks}{plain 1} & \cloopg{forks}{sta 1} & \cloopg{forks}{every 1} \\
+finish & \cloop{finish}{plain 1} & \cloop{finish}{sta 1} & \cloop{finish}{every 1} & \cloopg{finish}{plain 1} & \cloopg{finish}{sta 1} & \cloopg{finish}{every 1} \\
+each & \ceach{plain 1} & \ceach{sta 1} & \ceach{every 1} & \ceachg{plain 1} & \ceachg{sta 1} & \ceachg{every 1} \\
+\end{tabular}
+\caption{Time per iteration of three loops of four million iterations
+  on one worker of the M5 and of the Ryzen, in nanoseconds: the median
+  of ten runs.  The columns are the build with no instrumentation, the
+  build with totals, and that build recording every return to the
+  loop.}
+\label{tbl:vertexcost}
+\end{table}
+
+\paragraph{What a vertex costs}
+%
+Table~\ref{tbl:vertexcost} times three loops whose iterations do
+nothing else.
+%
+\emph{Forks} is a parallel loop made of binary forks.
+%
+\emph{Finish} is the same loop, in which each iteration makes a vertex
+with an empty body, adds an edge from it to one vertex that all
+iterations share, and releases it: an async-finish with one finish.
+%
+\emph{Each} is a serial loop that makes a vertex, releases it, and
+waits for it.
+%
+On one worker, a vertex costs about \ceach{plain 1}\,ns on the M5 and
+\ceachg{plain 1}\,ns on the Ryzen when it is waited for, and about
+40\,ns and 95\,ns more than the iteration of the loop that makes it in
+the finish, where a fork that is not stolen costs about 2\,ns and
+5\,ns~\cite{flexibench-dag-cost,flexibench-dag-cost-gamora}.
+
+On the M5, the totals add nothing to a vertex, and recording every
+return to the loop adds between 1 and 2\,ns.
+%
+On the Ryzen, the totals add about 4\,ns to a vertex that is waited
+for and about 25\,ns to an iteration of the finish, and recording
+every return adds about 10\,ns more.
+%
+We have not established why the totals cost anything there.
+
+The finish does not speed up.
+%
+On the M5, an iteration takes \cloop{finish}{plain 1}\,ns of elapsed
+time on one worker and \cloop{finish}{plain 10}\,ns on 10, so the
+loop is slower on 10 workers than on one.
+%
+On the Ryzen it takes \cloopg{finish}{plain 1}\,ns on one worker and
+\cloopg{finish}{plain 16}\,ns on 16.
+%
+The counts name one cause and rule out another.
+%
+No compare-and-swap on an out-set fails, since each vertex has one
+edge.
+%
+But of the \fbval{cntswitches}{finish}{cnt 1} forks of the loop,
+every one leaves its fast path, on any number of workers, one
+included: the vertex that an iteration releases lies in the deque
+above the task of the fork that encloses it, so the fork does not pop
+its own task.
+%
+The loop of forks alone leaves the fast path
+\fbval{cntswitches}{forks}{cnt 10} times on 10 workers of the M5.
+%
+What these rounds cannot separate is the share of the in-counter of
+the shared vertex, which every iteration increments
+(Section~\ref{sec:costs}).
+
+\begin{table}
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{@{}lrrrrrr@{}}
+ & $T_s$ & $T_P$ & $W_1$ & $W_P$ & $S_P$ & $I_P$ \\
+\hline
+pipeline & \facrow{}{p}{pipeline}{dag}{10} \\
+stencil, large \\
+\quad fork join & \facrow{}{s}{large}{planes}{10} \\
+\quad DAG & \facrow{}{s}{large}{dag}{10} \\
+stencil, small \\
+\quad fork join & \facrow{}{s}{small}{planes}{10} \\
+\quad DAG & \facrow{}{s}{small}{dag}{10} \\
+\end{tabular}
+\caption{Where the time of the examples goes on the M5, with $P = 10$
+  workers, in seconds: the time of the serial program, the time on
+  $P$ workers, the work on one worker, and the work, scheduling time,
+  and idle time on $P$ workers, summed over the workers.  Medians of
+  five runs with the build that records totals.}
+\label{tbl:factors}
+\end{table}
+
+\begin{table}
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{@{}lrrrrrr@{}}
+ & $T_s$ & $T_P$ & $W_1$ & $W_P$ & $S_P$ & $I_P$ \\
+\hline
+pipeline & \facrow{gamora}{p}{pipeline}{dag}{16} \\
+stencil, large \\
+\quad fork join & \facrow{gamora}{s}{large}{planes}{16} \\
+\quad DAG & \facrow{gamora}{s}{large}{dag}{16} \\
+stencil, small \\
+\quad fork join & \facrow{gamora}{s}{small}{planes}{16} \\
+\quad DAG & \facrow{gamora}{s}{small}{dag}{16} \\
+\end{tabular}
+\caption{Where the time of the examples goes on the Ryzen, with
+  $P = 16$ workers, in seconds, as in Table~\ref{tbl:factors}}
+\label{tbl:factors16}
+\end{table}
+
+\paragraph{Where the examples' speedup goes}
+%
+A speedup factors exactly~\cite{acar2017inflation,instrumentation}:
+\[
+\frac{T_s}{T_P} \;=\; P \cdot \frac{T_s}{W_1} \cdot \frac{W_1}{W_P}
+  \cdot \frac{W_P}{W_P + S_P + I_P}.
+\]
+%
+The first fraction is the price of the parallel program on one
+worker, the second is how much the same work grows when $P$ workers
+share the machine, and the third is the share of the workers' time
+that goes to work.
+%
+Tables~\ref{tbl:factors} and~\ref{tbl:factors16} give the terms for
+our examples on all the cores of each
+machine~\cite{flexibench-dag-factors,flexibench-dag-factors-gamora}.
+
+The pipeline loses its speedup to idle time.
+%
+Its workers are idle for about two fifths of their time on the M5
+and for more than two thirds of it on the Ryzen, which is what a
+serial loop that reads and hashes the chunks leaves them.
+%
+Its work on one worker is that of the serial program, so the vertex
+and the suspended stack of each chunk cost nothing that shows.
+
+The stencil loses almost nothing to idle time, in either version: the
+workers work for about nine tenths of their time or more in every
+row of the two tables.
+%
+What it loses, it loses to work that grows with the number of
+workers.
+%
+On the large grid, the work of the DAG version on all the cores is
+about 1.6 times its work on one core on the M5, and about 2.3 times
+on the Ryzen.
+%
+The fork-join version differs from it in work, not in waiting: on all
+the cores of either machine it does between a third and a half more
+work than the DAG version on the large grid, and on the Ryzen it
+already does half again as much on one worker.
+%
+So the advantage of the DAG version, in these runs, is that it does
+less work for the same result, not that it keeps more workers busy.
+%
+The scheduling time is under 1\% of the workers' time everywhere.
+
+\paragraph{What is left out}
+%
+The records say nothing of how long a ready vertex stays in a deque
+before it starts, nor of which vertex ran when.
+%
+Both need an entry in the log per vertex, with a reading of the
+clock, which is affordable when vertices are as coarse as a block of
+the stencil, and would let a viewer show the order in which the
+blocks ran.
+%
+We have not built it.
 
 \end{document}

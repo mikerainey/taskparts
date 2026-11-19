@@ -1,0 +1,5 @@
+vertices finish n=4000000
+workers   8
+exectime  0.318 s
+each      79.5 ns
+check     ok

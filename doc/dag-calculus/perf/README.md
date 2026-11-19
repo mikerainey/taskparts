@@ -1,160 +1,170 @@
 # Measurements for the paper
 
-Tables `tbl:fork` and `tbl:examples` of `../main.tex` cite the values in `times.tex`,
-`parlay/parlay.tex`, `examples/pipeline.tex` and `examples/stencil.tex`, and Tables
-`tbl:fork16` and `tbl:examples16` those in the views under `gamora/`. Flexibench generated those files from the measurements recorded
-in the stores `.flexibench/`, `parlay/.flexibench/` and `examples/.flexibench/`.
+The tables of `../main.tex` cite values in the files `*.tex` of this directory and its
+subdirectories. Flexibench generated those files, the *views*, from the measurements
+recorded in the stores `.flexibench/` beside them, and each view names the certificate
+that certifies it.
 
-There are two sets of rounds, with the same programs, builds and inputs:
+There are five rounds, each run on two machines, all on 2026-11-19:
 
-- on an Apple M5 (4 performance and 6 efficiency cores, macOS; "the M5" in the paper), measured on 2026-11-17, in
-  this directory, `parlay/` and `examples/`;
-- on gamora, an AMD Ryzen 9 3950X (16 cores, 32 hardware threads, Linux 6.12; "the Ryzen"
-  in the paper), measured on
-  2026-11-17, in `gamora/`, `gamora/parlay/` and `gamora/examples/`. See "The rounds on gamora"
-  below.
+| Round | What it measures | Tables of the paper |
+|---|---|---|
+| fib | `fib 38` with the first paper's micro taskparts and with this one | `tbl:fork`, `tbl:fork16` |
+| ParlayLib | four ParlayLib programs with the same two | `tbl:fork`, `tbl:fork16` |
+| examples | the pipeline and the stencil | `tbl:examples`, `tbl:examples16` |
+| cost | what the instrumentation costs, and what a vertex costs | `tbl:instrfib`, `tbl:vertexcost` |
+| factors | where the time of the examples goes | `tbl:factors`, `tbl:factors16` |
 
-The first two rounds of each set ask one question: does hosting the vertices of DAG
-calculus slow fork join down?
+The machines:
 
-## The fib round
+- an Apple M5 (4 performance and 6 efficiency cores, macOS; "the M5" in the paper), in
+  this directory and `parlay/`, `examples/`, `cost/`, `factors/`;
+- gamora, an AMD Ryzen 9 3950X (16 cores, 32 hardware threads, Linux 6.12; "the Ryzen"
+  in the paper), in `gamora/` and its subdirectories of the same names. The views there
+  have names that end in `gamora`, so that the paper can input them beside the M5's.
 
-`.flexibench/` holds `fib 38` with three builds, on 1, 2, 4, 6, 8 and 10 workers (10 is all the cores of the M5:
-4 performance and 6 efficiency), ten runs of each at
-each worker count, with the runs of the builds interleaved, and correctness checks of every
-build with `fib 27` and `migrate`, all of which passed. The view `times` (`times.tex`,
-`times.html`) gives the median time of each build. It is certified by certificate
-`4abbce4a8236007c11688a8421c0ef9aa585881b6129bfe101a70853b1a03ca5`, and cited as
-`flexibench-dag-times` (`times.bib`).
+## Builds
 
-Every build is made by `scripts/build-mtp-dir` of the measurement client, from a commit of
-this repository and a micro taskparts directory, with the flags
-`-std=c++17 -pthread -Wall -O2 -falign-functions=64`.
+Every build of a micro taskparts is made by `scripts/build-mtp-dir` of the measurement
+client, from a commit of this repository and a micro taskparts directory, with the flags
+`-std=c++17 -pthread -Wall -O2 -falign-functions=64`, plus the flags named below. The
+ParlayLib programs (commit 80bf19d of the branch `microtaskparts` of
+github.com/mikerainey/parlaylib) are built by `scripts/build-bench direct`, through
+`doc/parlay-adapter`.
 
-| Row | Commit | Directory | What it is |
+| Name | Commit | Directory | What it is |
 |---|---|---|---|
 | `serial` | 67a207b | `doc/native-fork-join/microtaskparts` | `fork2join` runs its two branches as two calls, with no scheduler |
 | `nfj` | 5041c96 | `doc/native-fork-join/microtaskparts` | the native fork join paper's micro taskparts |
-| `dag` | 2a3f9db | `doc/dag-calculus/microtaskparts` | this paper's micro taskparts |
+| `dag` | 45653bb | `doc/dag-calculus/microtaskparts` | this paper's micro taskparts, in the rounds fib, ParlayLib and examples |
+| `plain`, `sta`, `log`, `cnt`, `every` | c9534d8 | `doc/dag-calculus/microtaskparts` | this paper's micro taskparts in the rounds cost and factors: with no more flags, `-DMTP_STATS`, `-DMTP_LOG`, `-DMTP_COUNT_FORKS -DMTP_COUNT_DAG`, and `-DMTP_MARK_EVERY_SWITCH` |
 
-Commit 2a3f9db is on the local branch `perf-dag-pool`, made only for these measurements: it
-is a74f3ee with this paper's `microtaskparts.hpp` as it is in this directory's commit.
-Commit 5041c96 is on the native fork join paper's measurement branch `perf-slots-direct`:
-its micro taskparts with the deque's slots left uninitialized, as ours leaves them.
+Commits 45653bb and c9534d8 are on the local branch `perf-dag-sink`, made only for these
+measurements: each is the branch `successor` with this directory's `../microtaskparts` as
+it was when the round ran. c9534d8 follows 45653bb, and differs from it only in the
+instrumented builds (vertices are counted with `MTP_COUNT_DAG`, not with `MTP_STATS`) and
+in a test: a build with no instrumentation compiles to the same code from both. Commit
+5041c96 is on the native fork join paper's measurement branch `perf-slots-direct`.
 
-## The ParlayLib round
+## The rounds
 
-`parlay/.flexibench/` holds four example programs of ParlayLib (commit 80bf19d of the
-branch `microtaskparts` of github.com/mikerainey/parlaylib): mergesort of 20 million
-integers, samplesort of 50 million, quickhull of 50 million points, and BFS of a graph
-of 2 million vertices. Each program ran five times with each build at each worker
-count, interleaved, and once more on 2, 8 and 16 workers for the check of its result
-only. Every run printed the expected result. The view `parlay` (`parlay/parlay.tex`,
-`parlay/parlay.html`) gives the median time of a run of the algorithm. It is certified by
-certificate `25cb51dcd2fd5d0ff3ee4e264f35eecb18e3f3e2bd7d90f12a4fd1b443b0f290`, and cited
-as `flexibench-dag-parlay` (`parlay/parlay.bib`).
+- **fib.** `fib 38` with `serial`, `nfj` and `dag`, ten runs of each at each worker
+  count, interleaved, and correctness checks of every build with `fib 27` and `migrate`.
+- **ParlayLib.** Mergesort of 20 million integers, samplesort of 50 million, quickhull of
+  50 million points, and BFS of a graph of 2 million vertices, five runs with `nfj` and
+  `dag` at each worker count, interleaved, and once more at other worker counts for the
+  check of the result only. ParlayLib's generators give other inputs on Linux than on
+  macOS, so the expected results differ between the machines.
+- **examples.** The pipeline (40000 chunks of 16384 bytes, with the default throttling
+  limit, four times the number of workers), serially and in DAG calculus; and the
+  stencil, with blocks of 64 by 64 cells, on a grid of 8192 by 8192 cells for 10 time
+  steps (`large`) and on one of 1024 by 1024 for 400 (`small`), serially, with fork join
+  (`planes`), and in DAG calculus (`dag`). Five runs of each configuration, interleaved.
+  Every run checked its result against the serial version.
+- **cost.** `fib 38` with `plain`, `sta`, `log` and `cnt`, on one worker, on all the
+  cores, and on 4 workers (M5) or 32 (gamora); and the program `vertices`, with four
+  million iterations, in its three modes: `forks`, `finish` and `each` on one worker with
+  `plain`, `sta` and `every`; `forks` and `finish` with `plain` at every worker count;
+  and all three with `cnt` at every worker count, for the counts. Ten runs of each,
+  interleaved.
+- **factors.** The plan of the examples round with the build `sta`, which prints the time
+  that the workers spent working, scheduling and idle, and the count of steals.
 
-Both builds are made by `scripts/build-bench direct`, through `doc/parlay-adapter`.
+Worker counts: 1, 2, 4, 6, 8 and 10 on the M5 (10 is all its cores), and 1, 2, 4, 6, 8,
+10, 12, 14, 16 and 32 on gamora (16 is all its cores, 32 all its hardware threads).
 
-| Column | Commit | Directory |
-|---|---|---|
-| `nfj` | 5041c96 | `doc/native-fork-join/microtaskparts` |
-| `dag` | 2a3f9db | `doc/dag-calculus/microtaskparts` |
+Every check of every round passed: each round's analysis `failures` is certified, and
+empty.
 
-## The examples round
+## Certificates
 
-`examples/.flexibench/` holds the paper's two examples: five runs of each configuration, interleaved. Every run checked its own result
-against the serial version, and all passed.
+On the M5:
 
-- The pipeline: 40000 chunks of 16384 bytes, with the default throttling limit (four
-  times the number of workers), serially and in DAG calculus on 1, 2, 4, 6, 8 and 10 workers. The view
-  `pipeline` (`examples/pipeline.tex`) is certified by certificate
-  `877f124ea23df9429d5d8b7495f791204d0dc5f7eb7899a1c816f116a5ed15a2`, and cited as `flexibench-dag-pipeline`.
-- The stencil, with blocks of 64 by 64 cells, on a grid of 8192 by 8192 cells for 10 time
-  steps (`large`) and on one of 1024 by 1024 for 400 (`small`): serially, with fork join
-  (`planes`), and in DAG calculus (`dag`), on the same worker counts. The view `stencil`
-  (`examples/stencil.tex`) is certified by certificate
-  `d363c6f2730510b606db50d4a308eb969b3f2aaafd816fca5419dab595f5993d`, and cited as `flexibench-dag-stencil`.
+| Round | Store | Analysis | Views | Certificate | Cited as |
+|---|---|---|---|---|---|
+| fib | `.flexibench/` | `times` | `times` | `ea36be29d4488a5123da914ef359477a063dcff685377da851a02f05cbc2a1a1` | `flexibench-dag-times` |
+| ParlayLib | `parlay/.flexibench/` | `parlay` | `parlay` | `f8e593bd0f2478b242d722b16f325b323e786828e5de4f88df2d1bb6d6fcbfa2` | `flexibench-dag-parlay` |
+| examples | `examples/.flexibench/` | `pipeline` | `pipeline` | `b32dbfc433d28e45c737dc740af348ae84386454451acb80b105f09c0fd0ea79` | `flexibench-dag-pipeline` |
+| examples | `examples/.flexibench/` | `stencil` | `stencil` | `948d2fed8df741e2e2f9660e55f8976436c11b6ef868df14fd151dad9c730b07` | `flexibench-dag-stencil` |
+| cost | `cost/.flexibench/` | `fib` | `costfib` | `b11377f749f612993cd0485107aee181c30e07a7f008c5ee255aebcd41ae35de` | `flexibench-dag-cost` |
+| cost | `cost/.flexibench/` | `loops` | `costloops` | `23b48d536e9ab162870d1ca035e2f7d9e7da9ef7a70115946f80be8df1ab3a84` | `flexibench-dag-cost` |
+| cost | `cost/.flexibench/` | `each` | `costeach` | `08d1f67d22eb9f7d8a437e477c753c58321fe2f2fc1054f944e3432294096f41` | `flexibench-dag-cost` |
+| cost | `cost/.flexibench/` | `counts` | `cntswitches`, `cntforeign`, `cntretries` | `e04b99c218080a40b944701a0e1263ca63a42feb35ae6682515583e9a728c595` | `flexibench-dag-cost` |
+| factors | `factors/.flexibench/` | `ptimes` | `ptime` | `4ba9724ee020588fed8ea37d4ccee86aebf362d44afa6028fe4f69fbc8d9d093` | `flexibench-dag-factors` |
+| factors | `factors/.flexibench/` | `stimes` | `stime` | `7997f8bcb281dfccd2688f6ea15041826f253366e018e8efc4602a2494ed4ce1` | `flexibench-dag-factors` |
+| factors | `factors/.flexibench/` | `ptotals` | `pwork`, `psched`, `pidle`, `psteals` | `5d7e0ded3f81a493d852c70a4bff675ca6e4e079e6c0d8c8e5d5678ef9d889bd` | `flexibench-dag-factors` |
+| factors | `factors/.flexibench/` | `stotals` | `swork`, `ssched`, `sidle`, `ssteals` | `7f405608eee2c79b57b9df779631785429b0afa9678e655b598d1b2f027be165` | `flexibench-dag-factors` |
 
-Both citations are in `examples/examples.bib`. The build is `pipeline` and `seidel` of
-`doc/dag-calculus/microtaskparts` at commit 2a3f9db (branch `perf-dag-pool`), made by
-`PROGRAMS="pipeline seidel" scripts/build-mtp-dir`, with the flags of the fib round.
+On gamora:
 
-Two choices were made in uncertified pilot runs on the M5, before the first examples round:
-- The pipeline's hash and compressor. With a byte-at-a-time hash and run-length
-  encoding, hashing, which is serial, was about four fifths of the work, and the
-  pipeline could not speed up. The hash now takes eight bytes at a time and the
-  compressor is of the LZ77 family, so that compression dominates, as in dedup.
-- The stencil's kernel is not inlined. Inlined into the serial loop, it was compiled
-  into code about 20% faster than elsewhere, which made the parallel versions look
-  slower on one worker than their scheduling makes them. The block size, 64, is the one
-  at which the DAG version was fastest on 4 workers among 16, 64 and 256.
+| Round | Store | Analysis | Views | Certificate | Cited as |
+|---|---|---|---|---|---|
+| fib | `gamora/.flexibench/` | `times` | `timesgamora` | `0a3a94f4fbe6a76709468f31bfe19b5332b25c6dd452b5e6de90c39b953b98ac` | `flexibench-dag-times-gamora` |
+| ParlayLib | `gamora/parlay/.flexibench/` | `parlay` | `parlaygamora` | `ac4125768321b4b3098ec118a8980c58cd863ce35f514b2b8d1b0400d057d84a` | `flexibench-dag-parlay-gamora` |
+| examples | `gamora/examples/.flexibench/` | `pipeline` | `pipelinegamora` | `58b7674681dbb26ddc98db092ed8ba2a87e96094216a86be061f3673008a8889` | `flexibench-dag-pipeline-gamora` |
+| examples | `gamora/examples/.flexibench/` | `stencil` | `stencilgamora` | `57d07d9a6b0cf79dad1b33062dc27da726945734e1c17adcd6ff6fb42f614327` | `flexibench-dag-stencil-gamora` |
+| cost | `gamora/cost/.flexibench/` | `fib` | `costfibgamora` | `b8035b44316d2d3e1c60bc5e8f6e6e8ffdd4e542441d30bbcc5508e09f3f0393` | `flexibench-dag-cost-gamora` |
+| cost | `gamora/cost/.flexibench/` | `loops` | `costloopsgamora` | `bb96ba53e5b9d437549876b7325ea02b4766619513aedb8ccf81e4eefc413582` | `flexibench-dag-cost-gamora` |
+| cost | `gamora/cost/.flexibench/` | `each` | `costeachgamora` | `0c9e1004c30ba5a6ec227c0352e6ed2efcc3fe1fb0315ff6c781841e4a25ba30` | `flexibench-dag-cost-gamora` |
+| cost | `gamora/cost/.flexibench/` | `counts` | `cntswitchesgamora`, `cntforeigngamora`, `cntretriesgamora` | `b1fe44cd2db595e2a4d807ec4969a0d85f1b84ada79701b9758dcc566ec5bc46` | `flexibench-dag-cost-gamora` |
+| factors | `gamora/factors/.flexibench/` | `ptimes` | `ptimegamora` | `105a133d3ea775270cf21b9b20cdbd6dc3a26a37580966778f8439904f25fea8` | `flexibench-dag-factors-gamora` |
+| factors | `gamora/factors/.flexibench/` | `stimes` | `stimegamora` | `cc8e5388f27cefb76aac91aa8baebbc7a63ab0cbff7acc1fd648d12d8fa5f1fb` | `flexibench-dag-factors-gamora` |
+| factors | `gamora/factors/.flexibench/` | `ptotals` | `pworkgamora`, `pschedgamora`, `pidlegamora`, `pstealsgamora` | `aa3178bb67bed311ffe05e4b827e279017744dd6e95c0344717f2f3917f9c220` | `flexibench-dag-factors-gamora` |
+| factors | `gamora/factors/.flexibench/` | `stotals` | `sworkgamora`, `sschedgamora`, `sidlegamora`, `sstealsgamora` | `b92a1b4be988642b1f16be8e3f58970c32ae2bc47f73050125ee2cdaaf8b742e` | `flexibench-dag-factors-gamora` |
 
-## The rounds on gamora
+The cost round has a view per count (`cntswitches`, `cntforeign`, `cntretries`): the
+forks that switched to the scheduler loop, those whose pop found another task, and the
+failed compare-and-swaps on an out-set. The factors round has a view per term: `ptime`
+and `stime` (the time of the region, serial version included), and `pwork`, `psched`,
+`pidle`, `psteals` and their `s` counterparts for the parallel versions; `p` is the
+pipeline and `s` the stencil.
 
-`gamora/` holds the same three rounds on gamora, with the same commits, flags and inputs,
-built there with Clang 21.1.8. The differences:
+## The state of the machines
 
-- 1, 2, 4, 6, 8, 10, 12, 14, 16 and 32 workers for the timings (16 is all the cores, 32
-  all the hardware threads), and 3, 24 and 64 (fib) or 3 and 64
-  (ParlayLib) for the checks;
-- ParlayLib's generators give other inputs on Linux, so the expected results are those
-  the programs print there;
-- the views have their own names, so that the paper can input them beside the M5's.
+- **gamora** was in its benchmark mode during every round: the governor `performance` on
+  all 32 CPUs, before and after each round, with frequency boost and SMT on. Each round
+  started at 98% or 99% idle.
+- **The M5** was in interactive use that day. A round waits for four consecutive samples
+  of at least 93% idle. The fib, ParlayLib, cost and factors rounds started that way. The
+  examples round did not get them, and was started at 90% idle at the user's request.
+  Its times agree with those of the factors round, which ran the same programs an hour
+  later, except for the pipeline on 10 workers (0.168 s here, 0.155 s there).
 
-| Round | Store | View | Certificate | Cited as |
-|---|---|---|---|---|
-| fib | `gamora/.flexibench/` | `timesgamora` | `def44e05ae1d13ab9f12e127fec51129c1342116c038be483888768510492baa` | `flexibench-dag-times-gamora` |
-| ParlayLib | `gamora/parlay/.flexibench/` | `parlaygamora` | `3c2f150d400ab2042d38476fe94d4548737e717cee85eecab5e8a7c2c379e58d` | `flexibench-dag-parlay-gamora` |
-| examples | `gamora/examples/.flexibench/` | `pipelinegamora` | `1f0b637c5374148f1ceeeeee4543e5273e21521c16fa1d20553376ac113618c8` | `flexibench-dag-pipeline-gamora` |
-| examples | `gamora/examples/.flexibench/` | `stencilgamora` | `ec0fe41c4b3cfe8944bedfc7fc0a25d34e5f123636c40f391de633f4cec6f763` | `flexibench-dag-stencil-gamora` |
-
-Every check passed. During all three rounds the machine was in its benchmark mode: the
-governor `performance` on all 32 CPUs, before and after each round, with frequency boost
-and SMT on. Each round started at 98% or 99% idle. The test suite of `../microtaskparts`
-(`test.sh`: 396 runs in the perturbed, address-sanitizer and thread-sanitizer builds) also
-passed on gamora before the earlier rounds; the header has not changed since.
+The test suite of `../microtaskparts` (`test.sh`: 830 runs, in six builds with pauses at
+random, the address and thread sanitizers, and all of the instrumentation) passed on both
+machines at c9534d8.
 
 ## Checking
 
-With Flexibench 27e6e1e, from this directory, then from `parlay/`, then from `examples/`,
-and likewise from `gamora/` and its two subdirectories:
+With Flexibench 27e6e1e, from the directory of a store:
 
     flexibench check-objects
     flexibench check CERTIFICATE
-    flexibench check-view times.tex        (parlay.tex; pipeline.tex and stencil.tex)
-    flexibench check-view times.html       (and likewise)
+    flexibench check-view VIEW.tex
+    flexibench check-view VIEW.html
 
 These commands confirm three things:
 - every object in the store has the digest it is stored under;
 - the certificate holds for the store's log;
 - each view shows exactly what the certificate certifies.
 
-They don't check how the table in the paper is laid out around the values.
+They don't check how a table in the paper is laid out around the values, nor the
+arithmetic of the paper's prose on them (a speedup, a ratio of two works).
 
 ## Earlier rounds
 
-The rounds here are the fourth of each kind on the M5 and the second on gamora, all
-measured on 2026-11-17. They add worker counts (by twos, up to all the cores of each
-machine), and compare against `nfj` at 5041c96.
+The rounds here replace those of this directory's history at commit 36c68bd, which
+measured `dag` at 2a3f9db. Since then, a computation ends when a vertex that follows the
+root runs, where a flag was set by the root; the instrumentation was added under build
+flags; and a block of the stencil reads its fields before it counts a neighbor down,
+where it read two of them after (the thread sanitizer reported it on gamora). The times
+of the three rounds that both sets have agree within the variation between rounds.
 
-- The rounds before these were never committed. They measured `nfj` at a74f3ee, on 1 and 4
-  workers (M5; 1 to 4 for the examples) and on 1, 2, 4, 8, 16 and 32 (gamora). On gamora,
-  `fib 38` took 0.042 s with `nfj` and 0.038 s and 0.033 s with `dag` on 16 and 32
-  workers. The difference was a fixed cost at start-up: `nfj` initialized every slot of
-  every worker's deque. At 5041c96 it does not, and the two builds take 0.038 s on 16
-  workers and 0.034 s and 0.033 s on 32. Those rounds followed three changes to both
-  micro taskparts: no destructor on a task, a pool of stacks shared by the workers, and
-  a cheaper store in the deque's `push`.
-- The second rounds, in this directory's history at commit 95fc62a, measured `dag` at
-  3dc0e6d and 6c34570 against `nfj` at d244863, whose task had a destructor that looked for
-  a stack to free at every return from `fork2join`. There `nfj` took 0.318 s and `dag`
-  0.272 s for `fib 38` on one worker, and a build `nodtor` (bf0437b), which was `nfj` with
-  that destructor emptied, took 0.282 s.
-- The first rounds, in the history at commit 341d263, measured an earlier `dag` (ce06cec),
-  in which the scheduler loop counted down the successors of a finished vertex; now the
-  vertex does, from its own stack.
-- Before those, one attempt of the fib round was discarded. Its client had two more
-  analyses (the fastest run, and the ratio to `nfj`), which Flexibench did not certify.
-- One ParlayLib round on the M5 was stopped and discarded on 2026-11-17: its client had
-  failed to build, and the session had started the previous client, with 1 and 4 workers.
+Rounds before those are described in the README of commit 36c68bd.
+
+Pilot choices, made in uncertified runs on the M5 before the first examples round: the
+pipeline's hash takes eight bytes at a time and its compressor is of the LZ77 family, so
+that compression dominates, as in dedup; the stencil's kernel is not inlined, since
+inlined into the serial loop it compiled into code about 20% faster than elsewhere; and
+the block size, 64, is the one at which the DAG version was fastest on 4 workers among
+16, 64 and 256.

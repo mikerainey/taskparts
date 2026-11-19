@@ -1,0 +1,10 @@
+vertices finish n=4000000
+workers   16
+exectime  0.313 s
+each      78.3 ns
+states    work 4.984777 sched 0.010832 idle 0.004419 s
+tasks     steals 366 stolen_vertices 12 stolen_stacks 0 resumes 1
+stacks    mapped 272 from_pool 378
+forks     3999999
+dag       vertices 4000003 edges 4000002 late 0 retries 0 waits 1 suspends 1 migrations 0 fork_switches 3999999 fork_foreign 3999979
+check     ok
