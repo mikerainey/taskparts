@@ -4,13 +4,18 @@
 // the results.
 //
 //   instr [ROUNDS]     prints "ok", or what is wrong
+//   instr orphan       releases a vertex that nothing waits for: a build with
+//                      MTP_CHECK_ORPHANS must stop
 
 #include "microtaskparts.hpp"
 
 #include <atomic>
 #include <cmath>
 #include <cstdio>
+#include <chrono>
 #include <cstdlib>
+#include <cstring>
+#include <thread>
 #include <vector>
 
 using namespace microtaskparts;
@@ -47,6 +52,15 @@ static long fib(long n) {
 }
 
 int main(int argc, char **argv) {
+  if ((argc > 1) && (std::strcmp(argv[1], "orphan") == 0)) {
+    launch([] {
+      release(new_vertex([] {
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+      }));
+    });
+    std::printf("the computation ended\n");
+    return 0;
+  }
   int nb_rounds = (argc > 1) ? std::atoi(argv[1]) : 3;
   for (int round = 0; round < nb_rounds; round++) {
     // 1. Edges and waits: n vertices, and one last vertex that depends on

@@ -20,7 +20,8 @@ import tempfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 CXX = os.environ.get("CXX", "c++")
-BASE = ["-std=c++17", "-pthread", "-O2", "-g", "-DMTP_PERTURB", "-DMTP_CHECK_STACKS"]
+BASE = ["-std=c++17", "-pthread", "-O2", "-g", "-DMTP_PERTURB", "-DMTP_CHECK_STACKS",
+        "-DMTP_CHECK_ORPHANS"]
 BUILDS = {
     "perturb": [],
     "asan": ["-fsanitize=address", "-fno-omit-frame-pointer"],
@@ -79,12 +80,12 @@ MUTANTS = [
      "  w.stacks.push_back(stack);"),
     ("ready-too-early",
      "a vertex becomes ready with one predecessor left",
-     "  if (v->pending.fetch_sub(1, std::memory_order_acq_rel) == 1) {\n    me().deque.push(v);",
-     "  if (v->pending.fetch_sub(1, std::memory_order_acq_rel) == 2) {\n    me().deque.push(v);"),
+     "  if (v->pending.fetch_sub(1, std::memory_order_acq_rel) == 1) {\n#ifdef MTP_CHECK_ORPHANS",
+     "  if (v->pending.fetch_sub(1, std::memory_order_acq_rel) == 2) {\n#ifdef MTP_CHECK_ORPHANS"),
     ("count-not-atomic",
      "a count is decremented by a load and a store",
-     "  if (v->pending.fetch_sub(1, std::memory_order_acq_rel) == 1) {\n    me().deque.push(v);",
-     "  int c = v->pending.load();\n  perturb();\n  v->pending.store(c - 1);\n  if (c == 1) {\n    me().deque.push(v);"),
+     "  if (v->pending.fetch_sub(1, std::memory_order_acq_rel) == 1) {\n#ifdef MTP_CHECK_ORPHANS",
+     "  int c = v->pending.load();\n  perturb();\n  v->pending.store(c - 1);\n  if (c == 1) {\n#ifdef MTP_CHECK_ORPHANS"),
     ("touch-after-notify",
      "the scheduler reads a vertex after notifying its successors",
      "    count_down(target);\n    e = next;\n  }\n}",

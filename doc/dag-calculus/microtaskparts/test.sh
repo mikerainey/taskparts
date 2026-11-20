@@ -44,9 +44,24 @@ check() {
   fi
 }
 
+# check_stops EXPECTED-TEXT PROGRAM ARGS...: the run must fail and print the text.
+check_stops() {
+  expected=$1
+  shift
+  nb_runs=$((nb_runs + 1))
+  out=$("$@" 2>&1)
+  status=$?
+  if [ $status -eq 0 ] || ! printf '%s\n' "$out" | grep -q "$expected"; then
+    nb_failed=$((nb_failed + 1))
+    echo "FAILED TO STOP (status $status, $TASKPARTS_NUM_WORKERS workers): $*"
+    printf '%s\n' "$out" | tail -5
+  fi
+}
+
 for b in perturb asan tsan iperturb itsan ievery; do
   for workers in 1 2 3 4 10 16; do
     export TASKPARTS_NUM_WORKERS=$workers
+    check_stops "nothing waited for" "bin/instr.$b" orphan
     check "fib(24) = 46368" "bin/fib.$b" 24
     check "ok" "bin/migrate.$b"
     check "^ok" "bin/instr.$b" "$rounds"

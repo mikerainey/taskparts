@@ -464,8 +464,9 @@ So a computation ends the way any vertex follows another, and the
 scheduler has no case for the root, as in
 TaskPaRTS~\cite{taskparts}.
 %
-The workers stop once the sink has run, whether or not other vertices
-remain: a vertex that nothing waits for may never run.
+The workers stop once the sink has run, which is the right moment
+only if the root returns after everything it started
+(Section~\ref{sec:continuations}).
 
 \paragraph{The scheduler}
 %
@@ -501,6 +502,85 @@ the join as before.
 %
 Section~\ref{sec:safety} explains why that is correct even if the
 fork's own task is still in a deque.
+
+\section{Continuations}
+\label{sec:continuations}
+
+Fork join says what follows a fork: the rest of the caller, once both
+branches are done.
+%
+A vertex has no such caller.
+%
+What follows it is whatever its out-edges enter, and a vertex with no
+out-edge is followed by nothing: the task that made it may return
+while it runs, or before it starts.
+%
+So a task that makes vertices has to arrange its own continuation.
+
+In the calculus, a thread does so by adding edges from the threads it
+creates to itself, and then yielding: its continuation is the rest of
+itself, which runs once they have finished
+(Appendix~\ref{sec:calculus}).
+%
+Here the rest of a task is the rest of its stack, and
+\lstinline|wait| turns it into a vertex.
+%
+We ask every task to follow one rule.
+%
+Say that $u$ \emph{precedes} $v$ if $v$ cannot finish before $u$ has:
+there is an edge from $u$ to $v$, or the body of $v$ waits for $u$, or
+a chain of these.
+%
+\begin{quote}
+\emph{Every vertex that a task makes ready precedes a vertex that the
+task waits for before it returns.}
+\end{quote}
+%
+The rule takes two forms in our programs.
+%
+A task that knows its vertices in advance gives them a last one, and
+waits for it: the pipeline waits for the vertex of the last chunk,
+which each earlier vertex precedes, and the stencil for the last
+block (Sections~\ref{sec:pipeline} and~\ref{sec:stencil}).
+%
+A task that does not know them makes an \emph{end} vertex with an
+empty body, has every vertex it starts add an edge to the end, and
+then releases the end and waits for it, which is the finish of
+async-finish (Appendix~\ref{sec:calculus}).
+
+The rule composes.
+%
+A vertex that itself makes vertices waits for them before its body
+returns, so it finishes after they do, and whatever it precedes
+follows them too.
+%
+By induction on this nesting, when a task that follows the rule
+returns, every vertex that it started, directly or not, has
+finished.
+%
+Applied to the root, this is what \lstinline|launch| relies on: when
+the sink runs, the computation is over, and the workers can stop.
+
+Two points need care.
+%
+First, a vertex has finished, in this sense, once it has counted
+down the last of its successors.
+%
+It may still be on its way off its stack then, but it has made its
+last use of itself (Section~\ref{sec:safety}).
+%
+Second, the scheduler does not enforce the rule.
+%
+A vertex that nothing waits for may run after the task that made it
+has returned, when what it refers to may be gone, or may never run,
+if the sink runs first.
+%
+We treat such a vertex as an error in the program, unless the program
+argues otherwise where it makes the vertex.
+%
+Our examples have no exception, and in the builds for testing the
+scheduler counts the vertices that are ready or running, and stops
+the program if the sink runs while there is another.
 
 \section{Why it is still safe}
 \label{sec:safety}
@@ -1445,10 +1525,13 @@ The recorders are made with the workers and read once the threads
 have stopped, so nothing is read while it is written.
 %
 The other paper measures any region of a program, between two
-snapshots, which takes worker threads that outlive a computation.
+snapshots, which takes worker threads that outlive a computation, and
+with them the guarantee that nothing is ready or running between two
+computations.
 %
-With vertices, that would change when a computation ends, and we did
-not want to change the scheduler in order to measure it.
+The rule of Section~\ref{sec:continuations} gives that guarantee, but
+we have not built on it: keeping the threads would change the
+scheduler, and we did not want to change it in order to measure it.
 %
 The price is that the start and the stop of the threads fall inside
 the region, and that a region cannot span two computations.

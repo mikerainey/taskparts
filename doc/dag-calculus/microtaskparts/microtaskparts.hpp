@@ -38,7 +38,10 @@
 // - with -DMTP_PERTURB, workers pause at random at the points where the
 //   scheduler's races are decided;
 // - with -DMTP_CHECK_STACKS, each stack records whether a task is using it,
-//   and is overwritten when it is given back.
+//   and is overwritten when it is given back;
+// - with -DMTP_CHECK_ORPHANS, the program stops if a computation ends while a
+//   vertex is still ready or running: a vertex that nothing waited for
+//   (Section "Continuations" of ../main.tex).
 
 #include "context.hpp"
 
@@ -330,7 +333,7 @@ struct vertex : task {
 
   static edge *finished_mark() { return reinterpret_cast<edge *>(1); }
 
-  void leave() override { notify(); }
+  void leave() override;
 #if defined(MTP_STATS)
   bool is_vertex() const override { return true; }
 #endif
@@ -669,13 +672,33 @@ template <typename F> void fork_task<F>::leave() {
   me().reached = j;
 }
 
+// With MTP_CHECK_ORPHANS: how many vertices and suspensions are ready or
+// running. One is counted in when its count reaches zero, and out just
+// before it notifies its successors, or when its stack resumes. So when the
+// sink of launch runs, it is the only one counted, unless some vertex that
+// nothing waited for has yet to finish.
+#ifdef MTP_CHECK_ORPHANS
+inline std::atomic<long> nb_live{0};
+#endif
+
 // One predecessor of v has finished, or v was released. If none remains, v
 // is ready: make it stealable.
 inline void count_down(vertex *v) {
   perturb();
   if (v->pending.fetch_sub(1, std::memory_order_acq_rel) == 1) {
+#ifdef MTP_CHECK_ORPHANS
+    nb_live.fetch_add(1);
+#endif
     me().deque.push(v);
   }
+}
+
+// Called on the vertex's stack once its body has returned.
+inline void vertex::leave() {
+#ifdef MTP_CHECK_ORPHANS
+  nb_live.fetch_sub(1);
+#endif
+  notify();
 }
 
 inline void vertex::notify() {
@@ -723,6 +746,9 @@ inline void vertex::notify() {
 // and otherwise give it a fresh stack.
 inline void start(worker &w, task *t) {
   if (context *k = t->saved()) {
+#ifdef MTP_CHECK_ORPHANS
+    nb_live.fetch_sub(1);
+#endif
 #if defined(MTP_STATS)
     w.rec.nb_resumes++;
 #endif
@@ -1044,7 +1070,23 @@ template <typename F> __attribute__((noinline)) void launch(F &&f) {
   in_scheduler = true;
   tls_id = 0;
   auto run_root = [&] { f(); };
-  auto stop = [] { done.store(true); };
+  auto stop = [] {
+#ifdef MTP_CHECK_ORPHANS
+    // Every vertex but this one has notified its successors, if each task
+    // waited for what it made ready.
+    if (nb_live.load() != 1) {
+      std::fprintf(stderr,
+                   "microtaskparts: the computation ended while %ld "
+                   "vertices that nothing waited for were ready or running\n",
+                   nb_live.load() - 1);
+      std::abort();
+    }
+#endif
+    done.store(true);
+  };
+#ifdef MTP_CHECK_ORPHANS
+  nb_live.store(0);
+#endif
   thunk_vertex<decltype(run_root)> root(run_root);
   thunk_vertex<decltype(stop)> sink(stop);
   new_edge(&root, &sink);

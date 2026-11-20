@@ -13,11 +13,12 @@ bin/%: %.cpp $(HEADERS)
 
 # Builds for testing. Each program has four more builds:
 #   bin/NAME.perturb  workers pause at random where races are decided, and
-#                     stacks are checked (see microtaskparts.hpp)
+#                     stacks and the ends of computations are checked (see
+#                     microtaskparts.hpp)
 #   bin/NAME.asan     the same, with the address sanitizer
 #   bin/NAME.tsan     the same, with the thread sanitizer
 #   bin/NAME.dbg      assertions on, no optimization
-TESTFLAGS = -DMTP_PERTURB -DMTP_CHECK_STACKS -g
+TESTFLAGS = -DMTP_PERTURB -DMTP_CHECK_STACKS -DMTP_CHECK_ORPHANS -g
 
 bin/%.perturb: %.cpp $(HEADERS)
 	@mkdir -p bin
@@ -33,7 +34,7 @@ bin/%.tsan: %.cpp $(HEADERS)
 
 bin/%.dbg: %.cpp $(HEADERS)
 	@mkdir -p bin
-	$(CXX) -std=c++17 -pthread -Wall -O0 -g -DMTP_CHECK_STACKS $< -o $@
+	$(CXX) -std=c++17 -pthread -Wall -O0 -g -DMTP_CHECK_STACKS -DMTP_CHECK_ORPHANS $< -o $@
 
 # Builds with instrumentation (see microtaskparts.hpp):
 #   bin/NAME.sta    totals of the time in each state, and counts of steals

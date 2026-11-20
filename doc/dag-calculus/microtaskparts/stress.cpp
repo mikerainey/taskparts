@@ -246,6 +246,40 @@ static bool test_edge_races(uint64_t seed) {
 }
 
 /*---------------------------------------------------------------------*/
+/* Test 2c: waiting for a vertex at the moment it finishes */
+
+// Claim: a suspension is released only once its stack is saved, so a vertex
+// that finishes while a stack is on its way to waiting for it cannot have
+// that stack resumed too early.
+//
+// A vertex spins on another worker until it is told to return, and the root
+// waits for it at that moment, a little sooner or a little later each time.
+static bool test_resume_races(uint64_t seed) {
+  if (get_nb_workers() < 2) {
+    return true; // one worker: the vertex cannot finish while the root waits
+  }
+  for (int i = 0; i < 50000; i++) {
+    std::atomic<bool> spinning{false};
+    std::atomic<bool> go{false};
+    vertex *v = new_vertex([&] {
+      spinning.store(true);
+      while (!go.load()) {
+      }
+    });
+    release(v);
+    while (!spinning.load()) {
+      std::this_thread::yield();
+    }
+    go.store(true);
+    for (volatile uint64_t d = rnd(seed, i) % 64; d > 0; d = d - 1) {
+    }
+    wait(v);
+    delete v;
+  }
+  return true;
+}
+
+/*---------------------------------------------------------------------*/
 /* Test 3: many suspended stacks */
 
 // Claim: no two tasks run on the same stack, and stacks pass safely from
@@ -551,6 +585,7 @@ int main(int argc, char **argv) {
   } tests[] = {{"waiting_forks", test_waiting_forks},
                {"wait_races", test_wait_races},
                {"edge_races", test_edge_races},
+               {"resume_races", test_resume_races},
                {"many_stacks", test_many_stacks},
                {"rerun", test_rerun},
                {"random_dags", test_random_dags}};
