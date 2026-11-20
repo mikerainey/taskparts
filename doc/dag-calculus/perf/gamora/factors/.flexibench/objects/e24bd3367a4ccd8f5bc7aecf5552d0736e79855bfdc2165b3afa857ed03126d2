@@ -1,5 +1,0 @@
-seidel serial n=1024 block=64 steps=400
-checksum  750.952100879
-workers   1
-exectime  0.812 s
-check     ok

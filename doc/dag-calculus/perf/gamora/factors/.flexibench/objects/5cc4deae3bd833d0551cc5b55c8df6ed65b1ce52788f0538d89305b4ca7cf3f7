@@ -1,0 +1,8 @@
+seidel dag n=8192 block=64 steps=10
+checksum  999.999998937
+workers   6
+exectime  0.289 s
+states    work 1.732292 sched 0.000867 idle 0.003083 s
+tasks     steals 1062 stolen_vertices 1042 stolen_stacks 0 resumes 1
+stacks    mapped 20 from_pool 20
+check     ok

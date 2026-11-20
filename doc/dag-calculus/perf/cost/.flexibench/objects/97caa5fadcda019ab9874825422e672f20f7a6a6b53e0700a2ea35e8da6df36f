@@ -1,6 +1,0 @@
-fib(38) = 39088169
-workers   10
-exectime  0.042 s
-states    work 0.420162 sched 0.000646 idle 0.001051 s
-tasks     steals 176 stolen_vertices 1 stolen_stacks 0 resumes 0
-stacks    mapped 45 from_pool 45

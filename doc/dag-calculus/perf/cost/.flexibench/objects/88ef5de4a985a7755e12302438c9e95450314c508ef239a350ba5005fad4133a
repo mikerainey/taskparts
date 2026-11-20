@@ -1,8 +1,0 @@
-vertices each n=4000000
-workers   1
-exectime  0.125 s
-each      31.3 ns
-states    work 0.103200 sched 0.021949 idle 0.000000 s
-tasks     steals 0 stolen_vertices 0 stolen_stacks 0 resumes 4000000
-stacks    mapped 2 from_pool 2
-check     ok

@@ -3,7 +3,7 @@
 
 Each mutant below is microtaskparts.hpp with one deliberate error, of the kind
 that the safety argument of ../main.tex rules out. For each mutant, this
-script builds stress.cpp against it and runs the result. A mutant is "killed"
+script builds stress.cpp and instr.cpp against it and runs the results. A mutant is "killed"
 if some run fails: a wrong result, a hang, a crash, or a sanitizer report. A
 mutant that survives every run is an error that the tests cannot see.
 
@@ -22,6 +22,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 CXX = os.environ.get("CXX", "c++")
 BASE = ["-std=c++17", "-pthread", "-O2", "-g", "-DMTP_PERTURB", "-DMTP_CHECK_STACKS",
         "-DMTP_CHECK_ORPHANS"]
+# The test programs. instr is built with all of the instrumentation on.
+PROGRAMS = {"stress": [], "instr": ["-DMTP_LOG", "-DMTP_COUNT_FORKS", "-DMTP_COUNT_DAG"]}
 BUILDS = {
     "perturb": [],
     "asan": ["-fsanitize=address", "-fno-omit-frame-pointer"],
@@ -94,6 +96,10 @@ MUTANTS = [
      "the join resumes its parent when either branch arrives",
      "      if (j->pending.fetch_sub(1, std::memory_order_acq_rel) == 1) {\n        // Both",
      "      if (j->pending.fetch_sub(1, std::memory_order_acq_rel) <= 2) {\n        // Both"),
+    ("sink-signals-early",
+     "the sink says that the computation is over before its last use of itself",
+     "    vertex::notify();\n    done.store(true);",
+     "    done.store(true);\n    perturb();\n    vertex::notify();"),
     ("sink-without-root",
      "the vertex that stops the workers does not wait for the root",
      "  new_edge(&root, &sink);\n",
@@ -104,10 +110,10 @@ MUTANTS = [
 HARMLESS = {}
 
 
-def build(directory, name):
-    exe = os.path.join(directory, "stress." + name)
-    cmd = [CXX] + BASE + BUILDS[name] + ["-I", directory,
-                                         os.path.join(directory, "stress.cpp"), "-o", exe]
+def build(directory, program, name):
+    exe = os.path.join(directory, program + "." + name)
+    cmd = [CXX] + BASE + PROGRAMS[program] + BUILDS[name] + [
+        "-I", directory, os.path.join(directory, program + ".cpp"), "-o", exe]
     r = subprocess.run(cmd, capture_output=True, text=True)
     return exe if r.returncode == 0 else None
 
@@ -118,7 +124,7 @@ def run(exe, workers, rounds):
                TSAN_OPTIONS="halt_on_error=1", ASAN_OPTIONS="detect_leaks=0")
     try:
         r = subprocess.run([exe, str(rounds), "11"], capture_output=True, text=True,
-                           env=env, timeout=240)
+                           env=env, timeout=(120 if "instr." in exe else 240))
     except subprocess.TimeoutExpired:
         return "hang (killed)"
     if r.returncode == 0:
@@ -140,20 +146,23 @@ def run(exe, workers, rounds):
 def check(source, label):
     """Builds and runs one version of the header. Returns the first failure."""
     with tempfile.TemporaryDirectory() as d:
-        for f in ("context.hpp", "stress.cpp"):
+        for f in ("context.hpp", "stress.cpp", "instr.cpp"):
             with open(os.path.join(HERE, f)) as src, open(os.path.join(d, f), "w") as dst:
                 dst.write(src.read())
         with open(os.path.join(d, "microtaskparts.hpp"), "w") as f:
             f.write(source)
         exes = {}
-        for b in BUILDS:
-            exes[b] = build(d, b)
-            if exes[b] is None:
-                return "does not compile (%s)" % b
-        for b, workers, rounds in RUNS:
-            failure = run(exes[b], workers, rounds)
-            if failure is not None:
-                return "%s, in the %s build on %d workers" % (failure, b, workers)
+        for p in PROGRAMS:
+            for b in BUILDS:
+                exes[p, b] = build(d, p, b)
+                if exes[p, b] is None:
+                    return "does not compile (%s, %s)" % (p, b)
+        for p in PROGRAMS:
+            for b, workers, rounds in RUNS:
+                failure = run(exes[p, b], workers, rounds)
+                if failure is not None:
+                    return "%s, in %s, in the %s build on %d workers" % (
+                        failure, p, b, workers)
     return None
 
 

@@ -1,5 +1,0 @@
-vertices forks n=4000000
-workers   1
-exectime  0.044 s
-each      11.0 ns
-check     ok

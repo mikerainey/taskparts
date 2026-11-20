@@ -1,5 +1,0 @@
-pipeline serial chunks=40000 bytes=16384 throttle=0
-output    193837335 bytes, 17320 distinct chunks
-workers   1
-exectime  1.134 s
-check     ok

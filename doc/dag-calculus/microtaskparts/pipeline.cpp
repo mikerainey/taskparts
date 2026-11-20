@@ -239,6 +239,14 @@ int main(int argc, char **argv) {
   generate(input, nb_chunks);
   deduplicator dd;
   writer w;
+  // The region that is measured. A version that uses the scheduler takes a
+  // snapshot on each side, and the first starts the worker threads, outside
+  // the region. The serial version starts no thread.
+  bool parallel = (std::strcmp(version, "serial") != 0);
+  snapshot before;
+  if (parallel) {
+    before = take_snapshot();
+  }
   auto start = std::chrono::steady_clock::now();
   if (std::strcmp(version, "serial") == 0) {
     pipeline_serial(input, nb_chunks, dd, w);
@@ -255,17 +263,20 @@ int main(int argc, char **argv) {
   }
   std::chrono::duration<double> elapsed =
       std::chrono::steady_clock::now() - start;
+  stats st;
+  if (parallel) {
+    st = stats_between(before, take_snapshot());
+    elapsed = std::chrono::duration<double>(st.exectime);
+  }
   std::printf("pipeline %s chunks=%zu bytes=%zu throttle=%zu\n", version,
               nb_chunks, chunk_szb, throttle);
   std::printf("output    %zu bytes, %zu distinct chunks\n", w.output.size(),
               dd.seen.size());
   std::printf("workers   %zu\n", get_nb_workers());
   std::printf("exectime  %.3f s\n", elapsed.count());
-#if defined(MTP_STATS)
-  if (std::strcmp(version, "serial") != 0) {
-    print_stats(stdout, launch_stats());
+  if (parallel) {
+    print_stats(stdout, st);
   }
-#endif
   if (check) {
     deduplicator reference_dd;
     writer reference;

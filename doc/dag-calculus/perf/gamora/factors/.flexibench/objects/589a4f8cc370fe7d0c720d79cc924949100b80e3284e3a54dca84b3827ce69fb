@@ -1,0 +1,1 @@
+{"args":["dag","8192","64","10","check"],"env":{"TASKPARTS_NUM_WORKERS":"6"},"program":"/home/rainey/Work/taskparts-bench-paper/builds/mtp-1144299415a9-doc_dag-calculus_microtaskparts-pipeline+seidel--DMTP_STATS/seidel"}

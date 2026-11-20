@@ -85,7 +85,8 @@ for b in perturb asan tsan iperturb itsan ievery; do
   done
 done
 
-# The trace of a build that logs is JSON, with a slice for some stay in a state.
+# The trace of a build that logs is JSON, with slices for the stays in a state.
+# A stay that the region cuts may be too short to show a duration.
 make -s bin/instr.log || exit 1
 trace=$(mktemp "${TMPDIR:-/tmp}/mtp-trace.XXXXXX")
 export TASKPARTS_NUM_WORKERS=4
@@ -94,7 +95,7 @@ check "slices" python3 -c "
 import json, sys
 events = json.load(open(sys.argv[1]))['traceEvents']
 slices = [e for e in events if e['ph'] == 'X']
-assert slices and all(e['dur'] > 0 for e in slices)
+assert all(e['dur'] >= 0 for e in slices) and any(e['dur'] > 0 for e in slices)
 print(len(slices), 'slices')" "$trace"
 rm -f "$trace"
 

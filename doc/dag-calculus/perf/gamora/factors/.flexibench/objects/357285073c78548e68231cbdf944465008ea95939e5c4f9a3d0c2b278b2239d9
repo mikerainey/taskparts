@@ -1,0 +1,1 @@
+{"metrics":[{"seconds":{"rat":[89,250]}},{"idle":{"rat":[964123,100000]},"sched":{"rat":[63513,1000000]},"work":{"rat":[1699963,1000000]}},{"resumes":{"nat":46352},"steals":{"nat":48705},"stolenstacks":{"nat":9339},"stolenvertices":{"nat":39366}},{"verdict":{"text":"ok"}}]}

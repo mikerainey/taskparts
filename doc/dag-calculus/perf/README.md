@@ -36,15 +36,18 @@ github.com/mikerainey/parlaylib) are built by `scripts/build-bench direct`, thro
 |---|---|---|---|
 | `serial` | 67a207b | `doc/native-fork-join/microtaskparts` | `fork2join` runs its two branches as two calls, with no scheduler |
 | `nfj` | 5041c96 | `doc/native-fork-join/microtaskparts` | the native fork join paper's micro taskparts |
-| `dag` | 45653bb | `doc/dag-calculus/microtaskparts` | this paper's micro taskparts, in the rounds fib, ParlayLib and examples |
-| `plain`, `sta`, `log`, `cnt`, `every` | c9534d8 | `doc/dag-calculus/microtaskparts` | this paper's micro taskparts in the rounds cost and factors: with no more flags, `-DMTP_STATS`, `-DMTP_LOG`, `-DMTP_COUNT_FORKS -DMTP_COUNT_DAG`, and `-DMTP_MARK_EVERY_SWITCH` |
+| `dag` | 1144299 | `doc/dag-calculus/microtaskparts` | this paper's micro taskparts, in the rounds fib, ParlayLib and examples |
+| `plain`, `sta`, `log`, `cnt`, `every` | 1144299 | `doc/dag-calculus/microtaskparts` | this paper's micro taskparts in the rounds cost and factors: with no more flags, `-DMTP_STATS`, `-DMTP_LOG`, `-DMTP_COUNT_FORKS -DMTP_COUNT_DAG`, and `-DMTP_MARK_EVERY_SWITCH` |
 
-Commits 45653bb and c9534d8 are on the local branch `perf-dag-sink`, made only for these
-measurements: each is the branch `successor` with this directory's `../microtaskparts` as
-it was when the round ran. c9534d8 follows 45653bb, and differs from it only in the
-instrumented builds (vertices are counted with `MTP_COUNT_DAG`, not with `MTP_STATS`) and
-in a test: a build with no instrumentation compiles to the same code from both. Commit
-5041c96 is on the native fork join paper's measurement branch `perf-slots-direct`.
+Commit 1144299 is on the local branch `perf-dag-regions`, made only for these
+measurements: it is the branch `successor` at de00ccd with this directory's
+`../microtaskparts` as it was when the rounds ran. Commit 5041c96 is on the native fork
+join paper's measurement branch `perf-slots-direct`.
+
+In the rounds fib and ParlayLib, the time of a run includes the start of the worker
+threads, as it does with `nfj`, whose times it is compared with. In the other rounds, a
+run that uses the scheduler is measured as a region, between two snapshots, and the
+threads start before the first.
 
 ## The rounds
 
@@ -82,35 +85,35 @@ On the M5:
 
 | Round | Store | Analysis | Views | Certificate | Cited as |
 |---|---|---|---|---|---|
-| fib | `.flexibench/` | `times` | `times` | `ea36be29d4488a5123da914ef359477a063dcff685377da851a02f05cbc2a1a1` | `flexibench-dag-times` |
-| ParlayLib | `parlay/.flexibench/` | `parlay` | `parlay` | `f8e593bd0f2478b242d722b16f325b323e786828e5de4f88df2d1bb6d6fcbfa2` | `flexibench-dag-parlay` |
-| examples | `examples/.flexibench/` | `pipeline` | `pipeline` | `b32dbfc433d28e45c737dc740af348ae84386454451acb80b105f09c0fd0ea79` | `flexibench-dag-pipeline` |
-| examples | `examples/.flexibench/` | `stencil` | `stencil` | `948d2fed8df741e2e2f9660e55f8976436c11b6ef868df14fd151dad9c730b07` | `flexibench-dag-stencil` |
-| cost | `cost/.flexibench/` | `fib` | `costfib` | `b11377f749f612993cd0485107aee181c30e07a7f008c5ee255aebcd41ae35de` | `flexibench-dag-cost` |
-| cost | `cost/.flexibench/` | `loops` | `costloops` | `23b48d536e9ab162870d1ca035e2f7d9e7da9ef7a70115946f80be8df1ab3a84` | `flexibench-dag-cost` |
-| cost | `cost/.flexibench/` | `each` | `costeach` | `08d1f67d22eb9f7d8a437e477c753c58321fe2f2fc1054f944e3432294096f41` | `flexibench-dag-cost` |
-| cost | `cost/.flexibench/` | `counts` | `cntswitches`, `cntforeign`, `cntretries` | `e04b99c218080a40b944701a0e1263ca63a42feb35ae6682515583e9a728c595` | `flexibench-dag-cost` |
-| factors | `factors/.flexibench/` | `ptimes` | `ptime` | `4ba9724ee020588fed8ea37d4ccee86aebf362d44afa6028fe4f69fbc8d9d093` | `flexibench-dag-factors` |
-| factors | `factors/.flexibench/` | `stimes` | `stime` | `7997f8bcb281dfccd2688f6ea15041826f253366e018e8efc4602a2494ed4ce1` | `flexibench-dag-factors` |
-| factors | `factors/.flexibench/` | `ptotals` | `pwork`, `psched`, `pidle`, `psteals` | `5d7e0ded3f81a493d852c70a4bff675ca6e4e079e6c0d8c8e5d5678ef9d889bd` | `flexibench-dag-factors` |
-| factors | `factors/.flexibench/` | `stotals` | `swork`, `ssched`, `sidle`, `ssteals` | `7f405608eee2c79b57b9df779631785429b0afa9678e655b598d1b2f027be165` | `flexibench-dag-factors` |
+| fib | `.flexibench/` | `times` | `times` | `b209b6bbf01096ea92f9a7b39e67d70f49c48a293497f0658e3923e42ad3acdb` | `flexibench-dag-times` |
+| ParlayLib | `parlay/.flexibench/` | `parlay` | `parlay` | `bd4f58a84dcb675d09862a18fe85b9f145be8e9189ca4e94f0536622ce3b5f28` | `flexibench-dag-parlay` |
+| examples | `examples/.flexibench/` | `pipeline` | `pipeline` | `fbe23c09110664d948307be349dada38503a56d6394c7ea7bd45f1e1c9315d6b` | `flexibench-dag-pipeline` |
+| examples | `examples/.flexibench/` | `stencil` | `stencil` | `49a8446a2999b8a53ef5b8422d0ddb6eefe423385181078cb534994cfa1c0938` | `flexibench-dag-stencil` |
+| cost | `cost/.flexibench/` | `fib` | `costfib` | `83b48a591ebd252c076110c11ca3981d1311b56746acd7fe2b9e51d7269acf6b` | `flexibench-dag-cost` |
+| cost | `cost/.flexibench/` | `loops` | `costloops` | `b6c82a869b546e4a8330d2519ccd150aa7d24f0a3b41eedfee1abbfb935574bd` | `flexibench-dag-cost` |
+| cost | `cost/.flexibench/` | `each` | `costeach` | `466d374205d54f3c9f850129cc83870fd15bb3fd3a57d75665f69379ac066483` | `flexibench-dag-cost` |
+| cost | `cost/.flexibench/` | `counts` | `cntswitches`, `cntforeign`, `cntretries` | `3bb5663c4a3f4c927ecc67935174d679a91edbb0a4f0f62d855555875f4f7497` | `flexibench-dag-cost` |
+| factors | `factors/.flexibench/` | `ptimes` | `ptime` | `db542880270962c7154cc9fd42e8e7659db22c6a49300fecfda2ca64f4b88a5c` | `flexibench-dag-factors` |
+| factors | `factors/.flexibench/` | `stimes` | `stime` | `054f3b3fd916025e29452e1d327c7e0b8c7b1f0a9efea5b6c97680ca629c74c7` | `flexibench-dag-factors` |
+| factors | `factors/.flexibench/` | `ptotals` | `pwork`, `psched`, `pidle`, `psteals` | `0a42bba7fc5306fc020394e954f594f649a84cdac51d54cb1e721e8ee2666a8d` | `flexibench-dag-factors` |
+| factors | `factors/.flexibench/` | `stotals` | `swork`, `ssched`, `sidle`, `ssteals` | `eabb92129ad7bce88fa00d25d838e529eb2035d431532c46b94ec2d729eabbe5` | `flexibench-dag-factors` |
 
 On gamora:
 
 | Round | Store | Analysis | Views | Certificate | Cited as |
 |---|---|---|---|---|---|
-| fib | `gamora/.flexibench/` | `times` | `timesgamora` | `0a3a94f4fbe6a76709468f31bfe19b5332b25c6dd452b5e6de90c39b953b98ac` | `flexibench-dag-times-gamora` |
-| ParlayLib | `gamora/parlay/.flexibench/` | `parlay` | `parlaygamora` | `ac4125768321b4b3098ec118a8980c58cd863ce35f514b2b8d1b0400d057d84a` | `flexibench-dag-parlay-gamora` |
-| examples | `gamora/examples/.flexibench/` | `pipeline` | `pipelinegamora` | `58b7674681dbb26ddc98db092ed8ba2a87e96094216a86be061f3673008a8889` | `flexibench-dag-pipeline-gamora` |
-| examples | `gamora/examples/.flexibench/` | `stencil` | `stencilgamora` | `57d07d9a6b0cf79dad1b33062dc27da726945734e1c17adcd6ff6fb42f614327` | `flexibench-dag-stencil-gamora` |
-| cost | `gamora/cost/.flexibench/` | `fib` | `costfibgamora` | `b8035b44316d2d3e1c60bc5e8f6e6e8ffdd4e542441d30bbcc5508e09f3f0393` | `flexibench-dag-cost-gamora` |
-| cost | `gamora/cost/.flexibench/` | `loops` | `costloopsgamora` | `bb96ba53e5b9d437549876b7325ea02b4766619513aedb8ccf81e4eefc413582` | `flexibench-dag-cost-gamora` |
-| cost | `gamora/cost/.flexibench/` | `each` | `costeachgamora` | `0c9e1004c30ba5a6ec227c0352e6ed2efcc3fe1fb0315ff6c781841e4a25ba30` | `flexibench-dag-cost-gamora` |
-| cost | `gamora/cost/.flexibench/` | `counts` | `cntswitchesgamora`, `cntforeigngamora`, `cntretriesgamora` | `b1fe44cd2db595e2a4d807ec4969a0d85f1b84ada79701b9758dcc566ec5bc46` | `flexibench-dag-cost-gamora` |
-| factors | `gamora/factors/.flexibench/` | `ptimes` | `ptimegamora` | `105a133d3ea775270cf21b9b20cdbd6dc3a26a37580966778f8439904f25fea8` | `flexibench-dag-factors-gamora` |
-| factors | `gamora/factors/.flexibench/` | `stimes` | `stimegamora` | `cc8e5388f27cefb76aac91aa8baebbc7a63ab0cbff7acc1fd648d12d8fa5f1fb` | `flexibench-dag-factors-gamora` |
-| factors | `gamora/factors/.flexibench/` | `ptotals` | `pworkgamora`, `pschedgamora`, `pidlegamora`, `pstealsgamora` | `aa3178bb67bed311ffe05e4b827e279017744dd6e95c0344717f2f3917f9c220` | `flexibench-dag-factors-gamora` |
-| factors | `gamora/factors/.flexibench/` | `stotals` | `sworkgamora`, `sschedgamora`, `sidlegamora`, `sstealsgamora` | `b92a1b4be988642b1f16be8e3f58970c32ae2bc47f73050125ee2cdaaf8b742e` | `flexibench-dag-factors-gamora` |
+| fib | `gamora/.flexibench/` | `times` | `timesgamora` | `4913f5c8ad4d3f4e2adae9ceeabb89c691aac447c6640de7cf8e5d0d515da940` | `flexibench-dag-times-gamora` |
+| ParlayLib | `gamora/parlay/.flexibench/` | `parlay` | `parlaygamora` | `31fd60900e7da6d6ebbdffa502f02d965de33bcceaeea89ae17ad5a5ccc37558` | `flexibench-dag-parlay-gamora` |
+| examples | `gamora/examples/.flexibench/` | `pipeline` | `pipelinegamora` | `5efed602dd4d53c2b2123c7755fa4131a52d7ced9034e882de620fa15e59756f` | `flexibench-dag-pipeline-gamora` |
+| examples | `gamora/examples/.flexibench/` | `stencil` | `stencilgamora` | `43b04bf54bb1289ec5bbcfb12a75662184593fe5249e9b06ec2bc161fa391d1f` | `flexibench-dag-stencil-gamora` |
+| cost | `gamora/cost/.flexibench/` | `fib` | `costfibgamora` | `80dbbc269829a9ef20b2af65fe92d3f7437f5a87e89b2d8d3cd583cb33213ae4` | `flexibench-dag-cost-gamora` |
+| cost | `gamora/cost/.flexibench/` | `loops` | `costloopsgamora` | `3aaef23b80c7a31669158440718616b70f4b63a14e1d71f1cdcd2619d062c63f` | `flexibench-dag-cost-gamora` |
+| cost | `gamora/cost/.flexibench/` | `each` | `costeachgamora` | `ebbece59439296031a9c9b87202bdc5467d78b06b8598bb122d4d75ac226fa42` | `flexibench-dag-cost-gamora` |
+| cost | `gamora/cost/.flexibench/` | `counts` | `cntswitchesgamora`, `cntforeigngamora`, `cntretriesgamora` | `4b7004d1f59e39e028bbd149f87bb592ffdcd47e5bcae5bf353aa7caca1787c1` | `flexibench-dag-cost-gamora` |
+| factors | `gamora/factors/.flexibench/` | `ptimes` | `ptimegamora` | `4df62a073a8b07208ce47db34bb1ccd53e2e5a32fdf0069321b8372c307813ee` | `flexibench-dag-factors-gamora` |
+| factors | `gamora/factors/.flexibench/` | `stimes` | `stimegamora` | `c0db8d5c24ccffd312c45a77e2922f4f9b2fe9f28721144d4c478da0c252bacf` | `flexibench-dag-factors-gamora` |
+| factors | `gamora/factors/.flexibench/` | `ptotals` | `pworkgamora`, `pschedgamora`, `pidlegamora`, `pstealsgamora` | `6ff31d75e5462540ab3c3bc880a33760fa1e0d5dc90c8ab1000702b3f1b10b2a` | `flexibench-dag-factors-gamora` |
+| factors | `gamora/factors/.flexibench/` | `stotals` | `sworkgamora`, `sschedgamora`, `sidlegamora`, `sstealsgamora` | `a2b7990855f50d0642c6933f8e505d513f5197a24858a3fc8355ec23c90a362e` | `flexibench-dag-factors-gamora` |
 
 The cost round has a view per count (`cntswitches`, `cntforeign`, `cntretries`): the
 forks that switched to the scheduler loop, those whose pop found another task, and the
@@ -125,14 +128,14 @@ pipeline and `s` the stencil.
   all 32 CPUs, before and after each round, with frequency boost and SMT on. Each round
   started at 98% or 99% idle.
 - **The M5** was in interactive use that day. A round waits for four consecutive samples
-  of at least 93% idle. The fib, ParlayLib, cost and factors rounds started that way. The
-  examples round did not get them, and was started at 90% idle at the user's request.
-  Its times agree with those of the factors round, which ran the same programs an hour
-  later, except for the pipeline on 10 workers (0.168 s here, 0.155 s there).
+  of at least 93% idle. The fib, ParlayLib, examples and cost rounds started that way.
+  The factors round did not get them within seven minutes, and started with the machine
+  between 91% and 95% idle.
 
-The test suite of `../microtaskparts` (`test.sh`: 830 runs, in six builds with pauses at
+The test suite of `../microtaskparts` (`test.sh`: 866 runs, in six builds with pauses at
 random, the address and thread sanitizers, and all of the instrumentation) passed on both
-machines at c9534d8.
+machines at 1144299, but for one check of the script itself on gamora, since corrected:
+it required every slice of a trace to show a duration above zero.
 
 ## Checking
 
@@ -153,14 +156,19 @@ arithmetic of the paper's prose on them (a speedup, a ratio of two works).
 
 ## Earlier rounds
 
-The rounds here replace those of this directory's history at commit 36c68bd, which
-measured `dag` at 2a3f9db. Since then, a computation ends when a vertex that follows the
-root runs, where a flag was set by the root; the instrumentation was added under build
-flags; and a block of the stencil reads its fields before it counts a neighbor down,
-where it read two of them after (the thread sanitizer reported it on gamora). The times
-of the three rounds that both sets have agree within the variation between rounds.
+The rounds here replace those of this directory's history at commit 0974e21, which
+measured `dag` at 45653bb and c9534d8. Since then, the worker threads outlive a
+computation, a region is measured between two snapshots where a call to `launch` was,
+and the sink tells the caller of `launch` to return as the last thing it does. Between
+the two sets, the median difference of a time is 0.8% on either machine. On gamora, the
+totals no longer add to the cost of a vertex: in the earlier rounds they added about
+25 ns to an iteration of `finish` there.
 
-Rounds before those are described in the README of commit 36c68bd.
+One set of the rounds fib, ParlayLib and examples on the M5 was discarded: another load
+ran on the machine during it, and the times of `nfj`, whose build had not changed, moved
+by up to 20%.
+
+Rounds before those are described in the READMEs of commits 0974e21 and 36c68bd.
 
 Pilot choices, made in uncertified runs on the M5 before the first examples round: the
 pipeline's hash takes eight bytes at a time and its compressor is of the LZ77 family, so

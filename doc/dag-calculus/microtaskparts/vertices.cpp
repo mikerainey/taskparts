@@ -41,7 +41,7 @@ int main(int argc, char **argv) {
   }
   std::vector<vertex *> made(n, nullptr);
   size_t nb_ran = 0;
-  auto start = std::chrono::steady_clock::now();
+  snapshot before = take_snapshot(); // starts the worker threads
   if (std::strcmp(mode, "forks") == 0) {
     launch([&] { loop(0, n, [&](size_t i) { made[i] = nullptr; }); });
   } else if (std::strcmp(mode, "finish") == 0) {
@@ -70,9 +70,8 @@ int main(int argc, char **argv) {
     std::fprintf(stderr, "vertices: unknown mode %s\n", mode);
     return 2;
   }
-  double exectime = std::chrono::duration<double>(
-                        std::chrono::steady_clock::now() - start)
-                        .count();
+  stats st = stats_between(before, take_snapshot());
+  double exectime = st.exectime;
   size_t nb_made = 0;
   for (vertex *v : made) {
     nb_made += (v != nullptr) ? 1 : 0;
@@ -85,9 +84,7 @@ int main(int argc, char **argv) {
   std::printf("workers   %zu\n", get_nb_workers());
   std::printf("exectime  %.3f s\n", exectime);
   std::printf("each      %.1f ns\n", 1e9 * exectime / (double)n);
-#if defined(MTP_STATS)
-  print_stats(stdout, launch_stats());
-#endif
+  print_stats(stdout, st);
   std::printf("check     %s\n", ok ? "ok" : "WRONG");
   return ok ? 0 : 1;
 }

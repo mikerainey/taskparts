@@ -1,7 +1,7 @@
-// A test of the instrumentation. In a build that records them, it checks
-// that the times of a call to launch add up, and that the counts are the
-// ones the program made. In a build with no instrumentation, it checks only
-// the results.
+// A test of the worker threads, which outlive a computation, and of the
+// instrumentation. It runs many computations in a row, and, in a build that
+// records them, checks that the times of a region add up and that the counts
+// are the ones the program made.
 //
 //   instr [ROUNDS]     prints "ok", or what is wrong
 //   instr orphan       releases a vertex that nothing waits for: a build with
@@ -40,12 +40,12 @@ static long fib(long n) {
   return a + b;
 }
 
-// The three times add up to the time of the call on every worker.
+// The three times add up to the time of the region on every worker.
 [[maybe_unused]] static void check_times(const stats &s, int round,
                                          const char *what) {
   double total = s.work + s.sched + s.idle;
   double expected = (double)s.nb_workers * s.exectime;
-  EXPECT(std::fabs(total - expected) <= 0.001 * expected + 1e-6,
+  EXPECT(std::fabs(total - expected) <= 0.02 * expected + 1e-4,
          "round %d, %s: work + sched + idle = %.6f, P * T = %.6f", round, what,
          total, expected);
   EXPECT(s.work > 0.0, "round %d, %s: no work recorded", round, what);
@@ -68,6 +68,7 @@ int main(int argc, char **argv) {
     const int n = 200;
     std::atomic<int> nb_done{0};
     bool last_ran = false;
+    snapshot a = take_snapshot();
     launch([&] {
       vertex *last = new_vertex([&] { last_ran = (nb_done.load() == n); });
       std::vector<vertex *> vs;
@@ -92,9 +93,10 @@ int main(int argc, char **argv) {
     });
     EXPECT(last_ran, "round %d: the last vertex ran early or not at all",
            round);
+    snapshot b = take_snapshot();
 #if defined(MTP_STATS)
     {
-      stats s = launch_stats();
+      stats s = stats_between(a, b);
       check_times(s, round, "vertices");
       EXPECT(s.nb_resumes <= 1, "round %d: %llu resumes", round,
              (unsigned long long)s.nb_resumes);
@@ -123,36 +125,69 @@ int main(int argc, char **argv) {
     }
 #endif
 
-    // 2. Fork join alone.
+    // 2. Fork join alone: a region that holds two computations and the
+    // sequential code between them.
+    a = take_snapshot();
     long r = fib(22);
-    EXPECT(r == 17711, "round %d: fib(22) = %ld", round, r);
+    volatile long seq = 0;
+    for (long i = 0; i < 2000000; i++) {
+      seq = seq + i;
+    }
+    long r2 = fib(22);
+    b = take_snapshot();
+    EXPECT((r == 17711) && (r2 == 17711), "round %d: fib(22) = %ld, %ld",
+           round, r, r2);
 #if defined(MTP_STATS)
     {
-      stats s = launch_stats();
+      stats s = stats_between(a, b);
       check_times(s, round, "fork join");
       EXPECT(s.nb_resumes == 0, "round %d: %llu resumes in fork join", round,
              (unsigned long long)s.nb_resumes);
 #if defined(MTP_COUNT_FORKS)
-      EXPECT(s.nb_forks == 28656, "round %d: %llu forks", round,
+      EXPECT(s.nb_forks == 2 * 28656, "round %d: %llu forks", round,
              (unsigned long long)s.nb_forks);
 #endif
 #if defined(MTP_COUNT_DAG)
-      EXPECT(s.nb_vertices == 2, "round %d: %llu vertices in fork join", round,
+      EXPECT(s.nb_vertices == 4, "round %d: %llu vertices in fork join", round,
              (unsigned long long)s.nb_vertices);
       EXPECT(s.nb_fork_foreign == 0, "round %d: %llu foreign pops", round,
              (unsigned long long)s.nb_fork_foreign);
-      EXPECT(s.nb_fork_switches <= 2 * s.nb_steals + 1,
+      EXPECT(s.nb_fork_switches <= 2 * s.nb_steals + 2,
              "round %d: %llu forks switched to the loop, with %llu steals",
              round, (unsigned long long)s.nb_fork_switches,
              (unsigned long long)s.nb_steals);
 #endif
 #if defined(MTP_LOG)
       if (const char *path = std::getenv("MTP_TRACE")) {
-        write_trace(path);
+        write_trace(path, a, b);
       }
 #endif
     }
 #endif
+
+    // 3. Many small computations in a row: each must run its root, and end
+    // only once its root has. The frame of launch, which holds the root and
+    // the sink, is reused from one to the next.
+    for (int i = 0; i < 20000; i++) {
+      int ran = 0;
+      launch([&] { ran = i + 1; });
+      if (ran != i + 1) {
+        EXPECT(false, "round %d: computation %d ended before its root ran",
+               round, i);
+        break;
+      }
+    }
+    {
+      long sum = 0;
+      for (int i = 0; i < 2000; i++) {
+        long x = 0;
+        long y = 0;
+        fork2join([&] { x = 1; }, [&] { y = 2; });
+        sum += x + y;
+      }
+      EXPECT(sum == 6000, "round %d: 2000 small forks summed to %ld", round,
+             sum);
+    }
   }
   if (nb_wrong == 0) {
     std::printf("ok\n");

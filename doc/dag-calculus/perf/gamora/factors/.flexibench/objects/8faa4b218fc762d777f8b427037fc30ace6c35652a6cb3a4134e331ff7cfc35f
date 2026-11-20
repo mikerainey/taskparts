@@ -1,0 +1,8 @@
+seidel planes n=1024 block=64 steps=400
+checksum  750.952100879
+workers   16
+exectime  0.200 s
+states    work 2.973455 sched 0.005826 idle 0.219120 s
+tasks     steals 47576 stolen_vertices 0 stolen_stacks 0 resumes 0
+stacks    mapped 158 from_pool 2794
+check     ok

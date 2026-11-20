@@ -1,1 +1,0 @@
-{"metrics":[{"seconds":{"rat":[71,125]}},{"input":{"nat":38},"value":{"nat":39088169}},{"edges":{"nat":1},"foreign":{"nat":0},"late":{"nat":0},"migrations":{"nat":0},"retries":{"nat":0},"suspends":{"nat":0},"switches":{"nat":0},"vertices":{"nat":2},"waits":{"nat":0}}]}

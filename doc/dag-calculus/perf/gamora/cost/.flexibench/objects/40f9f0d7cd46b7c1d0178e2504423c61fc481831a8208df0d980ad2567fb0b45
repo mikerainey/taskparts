@@ -1,0 +1,1 @@
+{"metrics":[{"seconds":{"rat":[393,1000]}},{"ns":{"rat":[983,10]}},{"verdict":{"text":"ok"}},{"edges":{"nat":3999874},"foreign":{"nat":0},"late":{"nat":127},"migrations":{"nat":142802},"retries":{"nat":81},"suspends":{"nat":3999873},"switches":{"nat":0},"vertices":{"nat":4000002},"waits":{"nat":4000000}}]}

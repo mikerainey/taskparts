@@ -194,6 +194,14 @@ int main(int argc, char **argv) {
   std::vector<double> data((size_t)N * N);
   grid = data.data();
   initialize(grid);
+  // The region that is measured. A version that uses the scheduler takes a
+  // snapshot on each side, and the first starts the worker threads, outside
+  // the region. The serial version starts no thread.
+  bool parallel = (std::strcmp(version, "serial") != 0);
+  snapshot before;
+  if (parallel) {
+    before = take_snapshot();
+  }
   auto start = std::chrono::steady_clock::now();
   if (std::strcmp(version, "serial") == 0) {
     seidel_serial(nb_steps);
@@ -207,6 +215,11 @@ int main(int argc, char **argv) {
   }
   std::chrono::duration<double> elapsed =
       std::chrono::steady_clock::now() - start;
+  stats st;
+  if (parallel) {
+    st = stats_between(before, take_snapshot());
+    elapsed = std::chrono::duration<double>(st.exectime);
+  }
   double sum = 0.0;
   for (double x : data) {
     sum += x;
@@ -215,11 +228,9 @@ int main(int argc, char **argv) {
   std::printf("checksum  %.9f\n", sum);
   std::printf("workers   %zu\n", get_nb_workers());
   std::printf("exectime  %.3f s\n", elapsed.count());
-#if defined(MTP_STATS)
-  if (std::strcmp(version, "serial") != 0) {
-    print_stats(stdout, launch_stats());
+  if (parallel) {
+    print_stats(stdout, st);
   }
-#endif
   if (check) {
     std::vector<double> reference((size_t)N * N);
     grid = reference.data();

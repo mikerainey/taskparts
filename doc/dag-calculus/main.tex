@@ -375,11 +375,11 @@ wait(v : task*) -> void {
 
 launch(f : () -> void) -> void {
   root = vertex{body = f, pending = 1}
-  sink = vertex{body = () -> { done = true },
-    pending = 1}
+  sink = vertex{pending = 1}  // sets done, last
   new_edge(&root, &sink)
   release(&sink); release(&root)
-  start the workers, and run loop() }
+  done = false
+  loop() }  // as worker 0
 \end{lstlisting}
 \hrule
 \caption{Fork join, the operations of DAG calculus, and the start of a
@@ -457,16 +457,26 @@ fork, or the body of a vertex.
 \lstinline|launch($f$)| runs a whole computation.
 %
 It makes two vertices: the \emph{root}, whose body is $f$, and the
-\emph{sink}, whose body tells the workers to stop, with an edge from
-the root to the sink.
+\emph{sink}, which has no body, with an edge from the root to the
+sink.
+%
+The thread that calls \lstinline|launch| is a worker, and runs its
+loop until the sink has finished.
+%
+The other workers' threads start at the first call and run their
+loops until the program exits, so between computations they find
+nothing to steal.
 %
 So a computation ends the way any vertex follows another, and the
 scheduler has no case for the root, as in
 TaskPaRTS~\cite{taskparts}.
 %
-The workers stop once the sink has run, which is the right moment
-only if the root returns after everything it started
-(Section~\ref{sec:continuations}).
+The sink sets \lstinline|done| as the last thing it does, after it
+has closed its out-set, because \lstinline|launch| may return at
+once, and the root and the sink live in its frame.
+%
+That is the right moment to return only if the root returns after
+everything it started (Section~\ref{sec:continuations}).
 
 \paragraph{The scheduler}
 %
@@ -559,7 +569,8 @@ returns, every vertex that it started, directly or not, has
 finished.
 %
 Applied to the root, this is what \lstinline|launch| relies on: when
-the sink runs, the computation is over, and the workers can stop.
+the sink runs, the computation is over: no vertex is ready or running,
+and \lstinline|launch| can return.
 
 Two points need care.
 %
@@ -1114,9 +1125,9 @@ where races are decided, and under the address and thread sanitizers,
 which the scheduler tells about every switch between stacks.
 %
 To see whether the tests can detect the errors they aim at, we put
-fifteen such errors into the scheduler, one at a time.
+sixteen such errors into the scheduler, one at a time.
 %
-The tests detect all fifteen.
+The tests detect all sixteen.
 
 \bibliographystyle{abbrv}
 \bibliography{main,perf/times,perf/parlay/parlay,perf/examples/examples,perf/gamora/timesgamora,perf/gamora/parlay/parlaygamora,perf/gamora/examples/examplesgamora,perf/cost/cost,perf/factors/factors,perf/gamora/cost/costgamora,perf/gamora/factors/factorsgamora}
@@ -1327,9 +1338,8 @@ ParlayLib~\cite{blelloch20parlaylib}, which builds its parallel loops
 from binary fork join: two sorts, a convex hull, and a breadth-first
 search.
 
-On both machines, the two versions are within 7\% of each other on
-every program and at every number of workers, in either direction,
-and within 3\% in all but four of the 80 comparisons.
+On both machines, the two versions are within 4\% of each other on
+every program and at every number of workers, in either direction.
 
 \begin{table}
 \setlength{\tabcolsep}{3pt}
@@ -1400,8 +1410,8 @@ steps (8192 by 8192 cells, 10 steps), and a small one for many (1024
 by 1024, 400 steps).
 %
 On the M5, the DAG version is more than three times faster than the
-serial program on 4 workers and between five and six times faster on
-10, on both grids.
+serial program on 4 workers and about six times faster on 10, on
+both grids.
 %
 It is faster than the fork-join version at every number of workers,
 by a wider margin on the large grid.
@@ -1445,10 +1455,6 @@ This appendix says what of that carries over to our scheduler, what
 vertices change, and what the records say about our examples.
 
 The instrumentation is compiled only on request.
-%
-Without it, the scheduler is the one of the main text: for
-\lstinline|fib| and for both examples, the compiled code is the same
-instruction for instruction, apart from line numbers in an assertion.
 
 \paragraph{What carries over}
 %
@@ -1516,27 +1522,30 @@ and what vertices and edges cost shows up where the cost of forks
 does: in the work of a run on one worker, beside the time of the
 serial program.
 
-\paragraph{A region is one computation}
+\paragraph{Measuring a region}
 %
-What is measured is one call to \lstinline|launch|, from before its
-threads start until they have stopped.
+A program measures a region of its execution as in the other paper:
+it takes a snapshot of the workers' records before the region and
+another after it, between calls to \lstinline|launch|, and
+subtracts.
 %
-The recorders are made with the workers and read once the threads
-have stopped, so nothing is read while it is written.
+Nothing is reset, and no worker is stopped.
 %
-The other paper measures any region of a program, between two
-snapshots, which takes worker threads that outlive a computation, and
-with them the guarantee that nothing is ready or running between two
-computations.
+A snapshot waits until every other worker shows itself idle, and
+reads the records then.
 %
-The rule of Section~\ref{sec:continuations} gives that guarantee, but
-we have not built on it: keeping the threads would change the
-scheduler, and we did not want to change it in order to measure it.
+That is sound only if an idle worker stays idle, which is to say only
+if nothing is ready or running between two computations.
 %
-The price is that the start and the stop of the threads fall inside
-the region, and that a region cannot span two computations.
+Fork join gives that for free.
 %
-Each of our examples is one computation.
+Here it is the rule of Section~\ref{sec:continuations} that gives it:
+when \lstinline|launch| returns, every vertex has finished, so no
+deque holds a task until the next call.
+%
+A region may span several computations and the sequential code
+between them, which is recorded as the work of one worker and the
+idle time of the others.
 
 \paragraph{Counts}
 %
@@ -1588,14 +1597,12 @@ On one worker, a vertex costs about \ceach{plain 1}\,ns on the M5 and
 the finish, where a fork that is not stolen costs about 2\,ns and
 5\,ns~\cite{flexibench-dag-cost,flexibench-dag-cost-gamora}.
 
-On the M5, the totals add nothing to a vertex, and recording every
-return to the loop adds between 1 and 2\,ns.
+On both machines, the totals add less than 1\,ns to a vertex.
 %
-On the Ryzen, the totals add about 4\,ns to a vertex that is waited
-for and about 25\,ns to an iteration of the finish, and recording
-every return adds about 10\,ns more.
+Recording every return to the loop adds up to 3\,ns on the M5.
 %
-We have not established why the totals cost anything there.
+On the Ryzen it adds about 5\,ns to a vertex that is waited for and
+about 16\,ns to an iteration of the finish.
 
 The finish does not speed up.
 %
@@ -1690,14 +1697,14 @@ Its work on one worker is that of the serial program, so the vertex
 and the suspended stack of each chunk cost nothing that shows.
 
 The stencil loses almost nothing to idle time, in either version: the
-workers work for about nine tenths of their time or more in every
+workers work for nearly nine tenths of their time or more in every
 row of the two tables.
 %
 What it loses, it loses to work that grows with the number of
 workers.
 %
 On the large grid, the work of the DAG version on all the cores is
-about 1.6 times its work on one core on the M5, and about 2.3 times
+about 1.6 times its work on one core on the M5, and about 2.2 times
 on the Ryzen.
 %
 The fork-join version differs from it in work, not in waiting: on all

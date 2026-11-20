@@ -1,0 +1,8 @@
+pipeline dag chunks=40000 bytes=16384 throttle=56
+output    193837335 bytes, 17320 distinct chunks
+workers   14
+exectime  0.292 s
+states    work 1.336418 sched 0.011209 idle 2.740982 s
+tasks     steals 42763 stolen_vertices 37484 stolen_stacks 5279 resumes 41934
+stacks    mapped 140 from_pool 17311
+check     ok
