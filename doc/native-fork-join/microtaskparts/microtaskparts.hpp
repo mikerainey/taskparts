@@ -60,7 +60,7 @@ inline size_t page_szb() {
 // task that overflows its stack crashes instead of overwriting memory. Mapping
 // and unmapping a stack are system calls that slow down every thread of the
 // process, so the stacks of finished tasks are kept for reuse (take_stack and
-// put_stack, below).
+// put_stack, after the workers).
 inline char *new_stack() {
   void *p = mmap(nullptr, page_szb() + stack_szb, PROT_READ | PROT_WRITE,
                  MAP_PRIVATE | MAP_ANON, -1, 0);
@@ -78,31 +78,18 @@ inline void delete_stack(char *stack) {
 }
 
 // The stacks of stolen tasks that have finished, kept for the next stolen
-// tasks. All workers share them, so that no more stacks are mapped than were
-// ever in use at once. A lock suffices: only a steal and the join of a stolen
-// task come here.
+// tasks. All workers share this pool, under a lock. Each worker also keeps a
+// few stacks of its own (below), and comes here only when it has none to
+// take or no room to keep one: with the pool alone, a program that steals
+// hundreds of thousands of times a second spends its time waiting for the
+// lock. A thief that always finishes before its victim reaches the join
+// takes stacks and never returns one, and its victim the reverse, which is
+// why the workers' own stacks are not enough without the pool.
 inline std::mutex stack_pool_lock;
 inline std::vector<char *> stack_pool;
 
-// A stack for a stolen task: one from the pool, or a fresh one.
-inline char *take_stack() {
-  {
-    std::lock_guard<std::mutex> guard(stack_pool_lock);
-    if (!stack_pool.empty()) {
-      char *stack = stack_pool.back();
-      stack_pool.pop_back();
-      return stack;
-    }
-  }
-  return new_stack();
-}
-
-// Return the stack of a finished stolen task to the pool. Kept out of line,
-// like launch: it runs only after a steal.
-__attribute__((noinline)) inline void put_stack(char *stack) {
-  std::lock_guard<std::mutex> guard(stack_pool_lock);
-  stack_pool.push_back(stack);
-}
+// How many released stacks a worker keeps for itself.
+static constexpr size_t stack_cache_cap = 16;
 
 // The second branch of a call to fork2join, which thieves may steal. It
 // lives in the frame of that call too.
@@ -217,6 +204,9 @@ struct alignas(64) worker {
   task *starting = nullptr;
   join *reached = nullptr;
   uint64_t nb_steal_attempts = 0; // seeds the choice of victim
+  // Released stacks that this worker keeps; only this worker touches them.
+  char *stacks[stack_cache_cap];
+  size_t nb_stacks = 0;
   abp deque;
 };
 
@@ -241,6 +231,36 @@ __attribute__((noinline)) inline size_t get_my_id() {
 inline size_t get_nb_workers() { return nb_workers; }
 
 inline worker &me() { return workers[get_my_id()]; }
+
+// A stack for a task that w stole: one of its own, or one from the pool, or
+// a fresh one.
+inline char *take_stack(worker &w) {
+  if (w.nb_stacks > 0) {
+    return w.stacks[--w.nb_stacks];
+  }
+  {
+    std::lock_guard<std::mutex> guard(stack_pool_lock);
+    if (!stack_pool.empty()) {
+      char *stack = stack_pool.back();
+      stack_pool.pop_back();
+      return stack;
+    }
+  }
+  return new_stack();
+}
+
+// Release the stack of a finished stolen task: the calling worker keeps it,
+// or hands it to the pool. Kept out of line, like launch: it runs only after
+// a steal.
+__attribute__((noinline)) inline void put_stack(char *stack) {
+  worker &w = me();
+  if (w.nb_stacks < stack_cache_cap) {
+    w.stacks[w.nb_stacks++] = stack;
+    return;
+  }
+  std::lock_guard<std::mutex> guard(stack_pool_lock);
+  stack_pool.push_back(stack);
+}
 
 // A 64-bit hash.
 inline uint64_t hash(uint64_t u) {
@@ -308,7 +328,7 @@ inline void worker_loop(task *first) {
       }
     } else if ((t != nullptr) ||
                ((nb_workers > 1) && ((t = steal(w)) != nullptr))) {
-      t->stack = take_stack();
+      t->stack = take_stack(w);
       context_init(t->k, t->stack, stack_szb, &task_entry);
       w.starting = t;
       next = &t->k;
@@ -348,6 +368,11 @@ template <typename F> __attribute__((noinline)) void launch(F &&f) {
     t.join();
   }
   delete_stack(root.stack);
+  for (size_t i = 0; i < nb_workers; i++) {
+    for (size_t k = 0; k < workers[i].nb_stacks; k++) {
+      delete_stack(workers[i].stacks[k]);
+    }
+  }
   for (char *stack : stack_pool) {
     delete_stack(stack);
   }

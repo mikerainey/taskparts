@@ -1,0 +1,1 @@
+{"args":["16384000"],"env":{"PARLAY_NUM_THREADS":"16","TASKPARTS_NUM_WORKERS":"16"},"program":"/Users/rainey/Work/taskparts-bench-paper/builds/parlay-1e1d0b8db0c2-direct-99d3b7169e93-doc_native-fork-join_microtaskparts-karatsuba/karatsuba"}

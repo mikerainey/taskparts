@@ -1,0 +1,1 @@
+{"args":["16384000"],"env":{"PARLAY_NUM_THREADS":"1","TASKPARTS_NUM_WORKERS":"1"},"program":"/home/rainey/Work/taskparts-bench-paper/builds/parlay-1e1d0b8db0c2-homegrown-karatsuba/karatsuba"}

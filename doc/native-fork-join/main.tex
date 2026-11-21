@@ -42,6 +42,83 @@
 \input{perf/gamora/parlay/parlaygamora}
 \newcommand{\secondtime}[2]{\fbval{timesgamora}{#1}{P = #2}}
 \newcommand{\secondparlay}[2]{\fbval{parlaygamora}{#1}{#2}}
+% Tables tbl:suite and tbl:suitegamora have a row for each program
+% of \suiterows. \suiterow{NAME}{KEY}{INPUT} is one row, where KEY names
+% the program in the views; each table defines it for its view and its
+% worker counts through \suitecells{VIEW}{KEY}{MIDDLE}{TOP}.
+\input{perf/suite/suite}
+\input{perf/gamora/suite/suitegamora}
+\input{perf/suite/karatsuba/suitek}
+\input{perf/gamora/suite/karatsuba/suitekgamora}
+\newcommand{\suiterow}[3]{}
+\newcommand{\suiterowk}[2]{}
+\newcommand{\suitecells}[4]{\fbval{#1}{#2}{serial} &
+  \fbval{#1}{#2}{direct 1} & \fbval{#1}{#2}{direct #3} & \fbval{#1}{#2}{direct #4} &
+  \fbval{#1}{#2}{homegrown 1} & \fbval{#1}{#2}{homegrown #3} & \fbval{#1}{#2}{homegrown #4}}
+\newcommand{\suiterows}{%
+\suiterow{2d\_linear\_program}{2d_linear_program}{65\,536\,000}%
+\suiterow{3d\_range}{3d_range}{2\,048\,000}%
+\suiterow{bigint\_add}{bigint_add}{8\,388\,608\,000}%
+\suiterow{box\_kdtree}{box_kdtree}{1\,024\,000}%
+\suiterow{cartesian\_tree}{cartesian_tree}{131\,072\,000}%
+\suiterow{cycle\_count}{cycle_count}{16\,384\,000}%
+\suiterow{delaunay}{delaunay}{256\,000}%
+\suiterow{fast\_fourier\_transform}{fast_fourier_transform}{65\,536\,000}%
+\suiterow{filter}{filter}{524\,288\,000}%
+\suiterow{find\_if}{find_if}{1\,024\,000\,000}%
+\suiterow{flatten}{flatten}{262\,144\,000}%
+\suiterow{huffman\_tree}{huffman_tree}{8\,192\,000}%
+\suiterowk{karatsuba}{16\,384\,000}%
+\suiterow{kmeans\_pp}{kmeans_pp}{64\,000}%
+\suiterow{knn}{knn}{512\,000}%
+\suiterow{knuth\_shuffle}{knuth_shuffle}{16\,384\,000}%
+\suiterow{kth\_smallest}{kth_smallest}{262\,144\,000}%
+\suiterow{linefit}{linefit}{524\,288\,000}%
+\suiterow{mcss}{mcss}{1\,048\,576\,000}%
+\suiterow{mergesort}{mergesort}{32\,768\,000}%
+\suiterow{minimum\_edit\_distance}{minimum_edit_distance}{64\,000}%
+\suiterow{nbody\_fmm}{nbody_fmm}{64\,000}%
+\suiterow{oct\_tree}{oct_tree}{8\,192\,000}%
+\suiterow{primes}{primes}{524\,288\,000}%
+\suiterow{quickhull}{quickhull}{131\,072\,000}%
+\suiterow{quicksort}{quicksort}{16\,384\,000}%
+\suiterow{range\_min}{range_min}{16\,384\,000}%
+\suiterow{ray\_trace}{ray_trace}{128\,000}%
+\suiterow{rectangle\_intersection}{rectangle_intersection}{512\,000}%
+\suiterow{reduce}{reduce}{1\,024\,000\,000}%
+\suiterow{samplesort}{samplesort}{32\,768\,000}%
+\suiterow{scan}{scan}{262\,144\,000}%
+\suiterow{spectral\_separator}{spectral_separator}{64\,000}%
+\addlinespace%
+\suiterow{bellman\_ford}{bellman_ford}{R-MAT, $2^{22}$}%
+\suiterow{betweenness\_centrality}{betweenness_centrality}{R-MAT, $2^{22}$}%
+\suiterow{BFS}{BFS}{R-MAT, $2^{23}$}%
+\suiterow{BFS\_ligra}{BFS_ligra}{R-MAT, $2^{24}$}%
+\suiterow{bucketed\_dijkstra}{bucketed_dijkstra}{R-MAT, $2^{22}$}%
+\suiterow{filter\_kruskal}{filter_kruskal}{R-MAT, $2^{21}$}%
+\suiterow{graph\_color}{graph_color}{R-MAT, $2^{21}$}%
+\suiterow{kcore}{kcore}{R-MAT, $2^{21}$}%
+\suiterow{kruskal}{kruskal}{R-MAT, $2^{20}$}%
+\suiterow{le\_list}{le_list}{R-MAT, $2^{20}$}%
+\suiterow{low\_diameter\_decomposition}{low_diameter_decomposition}{R-MAT, $2^{24}$}%
+\suiterow{maximal\_independent\_set}{maximal_independent_set}{R-MAT, $2^{24}$}%
+\suiterow{maximal\_matching}{maximal_matching}{R-MAT, $2^{23}$}%
+\suiterow{pagerank}{pagerank}{R-MAT, $2^{21}$}%
+\suiterow{push\_relabel\_max\_flow}{push_relabel_max_flow}{R-MAT, $2^{18}$}%
+\suiterow{set\_cover}{set_cover}{R-MAT, $2^{21}$}%
+\suiterow{spanning\_tree}{spanning_tree}{R-MAT, $2^{23}$}%
+\suiterow{triangle\_count}{triangle_count}{R-MAT, $2^{19}$}%
+\addlinespace%
+\suiterow{tokens}{tokens}{\texttt{wikipedia250M.txt}}%
+\suiterow{suffix\_array}{suffix_array}{\texttt{chr22.dna}}%
+\suiterow{suffix\_tree}{suffix_tree}{\texttt{chr22.dna}}%
+\suiterow{longest\_common\_prefix}{longest_common_prefix}{\texttt{chr22.dna}}%
+\suiterow{longest\_repeated\_substring}{longest_repeated_substring}{\texttt{chr22.dna}}%
+\suiterow{radix\_tree}{radix_tree}{\texttt{wikipedia250M.txt}}%
+\suiterow{rabin\_karp}{rabin_karp}{\texttt{wikisamp.xml}, ``the''}%
+\suiterow{knuth\_morris\_pratt}{knuth_morris_pratt}{\texttt{wikipedia250M.txt}, ``the''}%
+\suiterow{word\_counts}{word_counts}{\texttt{etext99}, 10}%
+}
 
 \newcommand{\fo}{\mathtt{f_1}}
 \newcommand{\ft}{\mathtt{f_2}}
@@ -479,9 +556,9 @@ A fork whose second branch is stolen uses one fresh stack, of a
 fixed size, which is touched only as deep as $\ft$ recurses, and is
 released when the parent returns from \lstinline|fork2join|.
 %
-Micro taskparts keeps released stacks in a pool that the workers
-share, and maps a new stack only when the pool is empty
-(Appendix~\ref{sec:perf}).
+Micro taskparts keeps released stacks for reuse: each worker keeps a
+few of its own, the workers share a pool of the rest, and a new stack
+is mapped only when both are empty (Appendix~\ref{sec:perf}).
 %
 It also makes four context switches: to the stolen task and back to
 the thief's loop, and from the parent to a loop and back to the parent.
@@ -538,7 +615,7 @@ The directory \path{doc/parlay-adapter} lets programs written with
 ParlayLib~\cite{blelloch20parlaylib} run on it.
 
 \bibliographystyle{abbrv}
-\bibliography{main,perf/times,perf/parlay/parlay,perf/gamora/timesgamora,perf/gamora/parlay/parlaygamora}
+\bibliography{main,perf/times,perf/parlay/parlay,perf/gamora/timesgamora,perf/gamora/parlay/parlaygamora,perf/suite/suite,perf/gamora/suite/suitegamora,perf/suite/karatsuba/suitek,perf/gamora/suite/karatsuba/suitekgamora}
 
 \clearpage
 \appendix
@@ -776,12 +853,13 @@ every run and checked every result~\cite{flexibench-parlay}.
 On one worker, micro taskparts takes at most 2\% longer than no
 scheduler on three of the programs.
 %
-The search takes about 18\% longer, and 14\% longer with ParlayLib's
+The search takes about 18\% longer, and 13\% longer with ParlayLib's
 scheduler, so most of the cost lies in how the program is written for
 parallelism, not in its forks.
 %
-On 4 workers and on 10, the two schedulers are within 2\% of each other
-on every program.
+On 4 workers and on 10, the two schedulers are within 1\% of each other
+on three of the programs, and micro taskparts takes 7\% and 9\% less
+time on the search.
 %
 They differ in more than how they join: when a worker of ParlayLib's
 scheduler finds nothing to steal, it sleeps, whereas one of micro
@@ -820,9 +898,8 @@ On 16 workers the program is more than 14 times faster than on one.
 On one worker, the four ParlayLib programs take at most about 10\%
 longer with either scheduler than with none.
 %
-On 16 workers, micro taskparts takes at most 4\% longer than
-ParlayLib's scheduler on three of the programs, and 9\% less on
-mergesort.
+On 16 workers, micro taskparts takes at most 1\% longer than
+ParlayLib's scheduler on every program, and 9\% less on mergesort.
 
 \paragraph{Reusing stacks}
 %
@@ -840,11 +917,26 @@ and operating systems make such changes one at a
 time~\cite{yang2016fibril}, so a steal on one worker delays the
 others.
 %
-So micro taskparts now keeps released stacks in a pool that the
-workers share, and unmaps them when its workers stop.
+So micro taskparts keeps released stacks, and unmaps them when its
+workers stop.
 %
-A lock protects the pool: only a steal and the join of a stolen task
-take it.
+Each worker keeps up to 16 of the stacks that it releases, and takes a
+stack from them first.
+%
+The worker that releases a stack is not always the one that took it,
+so the workers also share a pool, which a lock protects: a worker
+that already keeps 16 stacks releases into the pool, and a worker that
+keeps none takes from it.
+
+The workers' own stacks matter to programs that steal often.
+%
+With the shared pool alone, every steal and every join of a stolen task
+takes the lock.
+%
+In a round measured that way, spectral\_separator, a program of
+Appendix~\ref{sec:suite}, took 53\% longer with micro taskparts than
+with ParlayLib's scheduler on the 16 cores of the Ryzen, and 92\%
+longer on 32 workers; it now takes 12\% and 6\% longer.
 
 \paragraph{A lock-free deque}
 %
@@ -1122,8 +1214,8 @@ the page is first touched, so a generous $Z$ costs address space rather
 than memory.
 %
 But a page of a stack, once touched, stays in memory at least until the
-stack is unmapped, and micro taskparts unmaps the stacks in its pool
-only when its workers stop.
+stack is unmapped, and micro taskparts unmaps the stacks that it
+keeps only when its workers stop.
 
 \paragraph{Refinements}
 %
@@ -1233,5 +1325,156 @@ that is not stolen runs on the stack of its parent.
 So a computation allocates one stack per steal, rather than one per
 fork, and work stealing makes $O(PT_\infty)$ steal attempts in
 expectation~\cite{blumofele99,arora98}.
+
+\section{The ParlayLib examples as a whole}
+\label{sec:suite}
+
+Tables~\ref{tbl:suite} and~\ref{tbl:suitegamora} extend the comparison
+of Table~\ref{tbl:parlay} to 60 of the 63 example programs distributed
+with ParlayLib~\cite{blelloch20parlaylib}, on the M5 and on the
+Ryzen~\cite{flexibench-suite,flexibench-suitegamora}.
+%
+The builds are the same three: no scheduler, micro taskparts, and
+ParlayLib's own scheduler.
+%
+On the Ryzen, the columns are one worker, one worker per core, and one
+per hardware thread.
+
+\paragraph{Inputs}
+%
+A program takes a size, or reads a file.
+%
+The graph programs read symmetric R-MAT
+graphs~\cite{chakrabarti2004rmat} with about 20 edges per vertex, and
+the text programs read texts of the Problem Based Benchmark
+Suite~\cite{shun2012pbbs}.
+%
+The files are generated or fetched once, and every run reads them, so
+a graph or text program has the same input in all its runs, on both
+machines.
+%
+We chose each size on the Ryzen: we doubled it until one run of the
+algorithm with no scheduler took at least a second, or until the
+process used a quarter of the machine's memory.
+%
+The M5 runs the same sizes.
+%
+Six programs stay under a second on the Ryzen: reduce, find\_if,
+flatten and linefit because of memory, and radix\_tree and
+knuth\_morris\_pratt because we have no longer text.
+
+\paragraph{Programs left out}
+%
+We left out three programs.
+%
+The drivers of hash\_map and decision\_tree\_c45 time several stages
+in each repetition, which our analysis does not add up.
+%
+We have no input for lasso\_regression.
+
+\paragraph{Method}
+%
+Each program and build ran as three processes, interleaved, and a
+process runs its algorithm up to 20 times.
+%
+A time in the tables is the median over the three processes of the
+median of a process's runs.
+%
+Flexibench checked the output of every process against the output that
+all builds agree on, for the worker counts of the tables and for two
+more, one of them above the number of hardware threads.
+%
+Every check passed.
+%
+The round of karatsuba is a separate one, with a later commit of
+ParlayLib that corrects an out-of-bounds read in the
+program~\cite{flexibench-suitek,flexibench-suitekgamora}.
+
+\paragraph{One worker}
+%
+On one worker of the Ryzen, micro taskparts takes at most 10\% longer
+than no scheduler on 45 of the 60 programs, and ParlayLib's scheduler
+on 44.
+%
+The two schedulers are within 10\% of each other on 58 programs
+there, and on 57 on the M5.
+%
+Where a program takes much longer on one worker than with no
+scheduler, as le\_list and minimum\_edit\_distance do on the Ryzen, it
+does so with both schedulers.
+%
+So the cost lies in how the program is written for parallelism, as
+for the search of Table~\ref{tbl:parlay}.
+
+\paragraph{All cores}
+%
+On the 16 cores of the Ryzen, micro taskparts runs the programs 8.3
+times faster than no scheduler at the median, and up to 14 times.
+%
+The two schedulers are within 5\% of each other on 46 programs, and
+within 10\% on 51.
+%
+Micro taskparts takes at least 10\% less time on eight programs, among
+them delaunay, box\_kdtree and quicksort, on which it takes 26\% to
+40\% less.
+%
+It takes at least 10\% more on one, spectral\_separator, by 12\%.
+%
+On the 10 cores of the M5, the two are within 5\% of each other on 46
+programs, micro taskparts takes 33\% less time on delaunay, and it
+takes at most 8\% more on any program.
+%
+We have not determined what in these programs favors one scheduler
+or the other.
+
+\paragraph{All hardware threads}
+%
+From 16 workers to 32 on the Ryzen, the time changes by less than 10\%
+on 27 programs with micro taskparts, and on 34 with ParlayLib's
+scheduler.
+%
+On 32 workers, micro taskparts takes at least 10\% less time than
+ParlayLib's scheduler on 11 programs, among them delaunay, by 53\%,
+and kcore, by 32\%, and at least 10\% more on three, scan, filter and
+flatten, by at most 12\%.
+
+\begin{table*}
+\footnotesize
+\renewcommand{\arraystretch}{0.93}
+\renewcommand{\suiterow}[3]{#1 & #3 & \suitecells{suite}{#2}{4}{10} \\}
+\renewcommand{\suiterowk}[2]{#1 & #2 & \suitecells{suitek}{#1}{4}{10} \\}
+\begin{tabular}{@{}llrrrrrrr@{}}
+\toprule
+ & & no & \multicolumn{3}{c}{micro taskparts} & \multicolumn{3}{c}{ParlayLib's} \\
+program & input & scheduler & 1 & 4 & 10 & 1 & 4 & 10 \\
+\midrule
+\suiterows
+\bottomrule
+\end{tabular}
+\caption{Running time of 60 ParlayLib programs on the M5, in seconds,
+  with no scheduler, and with two schedulers on 1, 4 and 10 workers.
+  An input is a size, a graph with the given number of vertices, or a
+  text.}
+\label{tbl:suite}
+\end{table*}
+
+\begin{table*}
+\footnotesize
+\renewcommand{\arraystretch}{0.93}
+\renewcommand{\suiterow}[3]{#1 & #3 & \suitecells{suitegamora}{#2}{16}{32} \\}
+\renewcommand{\suiterowk}[2]{#1 & #2 & \suitecells{suitekgamora}{#1}{16}{32} \\}
+\begin{tabular}{@{}llrrrrrrr@{}}
+\toprule
+ & & no & \multicolumn{3}{c}{micro taskparts} & \multicolumn{3}{c}{ParlayLib's} \\
+program & input & scheduler & 1 & 16 & 32 & 1 & 16 & 32 \\
+\midrule
+\suiterows
+\bottomrule
+\end{tabular}
+\caption{Running time of 60 ParlayLib programs on the Ryzen, in
+  seconds, with no scheduler, and with two schedulers on 1, 16 and 32
+  workers.  The inputs are those of Table~\ref{tbl:suite}.}
+\label{tbl:suitegamora}
+\end{table*}
 
 \end{document}
