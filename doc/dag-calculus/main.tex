@@ -81,6 +81,83 @@
   & \fbval{#2work#1}{#3}{#4 1} & \fbval{#2work#1}{#3}{#4 #5}
   & \fbval{#2sched#1}{#3}{#4 #5} & \fbval{#2idle#1}{#3}{#4 #5}}
 
+% Tables tbl:suite and tbl:suitegamora have a row for each program of
+% \suiterows. \suiterow{NAME}{KEY}{INPUT} is one row, where KEY names the
+% program in the views (perf/suite and perf/gamora/suite, cited as
+% flexibench-dag-suite and flexibench-dag-suite-gamora); each
+% table defines it for its view and its worker counts through
+% \suitecells{VIEW}{KEY}{MIDDLE}{TOP}.
+\input{perf/suite/suite}
+\input{perf/gamora/suite/suitegamora}
+\newcommand{\suiterow}[3]{}
+\newcommand{\suitecells}[4]{\fbval{#1}{#2}{serial} &
+  \fbval{#1}{#2}{nfj 1} & \fbval{#1}{#2}{dag 1} &
+  \fbval{#1}{#2}{nfj #3} & \fbval{#1}{#2}{dag #3} &
+  \fbval{#1}{#2}{nfj #4} & \fbval{#1}{#2}{dag #4}}
+\newcommand{\suiterows}{%
+\suiterow{2d\_linear\_program}{2d_linear_program}{65\,536\,000}%
+\suiterow{3d\_range}{3d_range}{2\,048\,000}%
+\suiterow{bigint\_add}{bigint_add}{8\,388\,608\,000}%
+\suiterow{box\_kdtree}{box_kdtree}{1\,024\,000}%
+\suiterow{cartesian\_tree}{cartesian_tree}{131\,072\,000}%
+\suiterow{cycle\_count}{cycle_count}{16\,384\,000}%
+\suiterow{delaunay}{delaunay}{256\,000}%
+\suiterow{fast\_fourier\_transform}{fast_fourier_transform}{65\,536\,000}%
+\suiterow{filter}{filter}{524\,288\,000}%
+\suiterow{find\_if}{find_if}{1\,024\,000\,000}%
+\suiterow{flatten}{flatten}{262\,144\,000}%
+\suiterow{huffman\_tree}{huffman_tree}{8\,192\,000}%
+\suiterow{kmeans\_pp}{kmeans_pp}{64\,000}%
+\suiterow{knn}{knn}{512\,000}%
+\suiterow{knuth\_shuffle}{knuth_shuffle}{16\,384\,000}%
+\suiterow{kth\_smallest}{kth_smallest}{262\,144\,000}%
+\suiterow{linefit}{linefit}{524\,288\,000}%
+\suiterow{mcss}{mcss}{1\,048\,576\,000}%
+\suiterow{mergesort}{mergesort}{32\,768\,000}%
+\suiterow{minimum\_edit\_distance}{minimum_edit_distance}{64\,000}%
+\suiterow{nbody\_fmm}{nbody_fmm}{64\,000}%
+\suiterow{oct\_tree}{oct_tree}{8\,192\,000}%
+\suiterow{primes}{primes}{524\,288\,000}%
+\suiterow{quickhull}{quickhull}{131\,072\,000}%
+\suiterow{quicksort}{quicksort}{16\,384\,000}%
+\suiterow{range\_min}{range_min}{16\,384\,000}%
+\suiterow{ray\_trace}{ray_trace}{128\,000}%
+\suiterow{rectangle\_intersection}{rectangle_intersection}{512\,000}%
+\suiterow{reduce}{reduce}{1\,024\,000\,000}%
+\suiterow{samplesort}{samplesort}{32\,768\,000}%
+\suiterow{scan}{scan}{262\,144\,000}%
+\suiterow{spectral\_separator}{spectral_separator}{64\,000}%
+\addlinespace%
+\suiterow{bellman\_ford}{bellman_ford}{R-MAT, $2^{22}$}%
+\suiterow{betweenness\_centrality}{betweenness_centrality}{R-MAT, $2^{22}$}%
+\suiterow{BFS}{BFS}{R-MAT, $2^{23}$}%
+\suiterow{BFS\_ligra}{BFS_ligra}{R-MAT, $2^{24}$}%
+\suiterow{bucketed\_dijkstra}{bucketed_dijkstra}{R-MAT, $2^{22}$}%
+\suiterow{filter\_kruskal}{filter_kruskal}{R-MAT, $2^{21}$}%
+\suiterow{graph\_color}{graph_color}{R-MAT, $2^{21}$}%
+\suiterow{kcore}{kcore}{R-MAT, $2^{21}$}%
+\suiterow{kruskal}{kruskal}{R-MAT, $2^{20}$}%
+\suiterow{le\_list}{le_list}{R-MAT, $2^{20}$}%
+\suiterow{low\_diameter\_decomposition}{low_diameter_decomposition}{R-MAT, $2^{24}$}%
+\suiterow{maximal\_independent\_set}{maximal_independent_set}{R-MAT, $2^{24}$}%
+\suiterow{maximal\_matching}{maximal_matching}{R-MAT, $2^{23}$}%
+\suiterow{pagerank}{pagerank}{R-MAT, $2^{21}$}%
+\suiterow{push\_relabel\_max\_flow}{push_relabel_max_flow}{R-MAT, $2^{18}$}%
+\suiterow{set\_cover}{set_cover}{R-MAT, $2^{21}$}%
+\suiterow{spanning\_tree}{spanning_tree}{R-MAT, $2^{23}$}%
+\suiterow{triangle\_count}{triangle_count}{R-MAT, $2^{19}$}%
+\addlinespace%
+\suiterow{tokens}{tokens}{\texttt{wikipedia250M.txt}}%
+\suiterow{suffix\_array}{suffix_array}{\texttt{chr22.dna}}%
+\suiterow{suffix\_tree}{suffix_tree}{\texttt{chr22.dna}}%
+\suiterow{longest\_common\_prefix}{longest_common_prefix}{\texttt{chr22.dna}}%
+\suiterow{longest\_repeated\_substring}{longest_repeated_substring}{\texttt{chr22.dna}}%
+\suiterow{radix\_tree}{radix_tree}{\texttt{wikipedia250M.txt}}%
+\suiterow{rabin\_karp}{rabin_karp}{\texttt{wikisamp.xml}, ``the''}%
+\suiterow{knuth\_morris\_pratt}{knuth_morris_pratt}{\texttt{wikipedia250M.txt}, ``the''}%
+\suiterow{word\_counts}{word_counts}{\texttt{etext99}, 10}%
+}
+
 \newcommand{\fo}{\mathtt{f_1}}
 \newcommand{\ft}{\mathtt{f_2}}
 % A step number, flush right in a listing.
@@ -1130,7 +1207,7 @@ sixteen such errors into the scheduler, one at a time.
 The tests detect all sixteen.
 
 \bibliographystyle{abbrv}
-\bibliography{main,perf/times,perf/parlay/parlay,perf/examples/examples,perf/gamora/timesgamora,perf/gamora/parlay/parlaygamora,perf/gamora/examples/examplesgamora,perf/cost/cost,perf/factors/factors,perf/gamora/cost/costgamora,perf/gamora/factors/factorsgamora}
+\bibliography{main,perf/times,perf/parlay/parlay,perf/examples/examples,perf/gamora/timesgamora,perf/gamora/parlay/parlaygamora,perf/gamora/examples/examplesgamora,perf/cost/cost,perf/factors/factors,perf/gamora/cost/costgamora,perf/gamora/factors/factorsgamora,perf/suite/suite,perf/gamora/suite/suitegamora}
 
 \clearpage
 \appendix
@@ -1340,6 +1417,9 @@ search.
 
 On both machines, the two versions are within 4\% of each other on
 every program and at every number of workers, in either direction.
+%
+Appendix~\ref{sec:suite} extends the comparison to 59 of ParlayLib's
+examples.
 
 \begin{table}
 \setlength{\tabcolsep}{3pt}
@@ -1728,5 +1808,176 @@ the stencil, and would let a viewer show the order in which the
 blocks ran.
 %
 We have not built it.
+
+
+\section{The ParlayLib examples as a whole}
+\label{sec:suite}
+
+Tables~\ref{tbl:suite} and~\ref{tbl:suitegamora} extend the comparison
+of Tables~\ref{tbl:fork} and~\ref{tbl:fork16} to 59 of the 63 example
+programs distributed with ParlayLib~\cite{blelloch20parlaylib}, on the
+M5 and on the
+Ryzen~\cite{flexibench-dag-suite,flexibench-dag-suite-gamora}.
+%
+All of them use only fork join.
+%
+There are three builds: no scheduler, the micro taskparts of the first
+paper~\cite{nativeforkjoin}, and ours.
+%
+The columns are one worker, a number in between, and all the cores of
+the M5; on the Ryzen, they are one worker, one worker per core, and
+one per hardware thread.
+%
+The programs, their inputs and the method are those of the first
+paper's measurements of the same programs, so that the tables can be
+read side by side.
+
+\paragraph{Inputs}
+%
+A program takes a size, or reads a file.
+%
+The graph programs read symmetric R-MAT
+graphs~\cite{chakrabarti2004rmat} with about 20 edges per vertex, and
+the text programs read texts of the Problem Based Benchmark
+Suite~\cite{shun2012pbbs}.
+%
+The files are generated or fetched once, and every run reads them, so
+a graph or text program has the same input in all its runs, on both
+machines.
+%
+Each size was chosen on the Ryzen, by doubling it until one run of the
+algorithm with no scheduler took at least a second, or until the
+process used a quarter of the machine's memory.
+%
+The M5 runs the same sizes.
+
+\paragraph{Programs left out}
+%
+Four programs are left out.
+%
+The drivers of hash\_map and decision\_tree\_c45 time several stages
+in each repetition, which our analysis does not add up.
+%
+We have no input for lasso\_regression.
+%
+And karatsuba reads one of its numbers beyond its end; with micro
+taskparts on 16 workers or more, the read sometimes faults.
+
+\paragraph{Method}
+%
+Each program and build ran as three processes, interleaved, and a
+process runs its algorithm up to 20 times.
+%
+A time in the tables is the median over the three processes of the
+median of a process's runs.
+%
+Flexibench checked the output of every process against the output that
+all builds agree on, for the worker counts of the tables and for two
+more, one of them above the number of hardware threads.
+%
+Every check passed.
+
+\paragraph{One worker}
+%
+On one worker of the Ryzen, the two versions are within 4\% of each
+other on all 59 programs, and within 2\% on 57.
+%
+On the M5, they are within 5\% on 56.
+%
+The other three are scan, flatten and find\_if, whose inputs are
+among the largest: there, the time of a process varies from one
+process to the next by as much with either version, and three
+processes do not settle it.
+
+\paragraph{All cores}
+%
+On the 16 cores of the Ryzen, either version runs the programs about
+8 times faster than no scheduler at the median.
+%
+The two are within 5\% of each other on 50 programs, and within 10\%
+on 56.
+%
+On the other three, ours takes less time: 12\% less on graph\_color,
+17\% less on kcore, and 30\% less on spectral\_separator.
+%
+No program takes 10\% more with ours; the most is 7\%, on tokens.
+%
+The M5 agrees: on its 10 cores, the two are within 5\% on 52 programs
+and within 10\% on 57, and ours takes 11\% less time on graph\_color
+and 34\% less on spectral\_separator.
+%
+On 4 workers of the M5, the two are within 10\% on 58 programs; on
+the other, bellman\_ford, ours took 12\% more in the table, and the
+same time as the first paper's in five more runs of each afterwards.
+
+\paragraph{All hardware threads}
+%
+On 32 workers of the Ryzen, the two are within 5\% on 45 programs and
+within 10\% on 52.
+%
+Ours takes at least 10\% less time on the other seven, among them
+spectral\_separator (48\% less), graph\_color (32\%), kcore (28\%) and
+minimum\_edit\_distance (20\%), and at most 8\% more on any program.
+
+\paragraph{Where ours is faster}
+%
+We did not expect our version to be faster on programs that make no
+vertex of their own, and we have not determined why it is.
+%
+On all cores, the programs concerned are three of the four on which
+the first paper finds its micro taskparts slower than ParlayLib's
+scheduler by 10\% or more.
+%
+One difference between the versions is ruled out: in ours, the worker
+threads outlive a call from the main thread, but a build of ours in
+which each such call starts its own threads takes the same time on
+graph\_color, kcore and spectral\_separator on the M5, in runs outside
+the certified rounds.
+%
+What remains is what Section~\ref{sec:vertices} changes: the loop
+takes tasks from its own deque, and stacks are kept by workers and in
+a shared pool rather than by tasks.
+%
+So fork join is preserved on these 59 programs as well: apart from
+the times that vary on the M5, named above, no program takes 10\%
+more with our version on any number of workers we measured.
+
+\begin{table*}
+\footnotesize
+\renewcommand{\arraystretch}{0.93}
+\renewcommand{\suiterow}[3]{#1 & #3 & \suitecells{suite}{#2}{4}{10} \\}
+\begin{tabular}{@{}llrrrrrrr@{}}
+\toprule
+ & & no & \multicolumn{2}{c}{1 worker} & \multicolumn{2}{c}{4 workers} & \multicolumn{2}{c}{10 workers} \\
+program & input & scheduler & first & this & first & this & first & this \\
+\midrule
+\suiterows
+\bottomrule
+\end{tabular}
+\caption{Running time of 59 ParlayLib programs on the M5, in seconds,
+  with no scheduler, and with the micro taskparts of the first paper
+  and of this one on 1, 4 and 10 workers.  An input is a size, a graph
+  with the given number of vertices, or a text.}
+\label{tbl:suite}
+\end{table*}
+
+\begin{table*}
+\footnotesize
+\renewcommand{\arraystretch}{0.93}
+\renewcommand{\suiterow}[3]{#1 & #3 & \suitecells{suitegamora}{#2}{16}{32} \\}
+\begin{tabular}{@{}llrrrrrrr@{}}
+\toprule
+ & & no & \multicolumn{2}{c}{1 worker} & \multicolumn{2}{c}{16 workers} & \multicolumn{2}{c}{32 workers} \\
+program & input & scheduler & first & this & first & this & first & this \\
+\midrule
+\suiterows
+\bottomrule
+\end{tabular}
+\caption{Running time of 59 ParlayLib programs on the Ryzen, in
+  seconds, with no scheduler, and with the micro taskparts of the
+  first paper and of this one on 1, 16 and 32 workers.  The inputs are
+  those of Table~\ref{tbl:suite}.}
+\label{tbl:suitegamora}
+\end{table*}
 
 \end{document}

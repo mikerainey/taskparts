@@ -5,7 +5,8 @@ subdirectories. Flexibench generated those files, the *views*, from the measurem
 recorded in the stores `.flexibench/` beside them, and each view names the certificate
 that certifies it.
 
-There are five rounds, each run on two machines, all on 2026-11-19:
+There are five rounds, each run on two machines, all on 2026-11-19, and a sixth, of 59
+ParlayLib programs, described in its own section below:
 
 | Round | What it measures | Tables of the paper |
 |---|---|---|
@@ -121,6 +122,89 @@ failed compare-and-swaps on an out-set. The factors round has a view per term: `
 and `stime` (the time of the region, serial version included), and `pwork`, `psched`,
 `pidle`, `psteals` and their `s` counterparts for the parallel versions; `p` is the
 pipeline and `s` the stencil.
+
+## The ParlayLib examples as a whole (`tbl:suite`, `tbl:suitegamora`)
+
+59 of the 63 example programs of ParlayLib, each with one input, measured on
+2026-11-20, one round on each machine. It is the round of the native fork join paper's
+appendix of the same name with other builds; `doc/native-fork-join/perf/README.md`
+describes the inputs, the sizes and the programs left out in full.
+
+| Table | Store | Values | Citation | Certificate |
+|---|---|---|---|---|
+| `tbl:suite` (M5) | `suite/.flexibench/` | `suite/suite.tex`, `.html` | `suite/suite.bib` (`flexibench-dag-suite`) | `1120076730d17d368a6547e60082508f1e867c100fb00e7ba83eb6f81e0d3def` |
+| `tbl:suitegamora` (Ryzen) | `gamora/suite/.flexibench/` | `gamora/suite/suitegamora.tex`, `.html` | `gamora/suite/suitegamora.bib` (`flexibench-dag-suite-gamora`) | `09dca68456580705fa2487fa2e5c597f9f4d1ee62a8606d9ae58e06666cd3ade` |
+
+Both certificates are of the analysis `times`, issued by Flexibench 27e6e1e with Lean
+4.30.0. `\fbval{suite}{kcore}{dag 10}` and `\fbval{suitegamora}{kcore}{nfj 32}` print
+values of the two views; the columns are `serial`, and `nfj` or `dag` followed by a
+number of workers.
+
+The two stores are large, 317 MB and 343 MB: a store holds every executable that ran,
+and a round has 177 of them.
+
+**Builds.** ParlayLib at commit 783e811 of github.com/mikerainey/parlaylib (branch
+`microtaskparts`), built by `scripts/build-bench` with `-O3 -DNDEBUG
+-falign-functions=64`:
+
+| Name | What it is |
+|---|---|
+| `serial` | no scheduler (`PARLAY_SEQUENTIAL`) |
+| `nfj` | on the native fork join paper's micro taskparts, at 5041c96, through `doc/parlay-adapter` |
+| `dag` | on this paper's micro taskparts, at 1144299, likewise |
+
+The builds `serial` and `nfj` are the very directories that the native fork join
+paper's suite rounds ran. The four programs of the ParlayLib round above were measured
+at ParlayLib 80bf19d; 783e811 differs in its timer, in two examples (`find_if`,
+`push_relabel_max_flow`) and by a graph generator, none of which those four use.
+
+**Inputs.** A program takes a size, or reads a file from a directory of inputs that is
+made once and is not in this repository: R-MAT graphs written by ParlayLib's
+`gen_rmat_graph`, and texts of the Problem Based Benchmark Suite. `suite/SHA256SUMS`
+lists their digests, the same on both machines and the same as the native fork join
+paper's.
+
+**Left out:** `karatsuba` (the example reads a number beyond its end), `hash_map` and
+`decision_tree_c45` (several timed stages per repetition), `lasso_regression` (no
+input).
+
+**Runs.** Each program and build ran as three processes, interleaved, with `nfj` and
+`dag` one right after the other at each worker count: 1, 4 and 10 workers on the M5,
+and 1, 16 and 32 on the Ryzen. A process runs its algorithm 1 to 20 times, as its
+driver decides. A value is the median over the three processes of the median of a
+process's runs.
+
+**Checks.** For 56 programs, every process must print one expected line; the other
+three print nothing and must exit with success. Besides the timed runs, the rounds ran
+`nfj` and `dag` on 3 and 16 workers (M5) and on 3 and 64 (Ryzen) for the check alone.
+Every check passed: the analysis `failures` is certified empty on both machines
+(`ebe8d006979eb7acbbd2e62b3ff87d817ca0c57fc02d7410d3e3ae854b93eea2` on the M5,
+`ba12479ad76daefa0ff4d13e475efd6cf9bf60bf6e7885a6028e418ee84c97f1` on the Ryzen).
+
+**State of the machines.** The M5's round took 1 h 34 min and started after four
+consecutive samples at 93% idle or better. The Ryzen's took 2 h 48 min, in benchmark
+mode, and started at 99% idle.
+
+**Runs outside the certified rounds**, on the M5, which the appendix mentions and which
+no table cites:
+
+- On one worker, `find_if`, `flatten` and `scan` differ between `nfj` and `dag` by 15%
+  to 57% in the table. In two more processes of each build, the time of a process
+  varied as much with one build: `find_if` took 0.31 s in one process and 0.43 s in
+  the next with `nfj`, and `scan` between 0.11 s and 0.47 s with no scheduler.
+- On 4 workers, `bellman_ford` takes 12% more with `dag` in the table. In five more
+  processes of each build, the medians were 0.163 to 0.178 s with `nfj` and 0.160 to
+  0.167 s with `dag`.
+- `dag` is faster than `nfj` on `spectral_separator`, `kcore` and `graph_color`. A build
+  of this paper's micro taskparts from before its worker threads outlived a call of
+  `launch` (2a8a797, on the local branch `perf-dag-sink`) took the same time as `dag`
+  on the three, in three processes each on 10 workers (0.27 s against 0.40 s with
+  `nfj` on `spectral_separator`). So the persistence of the threads is not the cause,
+  which is not determined.
+
+The clients are `mtpdagsuite` and `mtpdagsuitegamora` (branch `gamora-dag` of the
+measurement repository), generated by `suite/gen-client.py` from the table of programs
+and a file of expected lines.
 
 ## The state of the machines
 
