@@ -36,3 +36,6 @@
 .direnv/
 # Built documents: build them with make
 *.pdf
+# Flexibench stores too large for the repository (see doc/native-fork-join/perf/README.md)
+/doc/native-fork-join/perf/suite/.flexibench/
+/doc/native-fork-join/perf/gamora/suite/.flexibench/
