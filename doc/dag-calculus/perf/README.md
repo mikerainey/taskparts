@@ -251,7 +251,7 @@ the worker threads, ours and oneTBB's, start before it.
 all 160 CPUs and automatic NUMA balancing was off; turbo and SMT were on. The load
 average was 7.9 when the round began, left from building the client just before; the
 first runs of the round are the serial ones, of about a minute each.
-`icelake/bench/run.log` is the session's log, with the machine's description before and
+`icelake/bench/session.txt` is the session's log, with the machine's description before and
 after.
 
 | Programs | Analysis | View | Certificate |

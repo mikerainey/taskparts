@@ -1,0 +1,610 @@
+Model name:                              Intel(R) Xeon(R) Platinum 8380 CPU @ 2.30GHz
+Thread(s) per core:                      2
+Core(s) per socket:                      40
+Socket(s):                               2
+NUMA node(s):                            2
+NUMA node0 CPU(s):                       0,2,4,6,8,10,12,14,16,18,20,22,24,26,28,30,32,34,36,38,40,42,44,46,48,50,52,54,56,58,60,62,64,66,68,70,72,74,76,78,80,82,84,86,88,90,92,94,96,98,100,102,104,106,108,110,112,114,116,118,120,122,124,126,128,130,132,134,136,138,140,142,144,146,148,150,152,154,156,158
+NUMA node1 CPU(s):                       1,3,5,7,9,11,13,15,17,19,21,23,25,27,29,31,33,35,37,39,41,43,45,47,49,51,53,55,57,59,61,63,65,67,69,71,73,75,77,79,81,83,85,87,89,91,93,95,97,99,101,103,105,107,109,111,113,115,117,119,121,123,125,127,129,131,133,135,137,139,141,143,145,147,149,151,153,155,157,159
+Mem:             125           5         102           0          18         119
+Linux 6.8.0-124-generic x86_64
+governor:  160 performance
+no_turbo: 0  smt: 1
+transparent hugepages: always [madvise] never
+numa balancing: 0
+available: 2 nodes (0-1)
+node 0 cpus: 0 2 4 6 8 10 12 14 16 18 20 22 24 26 28 30 32 34 36 38 40 42 44 46 48 50 52 54 56 58 60 62 64 66 68 70 72 74 76 78 80 82 84 86 88 90 92 94 96 98 100 102 104 106 108 110 112 114 116 118 120 122 124 126 128 130 132 134 136 138 140 142 144 146 148 150 152 154 156 158
+node 0 size: 63705 MB
+node 0 free: 49801 MB
+workers 1,40,80,160; checks 320; uptime:  16:57:38 up 17:03,  3 users,  load average: 7.87, 7.79, 5.03
+Sun Nov 22 16:57:38 UTC 2026
+mappings interleaved in a measured process: 42
+compiler clang version 18.1.8
+onetbb 2022.3.0
+flags -O2 -march=icelake-server
+taskparts 8ec701735d0585408e4d8503a278f1226d8e9b20
+committed batch 0: 382 trials, 1 samples requested of each
+attempt 0  a1=400000 a2=256 a3=0 program=pipefib rep=1 version=serial word=serial: success, 1 samples
+attempt 1  a1=400000 a2=256 a3=0 program=pipefib rep=1 version=dag word=dag workers=1: success, 1 samples
+attempt 2  a1=540 a2=640 a3=368 a4=2 a5=0 program=x264 rep=1 version=serial word=serial: success, 1 samples
+attempt 3  a1=540 a2=640 a3=368 a4=2 a5=0 program=x264 rep=1 version=dag word=dag workers=1: success, 1 samples
+attempt 4  a1=48000 a2=20000 a3=0 program=ferret rep=1 version=serial word=serial: success, 1 samples
+attempt 5  a1=48000 a2=20000 a3=0 program=ferret rep=1 version=dag word=dag workers=1: success, 1 samples
+attempt 6  a1=48000 a2=20000 a3=0 program=ferret rep=1 version=tbb word=tbb workers=1: success, 1 samples
+attempt 7  a1=8000 a2=600 a3=64 a4=8 program=heat rep=1 version=serial word=loops: success, 2 samples
+attempt 8  a1=8000 a2=600 a3=64 a4=8 program=heat rep=1 version=ploops word=ploops workers=1: success, 2 samples
+attempt 9  a1=8000 a2=600 a3=64 a4=8 program=heat rep=1 version=trap word=trap workers=1: success, 2 samples
+attempt 10  a1=8000 a2=600 a3=64 a4=8 program=heat rep=1 version=dag word=dag workers=1: success, 2 samples
+attempt 11  a1=8000 a2=600 a3=64 a4=8 program=heat rep=1 version=tbb word=tbb workers=1: success, 2 samples
+attempt 12  a1=8000 a2=1500 a3=64 a4=8 program=life rep=1 version=serial word=loops: success, 2 samples
+attempt 13  a1=8000 a2=1500 a3=64 a4=8 program=life rep=1 version=ploops word=ploops workers=1: success, 2 samples
+attempt 14  a1=8000 a2=1500 a3=64 a4=8 program=life rep=1 version=trap word=trap workers=1: success, 2 samples
+attempt 15  a1=8000 a2=1500 a3=64 a4=8 program=life rep=1 version=dag word=dag workers=1: success, 2 samples
+attempt 16  a1=8000 a2=1500 a3=64 a4=8 program=life rep=1 version=tbb word=tbb workers=1: success, 2 samples
+attempt 17  a1=200000 a2=512 program=lcs rep=1 version=serial word=serial: success, 1 samples
+attempt 18  a1=200000 a2=512 program=lcs rep=1 version=planes word=planes workers=1: success, 1 samples
+attempt 19  a1=200000 a2=512 program=lcs rep=1 version=dc word=dc workers=1: success, 1 samples
+attempt 20  a1=200000 a2=512 program=lcs rep=1 version=dag word=dag workers=1: success, 1 samples
+attempt 21  a1=200000 a2=512 program=lcs rep=1 version=tbb word=tbb workers=1: success, 1 samples
+attempt 22  a1=7168 a2=64 program=cholesky rep=1 version=serial word=serial: success, 1 samples
+attempt 23  a1=7168 a2=64 program=cholesky rep=1 version=levels word=levels workers=1: success, 1 samples
+attempt 24  a1=7168 a2=64 program=cholesky rep=1 version=dag word=dag workers=1: success, 1 samples
+attempt 25  a1=7168 a2=64 program=cholesky rep=1 version=tbb word=tbb workers=1: success, 1 samples
+attempt 26  a1=10000000 program=preorder rep=1 version=serial word=serial: success, 1 samples
+attempt 27  a1=10000000 program=preorder rep=1 version=levels word=levels workers=1: success, 1 samples
+attempt 28  a1=10000000 program=preorder rep=1 version=dag word=dag workers=1: success, 1 samples
+attempt 29  a1=10000000 program=preorder rep=1 version=tbb word=tbb workers=1: success, 1 samples
+attempt 30  a1=400000 a2=256 a3=0 program=pipefib rep=1 version=dag word=dag workers=40: success, 1 samples
+attempt 31  a1=540 a2=640 a3=368 a4=2 a5=0 program=x264 rep=1 version=dag word=dag workers=40: success, 1 samples
+attempt 32  a1=48000 a2=20000 a3=0 program=ferret rep=1 version=dag word=dag workers=40: success, 1 samples
+attempt 33  a1=48000 a2=20000 a3=0 program=ferret rep=1 version=tbb word=tbb workers=40: success, 1 samples
+attempt 34  a1=8000 a2=600 a3=64 a4=8 program=heat rep=1 version=ploops word=ploops workers=40: success, 2 samples
+attempt 35  a1=8000 a2=600 a3=64 a4=8 program=heat rep=1 version=trap word=trap workers=40: success, 2 samples
+attempt 36  a1=8000 a2=600 a3=64 a4=8 program=heat rep=1 version=dag word=dag workers=40: success, 2 samples
+attempt 37  a1=8000 a2=600 a3=64 a4=8 program=heat rep=1 version=tbb word=tbb workers=40: success, 2 samples
+attempt 38  a1=8000 a2=1500 a3=64 a4=8 program=life rep=1 version=ploops word=ploops workers=40: success, 2 samples
+attempt 39  a1=8000 a2=1500 a3=64 a4=8 program=life rep=1 version=trap word=trap workers=40: success, 2 samples
+attempt 40  a1=8000 a2=1500 a3=64 a4=8 program=life rep=1 version=dag word=dag workers=40: success, 2 samples
+attempt 41  a1=8000 a2=1500 a3=64 a4=8 program=life rep=1 version=tbb word=tbb workers=40: success, 2 samples
+attempt 42  a1=200000 a2=512 program=lcs rep=1 version=planes word=planes workers=40: success, 1 samples
+attempt 43  a1=200000 a2=512 program=lcs rep=1 version=dc word=dc workers=40: success, 1 samples
+attempt 44  a1=200000 a2=512 program=lcs rep=1 version=dag word=dag workers=40: success, 1 samples
+attempt 45  a1=200000 a2=512 program=lcs rep=1 version=tbb word=tbb workers=40: success, 1 samples
+attempt 46  a1=7168 a2=64 program=cholesky rep=1 version=levels word=levels workers=40: success, 1 samples
+attempt 47  a1=7168 a2=64 program=cholesky rep=1 version=dag word=dag workers=40: success, 1 samples
+attempt 48  a1=7168 a2=64 program=cholesky rep=1 version=tbb word=tbb workers=40: success, 1 samples
+attempt 49  a1=10000000 program=preorder rep=1 version=levels word=levels workers=40: success, 1 samples
+attempt 50  a1=10000000 program=preorder rep=1 version=dag word=dag workers=40: success, 1 samples
+attempt 51  a1=10000000 program=preorder rep=1 version=tbb word=tbb workers=40: success, 1 samples
+attempt 52  a1=400000 a2=256 a3=0 program=pipefib rep=1 version=dag word=dag workers=80: success, 1 samples
+attempt 53  a1=540 a2=640 a3=368 a4=2 a5=0 program=x264 rep=1 version=dag word=dag workers=80: success, 1 samples
+attempt 54  a1=48000 a2=20000 a3=0 program=ferret rep=1 version=dag word=dag workers=80: success, 1 samples
+attempt 55  a1=48000 a2=20000 a3=0 program=ferret rep=1 version=tbb word=tbb workers=80: success, 1 samples
+attempt 56  a1=8000 a2=600 a3=64 a4=8 program=heat rep=1 version=ploops word=ploops workers=80: success, 2 samples
+attempt 57  a1=8000 a2=600 a3=64 a4=8 program=heat rep=1 version=trap word=trap workers=80: success, 2 samples
+attempt 58  a1=8000 a2=600 a3=64 a4=8 program=heat rep=1 version=dag word=dag workers=80: success, 2 samples
+attempt 59  a1=8000 a2=600 a3=64 a4=8 program=heat rep=1 version=tbb word=tbb workers=80: success, 2 samples
+attempt 60  a1=8000 a2=1500 a3=64 a4=8 program=life rep=1 version=ploops word=ploops workers=80: success, 2 samples
+attempt 61  a1=8000 a2=1500 a3=64 a4=8 program=life rep=1 version=trap word=trap workers=80: success, 2 samples
+attempt 62  a1=8000 a2=1500 a3=64 a4=8 program=life rep=1 version=dag word=dag workers=80: success, 2 samples
+attempt 63  a1=8000 a2=1500 a3=64 a4=8 program=life rep=1 version=tbb word=tbb workers=80: success, 2 samples
+attempt 64  a1=200000 a2=512 program=lcs rep=1 version=planes word=planes workers=80: success, 1 samples
+attempt 65  a1=200000 a2=512 program=lcs rep=1 version=dc word=dc workers=80: success, 1 samples
+attempt 66  a1=200000 a2=512 program=lcs rep=1 version=dag word=dag workers=80: success, 1 samples
+attempt 67  a1=200000 a2=512 program=lcs rep=1 version=tbb word=tbb workers=80: success, 1 samples
+attempt 68  a1=7168 a2=64 program=cholesky rep=1 version=levels word=levels workers=80: success, 1 samples
+attempt 69  a1=7168 a2=64 program=cholesky rep=1 version=dag word=dag workers=80: success, 1 samples
+attempt 70  a1=7168 a2=64 program=cholesky rep=1 version=tbb word=tbb workers=80: success, 1 samples
+attempt 71  a1=10000000 program=preorder rep=1 version=levels word=levels workers=80: success, 1 samples
+attempt 72  a1=10000000 program=preorder rep=1 version=dag word=dag workers=80: success, 1 samples
+attempt 73  a1=10000000 program=preorder rep=1 version=tbb word=tbb workers=80: success, 1 samples
+attempt 74  a1=400000 a2=256 a3=0 program=pipefib rep=1 version=dag word=dag workers=160: success, 1 samples
+attempt 75  a1=540 a2=640 a3=368 a4=2 a5=0 program=x264 rep=1 version=dag word=dag workers=160: success, 1 samples
+attempt 76  a1=48000 a2=20000 a3=0 program=ferret rep=1 version=dag word=dag workers=160: success, 1 samples
+attempt 77  a1=48000 a2=20000 a3=0 program=ferret rep=1 version=tbb word=tbb workers=160: success, 1 samples
+attempt 78  a1=8000 a2=600 a3=64 a4=8 program=heat rep=1 version=ploops word=ploops workers=160: success, 2 samples
+attempt 79  a1=8000 a2=600 a3=64 a4=8 program=heat rep=1 version=trap word=trap workers=160: success, 2 samples
+attempt 80  a1=8000 a2=600 a3=64 a4=8 program=heat rep=1 version=dag word=dag workers=160: success, 2 samples
+attempt 81  a1=8000 a2=600 a3=64 a4=8 program=heat rep=1 version=tbb word=tbb workers=160: success, 2 samples
+attempt 82  a1=8000 a2=1500 a3=64 a4=8 program=life rep=1 version=ploops word=ploops workers=160: success, 2 samples
+attempt 83  a1=8000 a2=1500 a3=64 a4=8 program=life rep=1 version=trap word=trap workers=160: success, 2 samples
+attempt 84  a1=8000 a2=1500 a3=64 a4=8 program=life rep=1 version=dag word=dag workers=160: success, 2 samples
+attempt 85  a1=8000 a2=1500 a3=64 a4=8 program=life rep=1 version=tbb word=tbb workers=160: success, 2 samples
+attempt 86  a1=200000 a2=512 program=lcs rep=1 version=planes word=planes workers=160: success, 1 samples
+attempt 87  a1=200000 a2=512 program=lcs rep=1 version=dc word=dc workers=160: success, 1 samples
+attempt 88  a1=200000 a2=512 program=lcs rep=1 version=dag word=dag workers=160: success, 1 samples
+attempt 89  a1=200000 a2=512 program=lcs rep=1 version=tbb word=tbb workers=160: success, 1 samples
+attempt 90  a1=7168 a2=64 program=cholesky rep=1 version=levels word=levels workers=160: success, 1 samples
+attempt 91  a1=7168 a2=64 program=cholesky rep=1 version=dag word=dag workers=160: success, 1 samples
+attempt 92  a1=7168 a2=64 program=cholesky rep=1 version=tbb word=tbb workers=160: success, 1 samples
+attempt 93  a1=10000000 program=preorder rep=1 version=levels word=levels workers=160: success, 1 samples
+attempt 94  a1=10000000 program=preorder rep=1 version=dag word=dag workers=160: success, 1 samples
+attempt 95  a1=10000000 program=preorder rep=1 version=tbb word=tbb workers=160: success, 1 samples
+attempt 96  a1=400000 a2=256 a3=0 program=pipefib rep=2 version=dag word=dag workers=40: success, 1 samples
+attempt 97  a1=540 a2=640 a3=368 a4=2 a5=0 program=x264 rep=2 version=dag word=dag workers=40: success, 1 samples
+attempt 98  a1=48000 a2=20000 a3=0 program=ferret rep=2 version=dag word=dag workers=40: success, 1 samples
+attempt 99  a1=48000 a2=20000 a3=0 program=ferret rep=2 version=tbb word=tbb workers=40: success, 1 samples
+attempt 100  a1=8000 a2=600 a3=64 a4=8 program=heat rep=2 version=ploops word=ploops workers=40: success, 2 samples
+attempt 101  a1=8000 a2=600 a3=64 a4=8 program=heat rep=2 version=trap word=trap workers=40: success, 2 samples
+attempt 102  a1=8000 a2=600 a3=64 a4=8 program=heat rep=2 version=dag word=dag workers=40: success, 2 samples
+attempt 103  a1=8000 a2=600 a3=64 a4=8 program=heat rep=2 version=tbb word=tbb workers=40: success, 2 samples
+attempt 104  a1=8000 a2=1500 a3=64 a4=8 program=life rep=2 version=ploops word=ploops workers=40: success, 2 samples
+attempt 105  a1=8000 a2=1500 a3=64 a4=8 program=life rep=2 version=trap word=trap workers=40: success, 2 samples
+attempt 106  a1=8000 a2=1500 a3=64 a4=8 program=life rep=2 version=dag word=dag workers=40: success, 2 samples
+attempt 107  a1=8000 a2=1500 a3=64 a4=8 program=life rep=2 version=tbb word=tbb workers=40: success, 2 samples
+attempt 108  a1=200000 a2=512 program=lcs rep=2 version=planes word=planes workers=40: success, 1 samples
+attempt 109  a1=200000 a2=512 program=lcs rep=2 version=dc word=dc workers=40: success, 1 samples
+attempt 110  a1=200000 a2=512 program=lcs rep=2 version=dag word=dag workers=40: success, 1 samples
+attempt 111  a1=200000 a2=512 program=lcs rep=2 version=tbb word=tbb workers=40: success, 1 samples
+attempt 112  a1=7168 a2=64 program=cholesky rep=2 version=levels word=levels workers=40: success, 1 samples
+attempt 113  a1=7168 a2=64 program=cholesky rep=2 version=dag word=dag workers=40: success, 1 samples
+attempt 114  a1=7168 a2=64 program=cholesky rep=2 version=tbb word=tbb workers=40: success, 1 samples
+attempt 115  a1=10000000 program=preorder rep=2 version=levels word=levels workers=40: success, 1 samples
+attempt 116  a1=10000000 program=preorder rep=2 version=dag word=dag workers=40: success, 1 samples
+attempt 117  a1=10000000 program=preorder rep=2 version=tbb word=tbb workers=40: success, 1 samples
+attempt 118  a1=400000 a2=256 a3=0 program=pipefib rep=2 version=dag word=dag workers=80: success, 1 samples
+attempt 119  a1=540 a2=640 a3=368 a4=2 a5=0 program=x264 rep=2 version=dag word=dag workers=80: success, 1 samples
+attempt 120  a1=48000 a2=20000 a3=0 program=ferret rep=2 version=dag word=dag workers=80: success, 1 samples
+attempt 121  a1=48000 a2=20000 a3=0 program=ferret rep=2 version=tbb word=tbb workers=80: success, 1 samples
+attempt 122  a1=8000 a2=600 a3=64 a4=8 program=heat rep=2 version=ploops word=ploops workers=80: success, 2 samples
+attempt 123  a1=8000 a2=600 a3=64 a4=8 program=heat rep=2 version=trap word=trap workers=80: success, 2 samples
+attempt 124  a1=8000 a2=600 a3=64 a4=8 program=heat rep=2 version=dag word=dag workers=80: success, 2 samples
+attempt 125  a1=8000 a2=600 a3=64 a4=8 program=heat rep=2 version=tbb word=tbb workers=80: success, 2 samples
+attempt 126  a1=8000 a2=1500 a3=64 a4=8 program=life rep=2 version=ploops word=ploops workers=80: success, 2 samples
+attempt 127  a1=8000 a2=1500 a3=64 a4=8 program=life rep=2 version=trap word=trap workers=80: success, 2 samples
+attempt 128  a1=8000 a2=1500 a3=64 a4=8 program=life rep=2 version=dag word=dag workers=80: success, 2 samples
+attempt 129  a1=8000 a2=1500 a3=64 a4=8 program=life rep=2 version=tbb word=tbb workers=80: success, 2 samples
+attempt 130  a1=200000 a2=512 program=lcs rep=2 version=planes word=planes workers=80: success, 1 samples
+attempt 131  a1=200000 a2=512 program=lcs rep=2 version=dc word=dc workers=80: success, 1 samples
+attempt 132  a1=200000 a2=512 program=lcs rep=2 version=dag word=dag workers=80: success, 1 samples
+attempt 133  a1=200000 a2=512 program=lcs rep=2 version=tbb word=tbb workers=80: success, 1 samples
+attempt 134  a1=7168 a2=64 program=cholesky rep=2 version=levels word=levels workers=80: success, 1 samples
+attempt 135  a1=7168 a2=64 program=cholesky rep=2 version=dag word=dag workers=80: success, 1 samples
+attempt 136  a1=7168 a2=64 program=cholesky rep=2 version=tbb word=tbb workers=80: success, 1 samples
+attempt 137  a1=10000000 program=preorder rep=2 version=levels word=levels workers=80: success, 1 samples
+attempt 138  a1=10000000 program=preorder rep=2 version=dag word=dag workers=80: success, 1 samples
+attempt 139  a1=10000000 program=preorder rep=2 version=tbb word=tbb workers=80: success, 1 samples
+attempt 140  a1=400000 a2=256 a3=0 program=pipefib rep=2 version=dag word=dag workers=160: success, 1 samples
+attempt 141  a1=540 a2=640 a3=368 a4=2 a5=0 program=x264 rep=2 version=dag word=dag workers=160: success, 1 samples
+attempt 142  a1=48000 a2=20000 a3=0 program=ferret rep=2 version=dag word=dag workers=160: success, 1 samples
+attempt 143  a1=48000 a2=20000 a3=0 program=ferret rep=2 version=tbb word=tbb workers=160: success, 1 samples
+attempt 144  a1=8000 a2=600 a3=64 a4=8 program=heat rep=2 version=ploops word=ploops workers=160: success, 2 samples
+attempt 145  a1=8000 a2=600 a3=64 a4=8 program=heat rep=2 version=trap word=trap workers=160: success, 2 samples
+attempt 146  a1=8000 a2=600 a3=64 a4=8 program=heat rep=2 version=dag word=dag workers=160: success, 2 samples
+attempt 147  a1=8000 a2=600 a3=64 a4=8 program=heat rep=2 version=tbb word=tbb workers=160: success, 2 samples
+attempt 148  a1=8000 a2=1500 a3=64 a4=8 program=life rep=2 version=ploops word=ploops workers=160: success, 2 samples
+attempt 149  a1=8000 a2=1500 a3=64 a4=8 program=life rep=2 version=trap word=trap workers=160: success, 2 samples
+attempt 150  a1=8000 a2=1500 a3=64 a4=8 program=life rep=2 version=dag word=dag workers=160: success, 2 samples
+attempt 151  a1=8000 a2=1500 a3=64 a4=8 program=life rep=2 version=tbb word=tbb workers=160: success, 2 samples
+attempt 152  a1=200000 a2=512 program=lcs rep=2 version=planes word=planes workers=160: success, 1 samples
+attempt 153  a1=200000 a2=512 program=lcs rep=2 version=dc word=dc workers=160: success, 1 samples
+attempt 154  a1=200000 a2=512 program=lcs rep=2 version=dag word=dag workers=160: success, 1 samples
+attempt 155  a1=200000 a2=512 program=lcs rep=2 version=tbb word=tbb workers=160: success, 1 samples
+attempt 156  a1=7168 a2=64 program=cholesky rep=2 version=levels word=levels workers=160: success, 1 samples
+attempt 157  a1=7168 a2=64 program=cholesky rep=2 version=dag word=dag workers=160: success, 1 samples
+attempt 158  a1=7168 a2=64 program=cholesky rep=2 version=tbb word=tbb workers=160: success, 1 samples
+attempt 159  a1=10000000 program=preorder rep=2 version=levels word=levels workers=160: success, 1 samples
+attempt 160  a1=10000000 program=preorder rep=2 version=dag word=dag workers=160: success, 1 samples
+attempt 161  a1=10000000 program=preorder rep=2 version=tbb word=tbb workers=160: success, 1 samples
+attempt 162  a1=400000 a2=256 a3=0 program=pipefib rep=3 version=dag word=dag workers=40: success, 1 samples
+attempt 163  a1=540 a2=640 a3=368 a4=2 a5=0 program=x264 rep=3 version=dag word=dag workers=40: success, 1 samples
+attempt 164  a1=48000 a2=20000 a3=0 program=ferret rep=3 version=dag word=dag workers=40: success, 1 samples
+attempt 165  a1=48000 a2=20000 a3=0 program=ferret rep=3 version=tbb word=tbb workers=40: success, 1 samples
+attempt 166  a1=8000 a2=600 a3=64 a4=8 program=heat rep=3 version=ploops word=ploops workers=40: success, 2 samples
+attempt 167  a1=8000 a2=600 a3=64 a4=8 program=heat rep=3 version=trap word=trap workers=40: success, 2 samples
+attempt 168  a1=8000 a2=600 a3=64 a4=8 program=heat rep=3 version=dag word=dag workers=40: success, 2 samples
+attempt 169  a1=8000 a2=600 a3=64 a4=8 program=heat rep=3 version=tbb word=tbb workers=40: success, 2 samples
+attempt 170  a1=8000 a2=1500 a3=64 a4=8 program=life rep=3 version=ploops word=ploops workers=40: success, 2 samples
+attempt 171  a1=8000 a2=1500 a3=64 a4=8 program=life rep=3 version=trap word=trap workers=40: success, 2 samples
+attempt 172  a1=8000 a2=1500 a3=64 a4=8 program=life rep=3 version=dag word=dag workers=40: success, 2 samples
+attempt 173  a1=8000 a2=1500 a3=64 a4=8 program=life rep=3 version=tbb word=tbb workers=40: success, 2 samples
+attempt 174  a1=200000 a2=512 program=lcs rep=3 version=planes word=planes workers=40: success, 1 samples
+attempt 175  a1=200000 a2=512 program=lcs rep=3 version=dc word=dc workers=40: success, 1 samples
+attempt 176  a1=200000 a2=512 program=lcs rep=3 version=dag word=dag workers=40: success, 1 samples
+attempt 177  a1=200000 a2=512 program=lcs rep=3 version=tbb word=tbb workers=40: success, 1 samples
+attempt 178  a1=7168 a2=64 program=cholesky rep=3 version=levels word=levels workers=40: success, 1 samples
+attempt 179  a1=7168 a2=64 program=cholesky rep=3 version=dag word=dag workers=40: success, 1 samples
+attempt 180  a1=7168 a2=64 program=cholesky rep=3 version=tbb word=tbb workers=40: success, 1 samples
+attempt 181  a1=10000000 program=preorder rep=3 version=levels word=levels workers=40: success, 1 samples
+attempt 182  a1=10000000 program=preorder rep=3 version=dag word=dag workers=40: success, 1 samples
+attempt 183  a1=10000000 program=preorder rep=3 version=tbb word=tbb workers=40: success, 1 samples
+attempt 184  a1=400000 a2=256 a3=0 program=pipefib rep=3 version=dag word=dag workers=80: success, 1 samples
+attempt 185  a1=540 a2=640 a3=368 a4=2 a5=0 program=x264 rep=3 version=dag word=dag workers=80: success, 1 samples
+attempt 186  a1=48000 a2=20000 a3=0 program=ferret rep=3 version=dag word=dag workers=80: success, 1 samples
+attempt 187  a1=48000 a2=20000 a3=0 program=ferret rep=3 version=tbb word=tbb workers=80: success, 1 samples
+attempt 188  a1=8000 a2=600 a3=64 a4=8 program=heat rep=3 version=ploops word=ploops workers=80: success, 2 samples
+attempt 189  a1=8000 a2=600 a3=64 a4=8 program=heat rep=3 version=trap word=trap workers=80: success, 2 samples
+attempt 190  a1=8000 a2=600 a3=64 a4=8 program=heat rep=3 version=dag word=dag workers=80: success, 2 samples
+attempt 191  a1=8000 a2=600 a3=64 a4=8 program=heat rep=3 version=tbb word=tbb workers=80: success, 2 samples
+attempt 192  a1=8000 a2=1500 a3=64 a4=8 program=life rep=3 version=ploops word=ploops workers=80: success, 2 samples
+attempt 193  a1=8000 a2=1500 a3=64 a4=8 program=life rep=3 version=trap word=trap workers=80: success, 2 samples
+attempt 194  a1=8000 a2=1500 a3=64 a4=8 program=life rep=3 version=dag word=dag workers=80: success, 2 samples
+attempt 195  a1=8000 a2=1500 a3=64 a4=8 program=life rep=3 version=tbb word=tbb workers=80: success, 2 samples
+attempt 196  a1=200000 a2=512 program=lcs rep=3 version=planes word=planes workers=80: success, 1 samples
+attempt 197  a1=200000 a2=512 program=lcs rep=3 version=dc word=dc workers=80: success, 1 samples
+attempt 198  a1=200000 a2=512 program=lcs rep=3 version=dag word=dag workers=80: success, 1 samples
+attempt 199  a1=200000 a2=512 program=lcs rep=3 version=tbb word=tbb workers=80: success, 1 samples
+attempt 200  a1=7168 a2=64 program=cholesky rep=3 version=levels word=levels workers=80: success, 1 samples
+attempt 201  a1=7168 a2=64 program=cholesky rep=3 version=dag word=dag workers=80: success, 1 samples
+attempt 202  a1=7168 a2=64 program=cholesky rep=3 version=tbb word=tbb workers=80: success, 1 samples
+attempt 203  a1=10000000 program=preorder rep=3 version=levels word=levels workers=80: success, 1 samples
+attempt 204  a1=10000000 program=preorder rep=3 version=dag word=dag workers=80: success, 1 samples
+attempt 205  a1=10000000 program=preorder rep=3 version=tbb word=tbb workers=80: success, 1 samples
+attempt 206  a1=400000 a2=256 a3=0 program=pipefib rep=3 version=dag word=dag workers=160: success, 1 samples
+attempt 207  a1=540 a2=640 a3=368 a4=2 a5=0 program=x264 rep=3 version=dag word=dag workers=160: success, 1 samples
+attempt 208  a1=48000 a2=20000 a3=0 program=ferret rep=3 version=dag word=dag workers=160: success, 1 samples
+attempt 209  a1=48000 a2=20000 a3=0 program=ferret rep=3 version=tbb word=tbb workers=160: success, 1 samples
+attempt 210  a1=8000 a2=600 a3=64 a4=8 program=heat rep=3 version=ploops word=ploops workers=160: success, 2 samples
+attempt 211  a1=8000 a2=600 a3=64 a4=8 program=heat rep=3 version=trap word=trap workers=160: success, 2 samples
+attempt 212  a1=8000 a2=600 a3=64 a4=8 program=heat rep=3 version=dag word=dag workers=160: success, 2 samples
+attempt 213  a1=8000 a2=600 a3=64 a4=8 program=heat rep=3 version=tbb word=tbb workers=160: success, 2 samples
+attempt 214  a1=8000 a2=1500 a3=64 a4=8 program=life rep=3 version=ploops word=ploops workers=160: success, 2 samples
+attempt 215  a1=8000 a2=1500 a3=64 a4=8 program=life rep=3 version=trap word=trap workers=160: success, 2 samples
+attempt 216  a1=8000 a2=1500 a3=64 a4=8 program=life rep=3 version=dag word=dag workers=160: success, 2 samples
+attempt 217  a1=8000 a2=1500 a3=64 a4=8 program=life rep=3 version=tbb word=tbb workers=160: success, 2 samples
+attempt 218  a1=200000 a2=512 program=lcs rep=3 version=planes word=planes workers=160: success, 1 samples
+attempt 219  a1=200000 a2=512 program=lcs rep=3 version=dc word=dc workers=160: success, 1 samples
+attempt 220  a1=200000 a2=512 program=lcs rep=3 version=dag word=dag workers=160: success, 1 samples
+attempt 221  a1=200000 a2=512 program=lcs rep=3 version=tbb word=tbb workers=160: success, 1 samples
+attempt 222  a1=7168 a2=64 program=cholesky rep=3 version=levels word=levels workers=160: success, 1 samples
+attempt 223  a1=7168 a2=64 program=cholesky rep=3 version=dag word=dag workers=160: success, 1 samples
+attempt 224  a1=7168 a2=64 program=cholesky rep=3 version=tbb word=tbb workers=160: success, 1 samples
+attempt 225  a1=10000000 program=preorder rep=3 version=levels word=levels workers=160: success, 1 samples
+attempt 226  a1=10000000 program=preorder rep=3 version=dag word=dag workers=160: success, 1 samples
+attempt 227  a1=10000000 program=preorder rep=3 version=tbb word=tbb workers=160: success, 1 samples
+attempt 228  a1=400000 a2=256 a3=0 program=pipefib rep=4 version=dag word=dag workers=40: success, 1 samples
+attempt 229  a1=540 a2=640 a3=368 a4=2 a5=0 program=x264 rep=4 version=dag word=dag workers=40: success, 1 samples
+attempt 230  a1=48000 a2=20000 a3=0 program=ferret rep=4 version=dag word=dag workers=40: success, 1 samples
+attempt 231  a1=48000 a2=20000 a3=0 program=ferret rep=4 version=tbb word=tbb workers=40: success, 1 samples
+attempt 232  a1=8000 a2=600 a3=64 a4=8 program=heat rep=4 version=ploops word=ploops workers=40: success, 2 samples
+attempt 233  a1=8000 a2=600 a3=64 a4=8 program=heat rep=4 version=trap word=trap workers=40: success, 2 samples
+attempt 234  a1=8000 a2=600 a3=64 a4=8 program=heat rep=4 version=dag word=dag workers=40: success, 2 samples
+attempt 235  a1=8000 a2=600 a3=64 a4=8 program=heat rep=4 version=tbb word=tbb workers=40: success, 2 samples
+attempt 236  a1=8000 a2=1500 a3=64 a4=8 program=life rep=4 version=ploops word=ploops workers=40: success, 2 samples
+attempt 237  a1=8000 a2=1500 a3=64 a4=8 program=life rep=4 version=trap word=trap workers=40: success, 2 samples
+attempt 238  a1=8000 a2=1500 a3=64 a4=8 program=life rep=4 version=dag word=dag workers=40: success, 2 samples
+attempt 239  a1=8000 a2=1500 a3=64 a4=8 program=life rep=4 version=tbb word=tbb workers=40: success, 2 samples
+attempt 240  a1=200000 a2=512 program=lcs rep=4 version=planes word=planes workers=40: success, 1 samples
+attempt 241  a1=200000 a2=512 program=lcs rep=4 version=dc word=dc workers=40: success, 1 samples
+attempt 242  a1=200000 a2=512 program=lcs rep=4 version=dag word=dag workers=40: success, 1 samples
+attempt 243  a1=200000 a2=512 program=lcs rep=4 version=tbb word=tbb workers=40: success, 1 samples
+attempt 244  a1=7168 a2=64 program=cholesky rep=4 version=levels word=levels workers=40: success, 1 samples
+attempt 245  a1=7168 a2=64 program=cholesky rep=4 version=dag word=dag workers=40: success, 1 samples
+attempt 246  a1=7168 a2=64 program=cholesky rep=4 version=tbb word=tbb workers=40: success, 1 samples
+attempt 247  a1=10000000 program=preorder rep=4 version=levels word=levels workers=40: success, 1 samples
+attempt 248  a1=10000000 program=preorder rep=4 version=dag word=dag workers=40: success, 1 samples
+attempt 249  a1=10000000 program=preorder rep=4 version=tbb word=tbb workers=40: success, 1 samples
+attempt 250  a1=400000 a2=256 a3=0 program=pipefib rep=4 version=dag word=dag workers=80: success, 1 samples
+attempt 251  a1=540 a2=640 a3=368 a4=2 a5=0 program=x264 rep=4 version=dag word=dag workers=80: success, 1 samples
+attempt 252  a1=48000 a2=20000 a3=0 program=ferret rep=4 version=dag word=dag workers=80: success, 1 samples
+attempt 253  a1=48000 a2=20000 a3=0 program=ferret rep=4 version=tbb word=tbb workers=80: success, 1 samples
+attempt 254  a1=8000 a2=600 a3=64 a4=8 program=heat rep=4 version=ploops word=ploops workers=80: success, 2 samples
+attempt 255  a1=8000 a2=600 a3=64 a4=8 program=heat rep=4 version=trap word=trap workers=80: success, 2 samples
+attempt 256  a1=8000 a2=600 a3=64 a4=8 program=heat rep=4 version=dag word=dag workers=80: success, 2 samples
+attempt 257  a1=8000 a2=600 a3=64 a4=8 program=heat rep=4 version=tbb word=tbb workers=80: success, 2 samples
+attempt 258  a1=8000 a2=1500 a3=64 a4=8 program=life rep=4 version=ploops word=ploops workers=80: success, 2 samples
+attempt 259  a1=8000 a2=1500 a3=64 a4=8 program=life rep=4 version=trap word=trap workers=80: success, 2 samples
+attempt 260  a1=8000 a2=1500 a3=64 a4=8 program=life rep=4 version=dag word=dag workers=80: success, 2 samples
+attempt 261  a1=8000 a2=1500 a3=64 a4=8 program=life rep=4 version=tbb word=tbb workers=80: success, 2 samples
+attempt 262  a1=200000 a2=512 program=lcs rep=4 version=planes word=planes workers=80: success, 1 samples
+attempt 263  a1=200000 a2=512 program=lcs rep=4 version=dc word=dc workers=80: success, 1 samples
+attempt 264  a1=200000 a2=512 program=lcs rep=4 version=dag word=dag workers=80: success, 1 samples
+attempt 265  a1=200000 a2=512 program=lcs rep=4 version=tbb word=tbb workers=80: success, 1 samples
+attempt 266  a1=7168 a2=64 program=cholesky rep=4 version=levels word=levels workers=80: success, 1 samples
+attempt 267  a1=7168 a2=64 program=cholesky rep=4 version=dag word=dag workers=80: success, 1 samples
+attempt 268  a1=7168 a2=64 program=cholesky rep=4 version=tbb word=tbb workers=80: success, 1 samples
+attempt 269  a1=10000000 program=preorder rep=4 version=levels word=levels workers=80: success, 1 samples
+attempt 270  a1=10000000 program=preorder rep=4 version=dag word=dag workers=80: success, 1 samples
+attempt 271  a1=10000000 program=preorder rep=4 version=tbb word=tbb workers=80: success, 1 samples
+attempt 272  a1=400000 a2=256 a3=0 program=pipefib rep=4 version=dag word=dag workers=160: success, 1 samples
+attempt 273  a1=540 a2=640 a3=368 a4=2 a5=0 program=x264 rep=4 version=dag word=dag workers=160: success, 1 samples
+attempt 274  a1=48000 a2=20000 a3=0 program=ferret rep=4 version=dag word=dag workers=160: success, 1 samples
+attempt 275  a1=48000 a2=20000 a3=0 program=ferret rep=4 version=tbb word=tbb workers=160: success, 1 samples
+attempt 276  a1=8000 a2=600 a3=64 a4=8 program=heat rep=4 version=ploops word=ploops workers=160: success, 2 samples
+attempt 277  a1=8000 a2=600 a3=64 a4=8 program=heat rep=4 version=trap word=trap workers=160: success, 2 samples
+attempt 278  a1=8000 a2=600 a3=64 a4=8 program=heat rep=4 version=dag word=dag workers=160: success, 2 samples
+attempt 279  a1=8000 a2=600 a3=64 a4=8 program=heat rep=4 version=tbb word=tbb workers=160: success, 2 samples
+attempt 280  a1=8000 a2=1500 a3=64 a4=8 program=life rep=4 version=ploops word=ploops workers=160: success, 2 samples
+attempt 281  a1=8000 a2=1500 a3=64 a4=8 program=life rep=4 version=trap word=trap workers=160: success, 2 samples
+attempt 282  a1=8000 a2=1500 a3=64 a4=8 program=life rep=4 version=dag word=dag workers=160: success, 2 samples
+attempt 283  a1=8000 a2=1500 a3=64 a4=8 program=life rep=4 version=tbb word=tbb workers=160: success, 2 samples
+attempt 284  a1=200000 a2=512 program=lcs rep=4 version=planes word=planes workers=160: success, 1 samples
+attempt 285  a1=200000 a2=512 program=lcs rep=4 version=dc word=dc workers=160: success, 1 samples
+attempt 286  a1=200000 a2=512 program=lcs rep=4 version=dag word=dag workers=160: success, 1 samples
+attempt 287  a1=200000 a2=512 program=lcs rep=4 version=tbb word=tbb workers=160: success, 1 samples
+attempt 288  a1=7168 a2=64 program=cholesky rep=4 version=levels word=levels workers=160: success, 1 samples
+attempt 289  a1=7168 a2=64 program=cholesky rep=4 version=dag word=dag workers=160: success, 1 samples
+attempt 290  a1=7168 a2=64 program=cholesky rep=4 version=tbb word=tbb workers=160: success, 1 samples
+attempt 291  a1=10000000 program=preorder rep=4 version=levels word=levels workers=160: success, 1 samples
+attempt 292  a1=10000000 program=preorder rep=4 version=dag word=dag workers=160: success, 1 samples
+attempt 293  a1=10000000 program=preorder rep=4 version=tbb word=tbb workers=160: success, 1 samples
+attempt 294  a1=400000 a2=256 a3=0 program=pipefib rep=5 version=dag word=dag workers=40: success, 1 samples
+attempt 295  a1=540 a2=640 a3=368 a4=2 a5=0 program=x264 rep=5 version=dag word=dag workers=40: success, 1 samples
+attempt 296  a1=48000 a2=20000 a3=0 program=ferret rep=5 version=dag word=dag workers=40: success, 1 samples
+attempt 297  a1=48000 a2=20000 a3=0 program=ferret rep=5 version=tbb word=tbb workers=40: success, 1 samples
+attempt 298  a1=8000 a2=600 a3=64 a4=8 program=heat rep=5 version=ploops word=ploops workers=40: success, 2 samples
+attempt 299  a1=8000 a2=600 a3=64 a4=8 program=heat rep=5 version=trap word=trap workers=40: success, 2 samples
+attempt 300  a1=8000 a2=600 a3=64 a4=8 program=heat rep=5 version=dag word=dag workers=40: success, 2 samples
+attempt 301  a1=8000 a2=600 a3=64 a4=8 program=heat rep=5 version=tbb word=tbb workers=40: success, 2 samples
+attempt 302  a1=8000 a2=1500 a3=64 a4=8 program=life rep=5 version=ploops word=ploops workers=40: success, 2 samples
+attempt 303  a1=8000 a2=1500 a3=64 a4=8 program=life rep=5 version=trap word=trap workers=40: success, 2 samples
+attempt 304  a1=8000 a2=1500 a3=64 a4=8 program=life rep=5 version=dag word=dag workers=40: success, 2 samples
+attempt 305  a1=8000 a2=1500 a3=64 a4=8 program=life rep=5 version=tbb word=tbb workers=40: success, 2 samples
+attempt 306  a1=200000 a2=512 program=lcs rep=5 version=planes word=planes workers=40: success, 1 samples
+attempt 307  a1=200000 a2=512 program=lcs rep=5 version=dc word=dc workers=40: success, 1 samples
+attempt 308  a1=200000 a2=512 program=lcs rep=5 version=dag word=dag workers=40: success, 1 samples
+attempt 309  a1=200000 a2=512 program=lcs rep=5 version=tbb word=tbb workers=40: success, 1 samples
+attempt 310  a1=7168 a2=64 program=cholesky rep=5 version=levels word=levels workers=40: success, 1 samples
+attempt 311  a1=7168 a2=64 program=cholesky rep=5 version=dag word=dag workers=40: success, 1 samples
+attempt 312  a1=7168 a2=64 program=cholesky rep=5 version=tbb word=tbb workers=40: success, 1 samples
+attempt 313  a1=10000000 program=preorder rep=5 version=levels word=levels workers=40: success, 1 samples
+attempt 314  a1=10000000 program=preorder rep=5 version=dag word=dag workers=40: success, 1 samples
+attempt 315  a1=10000000 program=preorder rep=5 version=tbb word=tbb workers=40: success, 1 samples
+attempt 316  a1=400000 a2=256 a3=0 program=pipefib rep=5 version=dag word=dag workers=80: success, 1 samples
+attempt 317  a1=540 a2=640 a3=368 a4=2 a5=0 program=x264 rep=5 version=dag word=dag workers=80: success, 1 samples
+attempt 318  a1=48000 a2=20000 a3=0 program=ferret rep=5 version=dag word=dag workers=80: success, 1 samples
+attempt 319  a1=48000 a2=20000 a3=0 program=ferret rep=5 version=tbb word=tbb workers=80: success, 1 samples
+attempt 320  a1=8000 a2=600 a3=64 a4=8 program=heat rep=5 version=ploops word=ploops workers=80: success, 2 samples
+attempt 321  a1=8000 a2=600 a3=64 a4=8 program=heat rep=5 version=trap word=trap workers=80: success, 2 samples
+attempt 322  a1=8000 a2=600 a3=64 a4=8 program=heat rep=5 version=dag word=dag workers=80: success, 2 samples
+attempt 323  a1=8000 a2=600 a3=64 a4=8 program=heat rep=5 version=tbb word=tbb workers=80: success, 2 samples
+attempt 324  a1=8000 a2=1500 a3=64 a4=8 program=life rep=5 version=ploops word=ploops workers=80: success, 2 samples
+attempt 325  a1=8000 a2=1500 a3=64 a4=8 program=life rep=5 version=trap word=trap workers=80: success, 2 samples
+attempt 326  a1=8000 a2=1500 a3=64 a4=8 program=life rep=5 version=dag word=dag workers=80: success, 2 samples
+attempt 327  a1=8000 a2=1500 a3=64 a4=8 program=life rep=5 version=tbb word=tbb workers=80: success, 2 samples
+attempt 328  a1=200000 a2=512 program=lcs rep=5 version=planes word=planes workers=80: success, 1 samples
+attempt 329  a1=200000 a2=512 program=lcs rep=5 version=dc word=dc workers=80: success, 1 samples
+attempt 330  a1=200000 a2=512 program=lcs rep=5 version=dag word=dag workers=80: success, 1 samples
+attempt 331  a1=200000 a2=512 program=lcs rep=5 version=tbb word=tbb workers=80: success, 1 samples
+attempt 332  a1=7168 a2=64 program=cholesky rep=5 version=levels word=levels workers=80: success, 1 samples
+attempt 333  a1=7168 a2=64 program=cholesky rep=5 version=dag word=dag workers=80: success, 1 samples
+attempt 334  a1=7168 a2=64 program=cholesky rep=5 version=tbb word=tbb workers=80: success, 1 samples
+attempt 335  a1=10000000 program=preorder rep=5 version=levels word=levels workers=80: success, 1 samples
+attempt 336  a1=10000000 program=preorder rep=5 version=dag word=dag workers=80: success, 1 samples
+attempt 337  a1=10000000 program=preorder rep=5 version=tbb word=tbb workers=80: success, 1 samples
+attempt 338  a1=400000 a2=256 a3=0 program=pipefib rep=5 version=dag word=dag workers=160: success, 1 samples
+attempt 339  a1=540 a2=640 a3=368 a4=2 a5=0 program=x264 rep=5 version=dag word=dag workers=160: success, 1 samples
+attempt 340  a1=48000 a2=20000 a3=0 program=ferret rep=5 version=dag word=dag workers=160: success, 1 samples
+attempt 341  a1=48000 a2=20000 a3=0 program=ferret rep=5 version=tbb word=tbb workers=160: success, 1 samples
+attempt 342  a1=8000 a2=600 a3=64 a4=8 program=heat rep=5 version=ploops word=ploops workers=160: success, 2 samples
+attempt 343  a1=8000 a2=600 a3=64 a4=8 program=heat rep=5 version=trap word=trap workers=160: success, 2 samples
+attempt 344  a1=8000 a2=600 a3=64 a4=8 program=heat rep=5 version=dag word=dag workers=160: success, 2 samples
+attempt 345  a1=8000 a2=600 a3=64 a4=8 program=heat rep=5 version=tbb word=tbb workers=160: success, 2 samples
+attempt 346  a1=8000 a2=1500 a3=64 a4=8 program=life rep=5 version=ploops word=ploops workers=160: success, 2 samples
+attempt 347  a1=8000 a2=1500 a3=64 a4=8 program=life rep=5 version=trap word=trap workers=160: success, 2 samples
+attempt 348  a1=8000 a2=1500 a3=64 a4=8 program=life rep=5 version=dag word=dag workers=160: success, 2 samples
+attempt 349  a1=8000 a2=1500 a3=64 a4=8 program=life rep=5 version=tbb word=tbb workers=160: success, 2 samples
+attempt 350  a1=200000 a2=512 program=lcs rep=5 version=planes word=planes workers=160: success, 1 samples
+attempt 351  a1=200000 a2=512 program=lcs rep=5 version=dc word=dc workers=160: success, 1 samples
+attempt 352  a1=200000 a2=512 program=lcs rep=5 version=dag word=dag workers=160: success, 1 samples
+attempt 353  a1=200000 a2=512 program=lcs rep=5 version=tbb word=tbb workers=160: success, 1 samples
+attempt 354  a1=7168 a2=64 program=cholesky rep=5 version=levels word=levels workers=160: success, 1 samples
+attempt 355  a1=7168 a2=64 program=cholesky rep=5 version=dag word=dag workers=160: success, 1 samples
+attempt 356  a1=7168 a2=64 program=cholesky rep=5 version=tbb word=tbb workers=160: success, 1 samples
+attempt 357  a1=10000000 program=preorder rep=5 version=levels word=levels workers=160: success, 1 samples
+attempt 358  a1=10000000 program=preorder rep=5 version=dag word=dag workers=160: success, 1 samples
+attempt 359  a1=10000000 program=preorder rep=5 version=tbb word=tbb workers=160: success, 1 samples
+attempt 360  a1=400000 a2=256 a3=0 check=check program=pipefib rep=99 version=dag word=dag workers=320: success, 2 samples
+attempt 361  a1=540 a2=640 a3=368 a4=2 a5=0 check=check program=x264 rep=99 version=dag word=dag workers=320: success, 2 samples
+attempt 362  a1=48000 a2=20000 a3=0 check=check program=ferret rep=99 version=dag word=dag workers=320: success, 2 samples
+attempt 363  a1=48000 a2=20000 a3=0 check=check program=ferret rep=99 version=tbb word=tbb workers=320: success, 2 samples
+attempt 364  a1=8000 a2=600 a3=64 a4=8 check=check program=heat rep=99 version=ploops word=ploops workers=320: success, 3 samples
+attempt 365  a1=8000 a2=600 a3=64 a4=8 check=check program=heat rep=99 version=trap word=trap workers=320: success, 3 samples
+attempt 366  a1=8000 a2=600 a3=64 a4=8 check=check program=heat rep=99 version=dag word=dag workers=320: success, 3 samples
+attempt 367  a1=8000 a2=600 a3=64 a4=8 check=check program=heat rep=99 version=tbb word=tbb workers=320: success, 3 samples
+attempt 368  a1=8000 a2=1500 a3=64 a4=8 check=check program=life rep=99 version=ploops word=ploops workers=320: success, 3 samples
+attempt 369  a1=8000 a2=1500 a3=64 a4=8 check=check program=life rep=99 version=trap word=trap workers=320: success, 3 samples
+attempt 370  a1=8000 a2=1500 a3=64 a4=8 check=check program=life rep=99 version=dag word=dag workers=320: success, 3 samples
+attempt 371  a1=8000 a2=1500 a3=64 a4=8 check=check program=life rep=99 version=tbb word=tbb workers=320: success, 3 samples
+attempt 372  a1=200000 a2=512 check=check program=lcs rep=99 version=planes word=planes workers=320: success, 2 samples
+attempt 373  a1=200000 a2=512 check=check program=lcs rep=99 version=dc word=dc workers=320: success, 2 samples
+attempt 374  a1=200000 a2=512 check=check program=lcs rep=99 version=dag word=dag workers=320: success, 2 samples
+attempt 375  a1=200000 a2=512 check=check program=lcs rep=99 version=tbb word=tbb workers=320: success, 2 samples
+attempt 376  a1=7168 a2=64 check=check program=cholesky rep=99 version=levels word=levels workers=320: success, 2 samples
+attempt 377  a1=7168 a2=64 check=check program=cholesky rep=99 version=dag word=dag workers=320: success, 2 samples
+attempt 378  a1=7168 a2=64 check=check program=cholesky rep=99 version=tbb word=tbb workers=320: success, 2 samples
+attempt 379  a1=10000000 check=check program=preorder rep=99 version=levels word=levels workers=320: success, 2 samples
+attempt 380  a1=10000000 check=check program=preorder rep=99 version=dag word=dag workers=320: success, 2 samples
+attempt 381  a1=10000000 check=check program=preorder rep=99 version=tbb word=tbb workers=320: success, 2 samples
+382 trials run; 382 of 382 have an attempt
+Sun Nov 22 18:20:52 UTC 2026
+Model name:                              Intel(R) Xeon(R) Platinum 8380 CPU @ 2.30GHz
+Thread(s) per core:                      2
+Core(s) per socket:                      40
+Socket(s):                               2
+NUMA node(s):                            2
+NUMA node0 CPU(s):                       0,2,4,6,8,10,12,14,16,18,20,22,24,26,28,30,32,34,36,38,40,42,44,46,48,50,52,54,56,58,60,62,64,66,68,70,72,74,76,78,80,82,84,86,88,90,92,94,96,98,100,102,104,106,108,110,112,114,116,118,120,122,124,126,128,130,132,134,136,138,140,142,144,146,148,150,152,154,156,158
+NUMA node1 CPU(s):                       1,3,5,7,9,11,13,15,17,19,21,23,25,27,29,31,33,35,37,39,41,43,45,47,49,51,53,55,57,59,61,63,65,67,69,71,73,75,77,79,81,83,85,87,89,91,93,95,97,99,101,103,105,107,109,111,113,115,117,119,121,123,125,127,129,131,133,135,137,139,141,143,145,147,149,151,153,155,157,159
+Mem:             125           5         102           0          18         119
+Linux 6.8.0-124-generic x86_64
+governor:  160 performance
+no_turbo: 0  smt: 1
+transparent hugepages: always [madvise] never
+numa balancing: 0
+available: 2 nodes (0-1)
+node 0 cpus: 0 2 4 6 8 10 12 14 16 18 20 22 24 26 28 30 32 34 36 38 40 42 44 46 48 50 52 54 56 58 60 62 64 66 68 70 72 74 76 78 80 82 84 86 88 90 92 94 96 98 100 102 104 106 108 110 112 114 116 118 120 122 124 126 128 130 132 134 136 138 140 142 144 146 148 150 152 154 156 158
+node 0 size: 63705 MB
+node 0 free: 49955 MB
+workers 1,40,80,160; checks 320; uptime:  18:20:52 up 18:26,  4 users,  load average: 95.01, 192.24, 209.33
+pipes:
+  {program: pipefib, config: serial, time: 46.439}
+  {program: pipefib, config: dag 1, time: 48.919}
+  {program: pipefib, config: dag 40, time: 2.68}
+  {program: pipefib, config: dag 80, time: 2.055}
+  {program: pipefib, config: dag 160, time: 1.933}
+  {program: x264, config: serial, time: 20.867}
+  {program: x264, config: dag 1, time: 20.873}
+  {program: x264, config: dag 40, time: 2.244}
+  {program: x264, config: dag 80, time: 2.292}
+  {program: x264, config: dag 160, time: 4.312}
+certificate 8c690add77c00eb8375113849040774b7b8c79773b6f047af3c3e527034fc6d8: accepted, level 0
+  over the log ending at 834eea47060cccb25b8595c44faf7723b2c2ab9ef33f4d82797114a7a7698cdc, issued by Flexibench 27e6e1e32a89656fc41659b9c2238d69afcabe26, Lean 4.30.0
+  trials: 34 selects, 348 excluded
+  attempts: 34 selects, 326 excluded, 22 unread
+  terminal events: 34 selects, 326 excluded, 22 unread
+  samples: 34 contributes, 508 unread
+  level 0: the store is a local directory written by this process
+ferret:
+  {program: ferret, config: serial, time: 54.203}
+  {program: ferret, config: dag 1, time: 55.173}
+  {program: ferret, config: dag 40, time: 1.63}
+  {program: ferret, config: dag 80, time: 1.631}
+  {program: ferret, config: dag 160, time: 1.812}
+  {program: ferret, config: tbb 1, time: 53.544}
+  {program: ferret, config: tbb 40, time: 1.89}
+  {program: ferret, config: tbb 80, time: 1.873}
+  {program: ferret, config: tbb 160, time: 2.3}
+certificate 98a67ef42cee37cbb1d6240e7f275a8874912f94a5b8f3b1ed4f3e2bb61b2d85: accepted, level 0
+  over the log ending at 834eea47060cccb25b8595c44faf7723b2c2ab9ef33f4d82797114a7a7698cdc, issued by Flexibench 27e6e1e32a89656fc41659b9c2238d69afcabe26, Lean 4.30.0
+  trials: 33 selects, 349 excluded
+  attempts: 33 selects, 327 excluded, 22 unread
+  terminal events: 33 selects, 327 excluded, 22 unread
+  samples: 33 contributes, 509 unread
+  level 0: the store is a local directory written by this process
+stencils:
+  {program: heat, config: serial, time: 55.866}
+  {program: heat, config: ploops 1, time: 55.875}
+  {program: heat, config: ploops 40, time: 4.717}
+  {program: heat, config: ploops 80, time: 4.062}
+  {program: heat, config: ploops 160, time: 4.074}
+  {program: heat, config: trap 1, time: 28.557}
+  {program: heat, config: trap 40, time: 1.031}
+  {program: heat, config: trap 80, time: 0.804}
+  {program: heat, config: trap 160, time: 0.964}
+  {program: heat, config: dag 1, time: 28.352}
+  {program: heat, config: dag 40, time: 0.962}
+  {program: heat, config: dag 80, time: 0.747}
+  {program: heat, config: dag 160, time: 0.897}
+  {program: heat, config: tbb 1, time: 28.59}
+  {program: heat, config: tbb 40, time: 1.853}
+  {program: heat, config: tbb 80, time: 1.452}
+  {program: heat, config: tbb 160, time: 1.371}
+  {program: life, config: serial, time: 47.527}
+  {program: life, config: ploops 1, time: 47.475}
+  {program: life, config: ploops 40, time: 1.565}
+  {program: life, config: ploops 80, time: 1.285}
+  {program: life, config: ploops 160, time: 1.407}
+  {program: life, config: trap 1, time: 76.072}
+  {program: life, config: trap 40, time: 2.388}
+  {program: life, config: trap 80, time: 1.722}
+  {program: life, config: trap 160, time: 2.272}
+  {program: life, config: dag 1, time: 76.569}
+  {program: life, config: dag 40, time: 2.335}
+  {program: life, config: dag 80, time: 1.656}
+  {program: life, config: dag 160, time: 2.174}
+  {program: life, config: tbb 1, time: 76.558}
+  {program: life, config: tbb 40, time: 4.108}
+  {program: life, config: tbb 80, time: 3.043}
+  {program: life, config: tbb 160, time: 3.248}
+certificate cb69f1114453d72cc752bfb8b484b278b6f1f055b55d13bfa4148168f174ce97: accepted, level 0
+  over the log ending at 834eea47060cccb25b8595c44faf7723b2c2ab9ef33f4d82797114a7a7698cdc, issued by Flexibench 27e6e1e32a89656fc41659b9c2238d69afcabe26, Lean 4.30.0
+  trials: 130 selects, 252 excluded
+  attempts: 130 selects, 230 excluded, 22 unread
+  terminal events: 130 selects, 230 excluded, 22 unread
+  samples: 130 contributes, 130 excluded, 282 unread
+  level 0: the store is a local directory written by this process
+lcs:
+  {program: lcs, config: serial, time: 64.164}
+  {program: lcs, config: planes 1, time: 63.925}
+  {program: lcs, config: planes 40, time: 2.141}
+  {program: lcs, config: planes 80, time: 1.39}
+  {program: lcs, config: planes 160, time: 1.437}
+  {program: lcs, config: dc 1, time: 64.157}
+  {program: lcs, config: dc 40, time: 11.177}
+  {program: lcs, config: dc 80, time: 11.181}
+  {program: lcs, config: dc 160, time: 14.636}
+  {program: lcs, config: dag 1, time: 64.138}
+  {program: lcs, config: dag 40, time: 1.731}
+  {program: lcs, config: dag 80, time: 0.995}
+  {program: lcs, config: dag 160, time: 1.084}
+  {program: lcs, config: tbb 1, time: 63.944}
+  {program: lcs, config: tbb 40, time: 1.764}
+  {program: lcs, config: tbb 80, time: 1.074}
+  {program: lcs, config: tbb 160, time: 1.044}
+certificate 977e71f946b6a2de904cf3b325a20804b2cd1d10c65d6e63703a71e0cf4f8c90: accepted, level 0
+  over the log ending at 834eea47060cccb25b8595c44faf7723b2c2ab9ef33f4d82797114a7a7698cdc, issued by Flexibench 27e6e1e32a89656fc41659b9c2238d69afcabe26, Lean 4.30.0
+  trials: 65 selects, 317 excluded
+  attempts: 65 selects, 295 excluded, 22 unread
+  terminal events: 65 selects, 295 excluded, 22 unread
+  samples: 65 contributes, 477 unread
+  level 0: the store is a local directory written by this process
+graphs:
+  {program: cholesky, config: serial, time: 51.868}
+  {program: cholesky, config: levels 1, time: 51.806}
+  {program: cholesky, config: levels 40, time: 1.392}
+  {program: cholesky, config: levels 80, time: 0.737}
+  {program: cholesky, config: levels 160, time: 0.562}
+  {program: cholesky, config: dag 1, time: 51.755}
+  {program: cholesky, config: dag 40, time: 1.388}
+  {program: cholesky, config: dag 80, time: 0.723}
+  {program: cholesky, config: dag 160, time: 0.521}
+  {program: cholesky, config: tbb 1, time: 53.343}
+  {program: cholesky, config: tbb 40, time: 1.54}
+  {program: cholesky, config: tbb 80, time: 0.887}
+  {program: cholesky, config: tbb 160, time: 0.643}
+  {program: preorder, config: serial, time: 55.801}
+  {program: preorder, config: levels 1, time: 59.784}
+  {program: preorder, config: levels 40, time: 1.549}
+  {program: preorder, config: levels 80, time: 0.797}
+  {program: preorder, config: levels 160, time: 0.59}
+  {program: preorder, config: dag 1, time: 64.916}
+  {program: preorder, config: dag 40, time: 1.834}
+  {program: preorder, config: dag 80, time: 1.015}
+  {program: preorder, config: dag 160, time: 0.875}
+  {program: preorder, config: tbb 1, time: 65.006}
+  {program: preorder, config: tbb 40, time: 1.69}
+  {program: preorder, config: tbb 80, time: 0.91}
+  {program: preorder, config: tbb 160, time: 0.648}
+certificate cd744c54809c5f46cfc8d4cb913bb4c1f51d7051942f471947d2cfcfc14648c9: accepted, level 0
+  over the log ending at 834eea47060cccb25b8595c44faf7723b2c2ab9ef33f4d82797114a7a7698cdc, issued by Flexibench 27e6e1e32a89656fc41659b9c2238d69afcabe26, Lean 4.30.0
+  trials: 98 selects, 284 excluded
+  attempts: 98 selects, 262 excluded, 22 unread
+  terminal events: 98 selects, 262 excluded, 22 unread
+  samples: 98 contributes, 444 unread
+  level 0: the store is a local directory written by this process
+failures:
+certificate 537ce7b82949064018a91970338f5a7f9d508f809b4e8ceb25dc71e5887460e0: accepted, level 0
+  over the log ending at 834eea47060cccb25b8595c44faf7723b2c2ab9ef33f4d82797114a7a7698cdc, issued by Flexibench 27e6e1e32a89656fc41659b9c2238d69afcabe26, Lean 4.30.0
+  trials: 374 selects, 8 excluded
+  attempts: 22 excluded, 360 unread
+  terminal events: 374 excluded, 8 unread
+  samples: 52 excluded, 490 unread
+  left out: commitments 0, none of whose trials contributed, though some bear on its keys
+  level 0: the store is a local directory written by this process
+serialfailures:
+certificate 1fd80ac8302bbfbadb37aed9b30b2cc459b28bc484e62aaffb5f758c599f29fe: accepted, level 0
+  over the log ending at 834eea47060cccb25b8595c44faf7723b2c2ab9ef33f4d82797114a7a7698cdc, issued by Flexibench 27e6e1e32a89656fc41659b9c2238d69afcabe26, Lean 4.30.0
+  trials: 8 selects, 374 excluded
+  attempts: 382 unread
+  terminal events: 8 excluded, 374 unread
+  samples: 542 unread
+  left out: commitments 0, none of whose trials contributed, though some bear on its keys
+  level 0: the store is a local directory written by this process
+| time | serial | dag 1 | dag 40 | dag 80 | dag 160 |
+|---|---:|---:|---:|---:|---:|
+| pipefib | 46.439 | 48.919 | 2.680 | 2.055 | 1.933 |
+| x264 | 20.867 | 20.873 | 2.244 | 2.292 | 4.312 |
+pipesicelake.tex: accepted: it shows what certificate 8c690add77c00eb8375113849040774b7b8c79773b6f047af3c3e527034fc6d8 certifies
+pipesicelake.html: accepted: it shows what certificate 8c690add77c00eb8375113849040774b7b8c79773b6f047af3c3e527034fc6d8 certifies
+| time | serial | dag 1 | dag 40 | dag 80 | dag 160 | tbb 1 | tbb 40 | tbb 80 | tbb 160 |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| ferret | 54.203 | 55.173 | 1.630 | 1.631 | 1.812 | 53.544 | 1.890 | 1.873 | 2.300 |
+ferreticelake.tex: accepted: it shows what certificate 98a67ef42cee37cbb1d6240e7f275a8874912f94a5b8f3b1ed4f3e2bb61b2d85 certifies
+ferreticelake.html: accepted: it shows what certificate 98a67ef42cee37cbb1d6240e7f275a8874912f94a5b8f3b1ed4f3e2bb61b2d85 certifies
+| time | serial | ploops 1 | ploops 40 | ploops 80 | ploops 160 | trap 1 | trap 40 | trap 80 | trap 160 | dag 1 | dag 40 | dag 80 | dag 160 | tbb 1 | tbb 40 | tbb 80 | tbb 160 |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| heat | 55.866 | 55.875 | 4.717 | 4.062 | 4.074 | 28.557 | 1.031 | 0.804 | 0.964 | 28.352 | 0.962 | 0.747 | 0.897 | 28.590 | 1.853 | 1.452 | 1.371 |
+| life | 47.527 | 47.475 | 1.565 | 1.285 | 1.407 | 76.072 | 2.388 | 1.722 | 2.272 | 76.569 | 2.335 | 1.656 | 2.174 | 76.558 | 4.108 | 3.043 | 3.248 |
+stencilsicelake.tex: accepted: it shows what certificate cb69f1114453d72cc752bfb8b484b278b6f1f055b55d13bfa4148168f174ce97 certifies
+stencilsicelake.html: accepted: it shows what certificate cb69f1114453d72cc752bfb8b484b278b6f1f055b55d13bfa4148168f174ce97 certifies
+| time | serial | planes 1 | planes 40 | planes 80 | planes 160 | dc 1 | dc 40 | dc 80 | dc 160 | dag 1 | dag 40 | dag 80 | dag 160 | tbb 1 | tbb 40 | tbb 80 | tbb 160 |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| lcs | 64.164 | 63.925 | 2.141 | 1.390 | 1.437 | 64.157 | 11.177 | 11.181 | 14.636 | 64.138 | 1.731 | 0.995 | 1.084 | 63.944 | 1.764 | 1.074 | 1.044 |
+lcsicelake.tex: accepted: it shows what certificate 977e71f946b6a2de904cf3b325a20804b2cd1d10c65d6e63703a71e0cf4f8c90 certifies
+lcsicelake.html: accepted: it shows what certificate 977e71f946b6a2de904cf3b325a20804b2cd1d10c65d6e63703a71e0cf4f8c90 certifies
+| time | serial | levels 1 | levels 40 | levels 80 | levels 160 | dag 1 | dag 40 | dag 80 | dag 160 | tbb 1 | tbb 40 | tbb 80 | tbb 160 |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| cholesky | 51.868 | 51.806 | 1.392 | 0.737 | 0.562 | 51.755 | 1.388 | 0.723 | 0.521 | 53.343 | 1.540 | 0.887 | 0.643 |
+| preorder | 55.801 | 59.784 | 1.549 | 0.797 | 0.590 | 64.916 | 1.834 | 1.015 | 0.875 | 65.006 | 1.690 | 0.910 | 0.648 |
+graphsicelake.tex: accepted: it shows what certificate cd744c54809c5f46cfc8d4cb913bb4c1f51d7051942f471947d2cfcfc14648c9 certifies
+graphsicelake.html: accepted: it shows what certificate cd744c54809c5f46cfc8d4cb913bb4c1f51d7051942f471947d2cfcfc14648c9 certifies
+SESSION DONE
