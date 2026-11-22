@@ -1,0 +1,1 @@
+{"args":["27"],"env":{"TASKPARTS_NUM_WORKERS":"3"},"program":"/Users/rainey/Work/taskparts-bench-paper/builds/8b54c6a710ba1c08a4ebcc5a24622ad4cc4da026.instr/plain/fib"}

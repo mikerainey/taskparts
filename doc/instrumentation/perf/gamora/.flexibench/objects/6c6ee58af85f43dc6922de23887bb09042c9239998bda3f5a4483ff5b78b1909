@@ -1,0 +1,4 @@
+fib(38) = 39088169
+workers   8
+exectime  0.077 s
+{"nb_workers": 8, "exectime": 0.076693, "work": 0.612434, "sched": 0.000826, "idle": 0.000286, "nb_steals": 134, "nb_forks": 63245985}

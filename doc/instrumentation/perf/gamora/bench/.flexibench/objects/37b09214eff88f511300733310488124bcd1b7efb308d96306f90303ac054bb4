@@ -1,7 +1,0 @@
-[
-{"exectime": 0.126785, "nb_workers": 32, "work": 4.012700, "sched": 0.020575, "idle": 0.023829, "nb_steals": 2618, "nb_forks": 0},
-{"exectime": 0.126777, "nb_workers": 32, "work": 4.023750, "sched": 0.019293, "idle": 0.013834, "nb_steals": 2674, "nb_forks": 0},
-{"exectime": 0.126145, "nb_workers": 32, "work": 3.994363, "sched": 0.023597, "idle": 0.018667, "nb_steals": 2840, "nb_forks": 0},
-{"exectime": 0.126228, "nb_workers": 32, "work": 3.996307, "sched": 0.021700, "idle": 0.021282, "nb_steals": 3008, "nb_forks": 0},
-{"exectime": 0.126627, "nb_workers": 32, "work": 3.999891, "sched": 0.026208, "idle": 0.025958, "nb_steals": 2753, "nb_forks": 0}
-]

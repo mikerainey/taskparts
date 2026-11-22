@@ -1,1 +1,0 @@
-{"args":["2000000"],"env":{"TASKPARTS_BENCHMARK_NUM_REPEAT":"5","TASKPARTS_NUM_WORKERS":"8"},"program":"/Users/rainey/Work/taskparts-bench-paper/builds/4ff1190e10c4776b736a7488ad6657ab31122d26.instr-bench-80bf19db490f/plain/BFS"}

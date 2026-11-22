@@ -1,4 +1,0 @@
-fib(38) = 39088169
-workers   32
-exectime  0.033 s
-{"nb_workers": 32, "exectime": 0.032689, "work": 1.028004, "sched": 0.013629, "idle": 0.004423, "nb_steals": 724, "nb_forks": 63245985}

@@ -1,0 +1,1 @@
+{"args":["20000000"],"env":{"TASKPARTS_BENCHMARK_NUM_REPEAT":"5","TASKPARTS_NUM_WORKERS":"2"},"program":"/Users/rainey/Work/taskparts-bench-paper/builds/8b54c6a710ba1c08a4ebcc5a24622ad4cc4da026.instr-bench-80bf19db490f/forks/mergesort"}

@@ -1,0 +1,79 @@
+--- a/include/parlay/internal/get_time.h	2026-11-20 01:53:43
++++ b/include/parlay/internal/get_time.h	2026-11-20 01:53:43
+@@ -8,6 +8,14 @@
+ #include <vector>
+ #include <sys/resource.h>
+ 
++// With micro taskparts built to keep totals, each timed section is also a
++// region: the timer takes a snapshot wherever it reads the time, and a
++// record gains the totals between two of them.
++#if defined(PARLAY_TASKPARTS) && defined(MTP_STATS)
++#include "microtaskparts.hpp"
++#define PARLAY_TIMER_REGIONS
++#endif
++
+ namespace parlay {
+   namespace internal {
+ 
+@@ -40,6 +48,11 @@
+   };
+   std::vector<rusage_metrics> rusages;
+   struct rusage last_rusage;
++#ifdef PARLAY_TIMER_REGIONS
++  microtaskparts::snapshot last_snapshot;
++  microtaskparts::stats last_region;
++  std::vector<microtaskparts::stats> regions;
++#endif
+ 
+   auto get_time() {
+     return std::chrono::system_clock::now();
+@@ -124,7 +137,16 @@
+       fprintf(f, "\"nvcsw\": %lu,\n", rusages[i].nvcsw);
+       fprintf(f, "\"nivcsw\": %lu,\n", rusages[i].nivcsw);
+       fprintf(f, "\"maxrss\": %lu,\n", rusages[i].maxrss);
+-      fprintf(f, "\"nsignals\": %lu}", rusages[i].nsignals);
++      fprintf(f, "\"nsignals\": %lu", rusages[i].nsignals);
++#ifdef PARLAY_TIMER_REGIONS
++      fprintf(f, ",\n\"nb_workers\": %zu, \"work\": %.6f, \"sched\": %.6f, "
++              "\"idle\": %.6f, \"total\": %.6f, \"nb_steals\": %llu",
++              regions[i].nb_workers, regions[i].work, regions[i].sched,
++              regions[i].idle,
++              regions[i].work + regions[i].sched + regions[i].idle,
++              (unsigned long long)regions[i].nb_steals);
++#endif
++      fprintf(f, "}");
+       if (i + 1 != n) {
+ 	fprintf(f, ",\n");
+       }
+@@ -139,6 +161,9 @@
+   void start () {
+     on = true;
+     last = get_time();
++#ifdef PARLAY_TIMER_REGIONS
++    last_snapshot = microtaskparts::take_snapshot();
++#endif
+     getrusage(RUSAGE_SELF, &last_rusage);
+   }
+ 
+@@ -160,6 +185,11 @@
+     double td = diff(t, last);
+     total_so_far += td;
+     last = t;
++#ifdef PARLAY_TIMER_REGIONS
++    microtaskparts::snapshot s = microtaskparts::take_snapshot();
++    last_region = microtaskparts::stats_between(last_snapshot, s);
++    last_snapshot = s;
++#endif
+     return td;
+   }
+ 
+@@ -171,6 +201,9 @@
+   void next(std::string str) {
+     auto t = next_time();
+     exectimes.push_back(t);
++#ifdef PARLAY_TIMER_REGIONS
++    regions.push_back(last_region);
++#endif
+     auto previous_rusage = last_rusage;
+     getrusage(RUSAGE_SELF, &last_rusage);
+     rusage_metrics m = {

@@ -1,0 +1,1 @@
+{"metrics":[{"seconds":{"rat":[297,1000]}},{"input":{"nat":38},"value":{"nat":39088169}},{"exectime":{"rat":[296501,1000000]},"idle":{"rat":[17,1000000]},"nb_forks":{"nat":63245985},"nb_steals":{"nat":10},"nb_workers":{"nat":2},"sched":{"rat":[89,1000000]},"work":{"rat":[9264,15625]}}]}

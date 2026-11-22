@@ -15,7 +15,7 @@ inline std::atomic<unsigned long> shared_nb_forks{0};
 #elif defined(COUNT_FORKS_PACKED)
 // Aligned, so that which counters share a cache line does not depend on where
 // the array happens to land: the counters of workers 0 to 7 share one.
-alignas(128) inline unsigned long packed_nb_forks[64];
+alignas(128) inline unsigned long packed_nb_forks[512];
 #define MTP_ON_FORK(w) (packed_nb_forks[&(w) - &workers[0]]++)
 #endif
 

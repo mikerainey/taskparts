@@ -1,0 +1,4 @@
+# Flexibench stores too large for the repository (see README.md, "Checking")
+/suite/.flexibench/
+/gamora/suite/.flexibench/
+/icelake/suite/.flexibench/
