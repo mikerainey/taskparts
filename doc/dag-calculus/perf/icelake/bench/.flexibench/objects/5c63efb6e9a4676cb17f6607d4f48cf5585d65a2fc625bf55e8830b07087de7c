@@ -1,0 +1,4 @@
+ferret tbb queries=48000 database=20000 throttle=160
+output    48000 answers, digest 33128f038e0a38d9
+workers   40
+exectime  1.875 s

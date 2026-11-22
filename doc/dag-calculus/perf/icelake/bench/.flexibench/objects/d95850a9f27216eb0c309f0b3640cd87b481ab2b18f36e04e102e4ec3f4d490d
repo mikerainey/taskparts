@@ -1,0 +1,4 @@
+heat trap n=8000 steps=600 width=64 dt=8
+checksum  650846667.029201984
+workers   80
+exectime  0.814 s

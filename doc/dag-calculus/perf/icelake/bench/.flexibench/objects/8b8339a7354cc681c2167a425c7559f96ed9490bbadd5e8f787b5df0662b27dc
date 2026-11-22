@@ -1,0 +1,5 @@
+lcs tbb n=200000 block=512
+length    166525
+workers   320
+exectime  1.356 s
+check     ok

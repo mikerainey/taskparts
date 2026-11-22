@@ -1,0 +1,5 @@
+life tbb n=8000 steps=1500 width=64 dt=8
+checksum  2472723.000000000
+workers   320
+exectime  3.382 s
+check     ok

@@ -1,0 +1,4 @@
+life trap n=8000 steps=1500 width=64 dt=8
+checksum  2472723.000000000
+workers   40
+exectime  2.391 s

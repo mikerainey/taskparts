@@ -1,0 +1,4 @@
+ferret dag queries=48000 database=20000 throttle=320
+output    48000 answers, digest 33128f038e0a38d9
+workers   80
+exectime  1.631 s

@@ -1,0 +1,5 @@
+preorder levels cells=10000000 levels=59
+digest    bed9e32dfc235ee4
+workers   320
+exectime  0.626 s
+check     ok

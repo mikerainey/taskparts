@@ -1,0 +1,4 @@
+heat loops n=8000 steps=600 width=64 dt=8
+checksum  650846667.029201984
+workers   160
+exectime  55.866 s

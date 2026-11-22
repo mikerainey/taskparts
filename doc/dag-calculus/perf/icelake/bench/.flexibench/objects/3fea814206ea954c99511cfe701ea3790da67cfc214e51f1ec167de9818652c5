@@ -1,0 +1,4 @@
+pipefib dag n=400000 grain=256 throttle=320
+result    F(n) mod 1000000007 = 172318238
+workers   80
+exectime  2.055 s

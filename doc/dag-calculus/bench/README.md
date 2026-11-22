@@ -10,9 +10,11 @@ the paper presents. They are ports, simplified, of benchmarks from three sources
 - Tang et al., *The Pochoir stencil compiler* (SPAA 2011);
 - the examples and design patterns of Intel's Threading Building Blocks (TBB).
 
-Nothing here is cited by the paper, and nothing here has been measured in a
-certified round. The scheduler is used as it is: no file of `../microtaskparts`
-was changed.
+The paper reports them in its appendix "More programs, on 80 cores, beside
+oneTBB", from one certified round on an 80-core machine; `../perf/README.md`
+describes that round. The tables of this file are single runs on other
+machines, and are not cited. The scheduler is used as it is: no file of
+`../microtaskparts` was changed.
 
 ## The programs
 

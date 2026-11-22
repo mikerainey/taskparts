@@ -1,0 +1,16 @@
+# The benchmark programs of the DAG calculus paper (doc/dag-calculus/bench in taskparts)
+# on the Chameleon node (two Xeon Platinum 8380, 80 cores).
+#
+# group  program  serial version  parallel versions  arguments, in the program's order
+#
+# Programs of one group have the same versions, and make one view. The arguments are all
+# of the program's, so that `check` can follow them. A throttle of 0 is the default, four
+# iterations per worker.
+pipes     pipefib   serial  dag                   400000 256 0
+pipes     x264      serial  dag                   540 640 368 2 0
+ferret    ferret    serial  dag,tbb               48000 20000 0
+stencils  heat      loops   ploops,trap,dag,tbb   8000 600 64 8
+stencils  life      loops   ploops,trap,dag,tbb   8000 1500 64 8
+lcs       lcs       serial  planes,dc,dag,tbb     200000 512
+graphs    cholesky  serial  levels,dag,tbb        7168 64
+graphs    preorder  serial  levels,dag,tbb        10000000

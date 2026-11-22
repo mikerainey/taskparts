@@ -1,0 +1,4 @@
+lcs dc n=200000 block=512
+length    166525
+workers   160
+exectime  14.659 s

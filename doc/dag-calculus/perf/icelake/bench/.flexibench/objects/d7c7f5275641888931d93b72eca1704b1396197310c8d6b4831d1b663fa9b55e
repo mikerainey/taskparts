@@ -1,0 +1,6 @@
+cholesky tbb n=7168 tile=64
+trace     606887.032076769
+workers   320
+exectime  0.661 s
+residual  1.000e-11
+check     ok

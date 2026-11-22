@@ -1,0 +1,1 @@
+{"args":["dag","8000","1500","64","8"],"env":{"TASKPARTS_NUM_WORKERS":"1"},"program":"/nix/store/j9969r886r55945np9k29f2np80k0h1z-dagbench-8ec7017/bin/life"}

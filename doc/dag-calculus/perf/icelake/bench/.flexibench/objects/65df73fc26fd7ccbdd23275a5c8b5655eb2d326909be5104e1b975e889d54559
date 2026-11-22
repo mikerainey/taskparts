@@ -1,0 +1,4 @@
+preorder serial cells=10000000 levels=59
+digest    bed9e32dfc235ee4
+workers   160
+exectime  55.801 s

@@ -1,0 +1,4 @@
+compiler clang version 18.1.8
+onetbb 2022.3.0
+flags -O2 -march=icelake-server
+taskparts 8ec701735d0585408e4d8503a278f1226d8e9b20

@@ -1,0 +1,4 @@
+cholesky serial n=7168 tile=64
+trace     606887.032076769
+workers   160
+exectime  51.868 s

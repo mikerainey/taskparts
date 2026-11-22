@@ -1,0 +1,4 @@
+cholesky dag n=7168 tile=64
+trace     606887.032076769
+workers   80
+exectime  0.720 s

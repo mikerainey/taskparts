@@ -89,6 +89,13 @@
 % \suitecells{VIEW}{KEY}{MIDDLE}{TOP}.
 \input{perf/suite/suite}
 \input{perf/gamora/suite/suitegamora}
+% The round of Appendix sec:bench, on the Xeon: one view per group of programs.
+\input{perf/icelake/bench/pipesicelake}\input{perf/icelake/bench/ferreticelake}
+\input{perf/icelake/bench/stencilsicelake}\input{perf/icelake/bench/lcsicelake}
+\input{perf/icelake/bench/graphsicelake}
+\newcommand{\benchserial}[2]{\fbval{#1icelake}{#2}{serial}}
+\newcommand{\benchcells}[3]{\fbval{#1icelake}{#2}{#3 1} & \fbval{#1icelake}{#2}{#3 40}
+  & \fbval{#1icelake}{#2}{#3 80} & \fbval{#1icelake}{#2}{#3 160}}
 \newcommand{\suiterow}[3]{}
 \newcommand{\suitecells}[4]{\fbval{#1}{#2}{serial} &
   \fbval{#1}{#2}{nfj 1} & \fbval{#1}{#2}{dag 1} &
@@ -1207,7 +1214,7 @@ sixteen such errors into the scheduler, one at a time.
 The tests detect all sixteen.
 
 \bibliographystyle{abbrv}
-\bibliography{main,perf/times,perf/parlay/parlay,perf/examples/examples,perf/gamora/timesgamora,perf/gamora/parlay/parlaygamora,perf/gamora/examples/examplesgamora,perf/cost/cost,perf/factors/factors,perf/gamora/cost/costgamora,perf/gamora/factors/factorsgamora,perf/suite/suite,perf/gamora/suite/suitegamora}
+\bibliography{main,perf/times,perf/parlay/parlay,perf/examples/examples,perf/gamora/timesgamora,perf/gamora/parlay/parlaygamora,perf/gamora/examples/examplesgamora,perf/cost/cost,perf/factors/factors,perf/gamora/cost/costgamora,perf/gamora/factors/factorsgamora,perf/suite/suite,perf/gamora/suite/suitegamora,perf/icelake/bench/benchicelake}
 
 \clearpage
 \appendix
@@ -1321,8 +1328,10 @@ high degrees.
 \section{Measurements}
 \label{sec:perf}
 
-We measured on two machines, which we call the M5 and the Ryzen
-(Table~\ref{tbl:machines}).
+We measured on three machines, which we call the M5, the Ryzen and the
+Xeon (Table~\ref{tbl:machines}).
+%
+The Xeon serves in Appendix~\ref{sec:bench} only.
 
 \begin{table}
 \small
@@ -1332,10 +1341,12 @@ name & processor & cores & threads & memory & system \\
 \hline
 M5 & Apple M5 & 4 + 6 & 10 & 32\,GB & macOS 27 \\
 Ryzen & AMD Ryzen 9 3950X & 16 & 32 & 32\,GB & Linux 6.12 \\
+Xeon & 2 $\times$ Intel Xeon 8380 & 80 & 160 & 125\,GB & Linux 6.8 \\
 \end{tabular}
 \caption{The machines.  The M5 has 4 performance and 6 efficiency
   cores; the cores of the Ryzen are all alike, with two hardware
-  threads each.}
+  threads each.  The Xeon has two Xeon Platinum 8380 processors of 40
+  cores each, with two hardware threads per core.}
 \label{tbl:machines}
 \end{table}
 
@@ -1979,5 +1990,213 @@ program & input & scheduler & first & this & first & this & first & this \\
   those of Table~\ref{tbl:suite}.}
 \label{tbl:suitegamora}
 \end{table*}
+
+\section{More programs, on 80 cores, beside oneTBB}
+\label{sec:bench}
+
+The pipeline of Section~\ref{sec:pipeline} and the stencil of
+Section~\ref{sec:stencil} are two programs, measured on at most 16
+cores.
+%
+This appendix measures eight more programs that use the operations of
+Section~\ref{sec:vertices}, on the 80 cores of the Xeon, and compares
+six of them with the same program on Intel's
+oneTBB~\cite{onetbb,flexibench-dag-bench-icelake}.
+
+\paragraph{Programs}
+%
+The programs are simplified ports of benchmarks of
+Cilk-P~\cite{lee2013piper} and of Pochoir~\cite{tang2011pochoir}, and
+of examples distributed with oneTBB.
+%
+Their inputs are synthetic.
+%
+Three are pipelines in the style of Cilk-P, as in
+Section~\ref{sec:pipeline}.
+%
+In ferret, which answers similarity queries, a serial stage is
+followed by a parallel stage and a serial one, and nearly all the work
+is in the parallel stage.
+%
+In pipefib, which adds numbers of hundreds of thousands of bits, every
+stage of an iteration waits for the same stage of the iteration before
+it.
+%
+In x264, which encodes video, an iteration waits for a stage of the
+iteration before it that is decided as the pipeline runs, and forks
+inside its own stages.
+%
+Two are stencils over a square grid, heat and life, by the trapezoidal
+decomposition of Pochoir: each trapezoid of a cut is a vertex, with an
+edge from each trapezoid that it reads.
+%
+The program lcs computes the longest common subsequence of two strings
+by blocks of a table, where a block is a vertex that waits for the
+block above it and the block to its left.
+%
+The program cholesky factors a dense matrix by tiles, with a vertex
+per operation on a tile, and builds its edges in parallel while its
+first vertices run.
+%
+And preorder evaluates a random graph of ten million cells, each the
+sum, difference or product of two earlier cells, which are matrices of
+16 by 16 integers; its vertices are the smallest of the eight.
+
+\paragraph{Versions}
+%
+All versions of a program are in one executable and call the same
+kernels, which are compiled once and not inlined, so they differ only
+in how the work is scheduled.
+%
+Each program has a serial version and a version in DAG calculus.
+%
+Where fork join can express the program, there are fork-join versions
+on our micro taskparts as well.
+%
+The stencils have two: loops, with the rows of a time step in
+parallel, and trapezoids, which runs the trapezoids of a cut in three
+rounds, as Pochoir does.
+%
+For lcs there are also two: diagonals, with the blocks of an
+antidiagonal in parallel, and recursive, which divides the table in
+four.
+%
+For cholesky and preorder there is one, levels, which runs the tasks
+in rounds, the tasks of a round depending only on earlier rounds.
+%
+Six programs have a version on oneTBB, written as oneTBB's own
+examples and guide write that kind of program: a parallel pipeline for
+ferret; the trapezoids with a task group in place of our fork join for
+the stencils; a parallel loop that tasks feed, with a count of
+unfinished predecessors per task, for lcs and preorder; and a flow
+graph for cholesky.
+%
+The other two pipelines have none, since an iteration of oneTBB's
+pipeline cannot wait for a stage of another iteration chosen as it
+runs.
+
+\paragraph{Method}
+%
+The programs were compiled by Clang 18.1.8 with
+\lstinline|-O2 -march=icelake-server|, against oneTBB 2022.3.0.
+%
+oneTBB ran on as many threads as we have workers, and its threads
+start before the measured region, as ours do.
+%
+Every process ran with its memory interleaved across the two
+processors, and no thread was pinned.
+%
+The serial version and the runs on one worker ran once; a time on 40,
+80 or 160 workers is the median of five runs, interleaved.
+%
+Each parallel version also ran once on 320 workers with a check of its
+result: against the serial version's for seven programs, and for
+pipefib against the same sum computed modulo a prime.
+%
+Every check passed.
+
+\paragraph{Beside fork join}
+%
+On lcs, the version in DAG calculus takes 28\% less time on 80 workers
+than the diagonals, which wait for a whole antidiagonal before
+starting the next, and 11 times less than the recursive version.
+%
+On heat, life and cholesky, it takes 2\% to 7\% less than the
+fork-join version that runs the same tasks in rounds.
+%
+On preorder it takes 27\% more than the levels: a cell does little
+work, and a vertex and its edges cost more than an iteration of a
+parallel loop.
+%
+On life, the parallel loops are the fastest version, on one worker and
+on 80: the trapezoids, however scheduled, take 60\% more time than the
+loops on one worker.
+
+\paragraph{Beside oneTBB}
+%
+On 80 workers, our version in DAG calculus takes half the time of
+oneTBB's on the two stencils, 13\% less on ferret and 18\% less on
+cholesky.
+%
+On lcs the two are close: ours takes 7\% less on 80 workers and 4\%
+more on 160.
+%
+On preorder ours takes 12\% more on 80 workers, and 35\% more on 160.
+%
+One difference between the two systems bears on these times: an idle
+thread of oneTBB goes to sleep, and an idle worker of ours keeps
+looking for work.
+
+\paragraph{Scaling}
+%
+On 80 workers, the versions in DAG calculus run between 23 and 75
+times faster than the serial versions, x264 apart.
+%
+The time of x264 does not decrease from 40 workers to 80, and nearly
+doubles on 160; we have not determined why.
+%
+Two more ratios need a caution.
+%
+The trapezoids of heat on one worker take half the time of the serial
+loops, because they use the cache better, so the ratio of heat to its
+serial version, the largest of these, overstates the scaling.
+%
+And cholesky on 160 workers runs 100 times faster than its serial
+version, on 80 cores, which we attribute to the cache as well, without
+having measured it.
+
+\begin{table}
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}lrrrr@{}}
+ & \multicolumn{4}{c}{workers} \\
+ & 1 & 40 & 80 & 160 \\
+\hline
+pipefib \\
+\quad serial & \benchserial{pipes}{pipefib} \\
+\quad DAG calculus & \benchcells{pipes}{pipefib}{dag} \\
+x264 \\
+\quad serial & \benchserial{pipes}{x264} \\
+\quad DAG calculus & \benchcells{pipes}{x264}{dag} \\
+ferret \\
+\quad serial & \benchserial{ferret}{ferret} \\
+\quad DAG calculus & \benchcells{ferret}{ferret}{dag} \\
+\quad oneTBB & \benchcells{ferret}{ferret}{tbb} \\
+heat \\
+\quad serial & \benchserial{stencils}{heat} \\
+\quad loops & \benchcells{stencils}{heat}{ploops} \\
+\quad trapezoids & \benchcells{stencils}{heat}{trap} \\
+\quad DAG calculus & \benchcells{stencils}{heat}{dag} \\
+\quad oneTBB & \benchcells{stencils}{heat}{tbb} \\
+life \\
+\quad serial & \benchserial{stencils}{life} \\
+\quad loops & \benchcells{stencils}{life}{ploops} \\
+\quad trapezoids & \benchcells{stencils}{life}{trap} \\
+\quad DAG calculus & \benchcells{stencils}{life}{dag} \\
+\quad oneTBB & \benchcells{stencils}{life}{tbb} \\
+lcs \\
+\quad serial & \benchserial{lcs}{lcs} \\
+\quad diagonals & \benchcells{lcs}{lcs}{planes} \\
+\quad recursive & \benchcells{lcs}{lcs}{dc} \\
+\quad DAG calculus & \benchcells{lcs}{lcs}{dag} \\
+\quad oneTBB & \benchcells{lcs}{lcs}{tbb} \\
+cholesky \\
+\quad serial & \benchserial{graphs}{cholesky} \\
+\quad levels & \benchcells{graphs}{cholesky}{levels} \\
+\quad DAG calculus & \benchcells{graphs}{cholesky}{dag} \\
+\quad oneTBB & \benchcells{graphs}{cholesky}{tbb} \\
+preorder \\
+\quad serial & \benchserial{graphs}{preorder} \\
+\quad levels & \benchcells{graphs}{preorder}{levels} \\
+\quad DAG calculus & \benchcells{graphs}{preorder}{dag} \\
+\quad oneTBB & \benchcells{graphs}{preorder}{tbb} \\
+\end{tabular}
+\caption{Running time of eight programs on the Xeon, in seconds: the
+  serial version, fork-join versions and the version in DAG calculus
+  on our micro taskparts, and the version on oneTBB, on 1 worker, on
+  the 40 cores of one processor, on all 80 cores, and on all 160
+  hardware threads.}
+\label{tbl:bench}
+\end{table}
 
 \end{document}

@@ -1,0 +1,4 @@
+lcs dag n=200000 block=512
+length    166525
+workers   80
+exectime  0.994 s
