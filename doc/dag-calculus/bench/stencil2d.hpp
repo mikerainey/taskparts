@@ -27,6 +27,8 @@
 //   dag      the same decomposition, by DAG calculus: each zoid of a cut is
 //            a vertex, with an edge from each of the zoids that it reads,
 //            and no other, so a zoid starts as soon as those are done
+//   tbb      trap, with a task group of oneTBB in place of our fork join
+//            (in a program built with -DBENCH_TBB)
 //
 // A program supplies the kernel as a type K with
 //
@@ -90,12 +92,30 @@ inline bool cut_side(const side &s, int dt, side parts[3]) {
   return true;
 }
 
-template <typename K> void walk(const zoid &z, bool dag);
+// How the zoids of a cut are run.
+enum mode { by_fork_join, by_dag, by_tbb };
+
+template <typename K> void walk(const zoid &z, mode m);
 
 // f(k) for 0 <= k < n, in parallel; n is small.
-template <typename F> void each(int n, const F &f) { parallel_for(0, n, f); }
+template <typename F> void each(int n, mode m, const F &f) {
+#ifdef BENCH_TBB
+  if (m == by_tbb) {
+    tbb::task_group tasks;
+    for (int k = 1; k < n; k++) {
+      tasks.run([&f, k] { f(k); });
+    }
+    if (n > 0) {
+      f(0);
+    }
+    tasks.wait();
+    return;
+  }
+#endif
+  parallel_for(0, n, f);
+}
 
-template <typename K> void walk(const zoid &z, bool dag) {
+template <typename K> void walk(const zoid &z, mode m) {
   int dt = z.t1 - z.t0;
   // The parts of each side: one, or two and the one between them.
   side xs[3] = {z.x}, ys[3] = {z.y};
@@ -111,8 +131,8 @@ template <typename K> void walk(const zoid &z, bool dag) {
       upper.x.hi += z.x.dhi * half;
       upper.y.lo += z.y.dlo * half;
       upper.y.hi += z.y.dhi * half;
-      walk<K>(lower, dag);
-      walk<K>(upper, dag);
+      walk<K>(lower, m);
+      walk<K>(upper, m);
     } else {
       run_zoid<K>(z);
     }
@@ -121,7 +141,7 @@ template <typename K> void walk(const zoid &z, bool dag) {
   auto part = [&](int a, int b) { return zoid{z.t0, z.t1, xs[a], ys[b]}; };
   // A part between two cuts is numbered 2.
   auto between = [](int n, int a) { return (n == 3) && (a == 2); };
-  if (!dag) {
+  if (m != by_dag) {
     // In turn: the zoids with no side between cuts, with one, with two.
     for (int level = 0; level <= 2; level++) {
       zoid group[4];
@@ -133,7 +153,7 @@ template <typename K> void walk(const zoid &z, bool dag) {
           }
         }
       }
-      each(n, [&](long k) { walk<K>(group[k], false); });
+      each(n, m, [&](long k) { walk<K>(group[k], m); });
     }
     return;
   }
@@ -143,7 +163,7 @@ template <typename K> void walk(const zoid &z, bool dag) {
   for (int a = 0; a < nx; a++) {
     for (int b = 0; b < ny; b++) {
       zoid p = part(a, b);
-      v[a][b] = new_vertex([p] { walk<K>(p, true); });
+      v[a][b] = new_vertex([p] { walk<K>(p, by_dag); });
     }
   }
   for (int a = 0; a < nx; a++) {
@@ -194,8 +214,8 @@ template <typename K> void ploops(int n, int nb_steps) {
   }
 }
 
-template <typename K> void trapezoids(int n, int nb_steps, bool dag) {
-  walk<K>(zoid{0, nb_steps, side{1, 0, n + 1, 0}, side{1, 0, n + 1, 0}}, dag);
+template <typename K> void trapezoids(int n, int nb_steps, mode m) {
+  walk<K>(zoid{0, nb_steps, side{1, 0, n + 1, 0}, side{1, 0, n + 1, 0}}, m);
 }
 
 // The whole of a program: K names the stencil, and supplies, besides row,
@@ -211,23 +231,28 @@ template <typename K> int main_of(const char *name, int argc, char **argv) {
   cut.dt = (int)arg(argc, argv, 5, cut.dt);
   bool check = wants_check(argc, argv, 6);
   bool known = is(version, "loops") || is(version, "ploops") ||
-               is(version, "trap") || is(version, "dag");
+               is(version, "trap") || is(version, "dag") ||
+               is(version, "tbb");
   if (!known || (n < 1) || (nb_steps < 1) || (cut.width < 1) || (cut.dt < 1)) {
-    std::fprintf(stderr, "usage: %s <loops|ploops|trap|dag> [n] [time steps] "
+    std::fprintf(stderr, "usage: %s <loops|ploops|trap|dag|tbb> [n] [time steps] "
                          "[width] [dt] [check]\n", name);
     return 2;
   }
   K::initialize(n);
-  bool parallel = !is(version, "loops");
-  region r = measure(parallel, [&] {
+  bool on_tbb = is(version, "tbb");
+  bool parallel = !is(version, "loops") && !on_tbb;
+  auto body = [&] {
     if (is(version, "loops")) {
       loops<K>(n, nb_steps);
     } else if (is(version, "ploops")) {
       ploops<K>(n, nb_steps);
     } else {
-      trapezoids<K>(n, nb_steps, is(version, "dag"));
+      trapezoids<K>(n, nb_steps, on_tbb ? by_tbb
+                                         : (is(version, "dag") ? by_dag
+                                                               : by_fork_join));
     }
-  });
+  };
+  region r = on_tbb ? measure_tbb(body) : measure(parallel, body);
   std::printf("%s %s n=%d steps=%d width=%d dt=%d\n", name, version, n,
               nb_steps, cut.width, cut.dt);
   std::printf("checksum  %.9f\n", K::checksum(nb_steps));

@@ -5,7 +5,7 @@
 // The kernel is that of the Life benchmark of Pochoir (Tang et al., SPAA
 // 2011), without its periodic boundary. See stencil2d.hpp for the versions.
 //
-// usage: life <loops|ploops|trap|dag> [n] [generations] [width] [dt] [check]
+// usage: life <loops|ploops|trap|dag|tbb> [n] [generations] [width] [dt] [check]
 
 #include "stencil2d.hpp"
 

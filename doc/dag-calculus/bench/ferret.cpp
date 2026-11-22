@@ -14,7 +14,7 @@
 // the earth mover's distance. As in ferret, nearly all of the work is in the
 // parallel stages.
 //
-// usage: ferret <serial|dag> [queries] [database] [throttle] [check]
+// usage: ferret <serial|dag|tbb> [queries] [database] [throttle] [check]
 
 #include "harness.hpp"
 #include "pipe.hpp"
@@ -152,15 +152,56 @@ static void ferret_dag(const std::vector<features> &database,
       [&](query &q) { w.write(q.a); });
 }
 
+// The same three stages as filters of oneTBB's parallel_pipeline, with the
+// same limit on the queries in progress.
+#ifdef BENCH_TBB
+static void ferret_tbb(const std::vector<features> &database,
+                       size_t nb_queries, size_t throttle, writer &w) {
+  loader l;
+  size_t i = 0;
+  tbb::parallel_pipeline(
+      throttle,
+      tbb::make_filter<void, query *>(
+          tbb::filter_mode::serial_in_order,
+          [&](tbb::flow_control &fc) -> query * {
+            if (i == nb_queries) {
+              fc.stop();
+              return nullptr;
+            }
+            i++;
+            query *q = new query;
+            l.load(q->im);
+            return q;
+          }) &
+          tbb::make_filter<query *, query *>(
+              tbb::filter_mode::parallel,
+              [&](query *q) {
+                features f;
+                extract(q->im, f);
+                rank(database, f, q->a);
+                return q;
+              }) &
+          tbb::make_filter<query *, void>(tbb::filter_mode::serial_in_order,
+                                          [&](query *q) {
+                                            w.write(q->a);
+                                            delete q;
+                                          }));
+}
+#else
+static void ferret_tbb(const std::vector<features> &, size_t, size_t,
+                       writer &) {}
+#endif
+
 int main(int argc, char **argv) {
   const char *version = (argc > 1) ? argv[1] : "dag";
   size_t nb_queries = (size_t)arg(argc, argv, 2, 6000);
   size_t nb_entries = (size_t)arg(argc, argv, 3, 20000);
   size_t throttle = (size_t)arg(argc, argv, 4, 0);
   bool check = wants_check(argc, argv, 5);
-  bool parallel = !is(version, "serial");
+  bool on_tbb = is(version, "tbb");
+  bool parallel = !is(version, "serial") && !on_tbb;
   if (parallel && !is(version, "dag")) {
-    std::fprintf(stderr, "usage: ferret <serial|dag> [queries] [database] "
+    std::fprintf(stderr, "usage: ferret <serial|dag|tbb> [queries] [database] "
                          "[throttle] [check]\n");
     return 2;
   }
@@ -179,13 +220,16 @@ int main(int argc, char **argv) {
     }
   }
   writer w;
-  region r = measure(parallel, [&] {
-    if (parallel) {
+  auto body = [&] {
+    if (on_tbb) {
+      ferret_tbb(database, nb_queries, throttle, w);
+    } else if (parallel) {
       ferret_dag(database, nb_queries, throttle, w);
     } else {
       ferret_serial(database, nb_queries, w);
     }
-  });
+  };
+  region r = on_tbb ? measure_tbb(body) : measure(parallel, body);
   std::printf("ferret %s queries=%zu database=%zu throttle=%zu\n", version,
               nb_queries, nb_entries, throttle);
   std::printf("output    %zu answers, digest %016llx\n", w.nb_written,

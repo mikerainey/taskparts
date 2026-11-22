@@ -24,11 +24,12 @@
 // Those call BLAS and LAPACK on each tile; here the three kernels are plain
 // loops, so that the program needs no library.
 //
-// usage: cholesky <serial|levels|dag> [n] [tile size] [check]
+// usage: cholesky <serial|levels|dag|tbb> [n] [tile size] [check]
 
 #include "harness.hpp"
 
 #include <cmath>
+#include <memory>
 #include <vector>
 
 using namespace bench;
@@ -172,30 +173,87 @@ static void cholesky_dag() {
   }
 }
 
+// On oneTBB, as in its example: a flow graph with a node per task, which
+// runs once it has heard from each of the tasks it depends on. The graph is
+// built whole, by one thread, and then started at the first factor.
+#ifdef BENCH_TBB
+static void cholesky_tbb() {
+  using message = tbb::flow::continue_msg;
+  using node = tbb::flow::continue_node<message>;
+  tbb::flow::graph g;
+  std::vector<std::unique_ptr<node>> nodes((size_t)B * B * B);
+  auto node_of = [&](int i, int j, int k) -> node & {
+    return *nodes[((size_t)i * B + j) * B + k];
+  };
+  for (int i = 0; i < B; i++) {
+    for (int j = 0; j <= i; j++) {
+      for (int k = 0; k <= j; k++) {
+        nodes[((size_t)i * B + j) * B + k].reset(
+            new node(g, [=](const message &) {
+              if (k < j) {
+                update(i, j, k);
+              } else if (i == j) {
+                factor(j);
+              } else {
+                solve(i, j);
+              }
+            }));
+      }
+    }
+  }
+  for (int i = 0; i < B; i++) {
+    for (int j = 0; j <= i; j++) {
+      for (int k = 0; k <= j; k++) {
+        node &v = node_of(i, j, k);
+        if (k > 0) {
+          tbb::flow::make_edge(node_of(i, j, k - 1), v);
+        }
+        if (k < j) {
+          tbb::flow::make_edge(node_of(i, k, k), v);
+          if (i != j) {
+            tbb::flow::make_edge(node_of(j, k, k), v);
+          }
+        } else if (i != j) {
+          tbb::flow::make_edge(node_of(j, j, j), v);
+        }
+      }
+    }
+  }
+  node_of(0, 0, 0).try_put(message());
+  g.wait_for_all();
+}
+#else
+static void cholesky_tbb() {}
+#endif
+
 int main(int argc, char **argv) {
   const char *version = (argc > 1) ? argv[1] : "dag";
   n = (int)arg(argc, argv, 2, 3072);
   bs = (int)arg(argc, argv, 3, 64);
   bool check = wants_check(argc, argv, 4);
   bool known = is(version, "serial") || is(version, "levels") ||
-               is(version, "dag");
+               is(version, "dag") || is(version, "tbb");
   if (!known || (n < 1) || (bs < 1) || (n % bs != 0)) {
-    std::fprintf(stderr, "usage: cholesky <serial|levels|dag> [n] [tile size] "
+    std::fprintf(stderr, "usage: cholesky <serial|levels|dag|tbb> [n] [tile size] "
                          "[check]\nn must be a multiple of the tile size\n");
     return 2;
   }
   B = n / bs;
   initialize();
-  bool parallel = !is(version, "serial");
-  region r = measure(parallel, [&] {
+  bool on_tbb = is(version, "tbb");
+  bool parallel = !is(version, "serial") && !on_tbb;
+  auto body = [&] {
     if (is(version, "serial")) {
       cholesky_serial();
     } else if (is(version, "levels")) {
       cholesky_levels();
+    } else if (on_tbb) {
+      cholesky_tbb();
     } else {
       cholesky_dag();
     }
-  });
+  };
+  region r = on_tbb ? measure_tbb(body) : measure(parallel, body);
   double trace = 0.0;
   for (int c = 0; c < n; c++) {
     trace += matrix[(size_t)c * n + c];

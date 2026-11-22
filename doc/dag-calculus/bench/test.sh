@@ -6,6 +6,10 @@
 #
 #   ./test.sh          a few minutes
 #   ./test.sh quick    the build with pauses only
+#
+# With TBB=1 in the environment, the programs are built with their versions
+# on oneTBB (see Makefile), and those are checked too, in the build with
+# pauses only: oneTBB itself is not built for the sanitizers.
 
 cd "$(dirname "$0")" || exit 1
 builds="perturb asan tsan"
@@ -16,7 +20,7 @@ fi
 programs="pipefib ferret x264 heat life lcs cholesky preorder"
 for b in $builds; do
   for p in $programs; do
-    make -s "bin/$p.$b" || exit 1
+    make -s ${TBB:+TBB=1} "bin/$p.$b" || exit 1
   done
 done
 
@@ -38,6 +42,11 @@ check() {
 }
 
 for b in $builds; do
+  # The versions of a program that have the same arguments as its dag version.
+  tbb=""
+  if [ -n "$TBB" ] && [ "$b" = "perturb" ]; then
+    tbb="tbb"
+  fi
   for workers in 1 2 3 4 10 16; do
     export TASKPARTS_NUM_WORKERS=$workers
     # n, bits per stage, throttling limit (0: the default).
@@ -47,8 +56,10 @@ for b in $builds; do
     done
     # Queries, entries of the database, throttling limit.
     for a in "0 50 0" "1 50 0" "200 300 0" "200 300 1" "200 5 2"; do
-      # shellcheck disable=SC2086
-      check "bin/ferret.$b" dag $a check
+      for version in dag $tbb; do
+        # shellcheck disable=SC2086
+        check "bin/ferret.$b" $version $a check
+      done
     done
     # Groups, width, height, in-between frames, throttling limit.
     for a in "0 64 64 2 0" "1 64 64 2 0" "12 64 96 2 0" "12 64 96 0 1" \
@@ -60,7 +71,7 @@ for b in $builds; do
     # are not cut.
     for a in "1 1 1 1" "7 9 1 1" "40 30 2 1" "64 40 4 2" "100 25 8 3" \
              "150 7 16 8"; do
-      for version in ploops trap dag; do
+      for version in ploops trap dag $tbb; do
         # shellcheck disable=SC2086
         check "bin/heat.$b" $version $a check
         # shellcheck disable=SC2086
@@ -69,21 +80,21 @@ for b in $builds; do
     done
     # n, block size.
     for a in "1 1" "8 1" "50 7" "200 16" "300 300" "257 32"; do
-      for version in planes dc dag; do
+      for version in planes dc dag $tbb; do
         # shellcheck disable=SC2086
         check "bin/lcs.$b" $version $a check
       done
     done
     # n, tile size.
     for a in "1 1" "8 1" "16 16" "48 4" "96 8" "100 25"; do
-      for version in levels dag; do
+      for version in levels dag $tbb; do
         # shellcheck disable=SC2086
         check "bin/cholesky.$b" $version $a check
       done
     done
     # Cells.
     for a in 1 5 100 5000; do
-      for version in levels dag; do
+      for version in levels dag $tbb; do
         check "bin/preorder.$b" $version "$a" check
       done
     done

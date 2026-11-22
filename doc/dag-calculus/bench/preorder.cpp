@@ -19,7 +19,7 @@
 // The cells are small (a product of two 16 x 16 matrices), so this measures
 // what a vertex and an edge cost more than the other benchmarks do.
 //
-// usage: preorder <serial|levels|dag> [cells] [check]
+// usage: preorder <serial|levels|dag|tbb> [cells] [check]
 
 #include "harness.hpp"
 
@@ -181,28 +181,58 @@ static void preorder_dag() {
   delete sink;
 }
 
+// On oneTBB, as in its example: parallel_for_each over the given cells,
+// which are the cells of level 0, with each cell feeding the loop the
+// readers whose count it brings to zero.
+#ifdef BENCH_TBB
+static void preorder_tbb() {
+  std::unique_ptr<std::atomic<int>[]> waiting(new std::atomic<int>[nb_cells]);
+  tbb::parallel_for(0, nb_cells, [&](int c) {
+    waiting[c].store((ops[c] == given) ? 0 : 2, std::memory_order_relaxed);
+  });
+  const std::vector<int> &roots = levels[0];
+  tbb::parallel_for_each(roots.begin(), roots.end(),
+                         [&](int c, tbb::feeder<int> &feeder) {
+                           compute(c);
+                           for (int k = readers_start[c];
+                                k < readers_start[c + 1]; k++) {
+                             int r = readers[k];
+                             if (waiting[r].fetch_sub(1) == 1) {
+                               feeder.add(r);
+                             }
+                           }
+                         });
+}
+#else
+static void preorder_tbb() {}
+#endif
+
 int main(int argc, char **argv) {
   const char *version = (argc > 1) ? argv[1] : "dag";
   nb_cells = (int)arg(argc, argv, 2, 1000000);
   bool check = wants_check(argc, argv, 3);
   bool known = is(version, "serial") || is(version, "levels") ||
-               is(version, "dag");
+               is(version, "dag") || is(version, "tbb");
   if (!known || (nb_cells < 1)) {
-    std::fprintf(stderr, "usage: preorder <serial|levels|dag> [cells] [check]\n");
+    std::fprintf(stderr, "usage: preorder <serial|levels|dag|tbb> [cells] [check]\n");
     return 2;
   }
   build_graph();
   values.resize(nb_cells);
-  bool parallel = !is(version, "serial");
-  region r = measure(parallel, [&] {
+  bool on_tbb = is(version, "tbb");
+  bool parallel = !is(version, "serial") && !on_tbb;
+  auto body = [&] {
     if (is(version, "serial")) {
       preorder_serial();
     } else if (is(version, "levels")) {
       preorder_levels();
+    } else if (on_tbb) {
+      preorder_tbb();
     } else {
       preorder_dag();
     }
-  });
+  };
+  region r = on_tbb ? measure_tbb(body) : measure(parallel, body);
   auto digest = [&] {
     uint64_t d = 0;
     for (const value &v : values) {

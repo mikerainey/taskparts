@@ -11,6 +11,10 @@
 #include <cstdlib>
 #include <cstring>
 
+#ifdef BENCH_TBB
+#include <oneapi/tbb.h>
+#endif
+
 namespace bench {
 
 using namespace microtaskparts;
@@ -46,6 +50,36 @@ template <typename Body> region measure(bool parallel, const Body &body) {
   }
   return r;
 }
+
+// The same region for a version that runs on oneTBB, with as many threads as
+// we have workers. The threads are started first, outside the region, as
+// ours are. A program built without -DBENCH_TBB has no such version.
+#ifdef BENCH_TBB
+template <typename Body> region measure_tbb(const Body &body) {
+  int nb = (int)get_nb_workers();
+  tbb::global_control limit(tbb::global_control::max_allowed_parallelism, nb);
+  tbb::task_arena arena(nb);
+  arena.execute([&] {
+    tbb::parallel_for(0, 64 * nb, [](int) {
+      auto until = std::chrono::steady_clock::now() + std::chrono::milliseconds(1);
+      while (std::chrono::steady_clock::now() < until) {
+      }
+    }, tbb::simple_partitioner());
+  });
+  region r;
+  auto start = std::chrono::steady_clock::now();
+  arena.execute(body);
+  std::chrono::duration<double> elapsed =
+      std::chrono::steady_clock::now() - start;
+  r.exectime = elapsed.count();
+  return r;
+}
+#else
+template <typename Body> region measure_tbb(const Body &) {
+  std::fprintf(stderr, "this program was built without oneTBB (make TBB=1)\n");
+  std::exit(2);
+}
+#endif
 
 inline void report(const region &r) {
   std::printf("workers   %zu\n", get_nb_workers());

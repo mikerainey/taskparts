@@ -5,7 +5,7 @@
 // The kernel is that of the Heat benchmark of Pochoir (Tang et al., SPAA
 // 2011), without its periodic boundary. See stencil2d.hpp for the versions.
 //
-// usage: heat <loops|ploops|trap|dag> [n] [time steps] [width] [dt] [check]
+// usage: heat <loops|ploops|trap|dag|tbb> [n] [time steps] [width] [dt] [check]
 
 #include "stencil2d.hpp"
 

@@ -2,6 +2,15 @@ CXX ?= c++
 OPTFLAGS ?= -O2
 CXXFLAGS = -std=c++17 -pthread -Wall $(OPTFLAGS)
 
+# make TBB=1 adds the versions that run on oneTBB (the version named tbb of
+# a program). The compiler must find oneTBB's headers and library, or
+# TBB_CFLAGS and TBB_LIBS must say where they are.
+TBB_LIBS ?= -ltbb
+ifdef TBB
+CXXFLAGS += -DBENCH_TBB $(TBB_CFLAGS)
+LDLIBS = $(TBB_LIBS)
+endif
+
 PROGRAMS = pipefib ferret x264 heat life lcs cholesky preorder
 MTP = ../microtaskparts
 HEADERS = $(MTP)/microtaskparts.hpp $(MTP)/context.hpp harness.hpp pipe.hpp \
@@ -11,7 +20,7 @@ all: $(addprefix bin/,$(PROGRAMS))
 
 bin/%: %.cpp $(HEADERS)
 	@mkdir -p bin
-	$(CXX) $(CXXFLAGS) $< -o $@
+	$(CXX) $(CXXFLAGS) $< -o $@ $(LDLIBS)
 
 # Builds for testing, as in $(MTP)/Makefile:
 #   bin/NAME.perturb  workers pause at random where races are decided, and
@@ -22,15 +31,15 @@ TESTFLAGS = -DMTP_PERTURB -DMTP_CHECK_STACKS -DMTP_CHECK_ORPHANS -g
 
 bin/%.perturb: %.cpp $(HEADERS)
 	@mkdir -p bin
-	$(CXX) $(CXXFLAGS) $(TESTFLAGS) $< -o $@
+	$(CXX) $(CXXFLAGS) $(TESTFLAGS) $< -o $@ $(LDLIBS)
 
 bin/%.asan: %.cpp $(HEADERS)
 	@mkdir -p bin
-	$(CXX) $(CXXFLAGS) $(TESTFLAGS) -fsanitize=address -fno-omit-frame-pointer $< -o $@
+	$(CXX) $(CXXFLAGS) $(TESTFLAGS) -fsanitize=address -fno-omit-frame-pointer $< -o $@ $(LDLIBS)
 
 bin/%.tsan: %.cpp $(HEADERS)
 	@mkdir -p bin
-	$(CXX) $(CXXFLAGS) $(TESTFLAGS) -fsanitize=thread $< -o $@
+	$(CXX) $(CXXFLAGS) $(TESTFLAGS) -fsanitize=thread $< -o $@ $(LDLIBS)
 
 # Builds with instrumentation:
 #   bin/NAME.sta    totals of the time in each state, and counts of steals
@@ -38,11 +47,11 @@ bin/%.tsan: %.cpp $(HEADERS)
 #                   DAG calculus
 bin/%.sta: %.cpp $(HEADERS)
 	@mkdir -p bin
-	$(CXX) $(CXXFLAGS) -DMTP_STATS $< -o $@
+	$(CXX) $(CXXFLAGS) -DMTP_STATS $< -o $@ $(LDLIBS)
 
 bin/%.cnt: %.cpp $(HEADERS)
 	@mkdir -p bin
-	$(CXX) $(CXXFLAGS) -DMTP_COUNT_FORKS -DMTP_COUNT_DAG $< -o $@
+	$(CXX) $(CXXFLAGS) -DMTP_COUNT_FORKS -DMTP_COUNT_DAG $< -o $@ $(LDLIBS)
 
 clean:
 	rm -rf bin

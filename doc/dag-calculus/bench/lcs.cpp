@@ -21,7 +21,7 @@
 // Only the edges of blocks are kept, not the table: one row of the table
 // across all columns, and for each row of blocks one column.
 //
-// usage: lcs <serial|planes|dc|dag> [n] [block size] [check]
+// usage: lcs <serial|planes|dc|dag|tbb> [n] [block size] [check]
 
 #include "harness.hpp"
 
@@ -149,16 +149,46 @@ static void lcs_dag() {
   wait(&blocks[(size_t)B * B - 1]);
 }
 
+// On oneTBB, the wavefront of its guide: parallel_for_each starts from the
+// first block, and each block feeds the loop the blocks below and beside it
+// whose count it brings to zero.
+#ifdef BENCH_TBB
+static void lcs_tbb() {
+  size_t nb = (size_t)B * B;
+  std::unique_ptr<std::atomic<int>[]> waiting(new std::atomic<int>[nb]);
+  tbb::parallel_for(0, B, [&](int I) {
+    for (int J = 0; J < B; J++) {
+      waiting[(size_t)I * B + J].store((I > 0) + (J > 0),
+                                       std::memory_order_relaxed);
+    }
+  });
+  size_t start[1] = {0};
+  tbb::parallel_for_each(start, start + 1,
+                         [&](size_t id, tbb::feeder<size_t> &feeder) {
+                           int I = (int)(id / B), J = (int)(id % B);
+                           run_block(I, J);
+                           if ((I + 1 < B) && (waiting[id + B].fetch_sub(1) == 1)) {
+                             feeder.add(id + B);
+                           }
+                           if ((J + 1 < B) && (waiting[id + 1].fetch_sub(1) == 1)) {
+                             feeder.add(id + 1);
+                           }
+                         });
+}
+#else
+static void lcs_tbb() {}
+#endif
+
 int main(int argc, char **argv) {
   const char *version = (argc > 1) ? argv[1] : "dag";
   n = (int)arg(argc, argv, 2, 60000);
   bs = (int)arg(argc, argv, 3, 512);
   bool check = wants_check(argc, argv, 4);
   bool known = is(version, "serial") || is(version, "planes") ||
-               is(version, "dc") || is(version, "dag");
+               is(version, "dc") || is(version, "dag") || is(version, "tbb");
   if (!known || (n < 1) || (bs < 1)) {
     std::fprintf(stderr,
-                 "usage: lcs <serial|planes|dc|dag> [n] [block size] [check]\n");
+                 "usage: lcs <serial|planes|dc|dag|tbb> [n] [block size] [check]\n");
     return 2;
   }
   B = (n + bs - 1) / bs;
@@ -172,18 +202,22 @@ int main(int argc, char **argv) {
     b[i] = ((h & 3) == 0) ? (uint8_t)((h >> 2) & 3) : a[i];
   }
   initialize();
-  bool parallel = !is(version, "serial");
-  region r = measure(parallel, [&] {
+  bool on_tbb = is(version, "tbb");
+  bool parallel = !is(version, "serial") && !on_tbb;
+  auto body = [&] {
     if (is(version, "serial")) {
       lcs_serial();
     } else if (is(version, "planes")) {
       lcs_planes();
     } else if (is(version, "dc")) {
       lcs_dc(0, B, 0, B);
+    } else if (on_tbb) {
+      lcs_tbb();
     } else {
       lcs_dag();
     }
-  });
+  };
+  region r = on_tbb ? measure_tbb(body) : measure(parallel, body);
   std::vector<uint32_t> result = top;
   std::printf("lcs %s n=%d block=%d\n", version, n, bs);
   std::printf("length    %u\n", result[n]);
