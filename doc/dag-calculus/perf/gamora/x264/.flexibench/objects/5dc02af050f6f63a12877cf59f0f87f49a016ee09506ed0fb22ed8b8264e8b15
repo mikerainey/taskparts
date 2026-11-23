@@ -1,0 +1,6 @@
+x264 dag groups=72 width=1920 height=1088 between=2 throttle=256
+output    214 frames, digest b0f182ba2f860f0a
+workers   64
+exectime  11.523 s
+reading   5.883 s in the first stage
+check     ok

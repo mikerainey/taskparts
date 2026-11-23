@@ -1,0 +1,5 @@
+x264 serial groups=72 width=1920 height=1088 between=2 throttle=128
+output    214 frames, digest b0f182ba2f860f0a
+workers   32
+exectime  156.317 s
+reading   1.911 s in the first stage

@@ -1,0 +1,267 @@
+Model name:                              Intel(R) Xeon(R) Platinum 8380 CPU @ 2.30GHz
+Thread(s) per core:                      2
+Core(s) per socket:                      40
+Socket(s):                               2
+NUMA node(s):                            2
+NUMA node0 CPU(s):                       0,2,4,6,8,10,12,14,16,18,20,22,24,26,28,30,32,34,36,38,40,42,44,46,48,50,52,54,56,58,60,62,64,66,68,70,72,74,76,78,80,82,84,86,88,90,92,94,96,98,100,102,104,106,108,110,112,114,116,118,120,122,124,126,128,130,132,134,136,138,140,142,144,146,148,150,152,154,156,158
+NUMA node1 CPU(s):                       1,3,5,7,9,11,13,15,17,19,21,23,25,27,29,31,33,35,37,39,41,43,45,47,49,51,53,55,57,59,61,63,65,67,69,71,73,75,77,79,81,83,85,87,89,91,93,95,97,99,101,103,105,107,109,111,113,115,117,119,121,123,125,127,129,131,133,135,137,139,141,143,145,147,149,151,153,155,157,159
+Mem:             125           5          90           0          30         119
+Linux 6.8.0-124-generic x86_64
+governor:  160 performance
+no_turbo: 0  smt: 1
+transparent hugepages: always [madvise] never
+numa balancing: 0
+available: 2 nodes (0-1)
+node 0 cpus: 0 2 4 6 8 10 12 14 16 18 20 22 24 26 28 30 32 34 36 38 40 42 44 46 48 50 52 54 56 58 60 62 64 66 68 70 72 74 76 78 80 82 84 86 88 90 92 94 96 98 100 102 104 106 108 110 112 114 116 118 120 122 124 126 128 130 132 134 136 138 140 142 144 146 148 150 152 154 156 158
+node 0 size: 63748 MB
+node 0 free: 42215 MB
+workers 1,40,80,160; checks 3,320; uptime:  08:21:32 up  3:16,  3 users,  load average: 2.80, 29.79, 43.53
+Mon Nov 23 08:21:32 UTC 2026
+transparent hugepages: always [madvise] never
+mappings interleaved in a measured process: 42
+compiler clang version 18.1.8
+onetbb 2022.3.0
+flags -O2 -march=icelake-server
+taskparts e7eb574bf3d764b7a28644aca7dc81fef027d99c
+committed batch 0: 72 trials, 1 samples requested of each
+attempt 0  a1=540 a2=640 a3=368 a4=2 a5=0 program=x264small rep=1 version=serial word=serial: success, 2 samples
+attempt 1  a1=540 a2=640 a3=368 a4=2 a5=0 program=x264small rep=1 version=dag word=dag workers=1: success, 2 samples
+attempt 2  a1=160 a2=1920 a3=1088 a4=2 a5=0 program=x264large rep=1 version=serial word=serial: success, 2 samples
+attempt 3  a1=160 a2=1920 a3=1088 a4=2 a5=0 program=x264large rep=1 version=dag word=dag workers=1: success, 2 samples
+attempt 4  a1=540 a2=640 a3=368 a4=2 a5=0 program=x264small.sta rep=1 version=serial word=serial: success, 2 samples
+attempt 5  a1=540 a2=640 a3=368 a4=2 a5=0 program=x264small.sta rep=1 version=dag word=dag workers=1: success, 3 samples
+attempt 6  a1=160 a2=1920 a3=1088 a4=2 a5=0 program=x264large.sta rep=1 version=serial word=serial: success, 2 samples
+attempt 7  a1=160 a2=1920 a3=1088 a4=2 a5=0 program=x264large.sta rep=1 version=dag word=dag workers=1: success, 3 samples
+attempt 8  a1=540 a2=640 a3=368 a4=2 a5=0 program=x264small rep=1 version=dag word=dag workers=40: success, 2 samples
+attempt 9  a1=160 a2=1920 a3=1088 a4=2 a5=0 program=x264large rep=1 version=dag word=dag workers=40: success, 2 samples
+attempt 10  a1=540 a2=640 a3=368 a4=2 a5=0 program=x264small.sta rep=1 version=dag word=dag workers=40: success, 3 samples
+attempt 11  a1=160 a2=1920 a3=1088 a4=2 a5=0 program=x264large.sta rep=1 version=dag word=dag workers=40: success, 3 samples
+attempt 12  a1=540 a2=640 a3=368 a4=2 a5=0 program=x264small rep=1 version=dag word=dag workers=80: success, 2 samples
+attempt 13  a1=160 a2=1920 a3=1088 a4=2 a5=0 program=x264large rep=1 version=dag word=dag workers=80: success, 2 samples
+attempt 14  a1=540 a2=640 a3=368 a4=2 a5=0 program=x264small.sta rep=1 version=dag word=dag workers=80: success, 3 samples
+attempt 15  a1=160 a2=1920 a3=1088 a4=2 a5=0 program=x264large.sta rep=1 version=dag word=dag workers=80: success, 3 samples
+attempt 16  a1=540 a2=640 a3=368 a4=2 a5=0 program=x264small rep=1 version=dag word=dag workers=160: success, 2 samples
+attempt 17  a1=160 a2=1920 a3=1088 a4=2 a5=0 program=x264large rep=1 version=dag word=dag workers=160: success, 2 samples
+attempt 18  a1=540 a2=640 a3=368 a4=2 a5=0 program=x264small.sta rep=1 version=dag word=dag workers=160: success, 3 samples
+attempt 19  a1=160 a2=1920 a3=1088 a4=2 a5=0 program=x264large.sta rep=1 version=dag word=dag workers=160: success, 3 samples
+attempt 20  a1=540 a2=640 a3=368 a4=2 a5=0 program=x264small rep=2 version=dag word=dag workers=40: success, 2 samples
+attempt 21  a1=160 a2=1920 a3=1088 a4=2 a5=0 program=x264large rep=2 version=dag word=dag workers=40: success, 2 samples
+attempt 22  a1=540 a2=640 a3=368 a4=2 a5=0 program=x264small.sta rep=2 version=dag word=dag workers=40: success, 3 samples
+attempt 23  a1=160 a2=1920 a3=1088 a4=2 a5=0 program=x264large.sta rep=2 version=dag word=dag workers=40: success, 3 samples
+attempt 24  a1=540 a2=640 a3=368 a4=2 a5=0 program=x264small rep=2 version=dag word=dag workers=80: success, 2 samples
+attempt 25  a1=160 a2=1920 a3=1088 a4=2 a5=0 program=x264large rep=2 version=dag word=dag workers=80: success, 2 samples
+attempt 26  a1=540 a2=640 a3=368 a4=2 a5=0 program=x264small.sta rep=2 version=dag word=dag workers=80: success, 3 samples
+attempt 27  a1=160 a2=1920 a3=1088 a4=2 a5=0 program=x264large.sta rep=2 version=dag word=dag workers=80: success, 3 samples
+attempt 28  a1=540 a2=640 a3=368 a4=2 a5=0 program=x264small rep=2 version=dag word=dag workers=160: success, 2 samples
+attempt 29  a1=160 a2=1920 a3=1088 a4=2 a5=0 program=x264large rep=2 version=dag word=dag workers=160: success, 2 samples
+attempt 30  a1=540 a2=640 a3=368 a4=2 a5=0 program=x264small.sta rep=2 version=dag word=dag workers=160: success, 3 samples
+attempt 31  a1=160 a2=1920 a3=1088 a4=2 a5=0 program=x264large.sta rep=2 version=dag word=dag workers=160: success, 3 samples
+attempt 32  a1=540 a2=640 a3=368 a4=2 a5=0 program=x264small rep=3 version=dag word=dag workers=40: success, 2 samples
+attempt 33  a1=160 a2=1920 a3=1088 a4=2 a5=0 program=x264large rep=3 version=dag word=dag workers=40: success, 2 samples
+attempt 34  a1=540 a2=640 a3=368 a4=2 a5=0 program=x264small.sta rep=3 version=dag word=dag workers=40: success, 3 samples
+attempt 35  a1=160 a2=1920 a3=1088 a4=2 a5=0 program=x264large.sta rep=3 version=dag word=dag workers=40: success, 3 samples
+attempt 36  a1=540 a2=640 a3=368 a4=2 a5=0 program=x264small rep=3 version=dag word=dag workers=80: success, 2 samples
+attempt 37  a1=160 a2=1920 a3=1088 a4=2 a5=0 program=x264large rep=3 version=dag word=dag workers=80: success, 2 samples
+attempt 38  a1=540 a2=640 a3=368 a4=2 a5=0 program=x264small.sta rep=3 version=dag word=dag workers=80: success, 3 samples
+attempt 39  a1=160 a2=1920 a3=1088 a4=2 a5=0 program=x264large.sta rep=3 version=dag word=dag workers=80: success, 3 samples
+attempt 40  a1=540 a2=640 a3=368 a4=2 a5=0 program=x264small rep=3 version=dag word=dag workers=160: success, 2 samples
+attempt 41  a1=160 a2=1920 a3=1088 a4=2 a5=0 program=x264large rep=3 version=dag word=dag workers=160: success, 2 samples
+attempt 42  a1=540 a2=640 a3=368 a4=2 a5=0 program=x264small.sta rep=3 version=dag word=dag workers=160: success, 3 samples
+attempt 43  a1=160 a2=1920 a3=1088 a4=2 a5=0 program=x264large.sta rep=3 version=dag word=dag workers=160: success, 3 samples
+attempt 44  a1=540 a2=640 a3=368 a4=2 a5=0 program=x264small rep=4 version=dag word=dag workers=40: success, 2 samples
+attempt 45  a1=160 a2=1920 a3=1088 a4=2 a5=0 program=x264large rep=4 version=dag word=dag workers=40: success, 2 samples
+attempt 46  a1=540 a2=640 a3=368 a4=2 a5=0 program=x264small.sta rep=4 version=dag word=dag workers=40: success, 3 samples
+attempt 47  a1=160 a2=1920 a3=1088 a4=2 a5=0 program=x264large.sta rep=4 version=dag word=dag workers=40: success, 3 samples
+attempt 48  a1=540 a2=640 a3=368 a4=2 a5=0 program=x264small rep=4 version=dag word=dag workers=80: success, 2 samples
+attempt 49  a1=160 a2=1920 a3=1088 a4=2 a5=0 program=x264large rep=4 version=dag word=dag workers=80: success, 2 samples
+attempt 50  a1=540 a2=640 a3=368 a4=2 a5=0 program=x264small.sta rep=4 version=dag word=dag workers=80: success, 3 samples
+attempt 51  a1=160 a2=1920 a3=1088 a4=2 a5=0 program=x264large.sta rep=4 version=dag word=dag workers=80: success, 3 samples
+attempt 52  a1=540 a2=640 a3=368 a4=2 a5=0 program=x264small rep=4 version=dag word=dag workers=160: success, 2 samples
+attempt 53  a1=160 a2=1920 a3=1088 a4=2 a5=0 program=x264large rep=4 version=dag word=dag workers=160: success, 2 samples
+attempt 54  a1=540 a2=640 a3=368 a4=2 a5=0 program=x264small.sta rep=4 version=dag word=dag workers=160: success, 3 samples
+attempt 55  a1=160 a2=1920 a3=1088 a4=2 a5=0 program=x264large.sta rep=4 version=dag word=dag workers=160: success, 3 samples
+attempt 56  a1=540 a2=640 a3=368 a4=2 a5=0 program=x264small rep=5 version=dag word=dag workers=40: success, 2 samples
+attempt 57  a1=160 a2=1920 a3=1088 a4=2 a5=0 program=x264large rep=5 version=dag word=dag workers=40: success, 2 samples
+attempt 58  a1=540 a2=640 a3=368 a4=2 a5=0 program=x264small.sta rep=5 version=dag word=dag workers=40: success, 3 samples
+attempt 59  a1=160 a2=1920 a3=1088 a4=2 a5=0 program=x264large.sta rep=5 version=dag word=dag workers=40: success, 3 samples
+attempt 60  a1=540 a2=640 a3=368 a4=2 a5=0 program=x264small rep=5 version=dag word=dag workers=80: success, 2 samples
+attempt 61  a1=160 a2=1920 a3=1088 a4=2 a5=0 program=x264large rep=5 version=dag word=dag workers=80: success, 2 samples
+attempt 62  a1=540 a2=640 a3=368 a4=2 a5=0 program=x264small.sta rep=5 version=dag word=dag workers=80: success, 3 samples
+attempt 63  a1=160 a2=1920 a3=1088 a4=2 a5=0 program=x264large.sta rep=5 version=dag word=dag workers=80: success, 3 samples
+attempt 64  a1=540 a2=640 a3=368 a4=2 a5=0 program=x264small rep=5 version=dag word=dag workers=160: success, 2 samples
+attempt 65  a1=160 a2=1920 a3=1088 a4=2 a5=0 program=x264large rep=5 version=dag word=dag workers=160: success, 2 samples
+attempt 66  a1=540 a2=640 a3=368 a4=2 a5=0 program=x264small.sta rep=5 version=dag word=dag workers=160: success, 3 samples
+attempt 67  a1=160 a2=1920 a3=1088 a4=2 a5=0 program=x264large.sta rep=5 version=dag word=dag workers=160: success, 3 samples
+attempt 68  a1=540 a2=640 a3=368 a4=2 a5=0 check=check program=x264small rep=99 version=dag word=dag workers=320: success, 3 samples
+attempt 69  a1=160 a2=1920 a3=1088 a4=2 a5=0 check=check program=x264large rep=99 version=dag word=dag workers=320: success, 3 samples
+attempt 70  a1=540 a2=640 a3=368 a4=2 a5=0 check=check program=x264small.sta rep=99 version=dag word=dag workers=320: success, 4 samples
+attempt 71  a1=160 a2=1920 a3=1088 a4=2 a5=0 check=check program=x264large.sta rep=99 version=dag word=dag workers=320: success, 4 samples
+72 trials run; 72 of 72 have an attempt
+Mon Nov 23 08:37:07 UTC 2026
+Model name:                              Intel(R) Xeon(R) Platinum 8380 CPU @ 2.30GHz
+Thread(s) per core:                      2
+Core(s) per socket:                      40
+Socket(s):                               2
+NUMA node(s):                            2
+NUMA node0 CPU(s):                       0,2,4,6,8,10,12,14,16,18,20,22,24,26,28,30,32,34,36,38,40,42,44,46,48,50,52,54,56,58,60,62,64,66,68,70,72,74,76,78,80,82,84,86,88,90,92,94,96,98,100,102,104,106,108,110,112,114,116,118,120,122,124,126,128,130,132,134,136,138,140,142,144,146,148,150,152,154,156,158
+NUMA node1 CPU(s):                       1,3,5,7,9,11,13,15,17,19,21,23,25,27,29,31,33,35,37,39,41,43,45,47,49,51,53,55,57,59,61,63,65,67,69,71,73,75,77,79,81,83,85,87,89,91,93,95,97,99,101,103,105,107,109,111,113,115,117,119,121,123,125,127,129,131,133,135,137,139,141,143,145,147,149,151,153,155,157,159
+Mem:             125           5          91           0          30         120
+Linux 6.8.0-124-generic x86_64
+governor:  160 performance
+no_turbo: 0  smt: 1
+transparent hugepages: always [madvise] never
+numa balancing: 0
+available: 2 nodes (0-1)
+node 0 cpus: 0 2 4 6 8 10 12 14 16 18 20 22 24 26 28 30 32 34 36 38 40 42 44 46 48 50 52 54 56 58 60 62 64 66 68 70 72 74 76 78 80 82 84 86 88 90 92 94 96 98 100 102 104 106 108 110 112 114 116 118 120 122 124 126 128 130 132 134 136 138 140 142 144 146 148 150 152 154 156 158
+node 0 size: 63748 MB
+node 0 free: 42503 MB
+workers 1,40,80,160; checks 3,320; uptime:  08:37:07 up  3:31,  3 users,  load average: 318.07, 225.18, 123.80
+x264:
+  {program: x264small, config: serial, time: 20.866}
+  {program: x264small, config: dag 1, time: 20.87}
+  {program: x264small, config: dag 40, time: 2.245}
+  {program: x264small, config: dag 80, time: 2.292}
+  {program: x264small, config: dag 160, time: 4.326}
+  {program: x264large, config: serial, time: 56.816}
+  {program: x264large, config: dag 1, time: 56.636}
+  {program: x264large, config: dag 40, time: 6.181}
+  {program: x264large, config: dag 80, time: 6.185}
+  {program: x264large, config: dag 160, time: 11.427}
+certificate e4a1a816170761a7425ba434da24467bcfbb7606d04d56b8ab6c4813a9e59ea3: accepted, level 0
+  over the log ending at 7b97042c9a3a4c2a7d6de7457c561bcfff449e3a78f12b59bcaa3e39c6f208d3, issued by Flexibench 27e6e1e32a89656fc41659b9c2238d69afcabe26, Lean 4.30.0
+  trials: 34 selects, 38 excluded
+  attempts: 34 selects, 34 excluded, 4 unread
+  terminal events: 34 selects, 34 excluded, 4 unread
+  samples: 34 contributes, 34 excluded, 114 unread
+  level 0: the store is a local directory written by this process
+x264sta:
+  {program: x264small.sta, config: serial, time: 20.857}
+  {program: x264small.sta, config: dag 1, time: 20.871}
+  {program: x264small.sta, config: dag 40, time: 2.244}
+  {program: x264small.sta, config: dag 80, time: 2.291}
+  {program: x264small.sta, config: dag 160, time: 4.335}
+  {program: x264large.sta, config: serial, time: 56.814}
+  {program: x264large.sta, config: dag 1, time: 56.621}
+  {program: x264large.sta, config: dag 40, time: 6.183}
+  {program: x264large.sta, config: dag 80, time: 6.179}
+  {program: x264large.sta, config: dag 160, time: 11.457}
+certificate 442e82337827debb25281300011cf42199d7ade7fd5de9b339b3925ad641a72c: accepted, level 0
+  over the log ending at 7b97042c9a3a4c2a7d6de7457c561bcfff449e3a78f12b59bcaa3e39c6f208d3, issued by Flexibench 27e6e1e32a89656fc41659b9c2238d69afcabe26, Lean 4.30.0
+  trials: 34 selects, 38 excluded
+  attempts: 34 selects, 34 excluded, 4 unread
+  terminal events: 34 selects, 34 excluded, 4 unread
+  samples: 34 contributes, 66 excluded, 82 unread
+  level 0: the store is a local directory written by this process
+x264reading:
+  {program: x264small, config: serial, reading: 2.156}
+  {program: x264small, config: dag 1, reading: 2.162}
+  {program: x264small, config: dag 40, reading: 2.236}
+  {program: x264small, config: dag 80, reading: 2.283}
+  {program: x264small, config: dag 160, reading: 4.31}
+  {program: x264large, config: serial, reading: 5.858}
+  {program: x264large, config: dag 1, reading: 5.688}
+  {program: x264large, config: dag 40, reading: 6.107}
+  {program: x264large, config: dag 80, reading: 6.114}
+  {program: x264large, config: dag 160, reading: 11.296}
+certificate 539aa520a21b07b82434924c01b05173de55cad0c1bf5dfb8c7f6a7645d3b3cc: accepted, level 0
+  over the log ending at 7b97042c9a3a4c2a7d6de7457c561bcfff449e3a78f12b59bcaa3e39c6f208d3, issued by Flexibench 27e6e1e32a89656fc41659b9c2238d69afcabe26, Lean 4.30.0
+  trials: 34 selects, 38 excluded
+  attempts: 34 selects, 34 excluded, 4 unread
+  terminal events: 34 selects, 34 excluded, 4 unread
+  samples: 34 contributes, 34 excluded, 114 unread
+  level 0: the store is a local directory written by this process
+x264stareading:
+  {program: x264small.sta, config: serial, reading: 2.156}
+  {program: x264small.sta, config: dag 1, reading: 2.162}
+  {program: x264small.sta, config: dag 40, reading: 2.235}
+  {program: x264small.sta, config: dag 80, reading: 2.282}
+  {program: x264small.sta, config: dag 160, reading: 4.318}
+  {program: x264large.sta, config: serial, reading: 5.859}
+  {program: x264large.sta, config: dag 1, reading: 5.688}
+  {program: x264large.sta, config: dag 40, reading: 6.109}
+  {program: x264large.sta, config: dag 80, reading: 6.109}
+  {program: x264large.sta, config: dag 160, reading: 11.324}
+certificate 7e3aefc475f7cf214be0af287a24866773be6d4865270856149e592e48d82322: accepted, level 0
+  over the log ending at 7b97042c9a3a4c2a7d6de7457c561bcfff449e3a78f12b59bcaa3e39c6f208d3, issued by Flexibench 27e6e1e32a89656fc41659b9c2238d69afcabe26, Lean 4.30.0
+  trials: 34 selects, 38 excluded
+  attempts: 34 selects, 34 excluded, 4 unread
+  terminal events: 34 selects, 34 excluded, 4 unread
+  samples: 34 contributes, 66 excluded, 82 unread
+  level 0: the store is a local directory written by this process
+x264stastates:
+  {program: x264small.sta, config: dag 1, work: 20.871133, sched: 0, idle: 0}
+  {program: x264small.sta, config: dag 40, work: 21.032322, sched: 0.021242, idle: 68.712844}
+  {program: x264small.sta, config: dag 80, work: 21.124384, sched: 0.037222, idle: 162.099086}
+  {program: x264small.sta, config: dag 160, work: 40.597547, sched: 0.086706, idle: 652.91475}
+  {program: x264large.sta, config: dag 1, work: 56.62107, sched: 0, idle: 0}
+  {program: x264large.sta, config: dag 40, work: 57.234814, sched: 0.019882, idle: 190.074702}
+  {program: x264large.sta, config: dag 80, work: 57.32888, sched: 0.073854, idle: 436.976192}
+  {program: x264large.sta, config: dag 160, work: 115.387588, sched: 0.227015, idle: 1717.223466}
+certificate 1fb19779bfd5a6cb594eaa7cfe8e51539a082508c676a7c374beb85b22a3a29f: accepted, level 0
+  over the log ending at 7b97042c9a3a4c2a7d6de7457c561bcfff449e3a78f12b59bcaa3e39c6f208d3, issued by Flexibench 27e6e1e32a89656fc41659b9c2238d69afcabe26, Lean 4.30.0
+  trials: 32 selects, 40 excluded
+  attempts: 32 selects, 36 excluded, 4 unread
+  terminal events: 32 selects, 36 excluded, 4 unread
+  samples: 32 contributes, 64 excluded, 86 unread
+  level 0: the store is a local directory written by this process
+failures:
+certificate e4d51e6893cc7ee180cc1fffd2204afe4342a9430b6c4d5760e8c29a2d930d9f: accepted, level 0
+  over the log ending at 7b97042c9a3a4c2a7d6de7457c561bcfff449e3a78f12b59bcaa3e39c6f208d3, issued by Flexibench 27e6e1e32a89656fc41659b9c2238d69afcabe26, Lean 4.30.0
+  trials: 68 selects, 4 excluded
+  attempts: 4 excluded, 68 unread
+  terminal events: 68 excluded, 4 unread
+  samples: 14 excluded, 168 unread
+  left out: commitments 0, none of whose trials contributed, though some bear on its keys
+  level 0: the store is a local directory written by this process
+serialfailures:
+certificate 649c660fd659ebac1b128c7cf36686ef76bcb588cc96819f76302ceb6ab1602a: accepted, level 0
+  over the log ending at 7b97042c9a3a4c2a7d6de7457c561bcfff449e3a78f12b59bcaa3e39c6f208d3, issued by Flexibench 27e6e1e32a89656fc41659b9c2238d69afcabe26, Lean 4.30.0
+  trials: 4 selects, 68 excluded
+  attempts: 72 unread
+  terminal events: 4 excluded, 68 unread
+  samples: 182 unread
+  left out: commitments 0, none of whose trials contributed, though some bear on its keys
+  level 0: the store is a local directory written by this process
+| time | serial | dag 1 | dag 40 | dag 80 | dag 160 |
+|---|---:|---:|---:|---:|---:|
+| x264small | 20.866 | 20.870 | 2.245 | 2.292 | 4.326 |
+| x264large | 56.816 | 56.636 | 6.181 | 6.185 | 11.427 |
+x264icelake.tex: accepted: it shows what certificate e4a1a816170761a7425ba434da24467bcfbb7606d04d56b8ab6c4813a9e59ea3 certifies
+x264icelake.html: accepted: it shows what certificate e4a1a816170761a7425ba434da24467bcfbb7606d04d56b8ab6c4813a9e59ea3 certifies
+| time | serial | dag 1 | dag 40 | dag 80 | dag 160 |
+|---|---:|---:|---:|---:|---:|
+| x264small.sta | 20.857 | 20.871 | 2.244 | 2.291 | 4.335 |
+| x264large.sta | 56.814 | 56.621 | 6.183 | 6.179 | 11.457 |
+x264staicelake.tex: accepted: it shows what certificate 442e82337827debb25281300011cf42199d7ade7fd5de9b339b3925ad641a72c certifies
+x264staicelake.html: accepted: it shows what certificate 442e82337827debb25281300011cf42199d7ade7fd5de9b339b3925ad641a72c certifies
+| reading | serial | dag 1 | dag 40 | dag 80 | dag 160 |
+|---|---:|---:|---:|---:|---:|
+| x264small | 2.156 | 2.162 | 2.236 | 2.283 | 4.310 |
+| x264large | 5.858 | 5.688 | 6.107 | 6.114 | 11.296 |
+x264readingicelake.tex: accepted: it shows what certificate 539aa520a21b07b82434924c01b05173de55cad0c1bf5dfb8c7f6a7645d3b3cc certifies
+x264readingicelake.html: accepted: it shows what certificate 539aa520a21b07b82434924c01b05173de55cad0c1bf5dfb8c7f6a7645d3b3cc certifies
+| reading | serial | dag 1 | dag 40 | dag 80 | dag 160 |
+|---|---:|---:|---:|---:|---:|
+| x264small.sta | 2.156 | 2.162 | 2.235 | 2.282 | 4.318 |
+| x264large.sta | 5.859 | 5.688 | 6.109 | 6.109 | 11.324 |
+x264stareadingicelake.tex: accepted: it shows what certificate 7e3aefc475f7cf214be0af287a24866773be6d4865270856149e592e48d82322 certifies
+x264stareadingicelake.html: accepted: it shows what certificate 7e3aefc475f7cf214be0af287a24866773be6d4865270856149e592e48d82322 certifies
+| work | dag 1 | dag 40 | dag 80 | dag 160 |
+|---|---:|---:|---:|---:|
+| x264small.sta | 20.871 | 21.032 | 21.124 | 40.598 |
+| x264large.sta | 56.621 | 57.235 | 57.329 | 115.388 |
+x264staworkicelake.tex: accepted: it shows what certificate 1fb19779bfd5a6cb594eaa7cfe8e51539a082508c676a7c374beb85b22a3a29f certifies
+x264staworkicelake.html: accepted: it shows what certificate 1fb19779bfd5a6cb594eaa7cfe8e51539a082508c676a7c374beb85b22a3a29f certifies
+| sched | dag 1 | dag 40 | dag 80 | dag 160 |
+|---|---:|---:|---:|---:|
+| x264small.sta | 0.000 | 0.021 | 0.037 | 0.087 |
+| x264large.sta | 0.000 | 0.020 | 0.074 | 0.227 |
+x264staschedicelake.tex: accepted: it shows what certificate 1fb19779bfd5a6cb594eaa7cfe8e51539a082508c676a7c374beb85b22a3a29f certifies
+x264staschedicelake.html: accepted: it shows what certificate 1fb19779bfd5a6cb594eaa7cfe8e51539a082508c676a7c374beb85b22a3a29f certifies
+| idle | dag 1 | dag 40 | dag 80 | dag 160 |
+|---|---:|---:|---:|---:|
+| x264small.sta | 0.000 | 68.713 | 162.099 | 652.915 |
+| x264large.sta | 0.000 | 190.075 | 436.976 | 1717.223 |
+x264staidleicelake.tex: accepted: it shows what certificate 1fb19779bfd5a6cb594eaa7cfe8e51539a082508c676a7c374beb85b22a3a29f certifies
+x264staidleicelake.html: accepted: it shows what certificate 1fb19779bfd5a6cb594eaa7cfe8e51539a082508c676a7c374beb85b22a3a29f certifies
+SESSION DONE

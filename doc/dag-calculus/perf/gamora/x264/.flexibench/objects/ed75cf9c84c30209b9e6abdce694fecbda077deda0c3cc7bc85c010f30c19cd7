@@ -1,0 +1,8 @@
+x264 dag groups=240 width=640 height=368 between=2 throttle=64
+output    718 frames, digest d6cb18f46020fd2d
+workers   16
+exectime  4.034 s
+states    work 62.419705 sched 0.002288 idle 2.123684 s
+tasks     steals 3555 stolen_vertices 465 stolen_stacks 13 resumes 692
+stacks    mapped 215 from_pool 298
+reading   0.790 s in the first stage

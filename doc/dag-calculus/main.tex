@@ -93,6 +93,8 @@
 \input{perf/icelake/bench/pipesicelake}\input{perf/icelake/bench/ferreticelake}
 \input{perf/icelake/bench/stencilsicelake}\input{perf/icelake/bench/lcsicelake}
 \input{perf/icelake/bench/graphsicelake}
+\input{perf/icelake/x264/x264icelake}\input{perf/icelake/x264/x264readingicelake}
+\input{perf/gamora/x264/x264gamora}\input{perf/gamora/x264/x264readinggamora}
 \newcommand{\benchserial}[2]{\fbval{#1icelake}{#2}{serial}}
 \newcommand{\benchcells}[3]{\fbval{#1icelake}{#2}{#3 1} & \fbval{#1icelake}{#2}{#3 40}
   & \fbval{#1icelake}{#2}{#3 80} & \fbval{#1icelake}{#2}{#3 160}}
@@ -1223,7 +1225,7 @@ testbed~\cite{keahey2020lessons} supported by the National Science
 Foundation.
 
 \bibliographystyle{abbrv}
-\bibliography{main,perf/times,perf/parlay/parlay,perf/examples/examples,perf/gamora/timesgamora,perf/gamora/parlay/parlaygamora,perf/gamora/examples/examplesgamora,perf/cost/cost,perf/factors/factors,perf/gamora/cost/costgamora,perf/gamora/factors/factorsgamora,perf/suite/suite,perf/gamora/suite/suitegamora,perf/icelake/bench/benchicelake}
+\bibliography{main,perf/times,perf/parlay/parlay,perf/examples/examples,perf/gamora/timesgamora,perf/gamora/parlay/parlaygamora,perf/gamora/examples/examplesgamora,perf/cost/cost,perf/factors/factors,perf/gamora/cost/costgamora,perf/gamora/factors/factorsgamora,perf/suite/suite,perf/gamora/suite/suitegamora,perf/icelake/bench/benchicelake,perf/icelake/x264/x264icelake,perf/gamora/x264/x264gamora}
 
 \clearpage
 \appendix
@@ -2144,19 +2146,33 @@ times faster than the serial versions, x264 apart.
 The time of x264 does not decrease from 40 workers to 80, and nearly
 doubles on 160.
 %
-Single runs outside the certified round point to idle workers, not to
-memory.
+The cause is the first stage of its pipeline, which reads the frames
+and is serial.
 %
-The time on 80 workers is the same with transparent huge pages on, and
-with an allocator that keeps the memory of the frames it frees.
+A second round, of x264 alone, has the program print the time it
+spends in that stage~\cite{flexibench-dag-x264-icelake}.
 %
-In such a run the 80 workers spend about two thirds of their time in
-the kernel, with few page faults, and an idle worker of ours yields to
-the kernel after each steal that fails.
+In the serial version the first stage takes \fbval{x264readingicelake}{x264small}{serial}\,s of
+\fbval{x264icelake}{x264small}{serial}\,s, a tenth.
 %
-So the pipeline probably has too little parallelism for 80 workers at
-this frame size; we have not measured its parallelism, nor explained
-the time on 160.
+On 80 workers it takes \fbval{x264readingicelake}{x264small}{dag 80}\,s of the
+\fbval{x264icelake}{x264small}{dag 80}\,s of the run: the rest of the pipeline keeps up with
+its reader, and the run lasts as long as the reading.
+%
+On 160 workers the first stage itself takes \fbval{x264readingicelake}{x264small}{dag 160}\,s,
+of \fbval{x264icelake}{x264small}{dag 160}\,s.
+%
+There every hardware thread has a worker, so the reader shares its core
+with another worker; we have not determined whether that is why it
+slows down.
+%
+The frame size is not the limit: with three times the rows, the first
+stage takes the same share of the run on every number of workers.
+%
+On the Ryzen, whose build encodes about seven times more slowly, the
+first stage is 1.2\% of the serial version's time, and x264 runs 14
+times faster on 16 workers~\cite{flexibench-dag-x264-gamora}:
+\fbval{x264gamora}{x264small}{dag 16}\,s against \fbval{x264gamora}{x264small}{serial}\,s.
 %
 Two more ratios need a caution.
 %

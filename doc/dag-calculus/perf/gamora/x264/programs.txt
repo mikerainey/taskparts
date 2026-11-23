@@ -1,0 +1,14 @@
+# x264 of the DAG calculus paper's benchmark programs, on the Ryzen: does its frame size
+# limit its speedup, and how much of the workers' time is idle?
+#
+# group  program  serial version  parallel versions  arguments, in the program's order
+#
+# The programs are the flake output dagbenchx264: one x264, under a name per frame size,
+# and with .sta the build that totals the time in each state of a worker. A group whose
+# name ends in sta also gets those totals. The large frame has about three times the
+# rows of macroblocks of the small one (68 against 23), and 8.9 times the pixels.
+#!reading x264 x264sta
+x264     x264small      serial  dag   240 640 368 2 0
+x264     x264large      serial  dag   72 1920 1088 2 0
+x264sta  x264small.sta  serial  dag   240 640 368 2 0
+x264sta  x264large.sta  serial  dag   72 1920 1088 2 0

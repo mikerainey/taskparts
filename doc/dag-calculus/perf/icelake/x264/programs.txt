@@ -1,0 +1,15 @@
+# x264 of the DAG calculus paper's benchmark programs, on the Xeon: is its serial first
+# stage what limits its speedup, and does its frame size matter?
+#
+# group  program  serial version  parallel versions  arguments, in the program's order
+#
+# The programs are the flake output dagbenchx264icelake: one x264, under a name per frame
+# size, and with .sta the build that totals the time in each state of a worker. The small
+# frame and its number of groups are those of the round of programs-icelake.txt. The
+# large frame has about three times the rows of macroblocks (68 against 23), and 8.9
+# times the pixels.
+#!reading x264 x264sta
+x264     x264small      serial  dag   540 640 368 2 0
+x264     x264large      serial  dag   160 1920 1088 2 0
+x264sta  x264small.sta  serial  dag   540 640 368 2 0
+x264sta  x264large.sta  serial  dag   160 1920 1088 2 0
