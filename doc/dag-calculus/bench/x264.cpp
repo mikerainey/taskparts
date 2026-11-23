@@ -28,6 +28,9 @@
 // a difference that is quantized and not transformed, and a digest in place
 // of an entropy coder. The frames are synthetic.
 //
+// The first stage is serial, so its time bounds the speedup: the program
+// prints it, after the time of the whole.
+//
 // usage: x264 <serial|dag> [groups] [width] [height] [in-between frames]
 //             [throttle] [check]
 
@@ -184,7 +187,18 @@ struct group {
 static std::vector<frame> decoded;
 static frame &decoded_of(int i) { return decoded[(size_t)i % decoded.size()]; }
 
+// The time spent in the first stage, in seconds. Its calls are in order, in
+// every version, so nothing else writes this while one of them runs.
+static double reading = 0.0;
+
 static void read_group(int i, group &g) {
+  struct timer {
+    std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
+    ~timer() {
+      std::chrono::duration<double> d = std::chrono::steady_clock::now() - start;
+      reading += d.count();
+    }
+  } t;
   g.i = i;
   int f = i * (nb_between + 1);
   read_frame(f, g.reference);
@@ -298,6 +312,7 @@ int main(int argc, char **argv) {
   std::printf("output    %zu frames, digest %016llx\n", w.nb_frames,
               (unsigned long long)w.digest);
   report(r);
+  std::printf("reading   %.3f s in the first stage\n", reading);
   if (check) {
     decoded.assign(2, frame((size_t)width * height));
     writer reference;
