@@ -697,7 +697,7 @@ testbed~\cite{keahey2020lessons} supported by the National Science
 Foundation.
 
 \bibliographystyle{abbrv}
-\bibliography{main,perf/times,perf/parlay/parlay,perf/gamora/timesgamora,perf/gamora/parlay/parlaygamora,perf/suite/suite,perf/gamora/suite/suitegamora,perf/suite/karatsuba/suitek,perf/gamora/suite/karatsuba/suitekgamora,perf/icelake/suite/suiteicelake,perf/icelake/thp/suitethp}
+\bibliography{main,perf/times,perf/parlay/parlay,perf/gamora/timesgamora,perf/gamora/parlay/parlaygamora,perf/suite/suite,perf/gamora/suite/suitegamora,perf/suite/karatsuba/suitek,perf/gamora/suite/karatsuba/suitekgamora,perf/icelake/suite/suiteicelake,perf/icelake/thp/suitethp,perf/icelake/thp2/suitethp2,perf/icelake/percore/suitepercore}
 
 \clearpage
 \appendix
@@ -1589,7 +1589,35 @@ ParlayLib's scheduler on 15.
 From 40 workers to 80, the time changes by less than 10\% on 22
 programs with ParlayLib's scheduler, and on 10 with micro taskparts.
 %
-We have not determined why.
+Most of the difference on 80 workers comes from where the operating
+system runs the workers, which neither scheduler decides.
+%
+We ran every program again, with no scheduler and with each scheduler
+on 80 workers, with each process restricted to 80 hardware threads,
+one of each core~\cite{flexibench-suitepercore}.
+%
+With micro taskparts, the time changes by less than 5\% on 59
+programs.
+%
+With ParlayLib's scheduler, it drops by at least 10\% on more than 40
+programs, and by up to 44\%, on karatsuba; it rises by at least 10\%
+on nine, by at most 30\%, among them scan, filter, flatten, bigint\_add
+and tokens.
+%
+The medians are then 47 and 45 times faster than no scheduler, and the
+two schedulers reach 40 times on 41 and 37 programs.
+%
+Micro taskparts takes at least 10\% less time than ParlayLib's
+scheduler on 13 programs, among them delaunay and quicksort, by 69\%
+and 49\%, and at least 10\% more on five: spectral\_separator, by
+44\%, minimum\_edit\_distance, by 24\%, and radix\_tree,
+knuth\_shuffle and spanning\_tree, by at most 20\%.
+%
+So with no restriction, workers of ParlayLib's scheduler appear to
+share cores while other cores are idle.
+%
+We did not observe where the workers ran, and we have not determined
+why the two schedulers differ in this.
 
 \paragraph{The Xeon: all hardware threads}
 %
@@ -1628,8 +1656,16 @@ to 10 times with ParlayLib's scheduler.
 Micro taskparts then gains at most 4\% from 40 workers to 80, so
 something else limits these programs next.
 %
-We have not determined what it is, nor what limits bigint\_add and
-kcore.
+Page faults limit bigint\_add as well, and tokens, which runs 26 and
+31 times faster than no scheduler on 80 workers in
+Table~\ref{tbl:suitexeon}.
+%
+With huge pages, on 80 workers, micro taskparts runs bigint\_add 23
+times faster than no scheduler and tokens 42 times, and ParlayLib's
+scheduler 18 and 32 times~\cite{flexibench-suitethp2}.
+%
+We have not determined what limits scan, filter and flatten next, nor
+what limits kcore.
 
 \begin{table*}
 \footnotesize

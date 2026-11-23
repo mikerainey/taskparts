@@ -281,6 +281,52 @@ laptop, in `diag/diag.log` and `logs/thp-survey.log`):
   micro taskparts (26 to 43 times); 46 of the other 55 change by less than 10% under
   both schedulers.
 
+### Two more programs with transparent huge pages
+
+`bigint_add` and `tokens` on the Xeon, on 2026-11-23 (a second lease of the same kind
+of node, set up again from nothing), with transparent huge pages `always`, as in the
+round of three programs above; everything else as there. The paper cites this round in
+prose.
+
+| Store | Values | Citation | Certificate |
+|---|---|---|---|
+| `icelake/thp2/.flexibench/` | `icelake/thp2/suitethp2.tex`, `.html` | `icelake/thp2/suitethp2.bib` | `c792505c03dca23c64add2fc84f22401f1068574ed33c94fc7d6d69eb5f19d4f` |
+
+Every check passed (`failures` certified empty, `bdd41c23…`). The client is
+`mtpsuitethp2`.
+
+### All 60 programs with one hardware thread per core
+
+All 60 programs on the Xeon, on 2026-11-23, with no scheduler and with each scheduler
+on 80 workers only, and every process started as
+`taskset -c 0-79 numactl --interleave=all …`. On this node CPUs 0 to 79 are the 80
+cores and CPU i+80 is the other thread of CPU i's core; the round's script checked
+that before it started. Builds, sizes, settings and checks are those of
+`tbl:suitexeon`; huge pages were at the default, `madvise`. The `serial` build ran as
+one process, each scheduler as three. The paper cites this round in prose and compares
+it with the 80-worker columns of `tbl:suitexeon`.
+
+| Store | Values | Citation | Certificate |
+|---|---|---|---|
+| not in this repository | `icelake/percore/suitepercore.tex`, `.html` | `icelake/percore/suitepercore.bib` | `6a46756fc5a27938003da6dba8c6493b017ed4370aa77e0dcf45af158e6387ce` |
+
+Every check passed (`failures` certified empty, `33fed9f5…`). The store is 246 MB; its
+copy is on the laptop, in
+`~/Work/taskparts-bench-paper-nfj/runs-icelake2/runs/tbl-percore-suite/.flexibench`,
+with the round's log. The client is `mtpsuitepercore`, generated with `ONCE=1` and
+`WORKERS=80`; the restriction is the option `PIN=0-79` of the round's script. Neither
+is committed in the measurement repository yet.
+
+The paper's counts are taken from the values as the views print them, to three
+decimals. From the unrounded times, a count can differ by one (ParlayLib's scheduler
+is at least 10% faster under the restriction on 42 programs or 43).
+
+Not certified (`logs/nfj-percore.log` beside that store): before this round, two
+processes per configuration of 15 programs, with and without the restriction. It
+showed the same effect and is superseded by the certified round. Nothing recorded
+where the workers ran, so the cause of the difference between the two schedulers is
+not established; ParlayLib's scheduler makes no affinity calls.
+
 ## Earlier rounds
 
 They are in this directory's history:

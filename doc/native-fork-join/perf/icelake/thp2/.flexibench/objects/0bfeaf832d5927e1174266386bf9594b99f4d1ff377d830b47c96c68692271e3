@@ -1,0 +1,1 @@
+{"metrics":[{"exectime":{"rat":[56401,1000000]},"maxrss":{"nat":980896},"nivcsw":{"nat":265},"nsignals":{"nat":0},"nvcsw":{"nat":3264},"systime":{"rat":[760579,500000]},"usertime":{"rat":[3850689,1000000]}},{"line":{"text":"Time: tokens: 0.0564"}},{"line":{"text":"number of space separated tokens: 37050440"}}]}
