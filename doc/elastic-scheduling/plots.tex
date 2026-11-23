@@ -1,0 +1,127 @@
+% Factored speedup plots, drawn from the certified values of
+% perf/gamora/suite and perf/icelake/suite. Nothing here is a number typed by hand: every
+% coordinate is computed from \fbval cells.
+%
+% For a program g and a number of workers p, with Ts the time of the
+% sequential build, W1 the work on one worker, and Tp, Wp, Ip, Zp the time,
+% the work, the idle time and the time asleep on p workers, the curves are,
+% from the top:
+%
+%   ideal              p
+%   after the forks    p * Ts / W1
+%   after inflation    p * Ts / Wp
+%   after idle time    p * Ts / (Wp + Ip)
+%   after sleep        p * Ts / (Wp + Ip + Zp)
+%   speedup            Ts / Tp
+%
+% and each band between two neighbors is the speedup lost to one cause.
+% The construction, without the sleep, is the instrumentation paper's.
+
+\definecolor{bandforks}{HTML}{2A78D6}
+\definecolor{bandinflation}{HTML}{EB6834}
+\definecolor{bandidle}{HTML}{1BAF7A}
+\definecolor{bandasleep}{HTML}{B9A6E8}
+\definecolor{bandsched}{HTML}{EDA100}
+
+% \curvecell{VIEW}{PROGRAM}{P}{\macro}: \macro becomes the value of a cell.
+\newcommand{\curvecell}[4]{%
+  \edef\curvecelltmp{\noexpand\fbval{#1}{#2}{P = #3}}%
+  \edef#4{\curvecelltmp}}
+
+% \curvecoords{SUFFIX}{WORKERS}{PROGRAM}: defines the coordinates of the
+% five measured curves, from the views stimeSUFFIX, fworkSUFFIX, fidleSUFFIX
+% and fasleepSUFFIX, at each number of workers of the list WORKERS.
+\newcommand{\curvecoords}[3]{%
+  \gdef\coordsforks{}\gdef\coordsinflation{}%
+  \gdef\coordsidle{}\gdef\coordsasleep{}\gdef\coordsspeedup{}%
+  \edef\curveTs{\fbval{stime#1}{#3}{serial}}%
+  \curvecell{fwork#1}{#3}{1}{\curveWone}%
+  \foreach \p in {#2} {%
+    \edef\curvecelltmp{\noexpand\fbval{stime#1}{#3}{stats \p}}%
+    \edef\curveT{\curvecelltmp}%
+    \curvecell{fwork#1}{#3}{\p}{\curveW}%
+    \curvecell{fidle#1}{#3}{\p}{\curveI}%
+    \curvecell{fasleep#1}{#3}{\p}{\curveZ}%
+    \pgfmathparse{\p*\curveTs/\curveWone}%
+    \xdef\coordsforks{\coordsforks (\p,\pgfmathresult)}%
+    \pgfmathparse{\p*\curveTs/\curveW}%
+    \xdef\coordsinflation{\coordsinflation (\p,\pgfmathresult)}%
+    \pgfmathparse{\p*\curveTs/(\curveW+\curveI)}%
+    \xdef\coordsidle{\coordsidle (\p,\pgfmathresult)}%
+    \pgfmathparse{\p*\curveTs/(\curveW+\curveI+\curveZ)}%
+    \xdef\coordsasleep{\coordsasleep (\p,\pgfmathresult)}%
+    \pgfmathparse{\curveTs/\curveT}%
+    \xdef\coordsspeedup{\coordsspeedup (\p,\pgfmathresult)}}}
+
+\pgfplotsset{
+  factored/.style={
+    width=4.4cm, height=4.4cm,
+    xmin=1, xmax=32, ymin=0, ymax=32,
+    xtick={1,8,16,24,32}, ytick={0,8,16,24,32},
+    tick label style={font=\scriptsize},
+    label style={font=\scriptsize},
+    title style={font=\footnotesize, yshift=-1ex},
+    grid=major, grid style={black!8, line width=0.3pt},
+    axis line style={black!40}, tick style={black!40},
+    axis on top=false, clip=true,
+  },
+  band edge/.style={draw=white, line width=0.4pt},
+}
+
+% \factoredplotof{SUFFIX}{WORKERS}{MAX}{PROGRAM}{TITLE}{extra axis options}:
+% the plot of a program from the views of a machine, on 1 to MAX workers.
+\newcommand{\factoredplotof}[6]{%
+  \curvecoords{#1}{#2}{#4}%
+  \begin{tikzpicture}
+  \begin{axis}[factored, xmax=#3, ymax=#3, title={#5}, #6]
+    \addplot[name path=ideal, draw=none, forget plot]
+      coordinates {(1,1) (#3,#3)};
+    \addplot[name path=forks, draw=none, forget plot]
+      coordinates {\coordsforks};
+    \addplot[name path=inflation, draw=none, forget plot]
+      coordinates {\coordsinflation};
+    \addplot[name path=idle, draw=none, forget plot]
+      coordinates {\coordsidle};
+    \addplot[name path=asleep, draw=none, forget plot]
+      coordinates {\coordsasleep};
+    \addplot[name path=speedup, draw=none, forget plot]
+      coordinates {\coordsspeedup};
+    \addplot[bandforks, band edge, forget plot]
+      fill between[of=ideal and forks];
+    \addplot[bandinflation, band edge, forget plot]
+      fill between[of=forks and inflation];
+    \addplot[bandidle, band edge, forget plot]
+      fill between[of=inflation and idle];
+    \addplot[bandasleep, band edge, forget plot]
+      fill between[of=idle and asleep];
+    \addplot[bandsched, band edge, forget plot]
+      fill between[of=asleep and speedup];
+    \addplot[black!55, densely dashed, line width=0.5pt, forget plot]
+      coordinates {(1,1) (#3,#3)};
+    \addplot[black, line width=0.9pt, mark=*, mark size=1.1pt, forget plot]
+      coordinates {\coordsspeedup};
+  \end{axis}
+  \end{tikzpicture}}
+
+% \factoredplot{PROGRAM}{TITLE}{extra axis options}: the plot of a program on
+% the Ryzen, on 1 to 32 workers; \factoredplotx, on the Xeon, on 1 to 160.
+\newcommand{\factoredplot}[3]{%
+  \factoredplotof{gamora}{1,4,8,16,24,32}{32}{#1}{#2}{#3}}
+\newcommand{\factoredplotx}[3]{%
+  \factoredplotof{icelake}{1,20,40,80,120,160}{160}{#1}{#2}%
+    {xtick={1,40,80,120,160}, ytick={0,40,80,120,160}, #3}}
+
+% The legend, shared by the panels, in the order of the bands from the top.
+\newcommand{\factoredlegendswatch}[1]{%
+  \tikz[baseline=-0.6ex]{\fill[#1] (0,-0.9ex) rectangle (1.6ex,0.9ex);}}
+\newcommand{\factoredlegend}{%
+  \footnotesize
+  \tikz[baseline=-0.6ex]{\draw[black!55, densely dashed, line width=0.5pt]
+    (0,0) -- (3ex,0);}~ideal\quad
+  \factoredlegendswatch{bandforks}~lost to the forks\quad
+  \factoredlegendswatch{bandinflation}~to work inflation\quad
+  \factoredlegendswatch{bandidle}~to idle time\quad
+  \factoredlegendswatch{bandasleep}~to sleep\quad
+  \factoredlegendswatch{bandsched}~to scheduling\quad
+  \tikz[baseline=-0.6ex]{\draw[black, line width=0.9pt] (0,0) -- (3ex,0);
+    \fill (1.5ex,0) circle (1.1pt);}~speedup}

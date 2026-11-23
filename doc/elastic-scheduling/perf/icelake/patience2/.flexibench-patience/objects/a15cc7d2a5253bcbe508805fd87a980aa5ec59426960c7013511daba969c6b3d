@@ -1,0 +1,1 @@
+{"args":["42","10"],"env":{"PARLAY_NUM_THREADS":"160","TASKPARTS_ELASTIC_PATIENCE":"10000","TASKPARTS_NUM_WORKERS":"160"},"program":"/home/cc/elastic/builds/elastic-1e1d0b8db0c2-77e1198a53c9-direct-77e1198a53c9-doc_elastic-scheduling_microtaskparts-xeon2-stats/burstylong"}

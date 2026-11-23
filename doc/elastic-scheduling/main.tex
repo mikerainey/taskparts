@@ -1,0 +1,1667 @@
+\documentclass[sigplan,nonacm]{acmart}
+\makeatletter
+\renewcommand\@formatdoi[1]{\ignorespaces}
+\makeatother
+\settopmatter{printfolios=false,printccs=false,printacmref=false}
+
+\setcopyright{none}
+\acmConference[]{}{}{}
+
+\usepackage{enumitem}
+\usepackage{mathtools}
+\usepackage{amsmath}
+\usepackage{pgfmath}
+\usepackage{pgfplots}
+\usepgfplotslibrary{fillbetween}
+\pgfplotsset{compat=1.18}
+
+\usepackage{listings}
+
+\lstdefinelanguage{pcpp}{%
+  language     = C++,
+  morekeywords = {type,then,of,match,with,null},
+  keywordstyle=\ttfamily\bfseries
+}
+
+\usepackage{natbib}
+\usepackage{url}
+
+\input{local}
+
+\lstset{language=pcpp,numbers=none}
+
+% The measurements, certified by Flexibench (perf/README.md).
+% \fibtime{BUILD}{P} is the time of fib(38) with BUILD (plain, elastic) on P
+% workers of the M5, and \fibtimeg the same on the Ryzen, where BUILD can
+% also be ordered.
+\input{perf/fib/efib}
+\input{perf/gamora/fib/efibgamora}
+\newcommand{\fibtime}[2]{\fbval{efib}{#1}{P = #2}}
+\newcommand{\fibtimeg}[2]{\fbval{efibgamora}{#1}{P = #2}}
+% The Xeon's round ran fib(45): \fibtimex, with the builds of the Ryzen.
+\input{perf/icelake/fib2/kfibicelake}
+\newcommand{\fibtimex}[2]{\fbval{kfibicelake}{#1}{P = #2}}
+% bursty on the Xeon by patience: qtime, quser, qsys, and what the build
+% with totals reported, qidle, qasleep and qsleeps. A configuration is a
+% patience, "on", and a number of workers.
+\input{perf/icelake/patience2/qtimeicelake}
+\input{perf/icelake/patience2/qusericelake}
+\input{perf/icelake/patience2/qsysicelake}
+\input{perf/icelake/patience2/qidleicelake}
+\input{perf/icelake/patience2/qsleepsicelake}
+% The ParlayLib programs and bursty. A configuration is serial, or plain,
+% elastic or homegrown followed by a number of workers. \etime is the elapsed
+% time of a run, and \burn its processor time: user time plus system time,
+% which the views give separately.
+\input{perf/parlay/etime}
+\input{perf/parlay/euser}
+\input{perf/parlay/esys}
+\input{perf/gamora/parlay/etimegamora}
+\input{perf/gamora/parlay/eusergamora}
+\input{perf/gamora/parlay/esysgamora}
+% The Xeon's views.
+% The Xeon's round on 80 workers with both versions of micro taskparts: the
+% configurations plain2 80 and elastic2 80 are of the version whose workers
+% keep stacks of their own, and plain 80 and elastic 80 of the one before.
+\input{perf/icelake/stacks/ktimeicelake}
+\input{perf/icelake/stacks/kusericelake}
+\input{perf/icelake/stacks/ksysicelake}
+% The collection of Appendix sec:collection on the Ryzen: stime, suser and
+% ssys by configuration (serial, or plain, elastic, homegrown or stats and a
+% number of workers), and what the build with totals reported, by number of
+% workers P: fwork, fsched, fidle and fasleep in seconds summed over the
+% workers, and the counts fsteals, fsleeps, fforkwakes and fthiefwakes.
+\input{perf/gamora/suite/stimegamora}
+\input{perf/gamora/suite/susergamora}
+\input{perf/gamora/suite/ssysgamora}
+\input{perf/gamora/suite/fworkgamora}
+\input{perf/gamora/suite/fschedgamora}
+\input{perf/gamora/suite/fidlegamora}
+\input{perf/gamora/suite/fasleepgamora}
+\input{perf/gamora/suite/fstealsgamora}
+\input{perf/gamora/suite/fsleepsgamora}
+\input{perf/gamora/suite/fforkwakesgamora}
+\input{perf/gamora/suite/fthiefwakesgamora}
+% The same collection on the Xeon, with the same names and the suffix icelake.
+\input{perf/icelake/suite/stimeicelake}
+\input{perf/icelake/suite/susericelake}
+\input{perf/icelake/suite/ssysicelake}
+\input{perf/icelake/suite/fworkicelake}
+\input{perf/icelake/suite/fschedicelake}
+\input{perf/icelake/suite/fidleicelake}
+\input{perf/icelake/suite/fasleepicelake}
+\input{perf/icelake/suite/fstealsicelake}
+\input{perf/icelake/suite/fsleepsicelake}
+\input{perf/icelake/suite/fforkwakesicelake}
+\input{perf/icelake/suite/fthiefwakesicelake}
+% Four programs of the collection on 80 workers of the Xeon with transparent
+% huge pages always on: htime, huser and hsys by configuration.
+\input{perf/icelake/thp/htimeicelake}
+\input{perf/icelake/thp/husericelake}
+\input{perf/icelake/thp/hsysicelake}
+\newcommand{\hburn}[2]{\twoplaces{\fbval{husericelake}{#1}{#2}+\fbval{hsysicelake}{#1}{#2}}}
+\input{plots}
+\newcommand{\twoplaces}[1]{\pgfmathparse{#1}%
+  \pgfmathprintnumber[fixed,fixed zerofill,precision=2]{\pgfmathresult}}
+\newcommand{\etime}[2]{\twoplaces{\fbval{etime}{#1}{#2}}}
+\newcommand{\etimeg}[2]{\twoplaces{\fbval{etimegamora}{#1}{#2}}}
+\newcommand{\burn}[2]{\twoplaces{\fbval{euser}{#1}{#2}+\fbval{esys}{#1}{#2}}}
+\newcommand{\burng}[2]{\twoplaces{\fbval{eusergamora}{#1}{#2}+\fbval{esysgamora}{#1}{#2}}}
+\newcommand{\stimex}[2]{\twoplaces{\fbval{stimeicelake}{#1}{#2}}}
+\newcommand{\sburnx}[2]{\twoplaces{\fbval{susericelake}{#1}{#2}+\fbval{ssysicelake}{#1}{#2}}}
+% A row of the collection's table on the Xeon, on 80 workers, and a total
+% and a row of counts of the build with totals there.
+\newcommand{\tbrowsx}[1]{\stimex{#1}{serial} &
+  \stimex{#1}{plain 80} & \sburnx{#1}{plain 80} &
+  \stimex{#1}{elastic 80} & \sburnx{#1}{elastic 80} &
+  \stimex{#1}{homegrown 80} & \sburnx{#1}{homegrown 80}}
+\newcommand{\ftotx}[2]{\fbval{f#1icelake}{#2}{P = 80}}
+\newcommand{\crowx}[1]{\ftotx{steals}{#1} & \ftotx{sleeps}{#1} &
+  \ftotx{forkwakes}{#1} & \ftotx{thiefwakes}{#1}}
+\newcommand{\ptimex}[2]{\twoplaces{\fbval{qtimeicelake}{#1}{#2}}}
+\newcommand{\pburnx}[2]{\twoplaces{\fbval{qusericelake}{#1}{#2}+\fbval{qsysicelake}{#1}{#2}}}
+\newcommand{\pidlex}[2]{\twoplaces{\fbval{qidleicelake}{#1}{#2}}}
+\newcommand{\etimek}[2]{\twoplaces{\fbval{ktimeicelake}{#1}{#2}}}
+\newcommand{\burnk}[2]{\twoplaces{\fbval{kusericelake}{#1}{#2}+\fbval{ksysicelake}{#1}{#2}}}
+\newcommand{\stimeg}[2]{\twoplaces{\fbval{stimegamora}{#1}{#2}}}
+\newcommand{\sburng}[2]{\twoplaces{\fbval{susergamora}{#1}{#2}+\fbval{ssysgamora}{#1}{#2}}}
+% A row of the collection's table: program #1 with no scheduler and with the
+% three schedulers on 32 workers of the Ryzen.
+\newcommand{\tbrows}[1]{\stimeg{#1}{serial} &
+  \stimeg{#1}{plain 32} & \sburng{#1}{plain 32} &
+  \stimeg{#1}{elastic 32} & \sburng{#1}{elastic 32} &
+  \stimeg{#1}{homegrown 32} & \sburng{#1}{homegrown 32}}
+% A total of the build with totals on 32 workers of the Ryzen, and a row of
+% the table of its counts.
+\newcommand{\ftot}[2]{\fbval{f#1gamora}{#2}{P = 32}}
+\newcommand{\crow}[1]{\ftot{steals}{#1} & \ftot{sleeps}{#1} &
+  \ftot{forkwakes}{#1} & \ftot{thiefwakes}{#1}}
+% A row of the Xeon's table: program #1 with the three schedulers on 80 workers.
+\newcommand{\tbrowk}[1]{\etimek{#1}{serial} &
+  \etimek{#1}{plain2 80} & \burnk{#1}{plain2 80} &
+  \etimek{#1}{elastic2 80} & \burnk{#1}{elastic2 80} &
+  \etimek{#1}{homegrown 80} & \burnk{#1}{homegrown 80}}
+% A row of the table of patience: the burn of program #1 on #2 workers.
+\newcommand{\prow}[2]{\pburnx{#1}{100 on #2} & \pburnx{#1}{1000 on #2} &
+  \pburnx{#1}{10000 on #2} & \pburnx{#1}{100000 on #2}}
+% A row of a table: the elapsed time and the burn of program #2 with the
+% three schedulers on #3 workers; #1 is empty for the M5, g for the Ryzen
+% and x for the Xeon.
+\newcommand{\tbrow}[3]{%
+  \csname etime#1\endcsname{#2}{plain #3} & \csname burn#1\endcsname{#2}{plain #3} &
+  \csname etime#1\endcsname{#2}{elastic #3} & \csname burn#1\endcsname{#2}{elastic #3} &
+  \csname etime#1\endcsname{#2}{homegrown #3} & \csname burn#1\endcsname{#2}{homegrown #3}}
+
+\newcommand{\fo}{\mathtt{f_1}}
+\newcommand{\ft}{\mathtt{f_2}}
+% A step number, flush right in a listing.
+\newcommand{\stepc}[1]{\hfill{\rmfamily\slshape // (#1)}}
+
+\title{Elastic native fork join: workers that sleep, forks that do not pay}
+\author{Mike Rainey}
+\email{me@mike-rainey.site}
+
+\begin{document}
+
+\begin{abstract}
+A work-stealing scheduler whose idle workers keep looking for work
+spends a processor on every worker that finds none.
+%
+\emph{Elastic scheduling} puts such workers to sleep, and wakes them
+when work appears.
+%
+The difficulty is to do so without slowing down the fork, which under
+native fork join costs a few nanoseconds, and without ever leaving a
+worker asleep while a task waits to be stolen.
+%
+We present a small protocol that meets both goals.
+%
+One shared word counts the workers that are asleep and those that are
+stealing.
+%
+Only idle workers write it; a fork reads it once, after its push, and
+wakes a worker if some worker is asleep and none is stealing.
+%
+On x86-64, where that read would force a costly instruction into every
+push, the worker about to sleep pays instead, through a service of the
+operating system.
+%
+We state the invariant that rules out lost wake-ups, and measure what
+the protocol costs and what it saves, in the terms of \emph{burn}: the
+processor time a computation consumes.
+%
+A companion implementation adds the protocol to micro taskparts in
+about 150 lines of C++.
+\end{abstract}
+
+\maketitle
+
+\section{Challenge: idle workers that cost nothing}
+
+\paragraph{Burn}
+%
+Work stealing~\cite{blumofele99,arora98} keeps every worker busy: a
+worker with nothing to do tries, again and again, to steal from the
+others.
+%
+When the computation has work for every worker, almost every attempt
+soon succeeds.
+%
+When it does not, the attempts are wasted, and each idle worker
+occupies a processor for nothing.
+
+We measure the waste as follows.
+%
+The \emph{burn} $B$ of a computation is the processor time it consumes
+on all of its workers together, whether they work or look for work.
+%
+The burn is at least the work $T_1$, the time the computation takes on
+one processor, so the \emph{burn ratio} $B / T_1$ is at least 1.
+%
+A scheduler whose $P$ workers never sleep has a burn of $P \cdot T_P$,
+where $T_P$ is the time of the computation on $P$ workers.
+%
+So its burn ratio is close to 1 when the speedup is close to $P$, and
+grows as large as $P$ when the computation is serial.
+%
+In our measurements, the burn is the user time plus the system time
+that the operating system charges to the process: a worker that yields
+its processor between attempts spends much of its time in the kernel.
+
+Micro taskparts, the implementation of native fork
+join~\cite{nativeforkjoin}, has such a scheduler: a worker that fails
+to steal yields and tries again.
+%
+A program whose parallelism is scarce, or comes in bursts, then burns
+several times its work (Section~\ref{sec:burn}).
+
+\paragraph{Elastic scheduling}
+%
+An \emph{elastic} scheduler puts a worker to sleep when it finds no
+work, and wakes one when work appears.
+%
+Three requirements make this harder than it sounds.
+
+\begin{itemize}[leftmargin=*]
+\item \emph{The fork must not pay.}
+  Under native fork join, a fork whose second branch is not stolen is
+  a push, two calls, and a pop, and costs between 2 and
+  5\,ns~\cite{nativeforkjoin}.
+  Work appears at a push, so the push must be able to wake a sleeper.
+  But a write to shared memory at each push, or even one more atomic
+  instruction, would show.
+\item \emph{No wake-up may be lost.}
+  A worker that decides to sleep just as another pushes a task must
+  not sleep while that task waits.
+\item \emph{The speedup must stay.}
+  A program with work for every worker should run as fast as it does
+  when no worker ever sleeps.
+\end{itemize}
+
+\paragraph{This paper}
+%
+We extend native fork join with a protocol that meets the first two
+requirements by construction, and the third in our measurements.
+%
+Section~\ref{sec:protocol} presents the protocol, and
+Section~\ref{sec:safety} the invariant that it maintains.
+%
+Section~\ref{sec:order} explains the one place where the protocol
+touches the fork: the push and the read that follows it must take
+effect in order, which is free on AArch64, and which on x86-64 we make
+the sleeper pay for.
+%
+Section~\ref{sec:burn} measures time and burn on two machines, against
+micro taskparts without the protocol and against the scheduler of
+ParlayLib~\cite{blelloch20parlaylib}, which sleeps.
+%
+Section~\ref{sec:related} relates the protocol to waste-efficient work
+stealing~\cite{singer2026wews}, a recent algorithm with proven bounds
+on waste.
+
+\section{The protocol}
+\label{sec:protocol}
+
+We start from the algorithm of the native fork join
+paper~\cite{nativeforkjoin}, and use its names.
+%
+Each worker runs a scheduler loop.
+%
+The loop counts the branches that reach a join, and otherwise calls
+\lstinline|steal|, which tries to take the oldest task of another
+worker, chosen at random.
+%
+\lstinline|fork2join| pushes a task for its second branch, runs its
+first branch, and pops.
+%
+A worker's deque is empty whenever the worker is in its loop.
+
+\paragraph{The status word}
+%
+The protocol adds one shared word, \lstinline|status|, which holds two
+counts: the number of workers that are \emph{asleep}, and the number
+that are \emph{stealing}.
+%
+A worker is stealing from the moment its loop starts looking for a
+task until it has one, except while it is asleep.
+%
+A worker that is neither stealing nor asleep is \emph{working}: it
+runs client code, or counts a branch.
+%
+Both counts fit in one machine word, so that one atomic instruction
+can read both, or move a worker from one to the other.
+
+We say that the computation \emph{needs a thief} when some worker is
+asleep and none is stealing.
+%
+The whole protocol is this: \emph{whoever may have caused the need
+for a thief checks for it, and if it holds, wakes one worker.}
+
+\begin{figure}
+\hrule
+\begin{lstlisting}[escapechar=@]
+status : atomic {asleep : int, stealing : int}
+sleepers : semaphore
+
+needs_thief(s) -> bool {
+  return s.asleep > 0 && s.stealing == 0 }
+
+ensure_thief() -> void {
+  atomically {
+    if (!needs_thief(status)) return
+    status.asleep -= 1; status.stealing += 1 }
+  post(sleepers) }
+
+sleep() -> void {  // the caller is stealing
+  atomically {  // announce
+    status.stealing -= 1; status.asleep += 1 }
+  if (done || some deque holds a task) {  // look
+    atomically {
+      if (status.asleep > 0) {  // take it back
+        status.asleep -= 1; status.stealing += 1
+        return } } }
+  wait(sleepers) }  // woken: stealing again
+
+acquire() -> task* {  // replaces steal in the loop
+  atomically { status.stealing += 1 }
+  failed = 0; t = null
+  while (!done) {
+    t = steal(); if (t != null) break
+    failed += 1
+    if (failed == patience) { failed = 0; sleep() } }
+  s = atomically { status.stealing -= 1; status }
+  if (t != null && needs_thief(s)) ensure_thief()
+  return t }
+
+fork2join($\fo$, $\ft$ : () -> void) -> void {
+  j = join{pending = 2}
+  t = task{body = $\ft$, j = &j}
+  push(&t)@\stepc{1}@
+  if (needs_thief(status)) ensure_thief()@\stepc{1$'$}@
+  $\fo$()
+  ...  // steps 2 to 4, unchanged
+\end{lstlisting}
+\hrule
+\caption{Elastic scheduling for native fork join.  Each
+  \lstinline|atomically| block is one atomic instruction on the status
+  word, or a loop around a compare-and-swap.}
+\label{fig:elastic}
+\end{figure}
+
+\paragraph{Going to sleep}
+%
+In the scheduler loop, \lstinline|acquire| replaces
+\lstinline|steal| (Figure~\ref{fig:elastic}).
+%
+It counts its worker as stealing, and tries to steal until it
+succeeds.
+%
+After \lstinline|patience| failures in a row, it calls
+\lstinline|sleep|.
+
+\lstinline|sleep| works in two steps, and their order matters.
+%
+It first \emph{announces}: in one atomic step, it moves its worker from
+the stealing count to the asleep count.
+%
+It then \emph{looks} at every deque.
+%
+If one of them holds a task, it takes the announcement back and
+returns, and \lstinline|acquire| goes on stealing.
+%
+Otherwise, it waits on a semaphore that all sleepers share.
+
+\paragraph{Waking up}
+%
+\lstinline|ensure_thief| checks, in one atomic step, whether the
+computation needs a thief, and if so moves one worker from the asleep
+count to the stealing count.
+%
+It then posts the semaphore, which lets one sleeper return from
+\lstinline|sleep|.
+%
+The waker moves the count on the sleeper's behalf, before the sleeper
+has run a single instruction.
+%
+So from that moment the computation no longer needs a thief, and a
+second waker that checks finds nothing to do: one need wakes one
+worker.
+
+A sleeper that has announced, seen a task, and is about to take its
+announcement back may find that a waker has already claimed it.
+%
+The asleep count is then zero.
+%
+The sleeper waits on the semaphore anyway, where the waker's post
+releases it at once.
+
+\paragraph{Who checks}
+%
+Two events can make the computation need a thief while a task waits.
+%
+The first is a push, which makes a task appear: so
+\lstinline|fork2join| reads the status word after its push
+(step~1$'$), and calls \lstinline|ensure_thief| if a thief is needed.
+%
+This read is all that the protocol adds to a fork.
+%
+The second is the departure of the last thief.
+%
+A thief that goes to sleep looks at the deques first, as we saw.
+%
+A thief that succeeds takes one task, and its victim may hold more:
+so \lstinline|acquire| checks as it leaves, using the value of the
+status word that its own decrement returned.
+
+\paragraph{The end}
+%
+When the root task finishes, \lstinline|finish| sets
+\lstinline|done|, and then wakes every sleeper, one
+\lstinline|ensure_thief|-like step at a time.
+%
+A woken worker finds \lstinline|done| set, and its loop exits.
+
+\paragraph{What does not change}
+%
+The deque is used as before, plus a query that tells a sleeper whether
+it holds a task.
+%
+Steps 2 to 4 of \lstinline|fork2join|, the joins, and the context
+switches are untouched.
+%
+In particular, a worker that suspends a parent at a join returns to its
+loop, and may then go to sleep, even though the parent is not finished.
+%
+This is as it should be: whichever worker counts the last branch
+resumes the parent, and that worker is awake.
+
+\section{Why no worker sleeps on work}
+\label{sec:safety}
+
+The protocol maintains the following invariant.
+
+\begin{quote}
+\emph{If a worker is asleep and a deque holds a task, then some worker
+is stealing, or some worker is between an event that may have ended
+this and the check that follows it.}
+\end{quote}
+
+A worker that is stealing keeps choosing victims at random until it
+succeeds, so a task that waits is found, unless its owner pops it
+first.
+%
+The invariant rests on four facts.
+
+\paragraph{A sleeper and a fork cannot miss each other}
+%
+The sleeper writes the status word, then reads the deques.
+%
+The fork writes its deque, then reads the status word.
+%
+Provided each one's write takes effect before its own read
+(Section~\ref{sec:order}), one of the two reads comes after the other
+worker's write.
+%
+Either the sleeper sees the task, and does not sleep, or the fork sees
+the sleeper, and calls \lstinline|ensure_thief|.
+%
+The sleeper reads the deques one after another, but the argument holds
+for each deque separately, because the announcement precedes all of
+those reads.
+
+\paragraph{The last thief does not leave unnoticed}
+%
+The stealing count reaches zero in two ways.
+%
+A thief announces that it sleeps: it then looks at every deque, and
+stays if one holds a task.
+%
+Or a thief leaves with a task: the decrement that removes it from the
+count returns the status word as that same atomic step left it, and if
+it shows a need, the thief calls \lstinline|ensure_thief|.
+%
+A worker that falls asleep after that decrement looks at the deques
+itself.
+
+\paragraph{Counts and tokens agree}
+%
+A waker posts the semaphore exactly once for each worker it moves out
+of the asleep count, and a worker waits on the semaphore exactly when
+it has not moved itself out.
+%
+A compare-and-swap on the status word decides each race between a
+waker and a sleeper that takes its announcement back.
+%
+So no post is left over, which would let a later sleeper through with
+no task to steal, and no sleeper waits for a post that is not coming.
+
+\paragraph{The end reaches every worker}
+%
+\lstinline|finish| sets \lstinline|done| before it wakes the sleepers.
+%
+A worker that announces afterwards reads \lstinline|done| when it
+looks, and takes its announcement back.
+
+\paragraph{What is not guaranteed}
+%
+The invariant says that a waiting task has a thief looking for it.
+%
+It bounds neither how long the thief takes to find the task nor how
+many workers are awake.
+%
+A burst of work wakes its workers one at a time: each push or steal
+that finds a need wakes one worker, which steals, and whose own
+departure or pushes wake the next.
+%
+We have not proved a bound on running time or on burn;
+Section~\ref{sec:related} points to an algorithm that has both.
+
+\section{Ordering a push and a read}
+\label{sec:order}
+
+The first fact of Section~\ref{sec:safety} needs the store of a push
+to take effect before the read of the status word that follows it.
+%
+Processors do not promise this by default.
+%
+A store waits in a buffer of its processor before it reaches memory,
+and a later load of another location can be served first.
+%
+If both the fork and the sleeper run ahead of their own stores, each
+reads the old value of the other's location: the fork sees no sleeper,
+the sleeper sees no task, and the wake-up is lost.
+
+\paragraph{The direct way}
+%
+In C++, a sequentially consistent store followed by a sequentially
+consistent load are ordered as needed.
+%
+The push of micro taskparts ends by storing the new bottom index of the
+deque, with release ordering, which is enough to publish the task to
+thieves~\cite{nativeforkjoin}.
+%
+Making that one store sequentially consistent is the whole change.
+%
+On AArch64 it costs nothing: compilers emit the same instruction for
+both orderings, and the load that follows is ordered after
+it.
+%
+On the M5, \lstinline|fib(38)|, which does little but fork, takes
+\fibtime{elastic}{1}\,s on one worker with the protocol and
+\fibtime{plain}{1}\,s without~\cite{flexibench-elastic-fib}.
+
+On x86-64, a sequentially consistent store is a locked instruction.
+%
+On the Ryzen, \lstinline|fib(38)| on one worker takes
+\fibtimeg{ordered}{1}\,s with such a push, against
+\fibtimeg{plain}{1}\,s without the protocol
+(Table~\ref{tbl:fib})~\cite{flexibench-elastic-fib-gamora}: every
+fork pays about 3\,ns, more than half of what a fork cost before.
+%
+On the Xeon, a machine with two Intel Xeon Platinum 8380 processors of
+40 cores each, \lstinline|fib(45)| on one worker takes
+\fibtimex{ordered}{1}\,s with such a push, against
+\fibtimex{plain}{1}\,s without the
+protocol~\cite{flexibench-elastic-fib-icelake}, 71\% more.
+%
+This breaks the first requirement.
+
+\begin{table}
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}lrrrrrr@{}}
+\toprule
+ & \multicolumn{6}{c}{workers} \\
+version & 1 & 2 & 4 & 8 & 16 & 32 \\
+\midrule
+no protocol & \fibtimeg{plain}{1} & \fibtimeg{plain}{2} & \fibtimeg{plain}{4} & \fibtimeg{plain}{8} & \fibtimeg{plain}{16} & \fibtimeg{plain}{32} \\
+push orders its store & \fibtimeg{ordered}{1} & \fibtimeg{ordered}{2} & \fibtimeg{ordered}{4} & \fibtimeg{ordered}{8} & \fibtimeg{ordered}{16} & \fibtimeg{ordered}{32} \\
+sleeper orders it & \fibtimeg{elastic}{1} & \fibtimeg{elastic}{2} & \fibtimeg{elastic}{4} & \fibtimeg{elastic}{8} & \fibtimeg{elastic}{16} & \fibtimeg{elastic}{32} \\
+\bottomrule
+\end{tabular}
+\caption{Running time of \lstinline|fib(38)| on the Ryzen, in seconds:
+  micro taskparts without the protocol, and with it, when the push
+  orders its own store and when the sleeper does.  Medians of five
+  runs.}
+\label{tbl:fib}
+\end{table}
+
+\paragraph{Making the sleeper pay}
+%
+The race has two sides, and only one of them is in a hurry.
+%
+A fork runs millions of times a second; a worker goes to sleep after
+\lstinline|patience| failed steals, and then stops for a long time.
+%
+So we leave the push as it was, and let the sleeper order the stores
+of everyone else.
+%
+Linux provides the means: the system call
+\lstinline|membarrier|, with the command for private expedited
+barriers, returns once every running thread of the process has
+executed a memory barrier~\cite{membarrier}.
+%
+A thread that is not running has no store in flight.
+
+On x86-64 Linux, \lstinline|sleep| makes this call between its
+announcement and its look at the deques.
+%
+Consider a fork whose read of the status word came before the
+announcement took effect, so that it saw no sleeper.
+%
+Its push precedes that read in its program, so when the barrier runs
+on its thread, the push has been executed, and the barrier sends its
+store to memory.
+%
+The sleeper then sees the task.
+%
+A fork whose read comes after the announcement sees the sleeper.
+%
+Either way, the first fact of Section~\ref{sec:safety} holds, and the
+fork executes no instruction that it did not execute before, except
+the read.
+
+With this change, \lstinline|fib(38)| on the Ryzen takes
+\fibtimeg{elastic}{1}\,s on one worker and
+\fibtimeg{elastic}{16}\,s on 16, the same as without the protocol
+(Table~\ref{tbl:fib}).
+%
+On the Xeon, \lstinline|fib(45)| takes \fibtimex{elastic}{1}\,s on one
+worker, within 1\% of its time without the protocol.
+%
+On more workers the protocol costs time there:
+\fibtimex{elastic}{40}\,s against \fibtimex{plain}{40}\,s on 40
+workers, 8\% more, and \fibtimex{elastic}{160}\,s against
+\fibtimex{plain}{160}\,s on 160, 10\% more.
+%
+On 80 workers, where the run lasts a third of a second, the gap is
+wider, \fibtimex{elastic}{80}\,s against \fibtimex{plain}{80}\,s, a
+third more; we have not established its cause.
+
+The price moves to the sleeper: one system call per attempt to sleep,
+which interrupts the workers that are running.
+%
+Section~\ref{sec:burn} measures programs in which workers sleep often.
+
+Micro taskparts uses the remote barrier on x86-64 Linux, and the
+sequentially consistent store elsewhere.
+%
+On x86-64 without such a system call, the choice is between paying at
+each fork and giving up the guarantee.
+
+\section{Time and burn}
+\label{sec:burn}
+
+\begin{table*}
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}lrrrrrrrrrrrrr@{}}
+\toprule
+ & no & \multicolumn{6}{c}{4 workers} & \multicolumn{6}{c}{10 workers} \\
+ & sched. & \multicolumn{2}{c}{never sleeps} & \multicolumn{2}{c}{elastic} & \multicolumn{2}{c}{ParlayLib's}
+ & \multicolumn{2}{c}{never sleeps} & \multicolumn{2}{c}{elastic} & \multicolumn{2}{c}{ParlayLib's} \\
+program & $T$ & $T$ & $B$ & $T$ & $B$ & $T$ & $B$ & $T$ & $B$ & $T$ & $B$ & $T$ & $B$ \\
+\midrule
+bursty & \etime{bursty}{serial} & \tbrow{}{bursty}{4} & \tbrow{}{bursty}{10} \\
+mergesort & \etime{mergesort}{serial} & \tbrow{}{mergesort}{4} & \tbrow{}{mergesort}{10} \\
+samplesort & \etime{samplesort}{serial} & \tbrow{}{samplesort}{4} & \tbrow{}{samplesort}{10} \\
+quickhull & \etime{quickhull}{serial} & \tbrow{}{quickhull}{4} & \tbrow{}{quickhull}{10} \\
+BFS & \etime{BFS}{serial} & \tbrow{}{BFS}{4} & \tbrow{}{BFS}{10} \\
+\bottomrule
+\end{tabular}
+\caption{Elapsed time $T$ and burn $B$ of a run on the M5, in seconds,
+  with no scheduler, and with three schedulers on 4 and on 10 workers:
+  micro taskparts without the protocol, which never sleeps, micro
+  taskparts with it, and ParlayLib's scheduler}
+\label{tbl:burn}
+\end{table*}
+
+\begin{table*}
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}lrrrrrrrrrrrrr@{}}
+\toprule
+ & no & \multicolumn{6}{c}{16 workers} & \multicolumn{6}{c}{32 workers} \\
+ & sched. & \multicolumn{2}{c}{never sleeps} & \multicolumn{2}{c}{elastic} & \multicolumn{2}{c}{ParlayLib's}
+ & \multicolumn{2}{c}{never sleeps} & \multicolumn{2}{c}{elastic} & \multicolumn{2}{c}{ParlayLib's} \\
+program & $T$ & $T$ & $B$ & $T$ & $B$ & $T$ & $B$ & $T$ & $B$ & $T$ & $B$ & $T$ & $B$ \\
+\midrule
+bursty & \etimeg{bursty}{serial} & \tbrow{g}{bursty}{16} & \tbrow{g}{bursty}{32} \\
+mergesort & \etimeg{mergesort}{serial} & \tbrow{g}{mergesort}{16} & \tbrow{g}{mergesort}{32} \\
+samplesort & \etimeg{samplesort}{serial} & \tbrow{g}{samplesort}{16} & \tbrow{g}{samplesort}{32} \\
+quickhull & \etimeg{quickhull}{serial} & \tbrow{g}{quickhull}{16} & \tbrow{g}{quickhull}{32} \\
+BFS & \etimeg{BFS}{serial} & \tbrow{g}{BFS}{16} & \tbrow{g}{BFS}{32} \\
+\bottomrule
+\end{tabular}
+\caption{Elapsed time $T$ and burn $B$ of a run on the Ryzen, in
+  seconds, as in Table~\ref{tbl:burn}, on 16 workers, one per core, and
+  on 32, one per hardware thread}
+\label{tbl:burng}
+\end{table*}
+
+\begin{table}
+\small
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{@{}lrrrrrrr@{}}
+\toprule
+ & no & \multicolumn{2}{c}{never sleeps} & \multicolumn{2}{c}{elastic} & \multicolumn{2}{c}{ParlayLib's} \\
+program & $T$ & $T$ & $B$ & $T$ & $B$ & $T$ & $B$ \\
+\midrule
+bursty & \tbrowk{bursty} \\
+bursty, long & \tbrowk{burstylong} \\
+mergesort & \tbrowk{mergesort} \\
+samplesort & \tbrowk{samplesort} \\
+quickhull & \tbrowk{quickhull} \\
+BFS & \tbrowk{BFS} \\
+scan & \tbrowk{scan} \\
+bigint\_add & \tbrowk{bigint_add} \\
+kcore & \tbrowk{kcore} \\
+\bottomrule
+\end{tabular}
+\caption{Elapsed time $T$ and burn $B$ of a run on the Xeon, in
+  seconds, with no scheduler, and with the three schedulers of
+  Table~\ref{tbl:burn} on 80 workers, one per core}
+\label{tbl:burnx}
+\end{table}
+
+\begin{table}
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}llrrrr@{}}
+\toprule
+ & & \multicolumn{4}{c}{patience} \\
+program & workers & 100 & 1000 & 10\,000 & 100\,000 \\
+\midrule
+bursty & 80 & \prow{bursty}{80} \\
+ & 160 & \prow{bursty}{160} \\
+bursty, long & 80 & \prow{burstylong}{80} \\
+ & 160 & \prow{burstylong}{160} \\
+\bottomrule
+\end{tabular}
+\caption{Burn of a run on the Xeon with the protocol, in seconds, by
+  the number of failed steals after which a worker goes to sleep;
+  micro taskparts uses 1000}
+\label{tbl:patience}
+\end{table}
+
+\paragraph{Programs}
+%
+We measured six programs with three schedulers: micro taskparts as the
+native fork join paper leaves it, which never sleeps, micro taskparts
+with the protocol, and the scheduler of ParlayLib.
+%
+Four of the programs are the examples of ParlayLib that the native
+fork join paper measures~\cite{nativeforkjoin}: two sorts, a convex
+hull, and a breadth-first search.
+%
+They have work for every worker most of the time.
+%
+The fifth, \emph{bursty}, is ours.
+%
+It alternates two phases ten times: \lstinline|fib(38)| computed with
+no parallelism, and the same computed with forks down to
+\lstinline|fib(20)|.
+%
+So half of its work is serial, and the other half arrives in bursts
+of a few milliseconds on many workers.
+%
+It is written against ParlayLib, like the examples, so that the same
+source runs on all three schedulers.
+%
+The sixth is \lstinline|fib(38)| on micro taskparts alone, which
+Section~\ref{sec:order} used.
+
+Each program runs its algorithm three or five times in one process,
+and records the elapsed time of each run, and the user and system time
+of the process over that run.
+%
+Each program and scheduler ran as five processes, interleaved.
+%
+An elapsed time in the tables is the median over the processes of the
+median over a process's runs; a burn is the sum of the user time and
+of the system time obtained in the same way.
+%
+Flexibench recorded the runs, checked the result of every one, and
+certified the
+values~\cite{flexibench-elastic-parlay,flexibench-elastic-parlay-gamora}.
+%
+The M5 has 4 fast and 6 slower cores, and the Ryzen 16 cores, all
+alike, with two hardware threads each.
+
+On the Xeon, which has 80 cores on two processors and two hardware
+threads per core, we measured nine programs, on larger inputs.
+%
+They are the five above; bursty with \lstinline|fib(42)| in place of
+\lstinline|fib(38)|, whose phases last seven times as long; and three
+more examples of ParlayLib, which no scheduler we measured speeds up
+by a factor of 12 on 80 workers: a prefix sum (scan), an addition of
+two large integers, and a $k$-core decomposition of a graph.
+%
+There each program and scheduler ran as three processes, with its
+memory interleaved over the two processors and no worker pinned to a
+core~\cite{flexibench-elastic-stacks-icelake}.
+
+A stolen task runs on a stack of its own, which its thief takes from a
+store of stacks and returns at the join.
+%
+In every micro taskparts that we measured, each worker keeps a few such
+stacks for itself, as in the native fork join
+paper~\cite{nativeforkjoin}.
+%
+The Xeon's round also measured a version whose workers share one pool
+of stacks under a lock, and on one program the pool decides the
+result: kcore, which steals often, takes
+\etimek{kcore}{plain 80}\,s on 80 workers with the pool and no
+protocol, and \etimek{kcore}{plain2 80}\,s without the pool.
+
+\paragraph{Bursts}
+%
+On the Ryzen (Table~\ref{tbl:burng}), the work of bursty is
+\etimeg{bursty}{serial}\,s.
+%
+On 16 workers, the scheduler that never sleeps finishes it in
+\etimeg{bursty}{plain 16}\,s and burns \burng{bursty}{plain 16}\,s,
+nine times the work: during a serial phase, fifteen workers look for
+work that does not exist.
+%
+Most of that burn is system time, spent yielding the processor.
+%
+With the protocol, the program takes \etimeg{bursty}{elastic 16}\,s and
+burns \burng{bursty}{elastic 16}\,s, a burn ratio of about 1.08.
+%
+ParlayLib's scheduler takes \etimeg{bursty}{homegrown 16}\,s and burns
+\burng{bursty}{homegrown 16}\,s, a ratio of about 1.45: after each
+burst, its workers keep looking for 10 milliseconds before they
+sleep.
+
+On 32 workers, two to a core, the scheduler that never sleeps burns
+\burng{bursty}{plain 32}\,s, over twenty times the work, and is slower
+than on 16 workers, \etimeg{bursty}{plain 32}\,s: the worker in a
+serial phase shares its core with a worker that spins.
+%
+With the protocol the program takes \etimeg{bursty}{elastic 32}\,s and
+burns \burng{bursty}{elastic 32}\,s.
+
+On the M5 (Table~\ref{tbl:burn}), the work of bursty is
+\etime{bursty}{serial}\,s.
+%
+On 4 workers, one per fast core, the three schedulers take between
+\etime{bursty}{elastic 4}\,s and \etime{bursty}{plain 4}\,s.
+%
+The one that never sleeps burns \burn{bursty}{plain 4}\,s, ours
+\burn{bursty}{elastic 4}\,s, a ratio of about 1.11, and ParlayLib's
+\burn{bursty}{homegrown 4}\,s.
+%
+On 10 workers the burns are \burn{bursty}{plain 10}\,s,
+\burn{bursty}{elastic 10}\,s, and \burn{bursty}{homegrown 10}\,s.
+%
+There the burn with the protocol is about 1.39 times the work on one
+fast core, but six of the ten workers run on slower cores, where the
+same work takes more processor time, so not all of the excess is
+waste.
+
+On the Xeon (Table~\ref{tbl:burnx}), the work of bursty is
+\etimek{bursty}{serial}\,s.
+%
+On 80 workers the three schedulers take the same time, within 5\%.
+%
+The one that never sleeps burns \burnk{bursty}{plain2 80}\,s, forty
+times the work; ours burns \burnk{bursty}{elastic2 80}\,s, a ratio of
+about 1.4, and ParlayLib's \burnk{bursty}{homegrown 80}\,s, a ratio of
+about 3.8.
+%
+With the long phases, the work is \etimek{burstylong}{serial}\,s, and
+the burns are \burnk{burstylong}{elastic2 80}\,s with the protocol and
+\burnk{burstylong}{homegrown 80}\,s with ParlayLib's scheduler, ratios
+of about 1.2 and 1.9.
+%
+On 160 workers, two to a core, the scheduler that never sleeps takes
+twice as long as the other two on the short phases,
+\stimex{bursty}{plain 160}\,s against \stimex{bursty}{elastic 160}\,s,
+and burns \sburnx{bursty}{plain 160}\,s, more than 160 times the
+work; ours burns \sburnx{bursty}{elastic 160}\,s and ParlayLib's
+\sburnx{bursty}{homegrown 160}\,s~\cite{flexibench-elastic-suite-icelake}.
+
+\paragraph{Patience}
+%
+Table~\ref{tbl:patience} varies \lstinline|patience| on the
+Xeon~\cite{flexibench-elastic-patience2-icelake}.
+%
+The elapsed time hardly depends on it: on 80 workers the four values
+give times within 5\% of each other, and only a patience of 100\,000 on
+160 workers costs much time, \ptimex{bursty}{100000 on 160}\,s for
+bursty against \ptimex{bursty}{1000 on 160}\,s.
+%
+The burn does depend on it.
+%
+A worker that waits a hundred times longer before it sleeps burns
+several times more on the short phases.
+%
+No value is best in every row: 100 gives the least burn on 160
+workers, 1000 on 80 workers with the short phases, and 10\,000 on 80
+workers with the long ones.
+%
+The value 1000 is within 30\% of the least in each row.
+
+The totals of Appendix~\ref{sec:instr} say what a larger patience
+buys and costs on 80 workers.
+%
+The number of sleeps does not change: \fbval{qsleepsicelake}{bursty}{1000 on 80}
+in a run at every value, which is each of the 79 other workers once
+for each of the ten bursts.
+%
+What changes is how long a worker is idle before each sleep: the idle
+time of a run of bursty grows from \pidlex{bursty}{100 on 80}\,s with
+a patience of 100 to \pidlex{bursty}{1000 on 80}\,s,
+\pidlex{bursty}{10000 on 80}\,s and
+\pidlex{bursty}{100000 on 80}\,s, and its system time grows with it.
+%
+With the long phases, the idle times are the same within 5\%, as they
+should be, since the bursts are as many.
+%
+There the burn is least at 10\,000 although the idle time is not: the
+user time falls as the patience grows, from
+\fbval{qusericelake}{burstylong}{100 on 80}\,s to
+\fbval{qusericelake}{burstylong}{10000 on 80}\,s, which we have not
+explained.
+
+\paragraph{Work for every worker}
+%
+The other four programs show what the protocol costs when there is
+little to save.
+%
+On 16 workers of the Ryzen, each takes with the protocol within 1\% of
+the time it takes without, and burns within 2\% of what it burns
+without.
+%
+On the M5 the times are less steady: with the protocol, a program
+takes between 14\% less and 9\% more than without, and the three
+schedulers come in no consistent order.
+%
+On 32 workers the search is faster with the protocol,
+\etimeg{BFS}{elastic 32}\,s against \etimeg{BFS}{plain 32}\,s, and the
+other three are within 2\%.
+%
+ParlayLib's scheduler is within 11\% of ours on every program, faster
+on some and slower on others.
+
+On 80 workers of the Xeon, where these four programs run for 30 to
+190 milliseconds, the protocol costs time: 5\% on mergesort, 8\% on
+the search, 10\% on the hull, and 17\% on samplesort, the shortest
+run.
+%
+ParlayLib's scheduler takes the same time as ours on the search, and
+17\% to 34\% longer on the other three.
+
+\paragraph{Programs that do not scale}
+%
+The last three programs of Table~\ref{tbl:burnx} speed up little on
+80 workers, and the scheduler that never sleeps burns many times
+their work.
+%
+On scan and bigint\_add, the protocol removes over 40\% of that burn,
+and the programs take no longer with it.
+%
+ParlayLib's scheduler does better still on these two: it is faster
+than ours by about 12\%, and burns about a fifth less.
+%
+Most of the burn of these two programs is system time under every
+scheduler: of scan's burn with the protocol,
+\fbval{ksysicelake}{scan}{elastic2 80}\,s is spent in the kernel, and
+with no scheduler at all, \fbval{ksysicelake}{scan}{serial}\,s of
+\etimek{scan}{serial}\,s.
+%
+Each run fills memory that it has just obtained, and what limits these
+programs is the kernel's handling of the page faults, not a scheduler.
+%
+We ran scan, bigint\_add and two programs like them again with the
+kernel set to back all memory with huge pages, which a run obtains
+with far fewer faults~\cite{flexibench-elastic-thp-icelake}.
+%
+Scan then takes \fbval{htimeicelake}{scan}{plain 80}\,s on 80 workers
+with the scheduler that never sleeps, a fifth of its time before, and
+burns \hburn{scan}{plain 80}\,s.
+%
+The protocol then saves nothing: with it scan takes
+\fbval{htimeicelake}{scan}{elastic 80}\,s and burns
+\hburn{scan}{elastic 80}\,s, and each of the four programs takes
+between 11\% and 23\% longer than without it, the cost that the
+programs with work for every worker show.
+%
+ParlayLib's scheduler, the fastest of the three on these programs
+before, is then the slowest, at
+\fbval{htimeicelake}{scan}{homegrown 80}\,s on scan.
+%
+So the burn that the protocol removes from these programs goes with
+the page faults: it is there to remove under the setting of the other
+rounds, in which a program gets huge pages only if it asks, and not
+under this one.
+%
+On kcore the protocol costs time, \etimek{kcore}{elastic2 80}\,s
+against \etimek{kcore}{plain2 80}\,s, 11\% more, and saves a third of
+the burn, \burnk{kcore}{elastic2 80}\,s against
+\burnk{kcore}{plain2 80}\,s.
+%
+ParlayLib's scheduler is faster there, \etimek{kcore}{homegrown 80}\,s,
+and burns more than ours, \burnk{kcore}{homegrown 80}\,s.
+
+On one worker of the Ryzen, where nothing ever sleeps, the protocol
+changes the time of none of the four by as much as 1\%, nor that of
+\lstinline|fib(38)| (Table~\ref{tbl:fib}).
+
+\paragraph{What these runs do not show}
+%
+The burn of a program with work for every worker is nearly its work
+plus the inflation of that work on a loaded machine, and the protocol
+has little to remove.
+%
+So the tables bound the cost of the protocol on such programs, and
+show its benefit on one program with bursts, of one shape and two
+sizes.
+%
+How the benefit varies with the length of the bursts and of the gaps
+between them, beyond those two sizes, we have not measured.
+
+\section{Related work and limits}
+\label{sec:related}
+
+\paragraph{Waste-efficient work stealing}
+%
+The algorithm of Singer, Agrawal, and
+Schardl~\cite{singer2026wews} is a work stealer that sleeps, with
+proven bounds, in expectation:
+\[
+\text{time}\;\; T_1/P + O(T_\infty), \qquad
+\text{waste}\;\; O(\min\{P\,T_\infty,\; T_1 + P^2\}),
+\]
+where the waste is the processor time not spent on work, that is, the
+burn minus the work.
+%
+Their algorithm keeps an account of the time workers spend working and
+the time they spend stealing, puts a thief to sleep when stealing has
+run far enough ahead, and wakes one when work has.
+%
+In their implementation, in OpenCilk, one thief at a time gathers the
+accounts of all workers and decides how many to put to sleep or to
+wake.
+%
+A worker that spawns does nothing for the protocol.
+
+Our protocol is of the other kind, which they call not
+\emph{work-first}: a worker that makes work may have to wake another.
+%
+They measure such a protocol as a baseline, modeled on those of
+ParlayLib and Rayon, and report that it slows down \lstinline|fib|
+on one worker, by the overhead it adds to each spawn.
+%
+Section~\ref{sec:order} locates such a cost, for our protocol, in the
+ordering of the push and the read, and removes it: what remains at a
+fork is one read of a word that working workers never write.
+%
+What our protocol lacks is their analysis.
+%
+It has no account of time, so nothing bounds its burn when work
+appears and disappears faster than workers can profitably wake and
+sleep, and it wakes workers one at a time, where their algorithm
+wakes as many as the account calls for.
+
+\paragraph{ParlayLib's scheduler}
+%
+The scheduler of ParlayLib~\cite{blelloch20parlaylib} also wakes at a
+push.
+%
+Its push reports whether the deque was empty, and if so, and if some
+worker is asleep, it wakes one; a thief does the same when the deque
+it steals from holds more.
+%
+A worker sleeps once it has failed to steal for 10 milliseconds.
+%
+Its push stores the bottom index of the deque with sequentially
+consistent ordering, so on x86-64 it pays at every fork the cost that
+Section~\ref{sec:order} measures.
+
+\paragraph{Limits}
+%
+The measurements of Section~\ref{sec:burn} cover three machines and
+nine programs, and those of Appendix~\ref{sec:collection} two machines
+and 21; one program, written for the purpose, has bursts.
+%
+On the Xeon the protocol costs about a tenth of the time of most
+programs that keep 80 workers busy, and we have not established where
+that time goes.
+%
+The Xeon's runs on 80 workers were free to use any of its 160
+hardware threads.
+%
+Restricted to one hardware thread per core, ParlayLib's scheduler is
+at least 10\% faster on most of 60 programs and the scheduler that
+never sleeps is unchanged~\cite{flexibench-suitepercore}, so the
+differences we report there between ParlayLib's scheduler and ours
+depend on where the kernel places the workers; we have not run the
+protocol under that restriction.
+%
+We have varied \lstinline|patience| on one machine and on that program
+alone.
+%
+We have not measured the protocol when other processes compete for the
+processors, which is where idle workers that spin do the most harm.
+%
+And we have proved nothing about time or burn.
+
+\paragraph{Implementation}
+%
+The micro taskparts of this paper is in the directory
+\path{doc/elastic-scheduling/microtaskparts} of the TaskPaRTS
+repository~\cite{taskparts}.
+%
+It is the micro taskparts of the native fork join paper plus the
+protocol: a section of about 150 lines, comments included, and a few
+lines elsewhere, in the push, the loop, \lstinline|finish|, the code
+that starts the workers, and \lstinline|fork2join|.
+
+\paragraph{Acknowledgements}
+%
+We thank Sam Westrick for access to the Xeon, through his Chameleon
+project.
+%
+Results presented in this paper were obtained using the Chameleon
+testbed~\cite{keahey2020lessons} supported by the National Science
+Foundation.
+
+\bibliographystyle{abbrv}
+\bibliography{main,perf/fib/efib,perf/parlay/eparlay,perf/gamora/fib/efibgamora,perf/gamora/parlay/eparlaygamora,perf/icelake/fib2/efib2icelake,perf/icelake/patience2/epatience2icelake,perf/icelake/stacks/estacksicelake,perf/gamora/suite/esuitegamora,perf/icelake/suite/esuiteicelake,perf/icelake/thp/ethpicelake,../native-fork-join/perf/icelake/percore/suitepercore}
+
+\appendix
+
+\section{Instrumentation}
+\label{sec:instr}
+
+Burn says how much processor time a run consumed, not where it went.
+%
+To take a burn apart, the micro taskparts of this paper can be built
+with the instrumentation of the instrumentation
+paper~\cite{instrumentation}, extended for workers that sleep.
+%
+It is off unless a build turns it on.
+%
+A build without it has the instructions it had before, except in the
+function that wakes a worker, which is out of line and now returns
+whether it woke one.
+
+\paragraph{What carries over}
+%
+Each worker has a \emph{recorder}, which only that worker writes: the
+state the worker is in, the time at which it entered that state, the
+total time it has spent in each state, and a few counts.
+%
+The scheduler loop is the only code that changes a worker's state, so
+it is the only code that reads the clock: a fork that is not stolen
+records nothing.
+%
+The recorder sits after the deque in the worker, on cache lines of
+its own.
+%
+The states of that paper are \emph{working}, in client code;
+\emph{scheduling}, in the loop with something to do; and \emph{idle},
+in the loop and failing to steal.
+
+\paragraph{A fourth state}
+%
+A worker that waits for a token is \emph{asleep}.
+%
+It enters the state just before the wait of \lstinline|sleep|, and is
+idle again when the wait returns; the announcement and the look at the
+deques that precede the wait count as idle time.
+%
+With $Z_P$ the total time asleep,
+\[ P \cdot T_P = W_P + S_P + I_P + Z_P, \]
+and the burn of the run is close to $W_P + S_P + I_P$, since a worker
+that is asleep uses no processor.
+%
+The protocol's purpose, in these terms, is to turn idle time into time
+asleep, and the three terms say what a burn above the work is made of:
+work that takes longer on a loaded machine, the scheduler's own
+operations, or thieves that are awake and find nothing.
+
+\paragraph{Counts}
+%
+A recorder counts the steals of its worker, and four events of the
+protocol: the times the worker went to sleep; the times it announced
+that it would and took the announcement back, because a task had
+appeared; the workers it woke at a fork; and the workers it woke after
+a steal.
+%
+The third of these is the only one counted in client code, and it is
+counted in the branch of \lstinline|fork2join| that has already found
+a worker to wake.
+
+\paragraph{Measuring a region}
+%
+A program measures a region of its execution by taking a
+\emph{snapshot} before it and another after it: a snapshot is the sum
+of the recorders at one instant, and the totals of a region are the
+difference of two.
+%
+Recorders are never reset.
+%
+In the instrumentation paper, the workers outlive a computation, and a
+snapshot is taken between computations, once every other worker is
+idle.
+%
+Here the workers live for one call to \lstinline|launch|, and a
+ParlayLib program runs its whole \lstinline|main| inside one such
+call.
+%
+So a snapshot is taken inside the computation, by the root task, at a
+point where it has no fork in progress: between two runs of a
+benchmark's algorithm, for instance.
+%
+At such a point no task exists, so every other worker goes to sleep
+within \lstinline|patience| failed steals, and no fork and no thief
+posts a token.
+%
+The snapshot waits until the status word shows every other worker
+asleep and none stealing, then until each recorder says that its
+worker has reached its wait, and reads the recorders.
+%
+None of them can change before the root task forks again.
+
+The wait has a price that the instrumentation paper's does not: every
+region begins with all workers but one asleep, and ends only after the
+others have used up their patience.
+%
+The first is also true of an uninstrumented run that follows
+sequential code.
+%
+The second adds to a region's idle time up to \lstinline|patience|
+failed steals for each worker.
+
+\begin{figure*}
+\centering
+\factoredplot{bursty}{bursty}{ylabel={speedup}}\hfill
+\factoredplot{scan}{scan}{}\hfill
+\factoredplot{2d_linear_program}{2d\_linear\_program}{}\hfill
+\factoredplot{reduce}{reduce}{}
+
+\smallskip
+\factoredplot{kcore}{kcore}{ylabel={speedup}, xlabel={workers}}\hfill
+\factoredplot{spectral_separator}{spectral\_separator}{xlabel={workers}}\hfill
+\factoredplot{le_list}{le\_list}{xlabel={workers}}\hfill
+\factoredplot{samplesort}{samplesort}{xlabel={workers}}
+
+\smallskip
+\factoredlegend
+\caption{Factored speedup of eight programs of Appendix~\ref{sec:collection}
+  on the Ryzen, with the protocol, on 1 to 32 workers.
+  The top of each band is the speedup the run would have had without
+  the loss the band stands for.}
+\label{fig:factored}
+\end{figure*}
+
+\begin{figure*}
+\centering
+\factoredplotx{bursty}{bursty}{ylabel={speedup}}\hfill
+\factoredplotx{scan}{scan}{}\hfill
+\factoredplotx{2d_linear_program}{2d\_linear\_program}{}\hfill
+\factoredplotx{reduce}{reduce}{}
+
+\smallskip
+\factoredplotx{kcore}{kcore}{ylabel={speedup}, xlabel={workers}}\hfill
+\factoredplotx{spectral_separator}{spectral\_separator}{xlabel={workers}}\hfill
+\factoredplotx{le_list}{le\_list}{xlabel={workers}}\hfill
+\factoredplotx{samplesort}{samplesort}{xlabel={workers}}
+
+\smallskip
+\factoredlegend
+\caption{Factored speedup of the programs of Figure~\ref{fig:factored}
+  on the Xeon, with the protocol, on 1 to 160 workers. The machine has
+  80 cores: past 80 workers, two workers share a core.}
+\label{fig:factoredx}
+\end{figure*}
+
+\paragraph{A factored speedup with sleep}
+%
+The instrumentation paper draws a speedup as what is left of $P$ after
+four losses: to the forks, to work inflation, to idle time and to
+scheduling.
+%
+With $T_s$ the time of the program with no scheduler, the first three
+curves are $P \cdot T_s / W_1$, $P \cdot T_s / W_P$ and
+$P \cdot T_s / (W_P + I_P)$.
+%
+We add a fourth, $P \cdot T_s / (W_P + I_P + Z_P)$, below them: the
+band above it is the speedup lost to sleep, and the band below it,
+down to the speedup $T_s / T_P$, is the loss to scheduling.
+%
+The loss to sleep is the one loss that costs no burn.
+
+Figure~\ref{fig:factored} has the plots of eight programs of the
+collection of Appendix~\ref{sec:collection}, and
+Table~\ref{tbl:counts} their counts on the Ryzen.
+%
+They are of four kinds.
+
+\emph{Bursts.}
+%
+What bursty loses, it loses to sleep: on 32 workers, the workers are
+asleep for \ftot{asleep}{bursty}\,s in total and idle for
+\ftot{idle}{bursty}\,s, against \ftot{work}{bursty}\,s of work.
+
+\emph{Stretches with one task.}
+%
+Scan sleeps too, with no burst written in it: on 32 workers its
+workers sleep \ftot{asleep}{scan}\,s against
+\ftot{work}{scan}\,s of work, and are idle for
+\ftot{idle}{scan}\,s.
+%
+Its workers found nothing to steal for about two fifths of the run,
+and slept through it.
+%
+Flatten, filter, bigint\_add and 2d\_linear\_program are alike: their
+workers are asleep for between a quarter and a half of the run.
+%
+Table~\ref{tbl:counts} says how seldom that happens: scan's
+workers go to sleep \ftot{sleeps}{scan} times in a run, once each,
+which is the least a measured run can have, since the snapshot that
+ends it waits for them to sleep.
+%
+So each worker but the first sleeps through one long stretch, and the
+work of that stretch is one task's.
+%
+We have not established what the task does there.
+%
+These are the programs from which the protocol removes a third to a
+half of the burn, and it makes each of them faster on 32 workers
+(Table~\ref{tbl:suite}), which is what we expect when a thief that
+sleeps leaves the other hardware thread of its core to a worker that
+has a task.
+
+\emph{Inflation.}
+%
+Reduce loses nearly everything to work inflation, as scan does above
+its sleep: its work grows from \fbval{fworkgamora}{reduce}{P = 1}\,s
+on one worker to \ftot{work}{reduce}\,s on 32.
+%
+No worker is idle or asleep for long, and no scheduler can give the
+time back.
+%
+Work, in these totals, is all the time a worker spends outside the
+scheduler loop: it includes what the kernel does on the worker's
+behalf, such as handling its page faults.
+
+\emph{Thieves that are never out of work for long.}
+%
+Kcore and spectral\_separator lose much to idle time, with the
+protocol on: on 32 workers kcore's workers are idle for
+\ftot{idle}{kcore}\,s, more than their \ftot{work}{kcore}\,s of work,
+and asleep for \ftot{asleep}{kcore}\,s.
+%
+They steal \ftot{steals}{kcore} times in a run and go to sleep
+\ftot{sleeps}{kcore} times.
+%
+The program makes many small tasks, a few at a time: a thief fails
+often, and succeeds before it has failed \lstinline|patience| times
+in a row, so it seldom sleeps.
+%
+The protocol removes a third of the burn of kcore
+(Table~\ref{tbl:suite}) and leaves this idle time in place.
+%
+A smaller patience would trade it for more sleeps and more wakes; we
+have not measured that trade on these programs.
+
+\emph{Work for every worker.}
+%
+On samplesort, as on seven other programs of the collection, the
+workers are idle or asleep for under a tenth of the run, and on all
+but one of the eight they go to sleep only for the snapshot.
+%
+The forks of such a run wake few workers: the first fork wakes one,
+and each thief that succeeds wakes the next
+(Table~\ref{tbl:counts}).
+%
+After that, a fork reads the status word, finds no worker asleep, and
+goes on.
+
+\paragraph{On the Xeon}
+%
+Figure~\ref{fig:factoredx} has the same eight programs on the Xeon, on
+larger inputs, and the right half of Table~\ref{tbl:counts} their
+counts on 80 workers.
+%
+The kinds are the same, and larger.
+%
+Scan's workers are asleep for \ftotx{asleep}{scan}\,s on 80 workers,
+against \ftotx{work}{scan}\,s of work, and still go to sleep once
+each.
+%
+Reduce does \fbval{fworkicelake}{reduce}{P = 1}\,s of work on one
+worker and \ftotx{work}{reduce}\,s on 80: its speedup stays under 18,
+and nearly all of the loss is work inflation.
+%
+Two things differ.
+%
+Kcore's workers do sleep here, \ftotx{sleeps}{kcore} times in a run,
+for \ftotx{asleep}{kcore}\,s in total, about as long as they work,
+\ftotx{work}{kcore}\,s; they are idle for \ftotx{idle}{kcore}\,s more.
+%
+And scheduling, which is too small to see on the Ryzen, takes
+\ftotx{sched}{spectral_separator}\,s in total of
+spectral\_separator's run on 80 workers, beside \ftotx{idle}{spectral_separator}\,s of idle time
+and \ftotx{work}{spectral_separator}\,s of work: its workers steal
+\ftotx{steals}{spectral_separator} times.
+
+\begin{table*}
+\centering
+\small
+\begin{tabular}{@{}lrrrrrrrr@{}}
+\toprule
+ & \multicolumn{4}{c}{Ryzen, 32 workers} & \multicolumn{4}{c}{Xeon, 80 workers} \\
+ & & & \multicolumn{2}{c}{woken} & & & \multicolumn{2}{c}{woken} \\
+program & steals & sleeps & at a fork & by a thief & steals & sleeps & at a fork & by a thief \\
+\midrule
+bursty & \crow{bursty} & \crowx{bursty} \\
+scan & \crow{scan} & \crowx{scan} \\
+2d\_linear\_program & \crow{2d_linear_program} & \crowx{2d_linear_program} \\
+reduce & \crow{reduce} & \crowx{reduce} \\
+kcore & \crow{kcore} & \crowx{kcore} \\
+spectral\_separator & \crow{spectral_separator} & \crowx{spectral_separator} \\
+le\_list & \crow{le_list} & \crowx{le_list} \\
+samplesort & \crow{samplesort} & \crowx{samplesort} \\
+\bottomrule
+\end{tabular}
+\caption{Counts of a run with the protocol: steals, the times a
+  worker went to sleep, and the workers woken at a fork and by a thief
+  that had just stolen. A run of bursty has ten bursts.}
+\label{tbl:counts}
+\end{table*}
+
+\section{A larger collection}
+\label{sec:collection}
+
+Table~\ref{tbl:suite} has the three schedulers on 20 examples of
+ParlayLib and on bursty, on 32 workers of the Ryzen.
+%
+We chose the examples from the 60 that the native fork join
+paper~\cite{nativeforkjoin} measures on this machine, at its sizes:
+eleven of the thirteen that speed up least on 16 workers, five that
+steal often, two on which ParlayLib's scheduler is much slower than a
+micro taskparts, and two that scale well.
+%
+The program with no scheduler ran as one process, and each scheduler
+as three; Flexibench checked the result of every run and certified
+the values~\cite{flexibench-elastic-suite-gamora}.
+
+\begin{table*}
+\begin{minipage}[t]{\columnwidth}
+\small
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}lrrrrrrr@{}}
+\toprule
+ & no & \multicolumn{2}{c}{never sleeps} & \multicolumn{2}{c}{elastic} & \multicolumn{2}{c}{ParlayLib's} \\
+program & $T$ & $T$ & $B$ & $T$ & $B$ & $T$ & $B$ \\
+\midrule
+bursty & \tbrows{bursty} \\
+flatten & \tbrows{flatten} \\
+filter & \tbrows{filter} \\
+scan & \tbrows{scan} \\
+bigint\_add & \tbrows{bigint_add} \\
+kcore & \tbrows{kcore} \\
+2d\_linear\_prog. & \tbrows{2d_linear_program} \\
+graph\_color & \tbrows{graph_color} \\
+le\_list & \tbrows{le_list} \\
+push\_relabel & \tbrows{push_relabel_max_flow} \\
+spectral\_sep. & \tbrows{spectral_separator} \\
+find\_if & \tbrows{find_if} \\
+set\_cover & \tbrows{set_cover} \\
+min.\ edit dist. & \tbrows{minimum_edit_distance} \\
+quickhull & \tbrows{quickhull} \\
+quicksort & \tbrows{quicksort} \\
+delaunay & \tbrows{delaunay} \\
+samplesort & \tbrows{samplesort} \\
+reduce & \tbrows{reduce} \\
+BFS & \tbrows{BFS} \\
+mergesort & \tbrows{mergesort} \\
+\bottomrule
+\end{tabular}
+\caption{Elapsed time $T$ and burn $B$ of a run on the Ryzen, in
+  seconds, with no scheduler, and with the three schedulers of
+  Table~\ref{tbl:burn} on 32 workers, one per hardware thread. The
+  programs are in the order of the share of the burn that the protocol
+  removes.}
+\label{tbl:suite}
+\end{minipage}\hfill
+\begin{minipage}[t]{\columnwidth}
+\small
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}lrrrrrrr@{}}
+\toprule
+ & no & \multicolumn{2}{c}{never sleeps} & \multicolumn{2}{c}{elastic} & \multicolumn{2}{c}{ParlayLib's} \\
+program & $T$ & $T$ & $B$ & $T$ & $B$ & $T$ & $B$ \\
+\midrule
+bursty & \tbrowsx{bursty} \\
+scan & \tbrowsx{scan} \\
+flatten & \tbrowsx{flatten} \\
+filter & \tbrowsx{filter} \\
+bigint\_add & \tbrowsx{bigint_add} \\
+kcore & \tbrowsx{kcore} \\
+set\_cover & \tbrowsx{set_cover} \\
+push\_relabel & \tbrowsx{push_relabel_max_flow} \\
+graph\_color & \tbrowsx{graph_color} \\
+quicksort & \tbrowsx{quicksort} \\
+2d\_linear\_prog. & \tbrowsx{2d_linear_program} \\
+delaunay & \tbrowsx{delaunay} \\
+reduce & \tbrowsx{reduce} \\
+le\_list & \tbrowsx{le_list} \\
+samplesort & \tbrowsx{samplesort} \\
+BFS & \tbrowsx{BFS} \\
+mergesort & \tbrowsx{mergesort} \\
+quickhull & \tbrowsx{quickhull} \\
+find\_if & \tbrowsx{find_if} \\
+spectral\_sep. & \tbrowsx{spectral_separator} \\
+min.\ edit dist. & \tbrowsx{minimum_edit_distance} \\
+\bottomrule
+\end{tabular}
+\caption{Elapsed time $T$ and burn $B$ of a run on the Xeon, in
+  seconds, with no scheduler, and with the three schedulers on 80
+  workers, one per core. The programs are in the order of the share of
+  the burn that the protocol removes; from push\_relabel down, it adds
+  burn.}
+\label{tbl:suitex}
+\end{minipage}
+\end{table*}
+
+\paragraph{What the protocol costs}
+%
+With the protocol, no program of the collection takes over 6\% longer
+than without it.
+%
+The largest difference is on graph\_color,
+\fbval{stimegamora}{graph_color}{elastic 32}\,s against
+\fbval{stimegamora}{graph_color}{plain 32}\,s; le\_list and
+minimum\_edit\_distance take about 3\% and 2\% longer, and eleven
+programs are within 2\% either way.
+%
+The other seven are faster with it.
+
+\paragraph{What it saves}
+%
+The protocol removes 94\% of the burn of bursty, about half of the
+burn of scan, flatten and filter, and about a third of that of
+bigint\_add, 2d\_linear\_program and kcore.
+%
+Flatten, filter and scan also run about 10\% faster with it,
+bigint\_add 7\%, and bursty 25\%.
+%
+It removes between 5\% and 16\% of the burn of seven more programs,
+down to minimum\_edit\_distance in the table, and changes that of the
+last seven by 3\% or less.
+%
+Appendix~\ref{sec:instr} says where the removed burn was: in workers
+that had nothing to steal for a long stretch.
+
+\paragraph{The two schedulers that sleep}
+%
+On 13 of the 21 programs, ParlayLib's scheduler and ours are within
+5\% of each other in time.
+%
+Ours is faster on kcore, where ParlayLib's takes
+\stimeg{kcore}{homegrown 32}\,s against \stimeg{kcore}{elastic 32}\,s
+and burns \sburng{kcore}{homegrown 32}\,s against
+\sburng{kcore}{elastic 32}\,s, and on delaunay and quicksort, where
+it takes about twice and 1.6 times as long.
+%
+On the last two the scheduler that never sleeps is as fast as ours,
+so what separates them is not the protocol.
+%
+Ours is also faster by 7\% to 9\% on set\_cover,
+minimum\_edit\_distance and bursty.
+%
+ParlayLib's is faster by 9\% on spectral\_separator and on
+graph\_color, and burns 7\% less on the first.
+%
+On bursty it burns 60\% more than ours, as in
+Table~\ref{tbl:burng}.
+
+\paragraph{On the Xeon}
+%
+Table~\ref{tbl:suitex} has the same programs on 80 workers of the
+Xeon, at the sizes the native fork join paper uses on that
+machine~\cite{nativeforkjoin}.
+%
+Each scheduler ran on 40, 80 and 160 workers, as three processes each,
+with memory interleaved over the two processors and no worker
+pinned~\cite{flexibench-elastic-suite-icelake}.
+
+The protocol saves what it saves on the Ryzen.
+%
+On 80 workers it removes 96\% of the burn of bursty, between 45\% and
+50\% of that of scan, flatten and filter, 39\% of that of bigint\_add
+and a quarter of that of kcore.
+%
+On 160 workers, two to a core, it removes about half of the burn of
+each of the last five, and scan, flatten, filter and bigint\_add also
+run about 20\% faster with it.
+%
+For those four the saving depends on how the kernel backs memory:
+with huge pages, on 80 workers, they run four to six times faster and
+the protocol saves no burn (Section~\ref{sec:burn}).
+
+It costs more than on the Ryzen.
+%
+On 80 workers, fourteen programs take between 8\% and 19\% longer
+with the protocol, and minimum\_edit\_distance 31\% longer,
+\stimex{minimum_edit_distance}{elastic 80}\,s against
+\stimex{minimum_edit_distance}{plain 80}\,s.
+%
+The burn of each of them but kcore grows too.
+%
+On minimum\_edit\_distance the workers never sleep in the course of a
+run: they go to sleep \ftotx{sleeps}{minimum_edit_distance} times,
+once each, for the snapshot that ends it
+(Appendix~\ref{sec:instr}).
+%
+So the time is not spent going to sleep or waking; it is the cost that
+\lstinline|fib(45)| shows on 80 workers in
+Section~\ref{sec:order}, and we have not established where it goes.
+%
+It is smaller with fewer workers and with more: on 40 workers, three
+programs take 8\% to 11\% longer with the protocol and the others at
+most 6\%, and on 160, graph\_color and minimum\_edit\_distance take
+19\% longer and the others at most 7\%.
+
+ParlayLib's scheduler and ours differ more here than on the Ryzen.
+%
+On 80 workers, ParlayLib's is faster by 11\% to 19\% on scan,
+flatten, filter, bigint\_add and kcore, by a quarter on push\_relabel,
+and takes about half as long on spectral\_separator,
+\stimex{spectral_separator}{homegrown 80}\,s against
+\stimex{spectral_separator}{elastic 80}\,s.
+%
+Ours is faster on eight programs: ParlayLib's takes 11\% to 39\% longer
+on six of them, and about 1.8 and 2.3 times as long on quicksort and
+delaunay.
+%
+On bursty ParlayLib's burns \sburnx{bursty}{homegrown 80}\,s against
+\sburnx{bursty}{elastic 80}\,s, 2.6 times as much.
+
+\end{document}

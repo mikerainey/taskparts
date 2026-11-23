@@ -1,0 +1,4 @@
+bursty(30, 40): ok
+workers   3
+exectime  0.140 s
+cputime   0.211 s

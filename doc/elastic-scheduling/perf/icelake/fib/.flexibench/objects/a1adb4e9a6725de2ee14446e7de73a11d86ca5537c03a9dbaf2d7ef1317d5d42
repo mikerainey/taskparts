@@ -1,0 +1,3 @@
+fib(45) = 1134903170
+workers   40
+exectime  0.636 s

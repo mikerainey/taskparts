@@ -1,0 +1,23 @@
+[
+{"exectime": 0.072092,
+"usertime": 0.497926,
+"systime": 0.074750,
+"nvcsw": 0,
+"nivcsw": 1588,
+"maxrss": 1947779072,
+"nsignals": 0},
+{"exectime": 0.059233,
+"usertime": 0.501641,
+"systime": 0.011345,
+"nvcsw": 0,
+"nivcsw": 1118,
+"maxrss": 1958084608,
+"nsignals": 0},
+{"exectime": 0.081767,
+"usertime": 0.513115,
+"systime": 0.014331,
+"nvcsw": 0,
+"nivcsw": 2784,
+"maxrss": 1959919616,
+"nsignals": 0}
+]
