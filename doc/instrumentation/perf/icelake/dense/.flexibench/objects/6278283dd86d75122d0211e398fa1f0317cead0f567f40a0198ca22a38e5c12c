@@ -1,0 +1,7 @@
+num vertices = 8388608
+num edges    = 167573218
+max degree   = 7479
+Time: BFS: 0.4209
+Time: BFS: 0.4123
+Time: BFS: 0.4087
+num vertices visited: 7571376

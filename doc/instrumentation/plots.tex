@@ -1,5 +1,5 @@
 % Factored speedup plots, drawn from the certified values of perf/curves,
-% perf/gamora/curves and perf/icelake/suite.
+% perf/gamora/curves and perf/icelake/dense.
 % Nothing here is a number typed by hand: every coordinate is computed from
 % \fbval cells, as Appendix sec:collect prescribes.
 %
@@ -110,18 +110,18 @@
   \factoreddraw{#3}{#4}{#5}{#6}}
 
 % \xeoncoords{PROGRAM}: the same four lists of coordinates on the third
-% machine, at 1, 40, 80 and 160 workers, from the views of perf/icelake/suite:
-% Ts and T1 from suiteicelake, Wp from sworkicelake, Ip from sidleicelake, and
-% the speedup on 40 workers and more from sspeedupicelake.
+% machine, on 1 to 160 workers, from the views of perf/icelake/dense: Ts and T1
+% from suiteicelakedense, Wp from sworkicelakedense, Ip from sidleicelakedense,
+% and the speedup on 10 workers and more from sspeedupicelakedense.
 \newcommand{\xeoncoords}[1]{%
   \gdef\coordsforks{}\gdef\coordsinflation{}%
   \gdef\coordsidle{}\gdef\coordsspeedup{}%
-  \edef\curveTs{\fbval{suiteicelake}{#1}{serial}}%
-  \edef\curveTone{\fbval{suiteicelake}{#1}{stats 1}}%
-  \curvecell{sworkicelake}{#1}{1}{\curveWone}%
-  \foreach \p in {1,40,80,160} {%
-    \curvecell{sworkicelake}{#1}{\p}{\curveW}%
-    \curvecell{sidleicelake}{#1}{\p}{\curveI}%
+  \edef\curveTs{\fbval{suiteicelakedense}{#1}{serial}}%
+  \edef\curveTone{\fbval{suiteicelakedense}{#1}{stats 1}}%
+  \curvecell{sworkicelakedense}{#1}{1}{\curveWone}%
+  \foreach \p in {1,10,20,40,60,80,120,160} {%
+    \curvecell{sworkicelakedense}{#1}{\p}{\curveW}%
+    \curvecell{sidleicelakedense}{#1}{\p}{\curveI}%
     \pgfmathparse{\p*\curveTs/\curveWone}%
     \xdef\coordsforks{\coordsforks (\p,\pgfmathresult)}%
     \pgfmathparse{\p*\curveTs/\curveW}%
@@ -132,7 +132,7 @@
       \pgfmathparse{\curveTs/\curveTone}%
       \xdef\coordsspeedup{\coordsspeedup (\p,\pgfmathresult)}%
     \else
-      \curvecell{sspeedupicelake}{#1}{\p}{\curveS}%
+      \curvecell{sspeedupicelakedense}{#1}{\p}{\curveS}%
       \xdef\coordsspeedup{\coordsspeedup (\p,\curveS)}%
     \fi}}
 

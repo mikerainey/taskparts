@@ -1,0 +1,10 @@
+[
+{"exectime": 3.734616,
+"usertime": 55.996307,
+"systime": 18.431893,
+"nvcsw": 10806,
+"nivcsw": 124,
+"maxrss": 17006520,
+"nsignals": 0,
+"nb_workers": 20, "work": 51.790010, "sched": 0.561579, "idle": 22.340728, "total": 74.692318, "nb_steals": 776491}
+]

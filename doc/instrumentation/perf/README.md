@@ -3,8 +3,8 @@
 The tables, plots and examples of `../main.tex` cite values that Flexibench generated from
 the measurements recorded in eight stores: four rounds on each of two machines, all
 measured on 2026-11-21: the fourth in the night, and the first three around noon.
-A ninth store, round 5 below, is from a third machine, which the paper calls the Xeon,
-measured on 2026-11-22.
+Three more stores, rounds 5 to 7 below, are from a third machine, which the paper calls the
+Xeon, measured on 2026-11-22 and 2026-11-23.
 
 | | laptop | gamora |
 |---|---|---|
@@ -241,6 +241,54 @@ A round of `fib(46)` with the seven builds was also run on the node and is not i
 paper: the build with packed counters has room for 64 workers, so it failed on 80 and
 160, and the analysis of times has no value for those cells.
 
+## Round 6: eight programs on more worker counts on the Xeon, in `icelake/dense/`
+
+Measured on 2026-11-23, 07:47 to 08:17 UTC, on the same node under a second lease (disk
+and builds new, hardware the same). The plots of Figure `fig:factoredicelake` are drawn
+from this round.
+
+- **Programs.** mergesort, samplesort, quickhull, BFS, knn, graph_color, kcore, flatten,
+  at round 5's sizes (`suite/programs-icelake-dense.txt`).
+- **Builds.** As round 5, built again: micro taskparts `8b54c6a7`, ParlayLib `1e1d0b8`
+  with `timer-regions.patch`, clang 21.1.8, `-O3 -DNDEBUG -falign-functions=64`; the
+  build with totals only. The build with no scheduler is the companion paper's on the node.
+- **Settings.** As round 5; transparent huge pages `madvise`, the node's default.
+- **Plan.** 200 trials. The build with no scheduler and the one-worker runs: one process
+  each. The build with totals on 10, 20, 40, 60, 80, 120 and 160 workers: three processes
+  each. Checks of the output on 3 and on 320 workers.
+- **Client.** `mtpinstrdenseicelake` (`client/MtpInstrDenseIcelake.lean`, written by
+  `suite/gen-client-instr.py` with `ONCE=1 STATS_ONLY=1`), measurement repository commit
+  `671a3f7`; session `runs/run-icelake2.sh dense`.
+
+| analysis | certificate |
+|---|---|
+| `times` (cited as `flexibench-denseicelake`) | `8017384dced8aadaa5da0746805f5626b5416dd8bcef9407f447bcfb291589d7` |
+| `totals` | `9768015127bc11eb5dee358bd18a83fa1001f86badc2cd7febfba3939df8329b` |
+| `factors` | `1d798330999bb3f95d4d4c495cc6b3162c749190a5a02db8558bd257db1db79d` |
+| `failures` (empty) | `ca65291eb7f01aab7daff33395e5e4d094b2371b4974d3debb2876fc2e932b68` |
+
+## Round 7: three programs with transparent huge pages on the Xeon, in `icelake/thp/`
+
+Measured on 2026-11-23, 08:47 to 08:50 UTC, with the builds, sizes and settings of round 6
+but for one: `/sys/kernel/mm/transparent_hugepage/enabled` was `always`.
+
+- **Programs.** flatten, scan, filter (`suite/programs-icelake-thp.txt`).
+- **Plan.** 39 trials. The build with no scheduler and the one-worker runs: one process
+  each. The build with totals on 40, 80 and 160 workers: three processes each. Checks of
+  the output on 3 and on 320 workers.
+- **Client.** `mtpinstrthpicelake` (`client/MtpInstrThpIcelake.lean`), same generator and
+  commit; session `runs/run-icelake2.sh thp`.
+
+The paper compares this round with round 5's values for the same programs, which were
+measured a day earlier with `madvise`.
+
+| analysis | certificate |
+|---|---|
+| `times` (cited as `flexibench-thpicelake`) | `abf4e656dad4f67196efe950540f0fbc1d845434b87660beb81ce3c16a1e515d` |
+| `totals` | `a01e712819ca0ed2c1c7631bdba36a9243546031bdbee638536cf40fecb34cff` |
+| `factors` | `38e67c8860d2df24e4997c0c7de5824d1da3a449ebea8679cde4593cd8732a47` |
+| `failures` (empty) | `b60cdef4c9ce924de05756596ad40458c981570943438c3497f394ef3ab851f1` |
+
 ## The clients
 
 In the taskparts-bench repository, on its branch `gamora-instr` (local, not pushed):
@@ -276,8 +324,8 @@ This directory's history holds the rounds before those:
 
 ## Checking
 
-All nine stores check with Flexibench 27e6e1e. In each of
-the nine directories that holds a `.flexibench/`:
+All eleven stores check with Flexibench 27e6e1e. In each of
+the eleven directories that holds a `.flexibench/`:
 
     flexibench check-objects
     flexibench check <certificate>        # each certificate listed above for that store

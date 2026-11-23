@@ -1,0 +1,7 @@
+num vertices = 33554432
+num edges    = 670718508
+max degree   = 13254
+Time: graph color: 3.2536
+Time: graph color: 3.2339
+Time: graph color: 3.2471
+number of colors: 39

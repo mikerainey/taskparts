@@ -1,0 +1,5 @@
+num vertices = 33554432
+num edges    = 670718508
+max degree   = 13254
+Time: kcore: 5.5980
+max core (i.e. degeneracy): 105

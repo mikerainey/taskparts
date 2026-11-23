@@ -1,0 +1,1 @@
+{"args":["/home/cc/taskparts-inputs/rmat-25.adj"],"env":{"PARLAY_NUM_THREADS":"40","TASKPARTS_NUM_WORKERS":"40"},"program":"/home/cc/instrumentation/work/builds/parlay-1e1d0b8db0c2-instr-stats-8b54c6a710ba-dense/kcore"}

@@ -118,6 +118,17 @@
 \input{perf/icelake/suite/sworkicelake}
 \input{perf/icelake/suite/sschedicelake}
 \input{perf/icelake/suite/sidleicelake}
+\input{perf/icelake/dense/suiteicelakedense}
+\input{perf/icelake/dense/sspeedupicelakedense}
+\input{perf/icelake/dense/sinflationicelakedense}
+\input{perf/icelake/dense/sworkicelakedense}
+\input{perf/icelake/dense/sidleicelakedense}
+\input{perf/icelake/thp/suiteicelakethp}
+\input{perf/icelake/thp/sspeedupicelakethp}
+\input{perf/icelake/thp/sinflationicelakethp}
+\input{perf/icelake/thp/sutilicelakethp}
+\input{perf/icelake/thp/sworkicelakethp}
+\input{perf/icelake/thp/sidleicelakethp}
 \newcommand{\xeonat}[2]{\fbval{suiteicelake}{#1}{stats #2} &
   \fbval{sspeedupicelake}{#1}{P = #2} & \fbval{sinflationicelake}{#1}{P = #2} &
   \fbval{sutilicelake}{#1}{P = #2}}
@@ -901,7 +912,7 @@ testbed~\cite{keahey2020lessons} supported by the National Science
 Foundation.
 
 \bibliographystyle{abbrv}
-\bibliography{main,perf/times,perf/bench/bench,perf/curves/curves,perf/gamora/gamora,perf/suite/suite,perf/gamora/suite/suitegamora,perf/icelake/suite/suiteicelake}
+\bibliography{main,perf/times,perf/bench/bench,perf/curves/curves,perf/gamora/gamora,perf/suite/suite,perf/gamora/suite/suitegamora,perf/icelake/suite/suiteicelake,perf/icelake/dense/denseicelake,perf/icelake/thp/thpicelake}
 
 \clearpage
 \appendix
@@ -1885,7 +1896,23 @@ Each run of them writes to memory it has just been given, and most of
 that growth is time the kernel spends handing out the pages, which a
 worker's clock counts as work like any other.
 %
-Reduce and linefit do little but read and write memory: their work
+When the kernel hands out memory 2~MB at a time and not
+4~KB~\cite{flexibench-thpicelake}, the work of flatten on 80 workers
+falls from \fbval{sworkicelake}{flatten}{P = 80}~s to
+\fbval{sworkicelakethp}{flatten}{P = 80}~s, its idle time from
+\fbval{sidleicelake}{flatten}{P = 80}~s to
+\fbval{sidleicelakethp}{flatten}{P = 80}~s, and it is
+\fbval{sspeedupicelakethp}{flatten}{P = 80} times faster than with no
+scheduler, not \fbval{sspeedupicelake}{flatten}{P = 80}; scan and
+filter are \fbval{sspeedupicelakethp}{scan}{P = 80} and
+\fbval{sspeedupicelakethp}{filter}{P = 80} times faster.
+%
+The work of the three still grows, by
+\fbval{sinflationicelakethp}{filter}{P = 80} to
+\fbval{sinflationicelakethp}{scan}{P = 80} times, which is about the growth
+of reduce and linefit.
+%
+Those two do little but read and write memory: their work
 grows by 4.6 and 3.7 times while their workers are never idle.
 %
 Kcore is the opposite: its work grows by
@@ -1906,7 +1933,9 @@ times.
 The median speedup goes from 48 to 51, the median inflation from 1.44
 to 2.5, and the median utilization from 0.94 to 0.90.
 
-Figure~\ref{fig:factoredicelake} draws eight of the programs.
+Figure~\ref{fig:factoredicelake} draws eight of the programs, from a
+round of their own on eight numbers of
+workers~\cite{flexibench-denseicelake}.
 %
 The four of Figure~\ref{fig:factored} lose more to work inflation
 than to anything else, and quickhull and BFS a good deal more of it
@@ -1917,8 +1946,22 @@ to anything up to 80 workers; graph\_color, with the widest band for
 the forks; kcore, where idle time takes more than inflation
 does; and flatten, where inflation leaves almost nothing.
 %
-A plot has four points only, at 1, 40, 80 and 160 workers, so it shows
-where the speedup goes at those counts and not the shape between them.
+The curves bend at different places.
+%
+Knn and samplesort stay near the ideal up to 80 workers, where they are
+\fbval{sspeedupicelakedense}{knn}{P = 80} and
+\fbval{sspeedupicelakedense}{samplesort}{P = 80} times faster than
+with no scheduler.
+%
+Quickhull gains nothing after 60 workers, and kcore is at its fastest
+on 80, \fbval{sspeedupicelakedense}{kcore}{P = 80} times, and slower
+beyond.
+%
+Flatten is as fast as it gets on 10 workers,
+\fbval{sspeedupicelakedense}{flatten}{P = 10} times, and from there
+its work grows in step with the number of workers: by
+\fbval{sinflationicelakedense}{flatten}{P = 10} times on 10 and by
+\fbval{sinflationicelakedense}{flatten}{P = 80} on 80.
 
 \begin{figure*}
 \centering
@@ -1936,8 +1979,8 @@ where the speedup goes at those counts and not the shape between them.
 \smallskip
 \factoredlegend
 \caption{Factored speedup plots of eight programs on the Xeon, which
-  has 80 cores and 160 hardware threads, from the values of
-  Table~\ref{tbl:suiteicelake} at 1, 40, 80 and 160 workers.
+  has 80 cores and 160 hardware threads, on 1, 10, 20, 40, 60, 80, 120
+  and 160 workers.
   Beyond 80 workers, two workers share a core.}
 \label{fig:factoredicelake}
 \end{figure*}
