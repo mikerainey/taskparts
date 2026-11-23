@@ -1114,6 +1114,20 @@ finds them in the deque at step 2.
 It then takes the slow path, even though its task was not stolen: this
 is correct, and costs a stack.
 
+\paragraph{On 80 cores}
+%
+Appendix~\ref{sec:bench} measures eight more programs that use
+vertices, on a machine with 80 cores, and compares six of them with
+the same program on Intel's oneTBB (Table~\ref{tbl:bench}).
+%
+On 80 workers, seven of the eight run between 23 and 75 times faster
+than their serial versions.
+%
+The eighth, a pipeline whose first stage is serial, stops near 10
+times, where that stage sets the time of the run.
+%
+Beside oneTBB, our versions take from half the time to 12\% more.
+
 \paragraph{Limits}
 %
 The scheduler never frees a vertex, and the client must keep one alive
@@ -2086,6 +2100,60 @@ The other two pipelines have none, since an iteration of oneTBB's
 pipeline cannot wait for a stage of another iteration chosen as it
 runs.
 
+\begin{table}
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}lrrrr@{}}
+ & \multicolumn{4}{c}{workers} \\
+ & 1 & 40 & 80 & 160 \\
+\hline
+pipefib \\
+\quad serial & \benchserial{pipes}{pipefib} \\
+\quad DAG calculus & \benchcells{pipes}{pipefib}{dag} \\
+x264 \\
+\quad serial & \benchserial{pipes}{x264} \\
+\quad DAG calculus & \benchcells{pipes}{x264}{dag} \\
+ferret \\
+\quad serial & \benchserial{ferret}{ferret} \\
+\quad DAG calculus & \benchcells{ferret}{ferret}{dag} \\
+\quad oneTBB & \benchcells{ferret}{ferret}{tbb} \\
+heat \\
+\quad serial & \benchserial{stencils}{heat} \\
+\quad loops & \benchcells{stencils}{heat}{ploops} \\
+\quad trapezoids & \benchcells{stencils}{heat}{trap} \\
+\quad DAG calculus & \benchcells{stencils}{heat}{dag} \\
+\quad oneTBB & \benchcells{stencils}{heat}{tbb} \\
+life \\
+\quad serial & \benchserial{stencils}{life} \\
+\quad loops & \benchcells{stencils}{life}{ploops} \\
+\quad trapezoids & \benchcells{stencils}{life}{trap} \\
+\quad DAG calculus & \benchcells{stencils}{life}{dag} \\
+\quad oneTBB & \benchcells{stencils}{life}{tbb} \\
+lcs \\
+\quad serial & \benchserial{lcs}{lcs} \\
+\quad diagonals & \benchcells{lcs}{lcs}{planes} \\
+\quad recursive & \benchcells{lcs}{lcs}{dc} \\
+\quad DAG calculus & \benchcells{lcs}{lcs}{dag} \\
+\quad oneTBB & \benchcells{lcs}{lcs}{tbb} \\
+cholesky \\
+\quad serial & \benchserial{graphs}{cholesky} \\
+\quad levels & \benchcells{graphs}{cholesky}{levels} \\
+\quad DAG calculus & \benchcells{graphs}{cholesky}{dag} \\
+\quad oneTBB & \benchcells{graphs}{cholesky}{tbb} \\
+preorder \\
+\quad serial & \benchserial{graphs}{preorder} \\
+\quad levels & \benchcells{graphs}{preorder}{levels} \\
+\quad DAG calculus & \benchcells{graphs}{preorder}{dag} \\
+\quad oneTBB & \benchcells{graphs}{preorder}{tbb} \\
+\end{tabular}
+\caption{Running time of eight programs on the Xeon, in seconds: the
+  serial version, fork-join versions and the version in DAG calculus
+  on our micro taskparts, and the version on oneTBB, on 1 worker, on
+  the 40 cores of one processor, on all 80 cores, and on all 160
+  hardware threads.}
+\label{tbl:bench}
+\end{table}
+
 \paragraph{Method}
 %
 The programs were compiled by Clang 18.1.8 with
@@ -2183,59 +2251,5 @@ serial version, the largest of these, overstates the scaling.
 And cholesky on 160 workers runs 100 times faster than its serial
 version, on 80 cores, which we attribute to the cache as well, without
 having measured it.
-
-\begin{table}
-\small
-\setlength{\tabcolsep}{4pt}
-\begin{tabular}{@{}lrrrr@{}}
- & \multicolumn{4}{c}{workers} \\
- & 1 & 40 & 80 & 160 \\
-\hline
-pipefib \\
-\quad serial & \benchserial{pipes}{pipefib} \\
-\quad DAG calculus & \benchcells{pipes}{pipefib}{dag} \\
-x264 \\
-\quad serial & \benchserial{pipes}{x264} \\
-\quad DAG calculus & \benchcells{pipes}{x264}{dag} \\
-ferret \\
-\quad serial & \benchserial{ferret}{ferret} \\
-\quad DAG calculus & \benchcells{ferret}{ferret}{dag} \\
-\quad oneTBB & \benchcells{ferret}{ferret}{tbb} \\
-heat \\
-\quad serial & \benchserial{stencils}{heat} \\
-\quad loops & \benchcells{stencils}{heat}{ploops} \\
-\quad trapezoids & \benchcells{stencils}{heat}{trap} \\
-\quad DAG calculus & \benchcells{stencils}{heat}{dag} \\
-\quad oneTBB & \benchcells{stencils}{heat}{tbb} \\
-life \\
-\quad serial & \benchserial{stencils}{life} \\
-\quad loops & \benchcells{stencils}{life}{ploops} \\
-\quad trapezoids & \benchcells{stencils}{life}{trap} \\
-\quad DAG calculus & \benchcells{stencils}{life}{dag} \\
-\quad oneTBB & \benchcells{stencils}{life}{tbb} \\
-lcs \\
-\quad serial & \benchserial{lcs}{lcs} \\
-\quad diagonals & \benchcells{lcs}{lcs}{planes} \\
-\quad recursive & \benchcells{lcs}{lcs}{dc} \\
-\quad DAG calculus & \benchcells{lcs}{lcs}{dag} \\
-\quad oneTBB & \benchcells{lcs}{lcs}{tbb} \\
-cholesky \\
-\quad serial & \benchserial{graphs}{cholesky} \\
-\quad levels & \benchcells{graphs}{cholesky}{levels} \\
-\quad DAG calculus & \benchcells{graphs}{cholesky}{dag} \\
-\quad oneTBB & \benchcells{graphs}{cholesky}{tbb} \\
-preorder \\
-\quad serial & \benchserial{graphs}{preorder} \\
-\quad levels & \benchcells{graphs}{preorder}{levels} \\
-\quad DAG calculus & \benchcells{graphs}{preorder}{dag} \\
-\quad oneTBB & \benchcells{graphs}{preorder}{tbb} \\
-\end{tabular}
-\caption{Running time of eight programs on the Xeon, in seconds: the
-  serial version, fork-join versions and the version in DAG calculus
-  on our micro taskparts, and the version on oneTBB, on 1 worker, on
-  the 40 cores of one processor, on all 80 cores, and on all 160
-  hardware threads.}
-\label{tbl:bench}
-\end{table}
 
 \end{document}
