@@ -1689,4 +1689,190 @@ delaunay.
 On bursty ParlayLib's burns \sburnx{bursty}{homegrown 80}\,s against
 \sburnx{bursty}{elastic 80}\,s, 2.6 times as much.
 
+\section{Workers that outlive a computation}
+\label{sec:pool}
+
+In the micro taskparts of this paper, the workers live for one
+computation: when the root task finishes, every worker is woken, and
+every worker exits (Section~\ref{sec:protocol}).
+%
+A library keeps its workers from one computation to the next, as the
+scheduler of the instrumentation paper does~\cite{instrumentation}.
+%
+This appendix says what the protocol needs then.
+%
+It describes a design that we have checked on a model and have not
+measured.
+
+\paragraph{What changes}
+%
+Worker 0 is the thread that starts a computation, and it waits in its
+scheduler loop for the computation to end.
+%
+The other workers do not end with it: they go on looking for work,
+find none, and sleep, until the next computation pushes its root
+task.
+%
+That push is followed by the same check as a fork's, so the first
+task of a computation wakes a worker as any other task does.
+%
+Between computations, then, nothing is special; only the end is.
+
+\paragraph{Waking everyone no longer works}
+%
+At the end of a computation one worker must wake, worker 0, and it may
+be asleep.
+%
+The sleepers share one semaphore, and a token posted to it goes to
+whichever sleeper takes it: \emph{a token cannot be aimed at a worker}.
+%
+Posting one token for each sleeper does not help either.
+%
+In Section~\ref{sec:protocol} that is sound because a worker that
+wakes then sees \lstinline|done| and exits.
+%
+Here a worker other than worker 0 that wakes fails to steal, announces
+again, and may take the token that would have released worker 0.
+%
+Every worker is then asleep, worker 0 included, with the computation
+over.
+
+\begin{figure}
+\hrule
+\begin{lstlisting}
+take_back() -> bool {
+  atomically {
+    if (status.asleep == 0) return false
+    status.asleep -= 1; status.stealing += 1
+    return true } }
+
+sleep() -> void {  // worker 0; the caller is stealing
+  atomically {  // announce
+    status.stealing -= 1; status.asleep += 1 }
+  if (done || some deque holds a task) {  // look
+    if (take_back()) return }
+  loop {
+    wait(sleepers)  // returns without a token once done is set
+    if (it took a token) return
+    if (take_back()) return } }
+
+end() -> void {  // by the worker that ends the computation
+  done = true
+  notify worker 0 }
+\end{lstlisting}
+\hrule
+\caption{Going to sleep and ending a computation when workers outlive
+  it. The other workers sleep as in Figure~\ref{fig:elastic}, with a
+  flag that is set when the program exits in place of
+  \lstinline|done|.}
+\label{fig:pool}
+\end{figure}
+
+\paragraph{The end, for worker 0 alone}
+%
+Figure~\ref{fig:pool} has the change.
+%
+The worker that ends the computation sets \lstinline|done| and
+notifies worker 0, and posts no token.
+%
+Worker 0, when it sleeps, waits for either of two things: a token, or
+\lstinline|done|.
+%
+With a token it returns as any sleeper does.
+%
+With \lstinline|done| and no token, it must leave the asleep count
+itself, and it does so as a sleeper that has seen a task does: it
+takes its announcement back.
+%
+That can fail, because a waker has moved the last announcement out of
+the count, and a token is on its way.
+%
+Worker 0 then waits again, for that token or for an announcement to
+take back, and goes round until it has one or the other.
+
+The other workers never test \lstinline|done|.
+%
+They test a flag that is set once, when the program exits; the exit
+then wakes every sleeper as Section~\ref{sec:protocol} does, which is
+sound again, because a worker that wakes or announces after the flag
+is set does not wait.
+
+\paragraph{Why worker 0 leaves}
+%
+Call a worker \emph{out} from its announcement until it returns from
+\lstinline|sleep|.
+%
+The third fact of Section~\ref{sec:safety}, that counts and tokens
+agree, is this equation: the number of workers that are out equals
+the asleep count plus the number of tokens posted and not yet taken,
+or about to be posted by a waker that has moved the count.
+%
+It holds whoever takes a token, since every way in or out of
+\lstinline|sleep| changes both sides by one.
+
+Suppose \lstinline|done| is set and worker 0 is out.
+%
+It learns of \lstinline|done|: it tests the flag and starts to wait
+under the lock of the semaphore, and the notification is sent after
+\lstinline|done| is set and that lock has been taken and released.
+%
+The left side of the equation is then at least one, so the asleep
+count is positive, and \lstinline|take_back| can succeed, or a token
+exists or is about to, and the wait can return with it.
+%
+Another worker may take that token, or have its announcement taken
+back in place of worker 0's; it then returns from \lstinline|sleep|,
+and worker 0 is still out, so the same holds again.
+%
+So worker 0 can always leave.
+%
+This shows that the way out stays open, not that a run takes it: a
+schedule in which the other workers take every token for ever is not
+excluded, though each of them must fail to steal
+\lstinline|patience| times in between.
+
+\paragraph{A check that comes late}
+%
+A task's last act may be a push, and the check that follows a push
+may then run after the computation that the task belonged to is over,
+or while the next one starts.
+%
+The check reads the status word and may post one token, and touches
+nothing that belongs to a computation.
+%
+At worst it wakes a worker that finds nothing and sleeps again.
+
+\paragraph{Snapshots between computations}
+%
+The snapshot of Appendix~\ref{sec:instr} is taken inside a
+computation, and waits for every other worker to sleep.
+%
+With workers that outlive a computation it can be taken between two,
+as in the instrumentation paper, by the same wait.
+%
+When the status word shows every worker but worker 0 asleep and none
+stealing, the equation above says that no token is out; and no worker
+is left to post one, since worker 0 is the one that waits.
+%
+So each of the others is in its wait or on its way there, and stays.
+
+\paragraph{What we checked}
+%
+A model of this design, with the status word, the semaphore, the
+deques and the two flags, was explored in every interleaving, for 2
+workers and three computations in a row, and for 3 workers and two.
+%
+The invariant of Section~\ref{sec:safety} and the equation above hold
+in every state, and from every state the program can still end.
+%
+The same exploration rejects each of fifteen faulty variants, among
+them the end that wakes every sleeper, and a worker 0 that, finding
+its announcement claimed, waits for the token alone.
+%
+The model takes the order of a push and the read that follows it for
+granted (Section~\ref{sec:order}), so it says nothing about the remote
+barrier, and its \lstinline|patience| is one failed steal.
+%
+We have not measured what the design costs.
+
 \end{document}
