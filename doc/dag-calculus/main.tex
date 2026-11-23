@@ -2133,7 +2133,21 @@ On 80 workers, the versions in DAG calculus run between 23 and 75
 times faster than the serial versions, x264 apart.
 %
 The time of x264 does not decrease from 40 workers to 80, and nearly
-doubles on 160; we have not determined why.
+doubles on 160.
+%
+Single runs outside the certified round point to idle workers, not to
+memory.
+%
+The time on 80 workers is the same with transparent huge pages on, and
+with an allocator that keeps the memory of the frames it frees.
+%
+In such a run the 80 workers spend about two thirds of their time in
+the kernel, with few page faults, and an idle worker of ours yields to
+the kernel after each steal that fails.
+%
+So the pipeline probably has too little parallelism for 80 workers at
+this frame size; we have not measured its parallelism, nor explained
+the time on 160.
 %
 Two more ratios need a caution.
 %
