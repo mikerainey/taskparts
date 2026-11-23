@@ -1144,6 +1144,10 @@ then, some successor may regard the vertex as finished.
 A deque no longer has a small bound: it holds the vertices that its
 worker has made ready, as well as one task per fork in progress.
 %
+Its capacity, $2^{16}$ slots, bounds the vertices that a worker makes
+ready between two moments at which it empties its own deque, since a
+steal does not free a slot.
+%
 The consequences of native fork join for client code remain: code that
 follows a fork or a wait may run on a different thread, and task stacks
 have a fixed size.
