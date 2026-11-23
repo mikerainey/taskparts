@@ -190,6 +190,17 @@ We state the invariant that rules out lost wake-ups, and measure what
 the protocol costs and what it saves, in the terms of \emph{burn}: the
 processor time a computation consumes.
 %
+On a program whose parallelism comes in bursts, the protocol removes
+most of the burn, 96\% of it on 80 workers, at no cost in time.
+%
+On programs that speed up little it removes up to half, but that
+saving is tied to how the operating system serves page faults: with
+huge pages, the same programs run several times faster on 80 workers
+and the protocol saves nothing.
+%
+On that machine the protocol costs about a tenth of the time of
+programs that keep 80 workers busy.
+%
 A companion implementation adds the protocol to micro taskparts in
 about 150 lines of C++.
 \end{abstract}
@@ -232,8 +243,9 @@ Micro taskparts, the implementation of native fork
 join~\cite{nativeforkjoin}, has such a scheduler: a worker that fails
 to steal yields and tries again.
 %
-A program whose parallelism is scarce, or comes in bursts, then burns
-several times its work (Section~\ref{sec:burn}).
+A program whose parallelism comes in bursts, or that speeds up
+little for any other reason, then burns several times its work
+(Section~\ref{sec:burn}).
 
 \paragraph{Elastic scheduling}
 %
@@ -261,7 +273,11 @@ Three requirements make this harder than it sounds.
 \paragraph{This paper}
 %
 We extend native fork join with a protocol that meets the first two
-requirements by construction, and the third in our measurements.
+requirements by construction.
+%
+The third it meets on a machine with 16 cores, within a few percent,
+and misses on one with 80, where a program with work for 80 workers
+takes about a tenth longer with the protocol.
 %
 Section~\ref{sec:protocol} presents the protocol, and
 Section~\ref{sec:safety} the invariant that it maintains.
@@ -271,9 +287,18 @@ touches the fork: the push and the read that follows it must take
 effect in order, which is free on AArch64, and which on x86-64 we make
 the sleeper pay for.
 %
-Section~\ref{sec:burn} measures time and burn on two machines, against
-micro taskparts without the protocol and against the scheduler of
-ParlayLib~\cite{blelloch20parlaylib}, which sleeps.
+Section~\ref{sec:burn} measures time and burn on three machines,
+against micro taskparts without the protocol and against the scheduler
+of ParlayLib~\cite{blelloch20parlaylib}, which sleeps.
+%
+The protocol removes most of the burn of a program with bursts.
+%
+It also removes up to half of the burn of several programs that speed
+up little, and there the saving goes with the page faults of a run
+that fills new memory.
+%
+With huge pages those programs run several times faster on 80
+workers, and the protocol saves nothing.
 %
 Section~\ref{sec:related} relates the protocol to waste-efficient work
 stealing~\cite{singer2026wews}, a recent algorithm with proven bounds
