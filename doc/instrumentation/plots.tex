@@ -1,5 +1,5 @@
-% Factored speedup plots, drawn from the certified values of perf/curves and
-% perf/gamora/curves.
+% Factored speedup plots, drawn from the certified values of perf/curves,
+% perf/gamora/curves and perf/icelake/suite.
 % Nothing here is a number typed by hand: every coordinate is computed from
 % \fbval cells, as Appendix sec:collect prescribes.
 %
@@ -66,16 +66,20 @@
     factored, xmax=32, ymax=32,
     xtick={1,8,16,24,32}, ytick={0,8,16,24,32},
   },
+  % The third machine: 80 cores, each with two hardware threads.
+  factored xeon/.style={
+    factored, xmax=160, ymax=160,
+    xtick={1,40,80,120,160}, ytick={0,40,80,120,160},
+  },
 }
 
-% \factoredplotof{SUFFIX}{WORKERS}{MAX}{STYLE}{PROGRAM}{extra axis options}:
-% a plot from the views of SUFFIX, on up to MAX workers.
-\newcommand{\factoredplotof}[6]{%
-  \curvecoords{#1}{#2}{#5}%
+% \factoreddraw{MAX}{STYLE}{TITLE}{extra axis options}: the plot of the
+% coordinates last computed, on up to MAX workers.
+\newcommand{\factoreddraw}[4]{%
   \begin{tikzpicture}
-  \begin{axis}[#4, title={#5}, #6]
+  \begin{axis}[#2, title={#3}, #4]
     \addplot[name path=ideal, draw=none, forget plot]
-      coordinates {(1,1) (#3,#3)};
+      coordinates {(1,1) (#1,#1)};
     \addplot[name path=forks, draw=none, forget plot]
       coordinates {\coordsforks};
     \addplot[name path=inflation, draw=none, forget plot]
@@ -93,11 +97,49 @@
     \addplot[bandsched, band edge, forget plot]
       fill between[of=idle and speedup];
     \addplot[black!55, densely dashed, line width=0.5pt, forget plot]
-      coordinates {(1,1) (#3,#3)};
+      coordinates {(1,1) (#1,#1)};
     \addplot[black, line width=0.9pt, mark=*, mark size=1.1pt, forget plot]
       coordinates {\coordsspeedup};
   \end{axis}
   \end{tikzpicture}}
+
+% \factoredplotof{SUFFIX}{WORKERS}{MAX}{STYLE}{PROGRAM}{extra axis options}:
+% a plot from the views of SUFFIX, on up to MAX workers.
+\newcommand{\factoredplotof}[6]{%
+  \curvecoords{#1}{#2}{#5}%
+  \factoreddraw{#3}{#4}{#5}{#6}}
+
+% \xeoncoords{PROGRAM}: the same four lists of coordinates on the third
+% machine, at 1, 40, 80 and 160 workers, from the views of perf/icelake/suite:
+% Ts and T1 from suiteicelake, Wp from sworkicelake, Ip from sidleicelake, and
+% the speedup on 40 workers and more from sspeedupicelake.
+\newcommand{\xeoncoords}[1]{%
+  \gdef\coordsforks{}\gdef\coordsinflation{}%
+  \gdef\coordsidle{}\gdef\coordsspeedup{}%
+  \edef\curveTs{\fbval{suiteicelake}{#1}{serial}}%
+  \edef\curveTone{\fbval{suiteicelake}{#1}{stats 1}}%
+  \curvecell{sworkicelake}{#1}{1}{\curveWone}%
+  \foreach \p in {1,40,80,160} {%
+    \curvecell{sworkicelake}{#1}{\p}{\curveW}%
+    \curvecell{sidleicelake}{#1}{\p}{\curveI}%
+    \pgfmathparse{\p*\curveTs/\curveWone}%
+    \xdef\coordsforks{\coordsforks (\p,\pgfmathresult)}%
+    \pgfmathparse{\p*\curveTs/\curveW}%
+    \xdef\coordsinflation{\coordsinflation (\p,\pgfmathresult)}%
+    \pgfmathparse{\p*\curveTs/(\curveW+\curveI)}%
+    \xdef\coordsidle{\coordsidle (\p,\pgfmathresult)}%
+    \ifnum\p=1
+      \pgfmathparse{\curveTs/\curveTone}%
+      \xdef\coordsspeedup{\coordsspeedup (\p,\pgfmathresult)}%
+    \else
+      \curvecell{sspeedupicelake}{#1}{\p}{\curveS}%
+      \xdef\coordsspeedup{\coordsspeedup (\p,\curveS)}%
+    \fi}}
+
+% \factoredplotxeon{PROGRAM}{TITLE}{extra axis options}: the third machine.
+\newcommand{\factoredplotxeon}[3]{%
+  \xeoncoords{#1}%
+  \factoreddraw{160}{factored xeon}{#2}{#3}}
 
 % \factoredplot{PROGRAM}{extra axis options}: the laptop, 1 to 10 workers.
 \newcommand{\factoredplot}[2]{%

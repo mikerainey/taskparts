@@ -1872,9 +1872,12 @@ Flatten, scan and filter are no faster on 80 workers than on 40,
 between 3.3 and 4.1 times faster than with no scheduler: their work grows by 11 to 13
 times on 80 workers, and in step with the number of workers.
 %
-They do little but read and write memory, as reduce and linefit do,
-whose work grows by 4.6 and 3.7 times while their workers are never
-idle.
+Each run of them writes to memory it has just been given, and most of
+that growth is time the kernel spends handing out the pages, which a
+worker's clock counts as work like any other.
+%
+Reduce and linefit do little but read and write memory: their work
+grows by 4.6 and 3.7 times while their workers are never idle.
 %
 Kcore is the opposite: its work grows by
 \fbval{sinflationicelake}{kcore}{P = 80} times, but its utilization
@@ -1893,6 +1896,42 @@ times.
 %
 The median speedup goes from 48 to 51, the median inflation from 1.44
 to 2.5, and the median utilization from 0.94 to 0.90.
+
+Figure~\ref{fig:factoredicelake} draws eight of the programs.
+%
+The four of Figure~\ref{fig:factored} lose more to work inflation
+than to anything else, and quickhull and BFS a good deal more of it
+than the two sorts.
+%
+The other four are the extremes of the table: knn, which loses little
+to anything up to 80 workers; graph\_color, with the widest band for
+the forks; kcore, where idle time takes more than inflation
+does; and flatten, where inflation leaves almost nothing.
+%
+A plot has four points only, at 1, 40, 80 and 160 workers, so it shows
+where the speedup goes at those counts and not the shape between them.
+
+\begin{figure*}
+\centering
+\factoredplotxeon{mergesort}{mergesort}{ylabel={speedup}}\hfill
+\factoredplotxeon{samplesort}{samplesort}{}\hfill
+\factoredplotxeon{quickhull}{quickhull}{}\hfill
+\factoredplotxeon{BFS}{BFS}{}
+
+\smallskip
+\factoredplotxeon{knn}{knn}{ylabel={speedup}}\hfill
+\factoredplotxeon{graph_color}{graph\_color}{}\hfill
+\factoredplotxeon{kcore}{kcore}{}\hfill
+\factoredplotxeon{flatten}{flatten}{}
+
+\smallskip
+\factoredlegend
+\caption{Factored speedup plots of eight programs on the Xeon, which
+  has 80 cores and 160 hardware threads, from the values of
+  Table~\ref{tbl:suiteicelake} at 1, 40, 80 and 160 workers.
+  Beyond 80 workers, two workers share a core.}
+\label{fig:factoredicelake}
+\end{figure*}
 
 \begin{table*}
 \footnotesize
