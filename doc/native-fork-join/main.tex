@@ -50,6 +50,7 @@
 \input{perf/gamora/suite/suitegamora}
 \input{perf/suite/karatsuba/suitek}
 \input{perf/gamora/suite/karatsuba/suitekgamora}
+\input{perf/icelake/suite/suiteicelake}
 \newcommand{\suiterow}[3]{}
 \newcommand{\suiterowk}[2]{}
 \newcommand{\suitecells}[4]{\fbval{#1}{#2}{serial} &
@@ -107,6 +108,78 @@
 \suiterow{push\_relabel\_max\_flow}{push_relabel_max_flow}{R-MAT, $2^{18}$}%
 \suiterow{set\_cover}{set_cover}{R-MAT, $2^{21}$}%
 \suiterow{spanning\_tree}{spanning_tree}{R-MAT, $2^{23}$}%
+\suiterow{triangle\_count}{triangle_count}{R-MAT, $2^{19}$}%
+\addlinespace%
+\suiterow{tokens}{tokens}{\texttt{wikipedia250M.txt}}%
+\suiterow{suffix\_array}{suffix_array}{\texttt{chr22.dna}}%
+\suiterow{suffix\_tree}{suffix_tree}{\texttt{chr22.dna}}%
+\suiterow{longest\_common\_prefix}{longest_common_prefix}{\texttt{chr22.dna}}%
+\suiterow{longest\_repeated\_substring}{longest_repeated_substring}{\texttt{chr22.dna}}%
+\suiterow{radix\_tree}{radix_tree}{\texttt{wikipedia250M.txt}}%
+\suiterow{rabin\_karp}{rabin_karp}{\texttt{wikisamp.xml}, ``the''}%
+\suiterow{knuth\_morris\_pratt}{knuth_morris_pratt}{\texttt{wikipedia250M.txt}, ``the''}%
+\suiterow{word\_counts}{word_counts}{\texttt{etext99}, 10}%
+}
+
+% Table tbl:suitexeon has its own rows, \suiterowsxeon: the Xeon's inputs
+% differ, and its view has four worker counts and holds karatsuba.
+\newcommand{\suitecellsxeon}[1]{\fbval{suiteicelake}{#1}{serial} &
+  \fbval{suiteicelake}{#1}{direct 1} & \fbval{suiteicelake}{#1}{direct 40} &
+  \fbval{suiteicelake}{#1}{direct 80} & \fbval{suiteicelake}{#1}{direct 160} &
+  \fbval{suiteicelake}{#1}{homegrown 1} & \fbval{suiteicelake}{#1}{homegrown 40} &
+  \fbval{suiteicelake}{#1}{homegrown 80} & \fbval{suiteicelake}{#1}{homegrown 160}}
+\newcommand{\suiterowsxeon}{%
+\suiterow{2d\_linear\_program}{2d_linear_program}{65\,536\,000}%
+\suiterow{3d\_range}{3d_range}{2\,048\,000}%
+\suiterow{bigint\_add}{bigint_add}{67\,108\,864\,000}%
+\suiterow{box\_kdtree}{box_kdtree}{1\,024\,000}%
+\suiterow{cartesian\_tree}{cartesian_tree}{131\,072\,000}%
+\suiterow{cycle\_count}{cycle_count}{16\,384\,000}%
+\suiterow{delaunay}{delaunay}{512\,000}%
+\suiterow{fast\_fourier\_transform}{fast_fourier_transform}{131\,072\,000}%
+\suiterow{filter}{filter}{1\,048\,576\,000}%
+\suiterow{find\_if}{find_if}{2\,097\,152\,000}%
+\suiterow{flatten}{flatten}{524\,288\,000}%
+\suiterow{huffman\_tree}{huffman_tree}{8\,192\,000}%
+\suiterow{karatsuba}{karatsuba}{16\,384\,000}%
+\suiterow{kmeans\_pp}{kmeans_pp}{1\,024\,000}%
+\suiterow{knn}{knn}{1\,024\,000}%
+\suiterow{knuth\_shuffle}{knuth_shuffle}{32\,768\,000}%
+\suiterow{kth\_smallest}{kth_smallest}{524\,288\,000}%
+\suiterow{linefit}{linefit}{1\,048\,576\,000}%
+\suiterow{mcss}{mcss}{2\,097\,152\,000}%
+\suiterow{mergesort}{mergesort}{32\,768\,000}%
+\suiterow{minimum\_edit\_distance}{minimum_edit_distance}{128\,000}%
+\suiterow{nbody\_fmm}{nbody_fmm}{256\,000}%
+\suiterow{oct\_tree}{oct_tree}{8\,192\,000}%
+\suiterow{primes}{primes}{1\,048\,576\,000}%
+\suiterow{quickhull}{quickhull}{131\,072\,000}%
+\suiterow{quicksort}{quicksort}{32\,768\,000}%
+\suiterow{range\_min}{range_min}{16\,384\,000}%
+\suiterow{ray\_trace}{ray_trace}{256\,000}%
+\suiterow{rectangle\_intersection}{rectangle_intersection}{1\,024\,000}%
+\suiterow{reduce}{reduce}{2\,097\,152\,000}%
+\suiterow{samplesort}{samplesort}{32\,768\,000}%
+\suiterow{scan}{scan}{524\,288\,000}%
+\suiterow{spectral\_separator}{spectral_separator}{512\,000}%
+\addlinespace%
+\suiterow{bellman\_ford}{bellman_ford}{R-MAT, $2^{22}$}%
+\suiterow{betweenness\_centrality}{betweenness_centrality}{R-MAT, $2^{22}$}%
+\suiterow{BFS}{BFS}{R-MAT, $2^{23}$}%
+\suiterow{BFS\_ligra}{BFS_ligra}{R-MAT, $2^{25}$}%
+\suiterow{bucketed\_dijkstra}{bucketed_dijkstra}{R-MAT, $2^{25}$}%
+\suiterow{filter\_kruskal}{filter_kruskal}{R-MAT, $2^{24}$}%
+\suiterow{graph\_color}{graph_color}{R-MAT, $2^{25}$}%
+\suiterow{kcore}{kcore}{R-MAT, $2^{25}$}%
+\suiterow{kruskal}{kruskal}{R-MAT, $2^{21}$}%
+\suiterow{le\_list}{le_list}{R-MAT, $2^{23}$}%
+\suiterow{low\_diameter\_decomposition}{low_diameter_decomposition}{R-MAT, $2^{25}$}%
+\suiterow{maximal\_independent\_set}{maximal_independent_set}{R-MAT, $2^{25}$}%
+\suiterow{maximal\_matching}{maximal_matching}{R-MAT, $2^{24}$}%
+\suiterow{pagerank}{pagerank}{R-MAT, $2^{21}$}%
+\suiterow{push\_relabel\_max\_flow}{push_relabel_max_flow}{R-MAT, $2^{18}$}%
+\suiterow{set\_cover}{set_cover}{R-MAT, $2^{24}$}%
+\suiterow{spanning\_tree}{spanning_tree}{R-MAT, $2^{24}$}%
 \suiterow{triangle\_count}{triangle_count}{R-MAT, $2^{19}$}%
 \addlinespace%
 \suiterow{tokens}{tokens}{\texttt{wikipedia250M.txt}}%
@@ -615,7 +688,7 @@ The directory \path{doc/parlay-adapter} lets programs written with
 ParlayLib~\cite{blelloch20parlaylib} run on it.
 
 \bibliographystyle{abbrv}
-\bibliography{main,perf/times,perf/parlay/parlay,perf/gamora/timesgamora,perf/gamora/parlay/parlaygamora,perf/suite/suite,perf/gamora/suite/suitegamora,perf/suite/karatsuba/suitek,perf/gamora/suite/karatsuba/suitekgamora}
+\bibliography{main,perf/times,perf/parlay/parlay,perf/gamora/timesgamora,perf/gamora/parlay/parlaygamora,perf/suite/suite,perf/gamora/suite/suitegamora,perf/suite/karatsuba/suitek,perf/gamora/suite/karatsuba/suitekgamora,perf/icelake/suite/suiteicelake,perf/icelake/thp/suitethp}
 
 \clearpage
 \appendix
@@ -730,7 +803,8 @@ This appendix measures what a fork costs when its second branch is
 rarely stolen.
 %
 We measured on two machines, which we call the M5 and the Ryzen
-(Table~\ref{tbl:machines}).
+(Table~\ref{tbl:machines}); Appendix~\ref{sec:suite} adds a third, the
+Xeon.
 %
 We ran \lstinline|fib(38)|, from Section~1, with micro taskparts, on
 the M5 (Table~\ref{tbl:perf}).
@@ -757,11 +831,13 @@ name & processor & cores & threads & memory & system \\
 \midrule
 M5 & Apple M5 & 4 + 6 & 10 & 32\,GB & macOS 27 \\
 Ryzen & AMD Ryzen 9 3950X & 16 & 32 & 32\,GB & Linux 6.12 \\
+Xeon & 2 $\times$ Intel Xeon 8380 & 80 & 160 & 125\,GB & Linux 6.8 \\
 \bottomrule
 \end{tabular}
 \caption{The machines.  The M5 has 4 performance and 6 efficiency
   cores; the cores of the Ryzen are all alike, with two hardware
-  threads each.}
+  threads each, as are those of the Xeon, which has two Xeon Platinum
+  8380 processors of 40 cores each.}
 \label{tbl:machines}
 \end{table}
 
@@ -1339,6 +1415,11 @@ ParlayLib's own scheduler.
 %
 On the Ryzen, the columns are one worker, one worker per core, and one
 per hardware thread.
+%
+Table~\ref{tbl:suitexeon} does the same on the Xeon, a machine with
+80 cores on two processors, where the columns are one worker, one per
+core of a processor, one per core, and one per hardware
+thread~\cite{flexibench-suiteicelake}.
 
 \paragraph{Inputs}
 %
@@ -1350,8 +1431,8 @@ the text programs read texts of the Problem Based Benchmark
 Suite~\cite{shun2012pbbs}.
 %
 The files are generated or fetched once, and every run reads them, so
-a graph or text program has the same input in all its runs, on both
-machines.
+a graph or text program has the same input in all its runs, on every
+machine.
 %
 We chose each size on the Ryzen: we doubled it until one run of the
 algorithm with no scheduler took at least a second, or until the
@@ -1389,6 +1470,8 @@ Every check passed.
 The round of karatsuba is a separate one, with a later commit of
 ParlayLib that corrects an out-of-bounds read in the
 program~\cite{flexibench-suitek,flexibench-suitekgamora}.
+%
+On the Xeon, one round at the later commit has all 60 programs.
 
 \paragraph{One worker}
 %
@@ -1438,6 +1521,107 @@ ParlayLib's scheduler on 11 programs, among them delaunay, by 53\%,
 and kcore, by 32\%, and at least 10\% more on three, scan, filter and
 flatten, by at most 12\%.
 
+\paragraph{The Xeon: inputs and method}
+%
+The sizes of the Ryzen are too small for 80 cores, so we chose them
+again on the Xeon.
+%
+We first doubled each size until one run with no scheduler took at
+least two seconds, or the process used a quarter of the memory.
+%
+We then ran each program once with no scheduler and once with each
+scheduler on 80 workers, and where neither scheduler ran it 40 times
+faster than no scheduler, we doubled the size again, up to three
+times, while the process stayed under half of the memory.
+%
+We kept the smallest size that reached 40 times, and otherwise the
+largest that still improved the speedup by a tenth.
+%
+The graphs have up to $2^{25}$ vertices.
+%
+Every process ran with its memory interleaved between the two
+processors, with no worker pinned to a core, and with the system's
+automatic balancing of memory between the processors turned off.
+%
+The processes with no scheduler and with one worker ran once, and
+the others three times.
+
+\paragraph{The Xeon: one worker}
+%
+Micro taskparts takes at most 10\% longer than no scheduler on 44
+programs, and ParlayLib's scheduler on 45.
+%
+The two are within 10\% of each other on 59.
+
+\paragraph{The Xeon: all cores}
+%
+On 80 workers, micro taskparts runs the programs 47 times faster than
+no scheduler at the median, and up to 71 times; ParlayLib's scheduler
+runs them 35 times faster at the median, and up to 60 times.
+%
+Micro taskparts reaches 40 times on 40 programs, and ParlayLib's
+scheduler on 21.
+%
+Micro taskparts takes at least 10\% less time than ParlayLib's
+scheduler on 43 programs, among them delaunay, by 59\%, and karatsuba
+and quicksort, by 47\% and 46\%.
+%
+It takes at least 10\% more on nine: spectral\_separator, by 60\%,
+and push\_relabel\_max\_flow, flatten, filter, scan, tokens,
+spanning\_tree, bigint\_add and knuth\_shuffle, by 10\% to 27\%.
+%
+The difference appears between 40 workers and 80.
+%
+On 40 workers, the two schedulers have nearly the same median, 30 and
+29 times faster than no scheduler, and each takes at least 10\% less
+time than the other on some programs, micro taskparts on 11 and
+ParlayLib's scheduler on 15.
+%
+From 40 workers to 80, the time changes by less than 10\% on 22
+programs with ParlayLib's scheduler, and on 10 with micro taskparts.
+%
+We have not determined why.
+
+\paragraph{The Xeon: all hardware threads}
+%
+From 80 workers to 160, the time changes by less than 10\% on 28
+programs with micro taskparts, and on 5 with ParlayLib's scheduler,
+which gains on most of the others.
+%
+On 160 workers, the medians are 48 and 45 times faster than no
+scheduler.
+%
+Micro taskparts takes at least 10\% less time on 14 programs, among
+them delaunay and oct\_tree, by 58\% and 54\%, and at least 10\% more
+on 23, among them spectral\_separator, by 86\%.
+
+\paragraph{The Xeon: programs that do not scale}
+%
+No size that fits in memory brings every program to 40 times.
+%
+Under both schedulers and at every worker count, scan, filter and
+flatten run at most 6 times faster than with no scheduler, bigint\_add
+at most 9 times, and kcore at most 14 times.
+%
+For scan, filter and flatten, the limit is the operating system's
+handling of page faults.
+%
+Every run allocates its arrays anew, and the system maps them one
+page of 4\,KB at a time.
+%
+We ran the three again with transparent huge pages enabled for all
+memory, which is not the system's default~\cite{flexibench-suitethp}.
+%
+With no scheduler they take about a third less time, and on 80 workers
+they run 12 to 16 times faster than that with micro taskparts, and 8
+to 10 times with ParlayLib's scheduler.
+%
+Micro taskparts then gains at most 4\% from 40 workers to 80, so
+something else limits these programs next.
+%
+We have not determined what it is, nor what limits bigint\_add and
+kcore.
+
 \begin{table*}
 \footnotesize
 \renewcommand{\arraystretch}{0.93}
@@ -1475,6 +1659,25 @@ program & input & scheduler & 1 & 16 & 32 & 1 & 16 & 32 \\
   seconds, with no scheduler, and with two schedulers on 1, 16 and 32
   workers.  The inputs are those of Table~\ref{tbl:suite}.}
 \label{tbl:suitegamora}
+\end{table*}
+
+\begin{table*}
+\footnotesize
+\renewcommand{\arraystretch}{0.93}
+\renewcommand{\suiterow}[3]{#1 & #3 & \suitecellsxeon{#2} \\}
+\begin{tabular}{@{}llrrrrrrrrr@{}}
+\toprule
+ & & no & \multicolumn{4}{c}{micro taskparts} & \multicolumn{4}{c}{ParlayLib's} \\
+program & input & scheduler & 1 & 40 & 80 & 160 & 1 & 40 & 80 & 160 \\
+\midrule
+\suiterowsxeon
+\bottomrule
+\end{tabular}
+\caption{Running time of 60 ParlayLib programs on the Xeon, in
+  seconds, with no scheduler, and with two schedulers on 1, 40, 80 and
+  160 workers.  The inputs are larger than those of
+  Table~\ref{tbl:suite} for 33 programs.}
+\label{tbl:suitexeon}
 \end{table*}
 
 \end{document}

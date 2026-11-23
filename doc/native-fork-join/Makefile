@@ -9,7 +9,9 @@ main.pdf: main.tex local.tex main.bib perf/times.tex perf/times.bib \
 		perf/suite/suite.tex perf/suite/suite.bib \
 		perf/gamora/suite/suitegamora.tex perf/gamora/suite/suitegamora.bib \
 		perf/suite/karatsuba/suitek.tex perf/suite/karatsuba/suitek.bib \
-		perf/gamora/suite/karatsuba/suitekgamora.tex perf/gamora/suite/karatsuba/suitekgamora.bib
+		perf/gamora/suite/karatsuba/suitekgamora.tex perf/gamora/suite/karatsuba/suitekgamora.bib \
+		perf/icelake/suite/suiteicelake.tex perf/icelake/suite/suiteicelake.bib \
+		perf/icelake/thp/suitethp.bib
 	$(PDFLATEX) main
 	bibtex main
 	$(PDFLATEX) main

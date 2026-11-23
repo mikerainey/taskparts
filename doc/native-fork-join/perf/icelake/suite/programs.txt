@@ -1,0 +1,101 @@
+2d_linear_program n 65536000
+3d_range n 2048000
+bigint_add n 67108864000
+box_kdtree n 1024000
+cartesian_tree n 131072000
+cycle_count n 16384000
+delaunay n 512000
+fast_fourier_transform n 131072000
+filter n 1048576000
+find_if n 2097152000
+flatten n 524288000
+huffman_tree n 8192000
+kmeans_pp n 1024000
+knn n 1024000
+knuth_shuffle n 32768000
+kth_smallest n 524288000
+linefit n 1048576000
+mcss n 2097152000
+mergesort n 32768000
+minimum_edit_distance n 128000
+nbody_fmm n 256000
+oct_tree n 8192000
+primes n 1048576000
+quickhull n 131072000
+quicksort n 32768000
+range_min n 16384000
+ray_trace n 256000
+rectangle_intersection n 1024000
+reduce n 2097152000
+samplesort n 32768000
+scan n 524288000
+spectral_separator n 512000
+bellman_ford graph rmat-22.adj
+betweenness_centrality graph rmat-22.adj
+BFS graph rmat-23.adj
+BFS_ligra graph rmat-25.adj
+bucketed_dijkstra graph rmat-25.adj
+filter_kruskal graph rmat-24.adj
+graph_color graph rmat-25.adj
+kcore graph rmat-25.adj
+kruskal graph rmat-21.adj
+le_list graph rmat-23.adj
+low_diameter_decomposition graph rmat-25.adj
+maximal_independent_set graph rmat-25.adj
+maximal_matching graph rmat-24.adj
+pagerank graph rmat-21.adj
+push_relabel_max_flow graph rmat-18.adj
+set_cover graph rmat-24.adj
+spanning_tree graph rmat-24.adj
+triangle_count graph rmat-19.adj
+tokens text pbbs/wikipedia250M.txt
+suffix_array text pbbs/chr22.dna
+suffix_tree text pbbs/chr22.dna
+longest_common_prefix text pbbs/chr22.dna
+longest_repeated_substring text pbbs/chr22.dna
+radix_tree text pbbs/wikipedia250M.txt
+rabin_karp word the pbbs/wikisamp.xml
+knuth_morris_pratt word the pbbs/wikipedia250M.txt
+word_counts count 10 pbbs/etext99
+karatsuba n 16384000
+# After the survey on 80 workers: a goal of 40x, a cap of 62 GB.
+# - 2d_linear_program: under 40x at every size tried: 65536000 24.2x, 131072000 25.4x, 262144000 9.2x, 524288000 9.5x
+# - bigint_add: 8.1x at 67108864000, and the next size would pass 62 GB (31.3 GB here)
+# - bigint_add: under 40x at every size tried: 33554432000 6.8x, 67108864000 8.1x
+# - bigint_add: 33554432000 (6.8x) -> 67108864000 (8.1x, 31.3 GB, serial 10.7 s)
+# - filter: 4.7x at 4194304000, and the next size would pass 62 GB (35.2 GB here)
+# - filter: under 40x at every size tried: 1048576000 4.9x, 2097152000 4.8x, 4194304000 4.7x
+# - find_if: 24.0x at 4194304000, and the next size would pass 62 GB (31.3 GB here)
+# - find_if: under 40x at every size tried: 2097152000 23.7x, 4194304000 24.0x
+# - flatten: 3.3x at 2097152000, and the next size would pass 62 GB (47.0 GB here)
+# - flatten: under 40x at every size tried: 524288000 4.1x, 1048576000 3.9x, 2097152000 3.3x
+# - kmeans_pp: 128000 (27.0x) -> 1024000 (40.9x, 0.3 GB, serial 41.7 s)
+# - knuth_shuffle: under 40x at every size tried: 32768000 29.8x, 65536000 29.7x, 131072000 32.1x, 262144000 33.2x
+# - linefit: 21.9x at 2097152000, and the next size would pass 62 GB (31.3 GB here)
+# - linefit: under 40x at every size tried: 1048576000 21.4x, 2097152000 21.9x
+# - minimum_edit_distance: 64000 (33.6x) -> 128000 (42.6x, 0.0 GB, serial 11.0 s)
+# - nbody_fmm: 64000 (26.7x) -> 256000 (49.8x, 0.4 GB, serial 9.2 s)
+# - quickhull: under 40x at every size tried: 131072000 23.8x, 262144000 26.1x, 524288000 25.0x, 1048576000 23.7x
+# - reduce: 17.5x at 4194304000, and the next size would pass 62 GB (31.3 GB here)
+# - reduce: under 40x at every size tried: 2097152000 17.5x, 4194304000 17.5x
+# - scan: 4.2x at 2097152000, and the next size would pass 62 GB (47.3 GB here)
+# - scan: under 40x at every size tried: 524288000 4.4x, 1048576000 4.5x, 2097152000 4.2x
+# - spectral_separator: under 40x at every size tried: 64000 11.3x, 128000 18.4x, 256000 22.2x, 512000 24.7x
+# - spectral_separator: 64000 (11.3x) -> 512000 (24.7x, 0.4 GB, serial 23.1 s)
+# - BFS: under 40x at every size tried: rmat-23.adj 33.2x, rmat-24.adj 35.0x, rmat-25.adj 35.8x, rmat-26.adj 26.0x
+# - bucketed_dijkstra: rmat-23.adj (28.6x) -> rmat-25.adj (41.0x, 17.8 GB, serial 18.3 s)
+# - filter_kruskal: rmat-22.adj (34.9x) -> rmat-24.adj (41.2x, 15.9 GB, serial 17.9 s)
+# - graph_color: rmat-22.adj (29.2x) -> rmat-25.adj (41.2x, 16.3 GB, serial 44.9 s)
+# - kcore: under 40x at every size tried: rmat-22.adj 6.3x, rmat-23.adj 8.6x, rmat-24.adj 10.8x, rmat-25.adj 13.2x
+# - kcore: rmat-22.adj (6.3x) -> rmat-25.adj (13.2x, 16.3 GB, serial 35.9 s)
+# - le_list: under 40x at every size tried: rmat-20.adj 25.2x, rmat-21.adj 30.9x, rmat-22.adj 34.7x, rmat-23.adj 39.5x
+# - le_list: rmat-20.adj (25.2x) -> rmat-23.adj (39.5x, 15.9 GB, serial 28.6 s)
+# - low_diameter_decomposition: rmat-24.adj (36.4x) -> rmat-25.adj (49.2x, 16.3 GB, serial 6.7 s)
+# - push_relabel_max_flow: under 40x at every size tried: rmat-18.adj 23.8x, rmat-19.adj 23.1x, rmat-20.adj 25.4x, rmat-21.adj 24.1x
+# - set_cover: under 40x at every size tried: rmat-21.adj 19.2x, rmat-22.adj 27.3x, rmat-23.adj 32.5x, rmat-24.adj 39.2x
+# - set_cover: rmat-21.adj (19.2x) -> rmat-24.adj (39.2x, 10.8 GB, serial 28.4 s)
+# - spanning_tree: 30.7x at rmat-25.adj, and the next size would pass 62 GB (31.8 GB here)
+# - spanning_tree: under 40x at every size tried: rmat-23.adj 26.2x, rmat-24.adj 31.2x, rmat-25.adj 30.7x
+# - spanning_tree: rmat-23.adj (26.2x) -> rmat-24.adj (31.2x, 17.1 GB, serial 5.7 s)
+# - tokens: under 40x at every size tried: pbbs/wikipedia250M.txt 26.2x
+# - radix_tree: under 40x at every size tried: pbbs/wikipedia250M.txt 36.0x
