@@ -2,7 +2,7 @@ CXX ?= c++
 OPTFLAGS ?= -O2
 CXXFLAGS = -std=c++17 -pthread -Wall $(OPTFLAGS)
 
-PROGRAMS = fib migrate bursty
+PROGRAMS = fib migrate bursty forkwake
 
 all: $(addprefix bin/,$(PROGRAMS))
 
