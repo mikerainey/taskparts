@@ -1689,53 +1689,133 @@ delaunay.
 On bursty ParlayLib's burns \sburnx{bursty}{homegrown 80}\,s against
 \sburnx{bursty}{elastic 80}\,s, 2.6 times as much.
 
-\section{Workers that outlive a computation}
+\section{Kept workers, and DAG calculus}
 \label{sec:pool}
 
-In the micro taskparts of this paper, the workers live for one
-computation: when the root task finishes, every worker is woken, and
-every worker exits (Section~\ref{sec:protocol}).
+Sections~\ref{sec:protocol} and~\ref{sec:safety} are about one
+fork-join computation, whose workers end with it.
 %
-A library keeps its workers from one computation to the next, as the
-scheduler of the instrumentation paper does~\cite{instrumentation}.
+A library keeps its workers from one computation to the next, and the
+library that this series of papers builds also schedules the vertices
+of DAG calculus beside forks~\cite{dagcalculus}.
 %
-This appendix says what the protocol needs then.
+This appendix asks what the argument of Section~\ref{sec:safety}
+assumed about fork join, which of those assumptions the two changes
+break, and what restores them.
 %
 It describes a design that we have checked on a model and have not
 measured.
 
-\paragraph{What changes}
-%
-Worker 0 is the thread that starts a computation, and it waits in its
-scheduler loop for the computation to end.
-%
-The other workers do not end with it: they go on looking for work,
-find none, and sleep, until the next computation pushes its root
-task.
-%
-That push is followed by the same check as a fork's, so the first
-task of a computation wakes a worker as any other task does.
-%
-Between computations, then, nothing is special; only the end is.
+\subsection{Two guarantees}
 
-\paragraph{Waking everyone no longer works}
+The protocol owes a computation two things, and they are not equally
+hard to keep.
+
+\begin{itemize}[leftmargin=*]
+\item \emph{Progress.}
+  Every task that is ready is run, and the thread that started the
+  computation returns when it is over.
+  A failure of progress is a program that hangs.
+\item \emph{The invariant of Section~\ref{sec:safety}.}
+  While a task waits in a deque and a worker is asleep, some worker is
+  stealing, or is about to check whether one should be.
+  A failure of the invariant is a program that runs on fewer workers
+  than it could: it costs time, and no result.
+\end{itemize}
+
+Progress, the end apart, \emph{does not depend on any wake-up}.
 %
-At the end of a computation one worker must wake, worker 0, and it may
-be asleep.
+It follows from two rules about deques, which we call the
+\emph{owner rules}.
+%
+A worker pushes a task only on its own deque.
+%
+And a worker looks in its own deque before it steals, so it goes to
+sleep only when its own deque is empty, and the deque of a worker
+that is asleep stays empty.
+%
+So every task in a deque is in the deque of a worker that is awake,
+and that worker pops it once it has finished what it is doing, unless
+a thief has taken it first.
+%
+If every wake-up were lost, the computation would still run every
+task, on fewer workers.
+
+Native fork join obeys the owner rules trivially: a fork pushes on its
+own deque, and a worker's deque is empty whenever the worker is in its
+loop (Section~\ref{sec:protocol}).
+%
+The rest of this appendix keeps them, so progress has one thing left
+to establish in each setting: that the thread which waits for the end
+of a computation learns of it.
+%
+Everything else below is about the invariant.
+
+\subsection{What fork join assumed}
+
+The argument of Section~\ref{sec:safety} used three properties of a
+fork-join computation without naming them.
+
+\begin{description}[leftmargin=1.5em]
+\item[F1] \emph{One event makes a task appear:} the push of a fork.
+  The worker that pushes goes on working, on the first branch, so a
+  task that appears is work that could run at the same time as other
+  work.
+\item[F2] \emph{A task leaves a deque only to be run:} its owner pops
+  it, or a thief steals it.
+  So if a worker that looks at the deques sees no task, no task is
+  waiting.
+\item[F3] \emph{One event ends the computation, and every worker then
+  exits.}
+  So the end may wake all the workers at once.
+\end{description}
+
+Keeping the workers breaks F3.
+%
+DAG calculus breaks F1 and F2.
+%
+We take them in that order.
+
+\subsection{Kept workers: the end}
+
+Worker 0 is the thread that starts a computation; it runs its
+scheduler loop until the computation is over, and then returns to its
+caller.
+%
+The other workers do not end with the computation.
+%
+They go on looking for work, find none, and sleep, until the next
+computation pushes its first task; that push is followed by the check
+that follows a fork's, so it wakes a worker as any push does.
+
+\paragraph{The problem}
+%
+At the end of a computation exactly one worker has something to do,
+worker 0, and it may be asleep.
 %
 The sleepers share one semaphore, and a token posted to it goes to
-whichever sleeper takes it: \emph{a token cannot be aimed at a worker}.
+whichever sleeper takes it first: \emph{a token cannot be aimed at a
+worker}.
 %
-Posting one token for each sleeper does not help either.
+Waking every sleeper, as Section~\ref{sec:protocol} does, is sound
+there only by F3.
 %
-In Section~\ref{sec:protocol} that is sound because a worker that
-wakes then sees \lstinline|done| and exits.
-%
-Here a worker other than worker 0 that wakes fails to steal, announces
-again, and may take the token that would have released worker 0.
-%
-Every worker is then asleep, worker 0 included, with the computation
-over.
+Without F3 it fails as follows, on three workers.
+
+\begin{enumerate}[leftmargin=*]
+\item Workers 0 and 2 are asleep, and worker 1 runs the last task.
+  It sets \lstinline|done| and posts two tokens.
+\item Worker 2 takes one token.
+  It is not worker 0, so the end of the computation means nothing to
+  it: it fails to steal, announces, sees no task, and waits again.
+\item Worker 0 has not run yet, so the second token is still there,
+  and worker 2 takes it.
+  It fails to steal, announces and waits a third time.
+\item Worker 1 fails to steal, announces and waits.
+\end{enumerate}
+
+Every worker is now asleep, worker 0 among them, with the computation
+over and no token to come: the program hangs.
 
 \begin{figure}
 \hrule
@@ -1761,118 +1841,283 @@ end() -> void {  // by the worker that ends the computation
   notify worker 0 }
 \end{lstlisting}
 \hrule
-\caption{Going to sleep and ending a computation when workers outlive
-  it. The other workers sleep as in Figure~\ref{fig:elastic}, with a
+\caption{Going to sleep and ending a computation when workers are
+  kept. The other workers sleep as in Figure~\ref{fig:elastic}, with a
   flag that is set when the program exits in place of
   \lstinline|done|.}
 \label{fig:pool}
 \end{figure}
 
-\paragraph{The end, for worker 0 alone}
+\paragraph{The mechanism}
 %
-Figure~\ref{fig:pool} has the change.
+The end concerns worker 0 alone, so only worker 0 is told
+(Figure~\ref{fig:pool}).
 %
 The worker that ends the computation sets \lstinline|done| and
-notifies worker 0, and posts no token.
+notifies worker 0.
+%
+It posts no token.
 %
 Worker 0, when it sleeps, waits for either of two things: a token, or
 \lstinline|done|.
 %
 With a token it returns as any sleeper does.
 %
-With \lstinline|done| and no token, it must leave the asleep count
-itself, and it does so as a sleeper that has seen a task does: it
-takes its announcement back.
+With \lstinline|done| and no token, nobody has moved it out of the
+asleep count, so it must leave the count itself.
 %
-That can fail, because a waker has moved the last announcement out of
-the count, and a token is on its way.
+It does so as a sleeper that has seen a task does, by taking an
+announcement back.
 %
-Worker 0 then waits again, for that token or for an announcement to
-take back, and goes round until it has one or the other.
+That fails if the asleep count is zero, which means that a waker has
+claimed the last announcement and a token is on its way.
+%
+Worker 0 then waits again, and goes round until it has a token or an
+announcement to take back.
 
-The other workers never test \lstinline|done|.
+The other workers never read \lstinline|done|.
 %
-They test a flag that is set once, when the program exits; the exit
-then wakes every sleeper as Section~\ref{sec:protocol} does, which is
-sound again, because a worker that wakes or announces after the flag
-is set does not wait.
+They read a flag that is set once, when the program exits.
+%
+The exit wakes every sleeper as Section~\ref{sec:protocol} does, which
+is sound again: F3 holds at the exit, since a worker that wakes or
+announces after the flag is set does not wait.
 
-\paragraph{Why worker 0 leaves}
+\paragraph{Why worker 0 returns}
+%
+Worker 0 must first learn that \lstinline|done| is set, and then get
+out of \lstinline|sleep|.
+
+It learns of \lstinline|done| because it reads the flag and starts to
+wait while holding the lock of the semaphore, and the notification is
+sent after \lstinline|done| is set and that lock has been taken and
+released.
+%
+So either its read sees \lstinline|done|, or it is waiting when the
+notification arrives.
+
+That it gets out rests on one equation, which is the third fact of
+Section~\ref{sec:safety} written as arithmetic.
 %
 Call a worker \emph{out} from its announcement until it returns from
-\lstinline|sleep|.
+\lstinline|sleep|, and call a token \emph{due} from the moment a waker
+claims an announcement until a sleeper takes the token.
 %
-The third fact of Section~\ref{sec:safety}, that counts and tokens
-agree, is this equation: the number of workers that are out equals
-the asleep count plus the number of tokens posted and not yet taken,
-or about to be posted by a waker that has moved the count.
+Then at every moment
+\[ \mathit{out} \;=\; \mathit{asleep} + \mathit{due}, \]
+where $\mathit{asleep}$ is the count in the status word.
 %
-It holds whoever takes a token, since every way in or out of
-\lstinline|sleep| changes both sides by one.
+All three are zero at the start, and Table~\ref{tbl:steps} lists
+every step that changes one of them: each changes both sides by the
+same amount.
+%
+The equation does not say who takes which token, and does not need
+to.
 
-Suppose \lstinline|done| is set and worker 0 is out.
+\begin{table}
+\small
+\begin{tabular}{@{}lrrr@{}}
+\toprule
+step & $\mathit{out}$ & $\mathit{asleep}$ & $\mathit{due}$ \\
+\midrule
+a worker announces & $+1$ & $+1$ & \\
+a worker takes an announcement back & $-1$ & $-1$ & \\
+a waker claims an announcement & & $-1$ & $+1$ \\
+a wait returns with a token & $-1$ & & $-1$ \\
+worker 0's wait returns on \lstinline|done| & & & \\
+\bottomrule
+\end{tabular}
+\caption{The steps of the protocol that change the number of workers
+  that are out, the asleep count, or the number of tokens due, and the
+  one step of Figure~\ref{fig:pool} that changes none. A worker that
+  takes an announcement back, or whose wait returns with a token,
+  returns from \lstinline|sleep|.}
+\label{tbl:steps}
+\end{table}
+
+Now suppose \lstinline|done| is set and worker 0 is out.
 %
-It learns of \lstinline|done|: it tests the flag and starts to wait
-under the lock of the semaphore, and the notification is sent after
-\lstinline|done| is set and that lock has been taken and released.
+Then $\mathit{out} \geq 1$, so $\mathit{asleep} \geq 1$ or
+$\mathit{due} \geq 1$.
 %
-The left side of the equation is then at least one, so the asleep
-count is positive, and \lstinline|take_back| can succeed, or a token
-exists or is about to, and the wait can return with it.
+In the first case \lstinline|take_back| succeeds if worker 0 runs it.
 %
-Another worker may take that token, or have its announcement taken
-back in place of worker 0's; it then returns from \lstinline|sleep|,
-and worker 0 is still out, so the same holds again.
+In the second a token is posted or about to be, and worker 0's wait
+returns with it if worker 0 takes it.
 %
-So worker 0 can always leave.
+Another worker may get there first, and take that token or take the
+announcement back.
 %
-This shows that the way out stays open, not that a run takes it: a
-schedule in which the other workers take every token for ever is not
-excluded, though each of them must fail to steal
+By Table~\ref{tbl:steps} that worker is then no longer out, and
+worker 0 still is: so $\mathit{out} \geq 1$ again, and the same
+choice is open again.
+%
+Worker 0 therefore always has a step that takes it out of
+\lstinline|sleep|.
+
+This shows that the way out stays open, not that every run takes it.
+%
+A schedule in which the other workers take every token for ever is
+not excluded, though each of them must fail to steal
 \lstinline|patience| times in between.
 
-\paragraph{A check that comes late}
+\subsection{DAG calculus: more ways for a task to appear}
+
+In DAG calculus a deque holds vertices and suspended stacks as well
+as forks~\cite{dagcalculus}.
 %
-A task's last act may be a push, and the check that follows a push
-may then run after the computation that the task belonged to is over,
-or while the next one starts.
+A vertex has a count of the vertices it waits for.
+%
+A worker that finishes a vertex counts down each of its successors,
+and pushes on its own deque each one whose count reaches zero.
+%
+A worker's loop pops its own deque before it steals.
+%
+So the owner rules hold, and progress needs nothing new.
+
+F1 said that one event makes a task appear.
+%
+There are now four: the push of a fork, the push of a vertex or a
+suspended stack that has become ready, the push of the first task of
+a computation, and the push of the next paragraph.
+%
+The first fact of Section~\ref{sec:safety} never used that the push
+was a fork's.
+%
+It is about two workers, each of which writes one location and then
+reads the other's: the sleeper writes the status word and reads the
+deques, and the pusher writes its deque and reads the status word.
+%
+One of the two reads sees the other's write.
+%
+So the invariant is kept by the same means: \emph{every push is
+followed by the check that follows a fork's}.
+%
+A push that is not followed by the check gives up the invariant for
+the task pushed, and nothing else: by the owner rules, that task is
+still run.
+
+\subsection{DAG calculus: a task that is in no deque}
+
+F2 said that a task leaves a deque only to be run.
+%
+In DAG calculus, the pop that ends a fork may return a task that is
+not the fork's own, because its first branch made a vertex ready.
+%
+The fork cannot run that task, and puts it back.
+%
+Between the pop and the push that puts it back, the task is ready,
+is not running, and is in no deque.
+
+A worker that announces and looks at the deques in that interval sees
+no task, and sleeps, as its rule says.
+%
+No check is pending either: the check that followed the first push of
+this task is long past.
+%
+If the task then went back into the deque in silence, a task would
+wait while a worker slept and none stole, and the invariant would be
+broken with nothing left to restore it.
+%
+So putting a task back is a push like the others, and is followed by
+the check.
+%
+The sleeper that looked too early is then the sleeper of the first
+fact, and the worker that puts the task back is its pusher.
+
+\subsection{DAG calculus: a push that offers no parallelism}
+
+F1 also said that the worker that pushes goes on working, so that the
+task it pushed could run beside it.
+%
+A vertex may make its successor ready as the last thing it does.
+%
+Its worker then returns to its loop and pops that successor itself.
+%
+There was one thing to do before the push, and there is one after.
+
+The invariant does not know this.
+%
+It sees a task in a deque, and if a worker is asleep and none is
+stealing, the check wakes one.
+%
+The worker that wakes finds nothing, or wins the race for the task
+and runs it on a processor that was at rest.
+%
+Either way the wake-up buys no parallelism and costs burn.
+%
+This is a loss of economy and not of soundness: both guarantees hold.
+%
+A chain of vertices, each the only successor of the one before, is
+the worst case, with one such push for each vertex.
+
+A check may also run late.
+%
+The task that a vertex pushes as its last act can be stolen, run, and
+end the computation, before the worker that pushed it has run the
+check.
 %
 The check reads the status word and may post one token, and touches
-nothing that belongs to a computation.
+nothing that belongs to a computation, so it is safe after the end,
+and during the next computation.
 %
 At worst it wakes a worker that finds nothing and sleeps again.
 
-\paragraph{Snapshots between computations}
-%
-The snapshot of Appendix~\ref{sec:instr} is taken inside a
-computation, and waits for every other worker to sleep.
-%
-With workers that outlive a computation it can be taken between two,
-as in the instrumentation paper, by the same wait.
-%
-When the status word shows every worker but worker 0 asleep and none
-stealing, the equation above says that no token is out; and no worker
-is left to post one, since worker 0 is the one that waits.
-%
-So each of the others is in its wait or on its way there, and stays.
+\subsection{What is established, and what is not}
 
-\paragraph{What we checked}
+\paragraph{By argument}
 %
-A model of this design, with the status word, the semaphore, the
-deques and the two flags, was explored in every interleaving, for 2
-workers and three computations in a row, and for 3 workers and two.
+Progress, from the owner rules and the paragraph on worker 0.
 %
-The invariant of Section~\ref{sec:safety} and the equation above hold
-in every state, and from every state the program can still end.
+The equation of Table~\ref{tbl:steps}.
 %
-The same exploration rejects each of fifteen faulty variants, among
-them the end that wakes every sleeper, and a worker 0 that, finding
-its announcement claimed, waits for the token alone.
+The invariant, by the facts of Section~\ref{sec:safety}, with
+``push'' in place of ``fork'' in the first.
+
+\paragraph{By exhaustive search}
+%
+A model of the design has the status word, the semaphore, the two
+flags, and a deque for each worker; its tasks may push further
+tasks, make a successor ready as they finish, or be taken out of
+their deque and put back.
+%
+Every interleaving was explored for 2 workers and three computations
+in a row, and for 3 workers and two.
+%
+The invariant and the equation hold in every state, and from every
+state the program can still end.
+%
+The same search rejects each of fifteen faulty variants.
+%
+Among them are the end that wakes every sleeper, a worker 0 that
+waits for its token alone once its announcement is claimed, and the
+designs that omit the check after a push of each kind.
+
+\paragraph{Not established}
 %
 The model takes the order of a push and the read that follows it for
-granted (Section~\ref{sec:order}), so it says nothing about the remote
-barrier, and its \lstinline|patience| is one failed steal.
+granted, so it says nothing more than Section~\ref{sec:order} does
+about memory orderings and the remote barrier.
 %
-We have not measured what the design costs.
+Its \lstinline|patience| is one failed steal.
+%
+Neither the argument nor the model bounds how long worker 0 waits, or
+what the wake-ups of the last subsection cost.
+%
+We have not measured the design.
+
+\paragraph{Snapshots between computations}
+%
+With kept workers, the snapshot of Appendix~\ref{sec:instr} can be
+taken between two computations, by the same wait.
+%
+When the status word shows every worker but worker 0 asleep and none
+stealing, $\mathit{out}$ is at most the number of those workers, which
+is $\mathit{asleep}$, so $\mathit{due}$ is zero: no token is on its
+way.
+%
+No worker is left to claim an announcement either.
+%
+So each of the others is in its wait or on its way there, and stays.
 
 \end{document}
